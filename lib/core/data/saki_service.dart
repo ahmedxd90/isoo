@@ -769,6 +769,16 @@ class SakiService {
     return Map<String, dynamic>.from(created);
   }
 
+  Future<Map<String, dynamic>> convertDiamondsToGold(int amount) async {
+    final rows = await client.rpc(
+      'convert_diamonds_to_gold',
+      params: {'amount': amount},
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    if (list.isEmpty) throw Exception('تعذر تنفيذ التحويل.');
+    return list.first;
+  }
+
   Future<void> updateAccountSettings(Map<String, dynamic> settings) async {
     await client
         .from('saki_account_modules')

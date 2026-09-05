@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
+import 'wallet_page.dart';
 
 const _orange = Color(0xFFF97316);
 const _orangeSoft = Color(0xFFFFF7ED);
@@ -83,6 +84,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openModule(String type) async {
+    if (type == 'wallet') {
+      final changed = await Navigator.of(context)
+          .push<bool>(MaterialPageRoute(builder: (_) => const WalletPage()));
+      if (changed == true) _load();
+      return;
+    }
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
