@@ -1714,7 +1714,20 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   child: StreamBuilder<List<Map<String, dynamic>>>(
                     stream: _messageStream,
                     builder: (_, snap) {
-                      final messages = snap.data ?? [];
+                      final messages = [...(snap.data ?? [])]
+                        ..sort(
+                          (a, b) =>
+                              (DateTime.tryParse(
+                                        a['created_at']?.toString() ?? '',
+                                      ) ??
+                                      DateTime.fromMillisecondsSinceEpoch(0))
+                                  .compareTo(
+                                    DateTime.tryParse(
+                                          b['created_at']?.toString() ?? '',
+                                        ) ??
+                                        DateTime.fromMillisecondsSinceEpoch(0),
+                                  ),
+                        );
                       return ListView.builder(
                         reverse: true,
                         padding: const EdgeInsets.all(14),
