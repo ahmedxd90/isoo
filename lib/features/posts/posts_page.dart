@@ -561,8 +561,8 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                           runSpacing: 5,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Text(
-                              author,
+                            VipUsername(
+                              profile: profile,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w900,
                                 fontSize: 16,

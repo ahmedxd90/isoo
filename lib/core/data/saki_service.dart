@@ -30,7 +30,7 @@ class SakiService {
     final rows = await client
         .from('rooms')
         .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url),room_members(user_id)',
+          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
         )
         .eq('owner_id', uid)
         .eq('is_active', true)
@@ -48,7 +48,7 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> feed({bool followingOnly = false}) async {
     final selection =
-        'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
+        'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
     final data = followingOnly
         ? await _followingPosts(selection)
         : await client
@@ -159,7 +159,7 @@ class SakiService {
     final data = await client
         .from('post_comments')
         .select(
-          'id,content,created_at,user_id,profiles:user_id(username,avatar_url)',
+          'id,content,created_at,user_id,profiles:user_id(username,avatar_url,vip_level,vip_expires_at)',
         )
         .eq('post_id', postId)
         .order('created_at');
@@ -176,7 +176,7 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> reels({bool followingOnly = false}) async {
     final selection =
-        'id,author_id,video_url,description,visibility,created_at,profiles:author_id(username,avatar_url,saki_id),reel_likes(user_id),reel_comments(id)';
+        'id,author_id,video_url,description,visibility,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at),reel_likes(user_id),reel_comments(id)';
     final data = followingOnly
         ? await _followingReels(selection)
         : await client
@@ -283,7 +283,7 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at',
+          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at',
         )
         .eq('id', userId)
         .maybeSingle();
@@ -322,7 +322,7 @@ class SakiService {
     final data = await client
         .from('conversations')
         .select(
-          'id,created_at,conversation_members(user_id,profiles:user_id(id,username,display_name,avatar_url,saki_id))',
+          'id,created_at,conversation_members(user_id,profiles:user_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at))',
         )
         .inFilter('id', ids)
         .order('updated_at', ascending: false);
@@ -380,7 +380,7 @@ class SakiService {
     final data = await client
         .from('rooms')
         .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url),room_members(user_id)',
+          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
         )
         .eq('is_active', true)
         .order('created_at', ascending: false)
@@ -556,7 +556,7 @@ class SakiService {
           'room_type': type,
         })
         .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url)',
+          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at)',
         )
         .single();
     final roomId = inserted['id'] as String;
@@ -677,7 +677,7 @@ class SakiService {
     final posts = await client
         .from('posts')
         .select(
-          'id,content,created_at,profiles:author_id(username,avatar_url,saki_id)',
+          'id,content,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at)',
         )
         .ilike('content', '%$term%')
         .eq('visibility', 'public')
@@ -718,7 +718,7 @@ class SakiService {
     final data = await client
         .from('reel_comments')
         .select(
-          'id,content,created_at,user_id,profiles:user_id(username,avatar_url)',
+          'id,content,created_at,user_id,profiles:user_id(username,avatar_url,vip_level,vip_expires_at)',
         )
         .eq('reel_id', reelId)
         .order('created_at');
@@ -746,7 +746,7 @@ class SakiService {
     final data = await client
         .from('notifications')
         .select(
-          'id,type,entity_id,is_read,created_at,profiles:actor_id(username,avatar_url)',
+          'id,type,entity_id,is_read,created_at,profiles:actor_id(username,avatar_url,vip_level,vip_expires_at)',
         )
         .eq('user_id', uid)
         .order('created_at', ascending: false)
@@ -837,6 +837,26 @@ class SakiService {
         .select()
         .single();
     return Map<String, dynamic>.from(created);
+  }
+
+  Future<Map<String, dynamic>> purchaseVip(int level) async {
+    final rows = await client.rpc('purchase_vip', params: {'p_level': level});
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    if (list.isEmpty) throw Exception('تعذر تفعيل VIP');
+    return list.first;
+  }
+
+  Future<Map<String, dynamic>> giftVip({
+    required int sakiId,
+    required int level,
+  }) async {
+    final rows = await client.rpc(
+      'gift_vip',
+      params: {'p_saki_id': sakiId, 'p_level': level},
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    if (list.isEmpty) throw Exception('تعذر إرسال VIP');
+    return list.first;
   }
 
   Future<Map<String, dynamic>> convertDiamondsToGold(int amount) async {

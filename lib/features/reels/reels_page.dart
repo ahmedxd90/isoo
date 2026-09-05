@@ -539,8 +539,8 @@ class _ReelCardState extends State<ReelCard> {
             children: [
               Row(
                 children: [
-                  Text(
-                    '@$username',
+                  VipUsername(
+                    profile: {...profile, 'username': '@$username'},
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,

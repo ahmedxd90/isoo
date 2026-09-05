@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import 'wallet_page.dart';
+import 'vip_page.dart';
+import '../../shared/widgets/saki_widgets.dart';
 
 const _orange = Color(0xFFF97316);
 const _orangeSoft = Color(0xFFFFF7ED);
@@ -84,6 +86,12 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openModule(String type) async {
+    if (type == 'vip') {
+      final changed = await Navigator.of(context)
+          .push<bool>(MaterialPageRoute(builder: (_) => const VipPage()));
+      if (changed == true) _load();
+      return;
+    }
     if (type == 'wallet') {
       final changed = await Navigator.of(context)
           .push<bool>(MaterialPageRoute(builder: (_) => const WalletPage()));
@@ -333,8 +341,8 @@ class _ProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  username,
+                VipUsername(
+                  profile: profile,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,

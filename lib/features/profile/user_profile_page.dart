@@ -351,8 +351,8 @@ class _ProfileHero extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  username,
+                VipUsername(
+                  profile: profile,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,

@@ -125,3 +125,82 @@ class GlassCard extends StatelessWidget {
     );
   }
 }
+
+class VipUsername extends StatefulWidget {
+  const VipUsername({
+    super.key,
+    required this.profile,
+    this.style,
+    this.maxLines = 1,
+  });
+  final Map<String, dynamic> profile;
+  final TextStyle? style;
+  final int maxLines;
+
+  @override
+  State<VipUsername> createState() => _VipUsernameState();
+}
+
+class _VipUsernameState extends State<VipUsername>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final level = (widget.profile['vip_level'] as num?)?.toInt() ?? 0;
+    final expires = DateTime.tryParse(
+      widget.profile['vip_expires_at']?.toString() ?? '',
+    );
+    final active =
+        level > 0 && (expires == null || expires.isAfter(DateTime.now()));
+    final text = widget.profile['username'] as String? ?? 'مستخدم';
+    final base =
+        widget.style ??
+        const TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
+    if (!active)
+      return Text(
+        text,
+        style: base,
+        maxLines: widget.maxLines,
+        overflow: TextOverflow.ellipsis,
+      );
+    final colors = level >= 6
+        ? const [Colors.red, Colors.amber, Colors.blue, Colors.red]
+        : const [Color(0xFFFFE082), Color(0xFFD4AF37)];
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) => ShaderMask(
+        shaderCallback: (rect) {
+          final shift = (_controller.value * 2) - 1;
+          return LinearGradient(
+            colors: colors,
+            begin: Alignment(shift, 0),
+            end: Alignment(shift + 2, 0),
+          ).createShader(rect);
+        },
+        blendMode: BlendMode.srcIn,
+        child: Text(
+          text,
+          style: base.copyWith(color: Colors.white),
+          maxLines: widget.maxLines,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
