@@ -25,6 +25,13 @@ class SakiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = GoRouter(
       initialLocation: '/splash',
+      redirect: (context, state) {
+        final uri = state.uri;
+        if (uri.scheme == 'io.supabase.saki' || uri.host == 'login-callback') {
+          return '/login';
+        }
+        return null;
+      },
       routes: [
         GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
         GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
