@@ -74,7 +74,7 @@ class SakiService {
     final rows = await client
         .from('rooms')
         .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
+          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
         )
         .eq('owner_id', uid)
         .eq('is_active', true)
@@ -424,7 +424,7 @@ class SakiService {
     final data = await client
         .from('rooms')
         .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
+          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
         )
         .eq('is_active', true)
         .order('created_at', ascending: false)
@@ -640,6 +640,56 @@ class SakiService {
         .delete()
         .eq('room_id', roomId)
         .eq('user_id', userId);
+  }
+
+  Future<List<Map<String, dynamic>>> roomBansForOwner(String roomId) async {
+    final rows = await client
+        .from('room_bans')
+        .select(
+          'user_id,expires_at,created_at,profiles:user_id(id,username,avatar_url,saki_id)',
+        )
+        .eq('room_id', roomId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> removeRoomBan(String roomId, String userId) async {
+    await client
+        .from('room_bans')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
+  }
+
+  Future<void> updateRoomSettings(
+    String roomId, {
+    int? seatCount,
+    String? backgroundUrl,
+  }) async {
+    final values = <String, dynamic>{};
+    if (seatCount != null) values['seat_count'] = seatCount;
+    if (backgroundUrl != null) values['background_url'] = backgroundUrl;
+    await client
+        .from('rooms')
+        .update(values)
+        .eq('id', roomId)
+        .eq('owner_id', uid);
+  }
+
+  Future<String> uploadRoomBackground(String roomId, XFile image) async {
+    final bytes = await File(image.path).readAsBytes();
+    final extension = image.path.split('.').last.toLowerCase();
+    final contentType = extension == 'gif' ? 'image/gif' : 'image/$extension';
+    final path =
+        '$uid/$roomId-background-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('rooms')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: true, contentType: contentType),
+        );
+    return client.storage.from('rooms').getPublicUrl(path);
   }
 
   Future<void> roomMute(

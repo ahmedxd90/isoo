@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'agora_audio_room_page.dart';
+import 'room_settings_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _roomPrimary = Color(0xFF8B5CF6);
@@ -1122,22 +1123,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  void _showOwnerSettings() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF3D0B12),
-      builder: (_) => SafeArea(
-        child: ListTile(
-          leading: const Icon(Icons.settings, color: Colors.white),
-          title: const Text(
-            'إعدادات الغرفة',
-            style: TextStyle(color: Colors.white),
-          ),
-          subtitle: const Text(
-            'إعدادات المالك متاحة هنا',
-            style: TextStyle(color: Colors.white60),
-          ),
-        ),
+  Future<void> _showOwnerSettings() async {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RoomSettingsPage(room: widget.room, service: _service),
       ),
     );
   }
@@ -1505,17 +1494,35 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final image = widget.room['image_url'] as String?;
     final title = widget.room['name'] as String? ?? 'غرفة SAKI';
     final roomNumber = widget.room['room_id'] as String? ?? '';
+    final backgroundUrl = widget.room['background_url'] as String?;
+    final backgroundColors = backgroundUrl == 'free://ocean'
+        ? const [Color(0xFF0891B2), Color(0xFF1D4ED8), Color(0xFF172554)]
+        : backgroundUrl == 'free://aurora'
+        ? const [Color(0xFF312E81), Color(0xFF7E22CE), Color(0xFFBE185D)]
+        : backgroundUrl == 'free://sunset'
+        ? const [Color(0xFFF97316), Color(0xFFDB2777), Color(0xFF4A0E17)]
+        : const [Color(0xFF4A0E17), Color(0xFF8A1C30), Color(0xFF2A080C)];
     return WillPopScope(
       onWillPop: () async => await _confirmExit(),
       child: Scaffold(
         backgroundColor: const Color(0xFF4A0E17),
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF4A0E17), Color(0xFF8A1C30), Color(0xFF2A080C)],
+              colors: backgroundColors,
             ),
+            image: backgroundUrl == null || backgroundUrl.startsWith('free://')
+                ? null
+                : DecorationImage(
+                    image: NetworkImage(backgroundUrl),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withValues(alpha: .38),
+                      BlendMode.darken,
+                    ),
+                  ),
           ),
           child: SafeArea(
             child: Column(
@@ -1619,7 +1626,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       ),
                       child: GridView.builder(
                         shrinkWrap: true,
-                        itemCount: 10,
+                        itemCount: (widget.room['seat_count'] as int?) ?? 10,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
