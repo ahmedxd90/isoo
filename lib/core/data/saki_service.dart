@@ -20,6 +20,32 @@ class SakiService {
     return data;
   }
 
+  Future<String> myCountry() async {
+    final profile = await myProfile();
+    final country = (profile?['country'] as String?)?.trim();
+    return country == null || country.isEmpty ? 'الأردن' : country;
+  }
+
+  Future<Map<String, dynamic>?> myOwnedRoom() async {
+    final rows = await client
+        .from('rooms')
+        .select(
+          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url),room_members(user_id)',
+        )
+        .eq('owner_id', uid)
+        .eq('is_active', true)
+        .order('created_at', ascending: false)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    final room = Map<String, dynamic>.from(rows.first);
+    return {
+      ...room,
+      '_members_count': List<Map<String, dynamic>>.from(
+        room['room_members'] ?? const [],
+      ).length,
+    };
+  }
+
   Future<List<Map<String, dynamic>>> feed({bool followingOnly = false}) async {
     final selection =
         'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
@@ -357,7 +383,8 @@ class SakiService {
           'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url),room_members(user_id)',
         )
         .eq('is_active', true)
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false)
+        .limit(100);
     return List<Map<String, dynamic>>.from(data)
         .map(
           (room) => {
@@ -370,13 +397,17 @@ class SakiService {
         .toList();
   }
 
-  Future<void> createRoom({
+  Future<Map<String, dynamic>> createRoom({
     required String name,
     required String description,
     required String country,
     required String type,
     XFile? image,
   }) async {
+    final owned = await myOwnedRoom();
+    if (owned != null) {
+      throw Exception('لديك غرفة منشأة مسبقاً.');
+    }
     final inserted = await client
         .from('rooms')
         .insert({
@@ -386,7 +417,9 @@ class SakiService {
           'country': country,
           'room_type': type,
         })
-        .select('id')
+        .select(
+          'id,room_id,owner_id,name,description,country,room_type,image_url,is_active,created_at,profiles:owner_id(username,avatar_url)',
+        )
         .single();
     final roomId = inserted['id'] as String;
     if (image != null) {
@@ -410,6 +443,9 @@ class SakiService {
       'room_id': roomId,
       'user_id': uid,
     });
+    final created = Map<String, dynamic>.from(inserted);
+    created['_members_count'] = 1;
+    return created;
   }
 
   Future<Map<String, int>> profileStats() async {
