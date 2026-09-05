@@ -975,7 +975,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _service.joinRoom(_roomId);
       await _service.sendRoomMessage(_roomId, 'انضم إلى الغرفة', type: 'join');
       if (mounted) setState(() => _joined = true);
-    } catch (_) {}
+    } catch (error) {
+      if (mounted) {
+        _messageSnack(error.toString().replaceFirst('Exception: ', ''));
+        Navigator.maybePop(context);
+      }
+    }
   }
 
   Future<void> _send() async {
@@ -1127,6 +1132,129 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
   }
+
+  Future<void> _showUserCard(Map<String, dynamic> profile) async {
+    if (profile.isEmpty) return;
+    final userId = profile['id'] as String?;
+    if (userId == null || userId == _service.uid) return;
+    final isOwner = widget.room['owner_id'] == _service.uid;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF24131A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SakiAvatar(
+              url: profile['avatar_url'] as String?,
+              label: profile['username'] as String?,
+              radius: 42,
+            ),
+            const SizedBox(height: 12),
+            VipUsername(
+              profile: profile,
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Saki ID: ${profile['saki_id'] ?? '—'}',
+              style: const TextStyle(color: Colors.white60),
+            ),
+            Text(
+              'الدولة: ${profile['country'] ?? '—'}  •  ${profile['gender'] ?? '—'}',
+              style: const TextStyle(color: Colors.white60, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            if (isOwner) ...[
+              _userAction('تعيين مشرف الغرفة', Icons.shield_rounded, () async {
+                await _service.addRoomModerator(_roomId, userId);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _messageSnack('تم تعيين المستخدم مشرفًا.');
+                }
+              }),
+              _userAction('دعوة إلى مقعد', Icons.event_seat_rounded, () async {
+                await _service.inviteToRoomSeat(_roomId, userId);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _messageSnack('تم إرسال دعوة المقعد.');
+                }
+              }),
+              _userAction('كتم المايك', Icons.mic_off_rounded, () async {
+                await _service.roomMute(_roomId, userId, null);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _messageSnack('تم كتم المستخدم.');
+                }
+              }),
+              _userAction('طرد من الغرفة', Icons.logout_rounded, () async {
+                await _service.roomBan(
+                  _roomId,
+                  userId,
+                  const Duration(minutes: 1),
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  _messageSnack('تم طرد المستخدم.');
+                }
+              }),
+              _userAction('حظر المستخدم', Icons.block_rounded, () async {
+                final duration = await _banDuration();
+                if (duration != null) {
+                  await _service.roomBan(_roomId, userId, duration);
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _messageSnack('تم حظر المستخدم.');
+                  }
+                }
+              }),
+            ] else
+              _userAction('إبلاغ عن المستخدم', Icons.flag_outlined, () {
+                Navigator.pop(context);
+                _messageSnack('تم إرسال البلاغ للمراجعة.');
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _userAction(String label, IconData icon, VoidCallback action) =>
+      ListTile(
+        leading: Icon(icon, color: Colors.amberAccent),
+        title: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        onTap: action,
+      );
+
+  Future<Duration?> _banDuration() => showModalBottomSheet<Duration?>(
+    context: context,
+    backgroundColor: const Color(0xFF24131A),
+    builder: (_) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final item in const [
+            ('دقيقة', Duration(minutes: 1)),
+            ('ساعة', Duration(hours: 1)),
+            ('يوم', Duration(days: 1)),
+            ('7 أيام', Duration(days: 7)),
+            ('دائم', Duration(days: 36500)),
+          ])
+            ListTile(
+              title: Text(item.$1, style: const TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context, item.$2),
+            ),
+        ],
+      ),
+    ),
+  );
 
   Future<void> _showEmojiPanel() async {
     final seats = await _service.roomSeats(_roomId);
@@ -1528,23 +1656,27 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       ? Stack(
                                           alignment: Alignment.center,
                                           children: [
-                                            SakiAvatar(
-                                              url:
-                                                  profile['avatar_url']
-                                                      as String?,
-                                              label:
-                                                  profile['username']
-                                                      as String?,
-                                              radius: 25,
+                                            GestureDetector(
+                                              onTap: () =>
+                                                  _showUserCard(profile),
+                                              child: SakiAvatar(
+                                                url:
+                                                    profile['avatar_url']
+                                                        as String?,
+                                                label:
+                                                    profile['username']
+                                                        as String?,
+                                                radius: 25,
+                                              ),
                                             ),
                                             if (row['is_speaking'] == true)
-                                              const Positioned(
-                                                bottom: 0,
-                                                right: 0,
-                                                child: Icon(
-                                                  Icons.graphic_eq,
-                                                  color: Colors.greenAccent,
-                                                  size: 20,
+                                              Positioned.fill(
+                                                child: IgnorePointer(
+                                                  child: Center(
+                                                    child: _VipVoiceWave(
+                                                      profile: profile,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                           ],
@@ -1584,10 +1716,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     builder: (_, snap) {
                       final messages = snap.data ?? [];
                       return ListView.builder(
+                        reverse: true,
                         padding: const EdgeInsets.all(14),
                         itemCount: messages.length + 1,
                         itemBuilder: (_, i) {
-                          if (i == 0) {
+                          if (i == messages.length) {
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(12),
@@ -1604,7 +1737,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             );
                           }
-                          final msg = messages[i - 1];
+                          final msg = messages[messages.length - 1 - i];
                           final senderId = msg['sender_id'] as String? ?? '';
                           final messageType =
                               msg['message_type'] as String? ?? 'chat';
@@ -1640,10 +1773,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    SakiAvatar(
-                                      url: profile['avatar_url'] as String?,
-                                      label: username,
-                                      radius: 17,
+                                    GestureDetector(
+                                      onTap: () => _showUserCard(profile),
+                                      child: SakiAvatar(
+                                        url: profile['avatar_url'] as String?,
+                                        label: username,
+                                        radius: 17,
+                                      ),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -2147,4 +2283,75 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
     ),
     child: child,
   );
+}
+
+class _VipVoiceWave extends StatefulWidget {
+  const _VipVoiceWave({required this.profile});
+  final Map<String, dynamic> profile;
+  @override
+  State<_VipVoiceWave> createState() => _VipVoiceWaveState();
+}
+
+class _VipVoiceWaveState extends State<_VipVoiceWave>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final level = (widget.profile['vip_level'] as num?)?.toInt() ?? 0;
+    final colors = level >= 6
+        ? const [Colors.red, Colors.amber, Colors.blue]
+        : const [Color(0xFF38BDF8), Color(0xFF2563EB), Color(0xFF38BDF8)];
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, __) {
+        final size = 56 + (_controller.value * 5);
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: colors[1].withValues(alpha: .9),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colors[0].withValues(alpha: .55),
+                blurRadius: 10,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(5, (i) {
+                final height =
+                    8.0 + (((i + 1) % 3) * 5) + (_controller.value * 4);
+                return Container(
+                  width: 3,
+                  height: height,
+                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                  decoration: BoxDecoration(
+                    color: colors[i % colors.length],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                );
+              }),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

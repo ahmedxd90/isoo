@@ -442,6 +442,19 @@ class SakiService {
   }
 
   Future<void> joinRoom(String roomId) async {
+    final ban = await client
+        .from('room_bans')
+        .select('expires_at')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (ban != null) {
+      final expires = ban['expires_at'] == null
+          ? null
+          : DateTime.tryParse(ban['expires_at'].toString());
+      if (expires == null || expires.isAfter(DateTime.now()))
+        throw Exception('تم حظرك من هذه الغرفة');
+    }
     await client.from('room_members').upsert({
       'room_id': roomId,
       'user_id': uid,
@@ -533,6 +546,19 @@ class SakiService {
     String type = 'chat',
     Map<String, dynamic> payload = const {},
   }) async {
+    final mute = await client
+        .from('room_mutes')
+        .select('expires_at')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (mute != null) {
+      final expires = mute['expires_at'] == null
+          ? null
+          : DateTime.tryParse(mute['expires_at'].toString());
+      if (expires == null || expires.isAfter(DateTime.now()))
+        throw Exception('تم كتمك في هذه الغرفة');
+    }
     await client.from('room_messages').insert({
       'room_id': roomId,
       'sender_id': uid,
@@ -577,6 +603,71 @@ class SakiService {
         .update({'is_speaking': speaking})
         .eq('room_id', roomId)
         .eq('user_id', uid);
+  }
+
+  Future<void> addRoomModerator(String roomId, String userId) async {
+    await client.from('room_moderators').upsert({
+      'room_id': roomId,
+      'user_id': userId,
+      'created_by': uid,
+    });
+  }
+
+  Future<void> removeRoomModerator(String roomId, String userId) async {
+    await client
+        .from('room_moderators')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
+  }
+
+  Future<void> roomBan(String roomId, String userId, Duration? duration) async {
+    await client.from('room_bans').upsert({
+      'room_id': roomId,
+      'user_id': userId,
+      'banned_by': uid,
+      'expires_at': duration == null
+          ? null
+          : DateTime.now().add(duration).toIso8601String(),
+    });
+    await client
+        .from('room_members')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
+    await client
+        .from('room_seats')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
+  }
+
+  Future<void> roomMute(
+    String roomId,
+    String userId,
+    Duration? duration,
+  ) async {
+    await client.from('room_mutes').upsert({
+      'room_id': roomId,
+      'user_id': userId,
+      'muted_by': uid,
+      'expires_at': duration == null
+          ? null
+          : DateTime.now().add(duration).toIso8601String(),
+    });
+    await client
+        .from('room_seats')
+        .update({'is_speaking': false})
+        .eq('room_id', roomId)
+        .eq('user_id', userId);
+  }
+
+  Future<void> inviteToRoomSeat(String roomId, String userId) async {
+    await client.from('room_seat_invites').insert({
+      'room_id': roomId,
+      'inviter_id': uid,
+      'invitee_id': userId,
+    });
   }
 
   Future<Map<String, dynamic>> createRoom({
