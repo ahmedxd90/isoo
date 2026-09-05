@@ -836,6 +836,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _audioJoined = false;
   bool _isOnSeat = false;
   bool _micMuted = true;
+  bool _listenMuted = false;
+  bool _isComposing = false;
   final Set<int> _remoteUsers = <int>{};
 
   @override
@@ -963,6 +965,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _toggleListenMute() async {
+    final next = !_listenMuted;
+    await _engine?.muteAllRemoteAudioStreams(next);
+    if (mounted) setState(() => _listenMuted = next);
+  }
+
   Future<void> _loadRoomState() async {
     try {
       final followed = await _service.isFollowingRoom(_roomId);
@@ -988,6 +996,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (body.isEmpty) return;
     _message.clear();
     await _service.sendRoomMessage(_roomId, body);
+    if (mounted) setState(() => _isComposing = false);
   }
 
   Future<bool> _confirmExit() async {
@@ -1136,8 +1145,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _showUserCard(Map<String, dynamic> profile) async {
     if (profile.isEmpty) return;
     final userId = profile['id'] as String?;
-    if (userId == null || userId == _service.uid) return;
+    if (userId == null) return;
     final isOwner = widget.room['owner_id'] == _service.uid;
+    final canModerate = isOwner && userId != _service.uid;
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -1166,7 +1176,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               style: const TextStyle(color: Colors.white60, fontSize: 12),
             ),
             const SizedBox(height: 12),
-            if (isOwner) ...[
+            if (canModerate) ...[
               _userAction('تعيين مشرف الغرفة', Icons.shield_rounded, () async {
                 await _service.addRoomModerator(_roomId, userId);
                 if (mounted) {
@@ -1840,61 +1850,99 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                   child: Row(
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _message,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'كتابة رسالة...',
-                            hintStyle: const TextStyle(color: Colors.white54),
-                            filled: true,
-                            fillColor: Colors.black38,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
+                      if (_isComposing) ...[
+                        Expanded(
+                          child: TextField(
+                            controller: _message,
+                            autofocus: true,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'كتابة رسالة...',
+                              hintStyle: const TextStyle(color: Colors.white54),
+                              filled: true,
+                              fillColor: Colors.black38,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(24),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                            onSubmitted: (_) => _send(),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _send,
+                          icon: const Icon(
+                            Icons.send_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ] else ...[
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(24),
+                            onTap: () => setState(() => _isComposing = true),
+                            child: Container(
+                              height: 48,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                              ),
+                              alignment: Alignment.centerLeft,
+                              decoration: BoxDecoration(
+                                color: Colors.black38,
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: const Text(
+                                'كتابة رسالة...',
+                                style: TextStyle(color: Colors.white54),
+                              ),
                             ),
                           ),
-                          onSubmitted: (_) => _send(),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: _showEmojiPanel,
-                        icon: const Icon(
-                          Icons.emoji_emotions_outlined,
-                          color: Colors.amberAccent,
+                        IconButton(
+                          onPressed: _showEmojiPanel,
+                          icon: const Icon(
+                            Icons.emoji_emotions_outlined,
+                            color: Colors.amberAccent,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: _send,
-                        icon: const Icon(
-                          Icons.send_rounded,
-                          color: Colors.white,
+                        IconButton(
+                          onPressed: _toggleListenMute,
+                          icon: Icon(
+                            _listenMuted
+                                ? Icons.volume_off_rounded
+                                : Icons.volume_up_rounded,
+                            color: _listenMuted
+                                ? Colors.redAccent
+                                : Colors.white70,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () =>
-                            _messageSnack('تم تبديل كتم صوت الغرفة.'),
-                        icon: const Icon(
-                          Icons.volume_up_rounded,
-                          color: Colors.white70,
+                        IconButton(
+                          onPressed: _toggleRoomMic,
+                          icon: Icon(
+                            _micMuted
+                                ? Icons.mic_off_rounded
+                                : Icons.mic_rounded,
+                            color: _isOnSeat
+                                ? Colors.amberAccent
+                                : Colors.white38,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: _showRoomTools,
-                        icon: const Icon(
-                          Icons.grid_view_rounded,
-                          color: Colors.white,
+                        IconButton(
+                          onPressed: () =>
+                              _messageSnack('الهدايا متاحة قريبًا.'),
+                          icon: const Icon(
+                            Icons.card_giftcard_rounded,
+                            color: Colors.pinkAccent,
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: _toggleRoomMic,
-                        icon: Icon(
-                          _micMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                          color: _isOnSeat
-                              ? Colors.amberAccent
-                              : Colors.white38,
+                        IconButton(
+                          onPressed: _showRoomTools,
+                          icon: const Icon(
+                            Icons.grid_view_rounded,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
