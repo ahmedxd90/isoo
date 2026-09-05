@@ -1555,18 +1555,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                         ),
                                 ),
                                 const SizedBox(height: 4),
-                                Text(
-                                  occupied
-                                      ? (profile['username'] as String? ??
-                                            'متحدث')
-                                      : '$seatNo',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 10,
-                                  ),
-                                ),
+                                occupied
+                                    ? VipUsername(
+                                        profile: profile,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 10,
+                                        ),
+                                      )
+                                    : Text(
+                                        '$seatNo',
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 10,
+                                        ),
+                                      ),
                               ],
                             ),
                           );
@@ -1648,8 +1651,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            username,
+                                          VipUsername(
+                                            profile: profile,
                                             style: const TextStyle(
                                               color: Colors.amberAccent,
                                               fontSize: 11,
