@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -828,6 +829,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late final Stream<List<Map<String, dynamic>>> _messageStream;
   bool _joined = false;
   bool _busy = false;
+  bool _followed = false;
 
   @override
   void initState() {
@@ -835,11 +837,20 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _seatStream = _service.roomSeatsStream(_roomId);
     _messageStream = _service.roomMessagesStream(_roomId);
     _join();
+    _loadRoomState();
+  }
+
+  Future<void> _loadRoomState() async {
+    try {
+      final followed = await _service.isFollowingRoom(_roomId);
+      if (mounted) setState(() => _followed = followed);
+    } catch (_) {}
   }
 
   Future<void> _join() async {
     try {
       await _service.joinRoom(_roomId);
+      await _service.sendRoomMessage(_roomId, 'انضم إلى الغرفة', type: 'join');
       if (mounted) setState(() => _joined = true);
     } catch (_) {}
   }
@@ -848,11 +859,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final body = _message.text.trim();
     if (body.isEmpty) return;
     _message.clear();
-    await _service.client.from('room_messages').insert({
-      'room_id': _roomId,
-      'sender_id': _service.uid,
-      'body': body,
-    });
+    await _service.sendRoomMessage(_roomId, body);
   }
 
   Future<bool> _confirmExit() async {
@@ -893,15 +900,290 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     return false;
   }
 
+  Future<void> _showRoomInfo() async {
+    final image = widget.room['image_url'] as String?;
+    final title = widget.room['name'] as String? ?? 'الغرفة';
+    final owner = widget.room['owner_id'] == _service.uid;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF3D0B12),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: image == null
+                    ? Container(
+                        width: 92,
+                        height: 92,
+                        color: Colors.white12,
+                        child: const Icon(
+                          Icons.meeting_room,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      )
+                    : Image.network(
+                        image,
+                        width: 92,
+                        height: 92,
+                        fit: BoxFit.cover,
+                      ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 19,
+                ),
+              ),
+              Text(
+                'ID: ${widget.room['room_id'] ?? ''}',
+                style: const TextStyle(color: Colors.white60),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        await _service.toggleRoomFollow(_roomId, _followed);
+                        if (mounted) setState(() => _followed = !_followed);
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(_followed ? Icons.check : Icons.add),
+                      label: Text(_followed ? 'متابَع' : 'متابعة الغرفة'),
+                    ),
+                  ),
+                  if (owner) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showOwnerSettings();
+                        },
+                        icon: const Icon(Icons.settings),
+                        label: const Text('إعدادات'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showOwnerSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF3D0B12),
+      builder: (_) => SafeArea(
+        child: ListTile(
+          leading: const Icon(Icons.settings, color: Colors.white),
+          title: const Text(
+            'إعدادات الغرفة',
+            style: TextStyle(color: Colors.white),
+          ),
+          subtitle: const Text(
+            'إعدادات المالك متاحة هنا',
+            style: TextStyle(color: Colors.white60),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showEmojiPanel() async {
+    final seats = await _service.roomSeats(_roomId);
+    if (!mounted) return;
+    final canSpeak = seats.any((seat) => seat['user_id'] == _service.uid);
+    if (!canSpeak) {
+      _messageSnack('اصعد إلى مقعد لاستخدام الإيموجي.');
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF3D0B12),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Wrap(
+            spacing: 18,
+            runSpacing: 16,
+            children: ['❤️', '😂', '🔥', '👏', '😍', '🎉', '👍', '😮', '💎']
+                .map(
+                  (emoji) => InkWell(
+                    onTap: () {
+                      Navigator.pop(context);
+                      _service.sendRoomMessage(
+                        _roomId,
+                        emoji,
+                        type: 'emoji',
+                        payload: {'emoji': emoji},
+                      );
+                    },
+                    child: Text(emoji, style: const TextStyle(fontSize: 30)),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _messageSnack(String value) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(value)));
+
+  Future<void> _showRoomTools() async {
+    final owner = widget.room['owner_id'] == _service.uid;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF3D0B12),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _toolButton(
+                Icons.music_note,
+                'موسيقى',
+                () => Navigator.pop(context),
+              ),
+              if (owner)
+                _toolButton(Icons.delete_sweep, 'مسح الدردشة', () {
+                  Navigator.pop(context);
+                  _confirmClearChat();
+                }),
+              _toolButton(Icons.casino, 'نرد', () {
+                Navigator.pop(context);
+                final value = Random().nextInt(6) + 1;
+                _service.sendRoomMessage(
+                  _roomId,
+                  '🎲 النرد: $value',
+                  type: 'dice',
+                  payload: {'value': value},
+                );
+              }),
+              _toolButton(
+                Icons.card_giftcard,
+                'هدايا',
+                () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _toolButton(IconData icon, String label, VoidCallback onTap) =>
+      InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.white12,
+              child: Icon(icon, color: Colors.amberAccent),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ],
+        ),
+      );
+
+  Future<void> _confirmClearChat() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('مسح الدردشة؟'),
+        content: const Text('سيتم حذف رسائل الغرفة للجميع.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('مسح'),
+          ),
+        ],
+      ),
+    );
+    if (yes == true) await _service.clearRoomMessages(_roomId);
+  }
+
   Future<void> _seatAction(int seatNo, Map<String, dynamic>? occupied) async {
     if (_busy) return;
     if (occupied != null && occupied['user_id'] != _service.uid) return;
+    final take = occupied == null;
+    final confirm = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF3D0B12),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            ListTile(
+              leading: Icon(
+                take ? Icons.mic : Icons.mic_off,
+                color: Colors.amberAccent,
+              ),
+              title: Text(
+                take ? 'خذ مقعد $seatNo' : 'نزول من المقعد',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onTap: () => Navigator.pop(context, true),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true) return;
     setState(() => _busy = true);
     try {
-      if (occupied?['user_id'] == _service.uid) {
+      if (!take) {
         await _service.leaveRoomSeat(_roomId);
+        await _service.sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat');
       } else {
         await _service.claimRoomSeat(_roomId, seatNo);
+        await _service.sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat');
+        if (mounted) {
+          final title = widget.room['name'] as String? ?? 'الغرفة';
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AgoraAudioRoomPage(
+                roomName: _roomId,
+                title: title,
+                canSpeak: true,
+              ),
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -990,45 +1272,51 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
                   child: Row(
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: image == null
-                            ? Container(
-                                width: 42,
-                                height: 42,
-                                color: Colors.white12,
-                                child: const Icon(
-                                  Icons.meeting_room,
-                                  color: Colors.white,
+                      GestureDetector(
+                        onTap: _showRoomInfo,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: image == null
+                              ? Container(
+                                  width: 42,
+                                  height: 42,
+                                  color: Colors.white12,
+                                  child: const Icon(
+                                    Icons.meeting_room,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Image.network(
+                                  image,
+                                  width: 42,
+                                  height: 42,
+                                  fit: BoxFit.cover,
                                 ),
-                              )
-                            : Image.network(
-                                image,
-                                width: 42,
-                                height: 42,
-                                fit: BoxFit.cover,
-                              ),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
+                        child: GestureDetector(
+                          onTap: _showRoomInfo,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
-                            ),
-                            Text(
-                              'ID: $roomNumber',
-                              style: const TextStyle(
-                                color: Colors.white60,
-                                fontSize: 11,
+                              Text(
+                                'ID: $roomNumber',
+                                style: const TextStyle(
+                                  color: Colors.white60,
+                                  fontSize: 11,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       IconButton(
@@ -1167,25 +1455,82 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             );
                           }
                           final msg = messages[i - 1];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.black26,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                SakiAvatar(label: 'عضو', radius: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    msg['body'] as String? ?? '',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
+                          final senderId = msg['sender_id'] as String? ?? '';
+                          final messageType =
+                              msg['message_type'] as String? ?? 'chat';
+                          return FutureBuilder<Map<String, dynamic>?>(
+                            future: _service.userProfile(senderId),
+                            builder: (_, profileSnap) {
+                              final profile =
+                                  profileSnap.data ?? const <String, dynamic>{};
+                              final username =
+                                  profile['username'] as String? ?? 'عضو';
+                              final body = msg['body'] as String? ?? '';
+                              final payload = Map<String, dynamic>.from(
+                                msg['payload'] ?? const {},
+                              );
+                              final isSpecial =
+                                  messageType == 'join' ||
+                                  messageType == 'seat';
+                              final isEmoji = messageType == 'emoji';
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: isSpecial
+                                      ? Border.all(
+                                          color: Colors.amber.withValues(
+                                            alpha: .35,
+                                          ),
+                                        )
+                                      : null,
                                 ),
-                              ],
-                            ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SakiAvatar(
+                                      url: profile['avatar_url'] as String?,
+                                      label: username,
+                                      radius: 17,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            username,
+                                            style: const TextStyle(
+                                              color: Colors.amberAccent,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          messageType == 'dice'
+                                              ? _DiceFace(
+                                                  value:
+                                                      (payload['value'] as num?)
+                                                          ?.toInt() ??
+                                                      1,
+                                                )
+                                              : Text(
+                                                  body,
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: isEmoji ? 28 : 13,
+                                                  ),
+                                                ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           );
                         },
                       );
@@ -1214,9 +1559,31 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         ),
                       ),
                       IconButton(
+                        onPressed: _showEmojiPanel,
+                        icon: const Icon(
+                          Icons.emoji_emotions_outlined,
+                          color: Colors.amberAccent,
+                        ),
+                      ),
+                      IconButton(
                         onPressed: _send,
                         icon: const Icon(
                           Icons.send_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            _messageSnack('تم تبديل كتم صوت الغرفة.'),
+                        icon: const Icon(
+                          Icons.volume_up_rounded,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: _showRoomTools,
+                        icon: const Icon(
+                          Icons.grid_view_rounded,
                           color: Colors.white,
                         ),
                       ),
@@ -1248,6 +1615,34 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DiceFace extends StatelessWidget {
+  const _DiceFace({required this.value});
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 8)],
+      ),
+      child: Center(
+        child: Text(
+          '$value',
+          style: const TextStyle(
+            color: Color(0xFF8A1C30),
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
           ),
         ),
       ),

@@ -454,7 +454,16 @@ class SakiService {
         .from('room_messages')
         .stream(primaryKey: ['id'])
         .eq('room_id', roomId)
-        .order('created_at');
+        .order('created_at')
+        .asyncMap((rows) async {
+          final result = <Map<String, dynamic>>[];
+          for (final row in rows) {
+            final copy = Map<String, dynamic>.from(row);
+            copy['profiles'] = await userProfile(row['sender_id'] as String);
+            result.add(copy);
+          }
+          return result;
+        });
   }
 
   Stream<List<Map<String, dynamic>>> roomSeatsStream(String roomId) {
@@ -462,7 +471,60 @@ class SakiService {
         .from('room_seats')
         .stream(primaryKey: ['room_id', 'seat_no'])
         .eq('room_id', roomId)
-        .order('seat_no');
+        .order('seat_no')
+        .asyncMap((rows) async {
+          final result = <Map<String, dynamic>>[];
+          for (final row in rows) {
+            final copy = Map<String, dynamic>.from(row);
+            copy['profiles'] = await userProfile(row['user_id'] as String);
+            result.add(copy);
+          }
+          return result;
+        });
+  }
+
+  Future<void> sendRoomMessage(
+    String roomId,
+    String body, {
+    String type = 'chat',
+    Map<String, dynamic> payload = const {},
+  }) async {
+    await client.from('room_messages').insert({
+      'room_id': roomId,
+      'sender_id': uid,
+      'body': body,
+      'message_type': type,
+      'payload': payload,
+    });
+  }
+
+  Future<void> clearRoomMessages(String roomId) async {
+    await client.from('room_messages').delete().eq('room_id', roomId);
+  }
+
+  Future<bool> isFollowingRoom(String roomId) async {
+    final row = await client
+        .from('room_follows')
+        .select('room_id')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    return row != null;
+  }
+
+  Future<void> toggleRoomFollow(String roomId, bool followed) async {
+    if (followed) {
+      await client
+          .from('room_follows')
+          .delete()
+          .eq('room_id', roomId)
+          .eq('user_id', uid);
+    } else {
+      await client.from('room_follows').insert({
+        'room_id': roomId,
+        'user_id': uid,
+      });
+    }
   }
 
   Future<Map<String, dynamic>> createRoom({
