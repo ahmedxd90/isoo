@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -830,6 +832,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _joined = false;
   bool _busy = false;
   bool _followed = false;
+  RtcEngine? _engine;
+  bool _audioJoined = false;
+  bool _isOnSeat = false;
+  bool _micMuted = true;
+  final Set<int> _remoteUsers = <int>{};
 
   @override
   void initState() {
@@ -838,6 +845,122 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _messageStream = _service.roomMessagesStream(_roomId);
     _join();
     _loadRoomState();
+    _startRoomAudio();
+  }
+
+  int _numericUid(String value) {
+    final compact = value.replaceAll('-', '');
+    final prefix = compact.length > 8 ? compact.substring(0, 8) : compact;
+    return int.parse(prefix, radix: 16) & 0x7fffffff;
+  }
+
+  Future<void> _startRoomAudio() async {
+    try {
+      final uid = _numericUid(_service.uid);
+      final response = await _service.client.functions.invoke(
+        'agora-token',
+        body: {'channelName': _roomId, 'uid': uid},
+      );
+      final data = Map<String, dynamic>.from(response.data as Map);
+      final appId = data['appId'] as String?;
+      final token = data['token'] as String?;
+      if (appId == null || token == null || appId.isEmpty || token.isEmpty)
+        return;
+      final engine = createAgoraRtcEngine();
+      _engine = engine;
+      await engine.initialize(
+        RtcEngineContext(
+          appId: appId,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
+      engine.registerEventHandler(
+        RtcEngineEventHandler(
+          onJoinChannelSuccess: (_, __) {
+            if (mounted) setState(() => _audioJoined = true);
+          },
+          onUserJoined: (_, remoteUid, __) {
+            if (mounted) setState(() => _remoteUsers.add(remoteUid));
+          },
+          onUserOffline: (_, remoteUid, __) {
+            if (mounted) setState(() => _remoteUsers.remove(remoteUid));
+          },
+          onTokenPrivilegeWillExpire: (_, __) => _refreshRoomToken(),
+        ),
+      );
+      await engine.setClientRole(role: ClientRoleType.clientRoleAudience);
+      await engine.enableAudio();
+      await engine.joinChannel(
+        token: token,
+        channelId: _roomId,
+        uid: uid,
+        options: const ChannelMediaOptions(
+          publishMicrophoneTrack: false,
+          autoSubscribeAudio: true,
+        ),
+      );
+    } catch (_) {
+      // Audio errors must not prevent the text room from loading.
+    }
+  }
+
+  Future<void> _refreshRoomToken() async {
+    final uid = _numericUid(_service.uid);
+    final response = await _service.client.functions.invoke(
+      'agora-token',
+      body: {'channelName': _roomId, 'uid': uid},
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final token = data['token'] as String?;
+    if (token != null) await _engine?.renewToken(token);
+  }
+
+  Future<void> _setSeatAudio(bool seated) async {
+    _isOnSeat = seated;
+    if (!seated) {
+      _micMuted = true;
+      await _engine?.muteLocalAudioStream(true);
+      await _engine?.setClientRole(role: ClientRoleType.clientRoleAudience);
+      await _engine?.updateChannelMediaOptions(
+        const ChannelMediaOptions(
+          publishMicrophoneTrack: false,
+          autoSubscribeAudio: true,
+        ),
+      );
+      if (mounted) setState(() {});
+      return;
+    }
+    await _engine?.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+    await _engine?.updateChannelMediaOptions(
+      const ChannelMediaOptions(
+        publishMicrophoneTrack: false,
+        autoSubscribeAudio: true,
+      ),
+    );
+    await _engine?.muteLocalAudioStream(true);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleRoomMic() async {
+    if (!_isOnSeat) {
+      _messageSnack('يجب أن تجلس على مقعد قبل التحدث.');
+      return;
+    }
+    final permission = await Permission.microphone.request();
+    if (!permission.isGranted) {
+      _messageSnack('اسمح باستخدام الميكروفون للتحدث.');
+      return;
+    }
+    _micMuted = !_micMuted;
+    await _engine?.updateChannelMediaOptions(
+      ChannelMediaOptions(
+        publishMicrophoneTrack: !_micMuted,
+        autoSubscribeAudio: true,
+      ),
+    );
+    await _engine?.muteLocalAudioStream(_micMuted);
+    await _service.setRoomSpeaking(_roomId, !_micMuted);
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadRoomState() async {
@@ -1167,23 +1290,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     try {
       if (!take) {
         await _service.leaveRoomSeat(_roomId);
+        await _setSeatAudio(false);
         await _service.sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat');
       } else {
         await _service.claimRoomSeat(_roomId, seatNo);
+        await _setSeatAudio(true);
         await _service.sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat');
-        if (mounted) {
-          final title = widget.room['name'] as String? ?? 'الغرفة';
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AgoraAudioRoomPage(
-                roomName: _roomId,
-                title: title,
-                canSpeak: true,
-              ),
-            ),
-          );
-        }
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -1245,6 +1357,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   void dispose() {
     _message.dispose();
     if (_joined) _service.leaveRoom(_roomId);
+    _engine?.leaveChannel();
+    _engine?.release();
     super.dispose();
   }
 
@@ -1313,6 +1427,20 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                 style: const TextStyle(
                                   color: Colors.white60,
                                   fontSize: 11,
+                                ),
+                              ),
+                              Text(
+                                _isOnSeat
+                                    ? (_micMuted
+                                          ? 'على مقعد • المايك مكتوم'
+                                          : 'يتحدث الآن')
+                                    : 'مستمع • ${_remoteUsers.length} متحدث',
+                                style: TextStyle(
+                                  color: _isOnSeat && !_micMuted
+                                      ? Colors.greenAccent
+                                      : Colors.white54,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ],
@@ -1397,10 +1525,29 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                         : null,
                                   ),
                                   child: occupied
-                                      ? SakiAvatar(
-                                          url: profile['avatar_url'] as String?,
-                                          label: profile['username'] as String?,
-                                          radius: 25,
+                                      ? Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            SakiAvatar(
+                                              url:
+                                                  profile['avatar_url']
+                                                      as String?,
+                                              label:
+                                                  profile['username']
+                                                      as String?,
+                                              radius: 25,
+                                            ),
+                                            if (row['is_speaking'] == true)
+                                              const Positioned(
+                                                bottom: 0,
+                                                right: 0,
+                                                child: Icon(
+                                                  Icons.graphic_eq,
+                                                  color: Colors.greenAccent,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                          ],
                                         )
                                       : const Icon(
                                           Icons.mic_none_rounded,
@@ -1588,26 +1735,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () async {
-                          final seats = await _service.roomSeats(_roomId);
-                          final canSpeak = seats.any(
-                            (seat) => seat['user_id'] == _service.uid,
-                          );
-                          if (!mounted) return;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => AgoraAudioRoomPage(
-                                roomName: _roomId,
-                                title: title,
-                                canSpeak: canSpeak,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(
-                          Icons.mic_rounded,
-                          color: Colors.amberAccent,
+                        onPressed: _toggleRoomMic,
+                        icon: Icon(
+                          _micMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                          color: _isOnSeat
+                              ? Colors.amberAccent
+                              : Colors.white38,
                         ),
                       ),
                     ],

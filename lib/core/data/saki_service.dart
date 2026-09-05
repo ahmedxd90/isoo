@@ -421,7 +421,7 @@ class SakiService {
     final data = await client
         .from('room_seats')
         .select(
-          'seat_no,user_id,joined_at,profiles:user_id(id,username,avatar_url)',
+          'seat_no,user_id,joined_at,is_speaking,profiles:user_id(id,username,avatar_url)',
         )
         .eq('room_id', roomId)
         .order('seat_no');
@@ -525,6 +525,14 @@ class SakiService {
         'user_id': uid,
       });
     }
+  }
+
+  Future<void> setRoomSpeaking(String roomId, bool speaking) async {
+    await client
+        .from('room_seats')
+        .update({'is_speaking': speaking})
+        .eq('room_id', roomId)
+        .eq('user_id', uid);
   }
 
   Future<Map<String, dynamic>> createRoom({
