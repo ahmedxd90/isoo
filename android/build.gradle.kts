@@ -1,3 +1,6 @@
+extra["compileSdkVersion"] = 36
+extra["minSdkVersion"] = 21
+
 allprojects {
     repositories {
         google()
