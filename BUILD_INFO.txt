@@ -1,0 +1,26 @@
+SAKI reels HTML match and unified navigation — final verification — 2026-09-04
+
+Flutter: 3.47.2
+Dart: 3.13.2
+Android package: com.saki.saki
+compileSdk: 36 | targetSdk: 36 | minSdk: 24
+Supabase project ref: vzooppdaqayerpmvdotl
+
+Reels page:
+The Flutter reels page now matches the attached HTML reference with a dark #0D1117/black full-screen vertical feed, autoplay for the active PageView item, pause for inactive items, tap-to-play/pause with a central play overlay, transparent Saki header with red pulse dot, Following/All tabs, teal upload button, Font Awesome reel actions, orange fire-like active state, comments, shares, rotating audio disc, description, followed badge, and source-audio line. Existing real Supabase likes, comments, shares, Following/All filtering, video upload, privacy, and video playback are preserved.
+
+Bottom navigation:
+Replaced the Material NavigationBar with a custom HTML-matched black translucent five-item bar: الرئيسية, الريلز, الغرف, الرسائل, وأنا. It uses Font Awesome house, clapperboard, microphone, comments, and circle-user icons. Active states use #2DD4BF and the reel item receives the HTML-style circular teal background.
+
+Final APK outputs:
+- build/app/outputs/flutter-apk/app-release.apk — 58.6MB
+- build/app/outputs/flutter-apk/app-debug.apk — 205MB
+
+SHA-256:
+- debug: 2535405a1fc4bd1b4a99b1d7ab8f3ddf72a910a85e9cbbb501d0f09edca6041e
+- release: 3e36e7eb242bcbaf92350ab2654334031d5b209fd01afa8fa7a96e8755b6811a
+
+Validation:
+- Release APK build passed.
+- Debug APK build passed.
+- aapt confirmed com.saki.saki, target SDK 36, min SDK 24, INTERNET permission.
