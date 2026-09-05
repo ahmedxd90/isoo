@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../profile/user_profile_page.dart';
 
 const _reelTeal = Color(0xFF2DD4BF);
 const _reelBg = Color(0xFF0D1117);
@@ -491,10 +492,19 @@ class _ReelCardState extends State<ReelCard> {
           bottom: 92,
           child: Column(
             children: [
-              SakiAvatar(
-                url: profile['avatar_url'] as String?,
-                label: username,
-                radius: 22,
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => UserProfilePage(
+                      userId: widget.reel['author_id'] as String,
+                    ),
+                  ),
+                ),
+                child: SakiAvatar(
+                  url: profile['avatar_url'] as String?,
+                  label: username,
+                  radius: 22,
+                ),
               ),
               const SizedBox(height: 16),
               _ReelAction(

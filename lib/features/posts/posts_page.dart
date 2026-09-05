@@ -10,6 +10,7 @@ import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../notifications/notifications_page.dart';
+import '../profile/user_profile_page.dart';
 import '../search/search_page.dart';
 
 const _brand = Color(0xFFF97316);
@@ -521,10 +522,19 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                 children: [
                   Stack(
                     children: [
-                      SakiAvatar(
-                        url: profile['avatar_url'] as String?,
-                        label: author,
-                        radius: 25,
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => UserProfilePage(
+                              userId: widget.post['author_id'] as String,
+                            ),
+                          ),
+                        ),
+                        child: SakiAvatar(
+                          url: profile['avatar_url'] as String?,
+                          label: author,
+                          radius: 25,
+                        ),
                       ),
                       Positioned(
                         bottom: 0,

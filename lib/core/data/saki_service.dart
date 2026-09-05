@@ -397,6 +397,74 @@ class SakiService {
         .toList();
   }
 
+  Future<void> joinRoom(String roomId) async {
+    await client.from('room_members').upsert({
+      'room_id': roomId,
+      'user_id': uid,
+    });
+  }
+
+  Future<void> leaveRoom(String roomId) async {
+    await client
+        .from('room_members')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', uid);
+    await client
+        .from('room_seats')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', uid);
+  }
+
+  Future<List<Map<String, dynamic>>> roomSeats(String roomId) async {
+    final data = await client
+        .from('room_seats')
+        .select(
+          'seat_no,user_id,joined_at,profiles:user_id(id,username,avatar_url)',
+        )
+        .eq('room_id', roomId)
+        .order('seat_no');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> claimRoomSeat(String roomId, int seatNo) async {
+    await client
+        .from('room_seats')
+        .delete()
+        .eq('user_id', uid)
+        .eq('room_id', roomId);
+    await client.from('room_seats').insert({
+      'room_id': roomId,
+      'seat_no': seatNo,
+      'user_id': uid,
+    });
+  }
+
+  Future<void> leaveRoomSeat(String roomId) async {
+    await client
+        .from('room_seats')
+        .delete()
+        .eq('room_id', roomId)
+        .eq('user_id', uid);
+  }
+
+  Stream<List<Map<String, dynamic>>> roomMessagesStream(String roomId) {
+    return client
+        .from('room_messages')
+        .stream(primaryKey: ['id'])
+        .eq('room_id', roomId)
+        .order('created_at');
+  }
+
+  Stream<List<Map<String, dynamic>>> roomSeatsStream(String roomId) {
+    return client
+        .from('room_seats')
+        .stream(primaryKey: ['room_id', 'seat_no'])
+        .eq('room_id', roomId)
+        .order('seat_no');
+  }
+
   Future<Map<String, dynamic>> createRoom({
     required String name,
     required String description,

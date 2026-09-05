@@ -1,0 +1,10 @@
+alter table public.room_seats enable row level security;
+drop policy if exists "saki_room_seats_select" on public.room_seats;
+create policy "saki_room_seats_select" on public.room_seats for select using (true);
+drop policy if exists "saki_room_seats_insert" on public.room_seats;
+create policy "saki_room_seats_insert" on public.room_seats for insert with check (auth.uid() = user_id);
+drop policy if exists "saki_room_seats_update" on public.room_seats;
+create policy "saki_room_seats_update" on public.room_seats for update using (auth.uid() = user_id or exists (select 1 from public.rooms r where r.id = room_seats.room_id and r.owner_id = auth.uid())) with check (auth.uid() = user_id or exists (select 1 from public.rooms r where r.id = room_seats.room_id and r.owner_id = auth.uid()));
+drop policy if exists "saki_room_seats_delete" on public.room_seats;
+create policy "saki_room_seats_delete" on public.room_seats for delete using (auth.uid() = user_id or exists (select 1 from public.rooms r where r.id = room_seats.room_id and r.owner_id = auth.uid()));
+do $$ begin if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='room_seats') then alter publication supabase_realtime add table public.room_seats; end if; end $$;

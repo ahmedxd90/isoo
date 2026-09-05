@@ -1,13 +1,20 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+
 import '../../core/data/saki_service.dart';
 
 class AgoraAudioRoomPage extends StatefulWidget {
-  const AgoraAudioRoomPage({super.key, required this.roomName, required this.title});
+  const AgoraAudioRoomPage({
+    super.key,
+    required this.roomName,
+    required this.title,
+    this.canSpeak = false,
+  });
 
   final String roomName;
   final String title;
+  final bool canSpeak;
 
   @override
   State<AgoraAudioRoomPage> createState() => _AgoraAudioRoomPageState();
@@ -85,14 +92,18 @@ class _AgoraAudioRoomPageState extends State<AgoraAudioRoomPage> {
           },
         ),
       );
-      await engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await engine.setClientRole(
+        role: widget.canSpeak
+            ? ClientRoleType.clientRoleBroadcaster
+            : ClientRoleType.clientRoleAudience,
+      );
       await engine.enableAudio();
       await engine.joinChannel(
         token: token,
         channelId: widget.roomName,
         uid: uid,
-        options: const ChannelMediaOptions(
-          publishMicrophoneTrack: true,
+        options: ChannelMediaOptions(
+          publishMicrophoneTrack: widget.canSpeak,
           autoSubscribeAudio: true,
         ),
       );
@@ -117,6 +128,7 @@ class _AgoraAudioRoomPageState extends State<AgoraAudioRoomPage> {
   }
 
   Future<void> _toggleMute() async {
+    if (!widget.canSpeak) return;
     final next = !_muted;
     await _engine?.muteLocalAudioStream(next);
     if (mounted) setState(() => _muted = next);
@@ -150,9 +162,16 @@ class _AgoraAudioRoomPageState extends State<AgoraAudioRoomPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.graphic_eq_rounded, size: 74, color: Colors.cyan),
+              const Icon(
+                Icons.graphic_eq_rounded,
+                size: 74,
+                color: Colors.cyan,
+              ),
               const SizedBox(height: 20),
-              Text(widget.title, style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                widget.title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               const SizedBox(height: 12),
               if (_joining) const CircularProgressIndicator(),
               if (_joined) ...[
@@ -161,10 +180,16 @@ class _AgoraAudioRoomPageState extends State<AgoraAudioRoomPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    IconButton.filled(
-                      onPressed: _toggleMute,
-                      icon: Icon(_muted ? Icons.mic_off : Icons.mic),
-                    ),
+                    if (widget.canSpeak)
+                      IconButton.filled(
+                        onPressed: _toggleMute,
+                        icon: Icon(_muted ? Icons.mic_off : Icons.mic),
+                      )
+                    else
+                      const Chip(
+                        avatar: Icon(Icons.headphones, size: 16),
+                        label: Text('مستمع'),
+                      ),
                     const SizedBox(width: 18),
                     IconButton.filled(
                       style: IconButton.styleFrom(backgroundColor: Colors.red),
@@ -176,9 +201,22 @@ class _AgoraAudioRoomPageState extends State<AgoraAudioRoomPage> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 20),
-                Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red),
+                ),
                 const SizedBox(height: 16),
-                OutlinedButton(onPressed: () { setState(() { _error = null; _joining = true; }); _joinRoom(); }, child: const Text('إعادة المحاولة')),
+                OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      _error = null;
+                      _joining = true;
+                    });
+                    _joinRoom();
+                  },
+                  child: const Text('إعادة المحاولة'),
+                ),
               ],
             ],
           ),
