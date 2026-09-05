@@ -162,6 +162,9 @@ class _VipUsernameState extends State<VipUsername>
 
   @override
   Widget build(BuildContext context) {
+    final superAdmin =
+        widget.profile['is_super_admin'] == true ||
+        (widget.profile['saki_id'] as num?)?.toInt() == 1000;
     final level = (widget.profile['vip_level'] as num?)?.toInt() ?? 0;
     final expires = DateTime.tryParse(
       widget.profile['vip_expires_at']?.toString() ?? '',
@@ -172,13 +175,57 @@ class _VipUsernameState extends State<VipUsername>
     final base =
         widget.style ??
         const TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
-    if (!active)
+    if (!active && !superAdmin) {
       return Text(
         text,
         style: base,
         maxLines: widget.maxLines,
         overflow: TextOverflow.ellipsis,
       );
+    }
+    if (superAdmin) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF312E81), Color(0xFF06B6D4), Color(0xFFF59E0B)],
+          ),
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: const [BoxShadow(color: Color(0x6606B6D4), blurRadius: 8)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.verified_user_rounded,
+              color: Colors.white,
+              size: 13,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'SUPER ADMIN',
+              style: base.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+              maxLines: 1,
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                text,
+                style: base.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+                maxLines: widget.maxLines,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final colors = level >= 6
         ? const [Colors.red, Colors.amber, Colors.blue, Colors.red]
         : const [Color(0xFFFFE082), Color(0xFFD4AF37)];

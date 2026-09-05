@@ -20,6 +20,144 @@ class SakiService {
     return data;
   }
 
+  Future<bool> isSuperAdmin() async {
+    final result = await client.rpc('is_saki_super_admin');
+    return result == true;
+  }
+
+  Future<Map<String, dynamic>?> activeAppBan() async {
+    return client
+        .from('app_bans')
+        .select('expires_at,reason')
+        .eq('user_id', uid)
+        .maybeSingle();
+  }
+
+  Future<void> adminAddGold(int sakiId, int amount) async {
+    await client.rpc(
+      'admin_add_gold',
+      params: {'p_saki_id': sakiId, 'p_amount': amount},
+    );
+  }
+
+  Future<void> adminSetVip(int sakiId, int level, int days) async {
+    await client.rpc(
+      'admin_set_vip',
+      params: {'p_saki_id': sakiId, 'p_level': level, 'p_days': days},
+    );
+  }
+
+  Future<void> adminBanApp(
+    int sakiId,
+    Duration? duration,
+    String reason,
+  ) async {
+    await client.rpc(
+      'admin_ban_app',
+      params: {
+        'p_saki_id': sakiId,
+        'p_duration': duration?.inSeconds == null
+            ? null
+            : '${duration!.inSeconds} seconds',
+        'p_reason': reason,
+      },
+    );
+  }
+
+  Future<void> adminSetSakiId(String userId, int newId) async {
+    await client.rpc(
+      'admin_set_saki_id',
+      params: {'p_user_id': userId, 'p_new_id': newId},
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> adminUsers(String query) async {
+    final rows = await client
+        .from('profiles')
+        .select(
+          'id,saki_id,username,avatar_url,vip_level,vip_expires_at,is_super_admin',
+        )
+        .or('username.ilike.%$query%,saki_id.eq.$query')
+        .limit(50);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> adminGiftCatalog() async {
+    final rows = await client
+        .from('room_gift_catalog')
+        .select()
+        .order('sort_order')
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<String> adminUploadGift(XFile file) async {
+    final bytes = await File(file.path).readAsBytes();
+    final extension = file.path.split('.').last.toLowerCase();
+    final path =
+        '$uid/admin-gift-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('rooms')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: extension == 'mp4' ? 'video/mp4' : 'image/$extension',
+          ),
+        );
+    return client.storage.from('rooms').getPublicUrl(path);
+  }
+
+  Future<void> adminCreateGift({
+    required String name,
+    required String icon,
+    required String category,
+    required int price,
+    String? mediaUrl,
+    String mediaType = 'emoji',
+  }) async {
+    await client.from('room_gift_catalog').insert({
+      'name': name,
+      'icon': icon,
+      'category': category,
+      'price': price,
+      'media_url': mediaUrl,
+      'media_type': mediaType,
+      'sort_order': 99,
+      'is_active': true,
+    });
+  }
+
+  Future<void> adminUpdateGift(String id, Map<String, dynamic> values) async =>
+      client.from('room_gift_catalog').update(values).eq('id', id);
+  Future<void> adminDeleteGift(String id) async =>
+      client.from('room_gift_catalog').delete().eq('id', id);
+
+  Future<List<Map<String, dynamic>>> adminRooms() async {
+    final rows = await client
+        .from('rooms')
+        .select('id,room_id,name,owner_id,is_official')
+        .order('created_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> adminSetRoomId(
+    String roomId,
+    String newRoomId,
+    bool official,
+  ) async {
+    await client.rpc(
+      'admin_set_room_id',
+      params: {
+        'p_room_id': roomId,
+        'p_new_room_id': newRoomId,
+        'p_official': official,
+      },
+    );
+  }
+
   Future<String> myCountry() async {
     final profile = await myProfile();
     final country = (profile?['country'] as String?)?.trim();

@@ -8,6 +8,7 @@ import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/auth/complete_profile_page.dart';
 import 'features/home/home_page.dart';
+import 'core/data/saki_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,7 @@ class SakiApp extends StatelessWidget {
           builder: (_, __) => const CompleteProfilePage(),
         ),
         GoRoute(path: '/home', builder: (_, __) => const HomePage()),
+        GoRoute(path: '/banned', builder: (_, __) => const AppBannedPage()),
       ],
     );
     return MaterialApp.router(
@@ -76,10 +78,23 @@ class _SplashPageState extends State<SplashPage>
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 1500), () {
+    Future<void>.delayed(const Duration(milliseconds: 1500), () async {
       if (!mounted) return;
       final session = Supabase.instance.client.auth.currentSession;
-      context.go(session == null ? '/login' : '/home');
+      if (session == null) {
+        context.go('/login');
+        return;
+      }
+      try {
+        final ban = await SakiService.instance.activeAppBan();
+        final expires = DateTime.tryParse(ban?['expires_at']?.toString() ?? '');
+        if (ban != null &&
+            (expires == null || expires.isAfter(DateTime.now()))) {
+          if (mounted) context.go('/banned');
+          return;
+        }
+      } catch (_) {}
+      if (mounted) context.go('/home');
     });
   }
 
@@ -118,4 +133,46 @@ class _SplashPageState extends State<SplashPage>
       ),
     );
   }
+}
+
+class AppBannedPage extends StatelessWidget {
+  const AppBannedPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: SakiColors.dark,
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.block_rounded, color: Colors.redAccent, size: 72),
+            const SizedBox(height: 18),
+            const Text(
+              'تم حظرك من تطبيق SAKI',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 23,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'لا يمكنك استخدام التطبيق حتى انتهاء مدة الحظر.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton(
+              onPressed: () async {
+                await Supabase.instance.client.auth.signOut();
+                if (context.mounted) context.go('/login');
+              },
+              child: const Text('تسجيل الخروج'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

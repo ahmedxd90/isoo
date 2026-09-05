@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/saki_service.dart';
 import 'wallet_page.dart';
 import 'vip_page.dart';
+import 'super_admin_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _orange = Color(0xFFF97316);
@@ -107,6 +108,21 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openMenu(String title) async {
+    if (title == 'لوحة تحكم سوبر أدمن') {
+      try {
+        if (await SakiService.instance.isSuperAdmin() && mounted) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SuperAdminPage()),
+          );
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('هذه الصفحة متاحة للسوبر أدمن فقط')),
+          );
+        }
+      } catch (_) {}
+      return;
+    }
     if (title == 'الإعدادات') {
       final changed = await showModalBottomSheet<bool>(
         context: context,
