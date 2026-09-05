@@ -6,6 +6,8 @@ import '../posts/posts_page.dart';
 import '../profile/profile_page.dart';
 import '../reels/reels_page.dart';
 import '../rooms/rooms_page.dart';
+import '../../core/data/saki_service.dart';
+import '../../shared/widgets/saki_widgets.dart';
 
 const _navTeal = Color(0xFF2DD4BF);
 
@@ -30,13 +32,131 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _index, children: _pages),
+      body: Stack(
+        children: [
+          IndexedStack(index: _index, children: _pages),
+          const _GlobalGiftBanner(),
+        ],
+      ),
       bottomNavigationBar: SakiHtmlBottomNav(
         selectedIndex: _index,
         onSelected: (index) => setState(() => _index = index),
       ),
     );
   }
+}
+
+class _GlobalGiftBanner extends StatelessWidget {
+  const _GlobalGiftBanner();
+  Future<Map<String, dynamic>?> _load(Map<String, dynamic> row) async {
+    final sender = await SakiService.instance.client
+        .from('profiles')
+        .select('username,avatar_url')
+        .eq('id', row['sender_id'])
+        .maybeSingle();
+    final recipient = await SakiService.instance.client
+        .from('profiles')
+        .select('username,avatar_url')
+        .eq('id', row['recipient_id'])
+        .maybeSingle();
+    final gift = await SakiService.instance.client
+        .from('room_gift_catalog')
+        .select('name,icon')
+        .eq('id', row['gift_id'])
+        .maybeSingle();
+    return {'sender': sender, 'recipient': recipient, 'gift': gift};
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+  ) => StreamBuilder<List<Map<String, dynamic>>>(
+    stream: SakiService.instance.giftAnnouncementsStream(),
+    builder: (_, snapshot) {
+      final rows = (snapshot.data ?? const [])
+          .where((r) => ((r['total_price'] as num?)?.toInt() ?? 0) >= 100000)
+          .toList();
+      if (rows.isEmpty) return const SizedBox.shrink();
+      return Positioned(
+        top: 72,
+        left: 0,
+        right: 0,
+        child: FutureBuilder<Map<String, dynamic>?>(
+          future: _load(rows.first),
+          builder: (_, data) {
+            final info = data.data;
+            if (info == null) return const SizedBox.shrink();
+            final sender = Map<String, dynamic>.from(info['sender'] ?? {}),
+                recipient = Map<String, dynamic>.from(info['recipient'] ?? {}),
+                gift = Map<String, dynamic>.from(info['gift'] ?? {});
+            return TweenAnimationBuilder<Offset>(
+              tween: Tween(begin: const Offset(1, 0), end: Offset.zero),
+              duration: const Duration(milliseconds: 650),
+              builder: (_, offset, child) =>
+                  FractionalTranslation(translation: offset, child: child),
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: .88),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: Colors.amberAccent),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SakiAvatar(
+                        url: sender['avatar_url'] as String?,
+                        label: sender['username'] as String?,
+                        radius: 17,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        sender['username'] as String? ?? 'مستخدم',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Text(
+                        ' أرسل ',
+                        style: TextStyle(color: Colors.amberAccent),
+                      ),
+                      Text(
+                        gift['icon'] as String? ?? '🎁',
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                      const Text(
+                        ' إلى ',
+                        style: TextStyle(color: Colors.amberAccent),
+                      ),
+                      SakiAvatar(
+                        url: recipient['avatar_url'] as String?,
+                        label: recipient['username'] as String?,
+                        radius: 17,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        recipient['username'] as String? ?? 'مستخدم',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
 }
 
 class SakiHtmlBottomNav extends StatelessWidget {

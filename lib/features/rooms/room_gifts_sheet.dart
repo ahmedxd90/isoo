@@ -57,6 +57,10 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
           .map((r) => Map<String, dynamic>.from(r['profiles'] ?? {}))
           .where((p) => p['id'] != null)
           .toList();
+      final me = await widget.service.myProfile();
+      if (me != null && !recipients.any((p) => p['id'] == me['id'])) {
+        recipients.insert(0, Map<String, dynamic>.from(me));
+      }
       final gifts = await widget.service.roomGiftCatalog();
       if (mounted)
         setState(() {

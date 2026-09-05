@@ -158,6 +158,12 @@ class SakiService {
     );
   }
 
+  Stream<List<Map<String, dynamic>>> giftAnnouncementsStream() => client
+      .from('gift_announcements')
+      .stream(primaryKey: ['id'])
+      .order('created_at', ascending: false)
+      .limit(20);
+
   Future<String> myCountry() async {
     final profile = await myProfile();
     final country = (profile?['country'] as String?)?.trim();
