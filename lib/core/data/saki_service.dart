@@ -1081,4 +1081,41 @@ class SakiService {
         })
         .eq('user_id', uid);
   }
+
+  Future<List<Map<String, dynamic>>> roomGiftCatalog({String? category}) async {
+    var query = client.from('room_gift_catalog').select().eq('is_active', true);
+    if (category != null && category != 'bag')
+      query = query.eq('category', category);
+    final rows = await query.order('sort_order').limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> roomGiftInventory() async {
+    final rows = await client
+        .from('room_gift_inventory')
+        .select('quantity,gift:gift_id(*)')
+        .eq('user_id', uid)
+        .gt('quantity', 0);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>> sendRoomGift({
+    required String roomId,
+    required String recipientId,
+    required String giftId,
+    int quantity = 1,
+  }) async {
+    final rows = await client.rpc(
+      'send_room_gift',
+      params: {
+        'p_room_id': roomId,
+        'p_recipient_id': recipientId,
+        'p_gift_id': giftId,
+        'p_quantity': quantity,
+      },
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    if (list.isEmpty) throw Exception('تعذر إرسال الهدية');
+    return list.first;
+  }
 }

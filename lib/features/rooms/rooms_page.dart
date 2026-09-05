@@ -12,6 +12,7 @@ import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'agora_audio_room_page.dart';
 import 'room_settings_page.dart';
+import 'room_gifts_sheet.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _roomPrimary = Color(0xFF8B5CF6);
@@ -839,6 +840,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _micMuted = true;
   bool _listenMuted = false;
   bool _isComposing = false;
+  int _comboSeconds = 0;
+  Timer? _comboTimer;
+  String? _lastGiftRecipient;
+  Map<String, dynamic>? _lastGift;
   final Set<int> _remoteUsers = <int>{};
 
   @override
@@ -970,6 +975,78 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final next = !_listenMuted;
     await _engine?.muteAllRemoteAudioStreams(next);
     if (mounted) setState(() => _listenMuted = next);
+  }
+
+  Future<void> _showGiftPanel() async {
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RoomGiftsSheet(
+        service: _service,
+        roomId: _roomId,
+        onSent: (recipientId, gift) async {
+          _lastGiftRecipient = recipientId;
+          _lastGift = gift;
+          await _service.sendRoomGift(
+            roomId: _roomId,
+            recipientId: recipientId,
+            giftId: gift['id'] as String,
+          );
+          await _service.sendRoomMessage(
+            _roomId,
+            'أرسل ${gift['icon'] ?? '🎁'} ${gift['name'] ?? 'هدية'}',
+            type: 'gift',
+            payload: {
+              'gift_id': gift['id'],
+              'icon': gift['icon'],
+              'name': gift['name'],
+            },
+          );
+        },
+      ),
+    );
+    if (sent == true) _startGiftCombo();
+  }
+
+  void _startGiftCombo() {
+    _comboTimer?.cancel();
+    setState(() => _comboSeconds = 10);
+    _comboTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return timer.cancel();
+      if (_comboSeconds <= 1) {
+        timer.cancel();
+        setState(() => _comboSeconds = 0);
+      } else {
+        setState(() => _comboSeconds--);
+      }
+    });
+  }
+
+  Future<void> _sendComboAgain() async {
+    final recipient = _lastGiftRecipient;
+    final gift = _lastGift;
+    if (recipient == null || gift == null) return;
+    try {
+      await _service.sendRoomGift(
+        roomId: _roomId,
+        recipientId: recipient,
+        giftId: gift['id'] as String,
+      );
+      await _service.sendRoomMessage(
+        _roomId,
+        'أرسل ${gift['icon'] ?? '🎁'} ${gift['name'] ?? 'هدية'}',
+        type: 'gift',
+        payload: {
+          'gift_id': gift['id'],
+          'icon': gift['icon'],
+          'name': gift['name'],
+        },
+      );
+      _startGiftCombo();
+    } catch (e) {
+      _messageSnack(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   Future<void> _loadRoomState() async {
@@ -1483,6 +1560,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   void dispose() {
     _message.dispose();
+    _comboTimer?.cancel();
     if (_joined) _service.leaveRoom(_roomId);
     _engine?.leaveChannel();
     _engine?.release();
@@ -1612,6 +1690,45 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     ],
                   ),
                 ),
+                if (_comboSeconds > 0)
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        end: 18,
+                        bottom: 4,
+                      ),
+                      child: InkWell(
+                        onTap: _sendComboAgain,
+                        borderRadius: BorderRadius.circular(32),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.orangeAccent,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'COMBO',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                '$_comboSeconds',
+                                style: const TextStyle(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _seatStream,
                   builder: (_, snap) {
@@ -1935,8 +2052,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () =>
-                              _messageSnack('الهدايا متاحة قريبًا.'),
+                          onPressed: _showGiftPanel,
                           icon: const Icon(
                             Icons.card_giftcard_rounded,
                             color: Colors.pinkAccent,
