@@ -301,8 +301,23 @@ class RoomBackgroundPage extends StatefulWidget {
 
 class _RoomBackgroundPageState extends State<RoomBackgroundPage> {
   bool _busy = false;
+  List<Map<String, dynamic>> _saved = [];
   final _picker = ImagePicker();
   final _free = const ['free://sunset', 'free://ocean', 'free://aurora'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    try {
+      final rows = await widget.service.roomBackgrounds(widget.roomId);
+      if (mounted) setState(() => _saved = rows);
+    } catch (_) {}
+  }
+
   Future<void> _freeBackground(String value) async {
     setState(() => _busy = true);
     await widget.service.updateRoomSettings(
@@ -330,6 +345,7 @@ class _RoomBackgroundPageState extends State<RoomBackgroundPage> {
     if (file == null) return;
     setState(() => _busy = true);
     final url = await widget.service.uploadRoomBackground(widget.roomId, file);
+    await widget.service.saveRoomBackground(widget.roomId, url);
     await widget.service.updateRoomSettings(widget.roomId, backgroundUrl: url);
     if (mounted) {
       setState(() => _busy = false);
@@ -337,12 +353,61 @@ class _RoomBackgroundPageState extends State<RoomBackgroundPage> {
     }
   }
 
+  Widget _savedBackgroundTile(String url) => GestureDetector(
+    onTap: _busy
+        ? null
+        : () async {
+            setState(() => _busy = true);
+            await widget.service.updateRoomSettings(
+              widget.roomId,
+              backgroundUrl: url,
+            );
+            if (mounted) {
+              setState(() => _busy = false);
+              Navigator.pop(context, url);
+            }
+          },
+    child: Container(
+      height: 150,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+      ),
+      alignment: Alignment.bottomCenter,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(10),
+        color: Colors.black45,
+        child: const Text(
+          'خلفياتي المرفوعة',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('خلفية الغرفة')),
     body: ListView(
       padding: const EdgeInsets.all(18),
       children: [
+        const Text(
+          'خلفياتي المرفوعة',
+          style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 12),
+        if (_saved.isEmpty)
+          const Text(
+            'لم ترفع خلفيات خاصة بعد',
+            style: TextStyle(color: Colors.black54),
+          )
+        else
+          ..._saved.map(
+            (row) => _savedBackgroundTile(row['image_url'] as String),
+          ),
+        const SizedBox(height: 8),
         const Text(
           'خلفيات مجانية',
           style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900),

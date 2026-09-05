@@ -692,6 +692,24 @@ class SakiService {
     return client.storage.from('rooms').getPublicUrl(path);
   }
 
+  Future<List<Map<String, dynamic>>> roomBackgrounds(String roomId) async {
+    final rows = await client
+        .from('room_backgrounds')
+        .select('id,image_url,created_at')
+        .eq('room_id', roomId)
+        .eq('owner_id', uid)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> saveRoomBackground(String roomId, String imageUrl) async {
+    await client.from('room_backgrounds').insert({
+      'room_id': roomId,
+      'owner_id': uid,
+      'image_url': imageUrl,
+    });
+  }
+
   Future<void> roomMute(
     String roomId,
     String userId,
