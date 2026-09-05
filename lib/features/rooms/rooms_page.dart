@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
+import 'agora_audio_room_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _roomPrimary = Color(0xFF8B5CF6);
@@ -853,7 +854,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.room['name'] as String? ?? 'الغرفة')),
+      appBar: AppBar(
+        title: Text(widget.room['name'] as String? ?? 'الغرفة'),
+        actions: [
+          IconButton(
+            tooltip: 'دخول الغرفة الصوتية',
+            icon: const Icon(Icons.mic_rounded),
+            onPressed: () {
+              final channel = widget.room['id'] as String;
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AgoraAudioRoomPage(
+                    roomName: channel,
+                    title: widget.room['name'] as String? ?? 'الغرفة',
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
