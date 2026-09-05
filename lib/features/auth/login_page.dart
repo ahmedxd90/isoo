@@ -1,216 +1,231 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/data/saki_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
+  StreamSubscription<AuthState>? _authSubscription;
   bool _loading = false;
-  bool _obscure = true;
-  String? _error;
+  bool _routing = false;
 
   @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      event,
+    ) {
+      if (event.session != null) _routeAfterAuth();
+    });
   }
 
-  Future<void> _login() async {
-    if (_email.text.trim().isEmpty || _password.text.isEmpty) {
-      setState(() => _error = 'أدخل البريد الإلكتروني وكلمة المرور.');
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _googleLogin() async {
+    setState(() => _loading = true);
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _email.text.trim(),
-        password: _password.text,
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.saki://login-callback/',
       );
-      if (mounted) context.go('/home');
     } on AuthException catch (e) {
-      setState(() => _error = e.message);
+      _message(e.message);
     } catch (_) {
-      setState(() => _error = 'تعذر الاتصال الآن. حاول مرة أخرى.');
+      _message('تعذر فتح تسجيل الدخول عبر Google.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  Future<void> _routeAfterAuth() async {
+    if (_routing || !mounted) return;
+    _routing = true;
+    try {
+      final profile = await SakiService.instance.myProfile();
+      final username = profile?['username']?.toString() ?? '';
+      final complete =
+          username.isNotEmpty &&
+          !username.startsWith('user_') &&
+          profile?['country'] != null &&
+          profile?['gender'] != null;
+      if (mounted) context.go(complete ? '/home' : '/complete-profile');
+    } finally {
+      _routing = false;
+    }
+  }
+
+  void _message(String text) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 470),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _BrandHeader(),
-                  const SizedBox(height: 38),
-                  Text(
-                    'تسجيل الدخول',
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w800),
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset('assets/saki_login_background.jpg', fit: BoxFit.cover),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: .18),
+                Colors.black.withValues(alpha: .42),
+                const Color(0xEE071116),
+              ],
+            ),
+          ),
+        ),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 30, 22, 22),
+            child: Column(
+              children: [
+                const Spacer(),
+                const Text(
+                  'SAKI CHAT',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    shadows: [Shadow(color: Colors.black54, blurRadius: 12)],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'أهلاً بعودتك إلى مجتمع SAKI.',
-                    style: TextStyle(color: SakiColors.muted),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'مجتمع رائع للحفلات على الإنترنت',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
                   ),
-                  const SizedBox(height: 28),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      labelText: 'البريد الإلكتروني',
-                      prefixIcon: Icon(Icons.alternate_email_rounded),
-                    ),
+                ),
+                const SizedBox(height: 30),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .94),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black38,
+                        blurRadius: 25,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _password,
-                    obscureText: _obscure,
-                    textDirection: TextDirection.ltr,
-                    decoration: InputDecoration(
-                      labelText: 'كلمة المرور',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                  child: Column(
+                    children: [
+                      const Text(
+                        'ابدأ رحلتك معنا',
+                        style: TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                    ),
-                    onSubmitted: (_) => _login(),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  _GradientButton(
-                    label: 'تسجيل الدخول',
-                    loading: _loading,
-                    onPressed: _loading ? null : _login,
-                  ),
-                  const SizedBox(height: 14),
-                  OutlinedButton(
-                    onPressed: _loading ? null : () => context.go('/register'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                      const SizedBox(height: 7),
+                      const Text(
+                        'سجّل الدخول بأمان عبر Google',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                    child: const Text('إنشاء حساب جديد'),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        height: 54,
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _loading ? null : _googleLogin,
+                          icon: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF0891B2),
+                                  ),
+                                )
+                              : const Text(
+                                  'G',
+                                  style: TextStyle(
+                                    color: Color(0xFF4285F4),
+                                    fontSize: 23,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                          label: const Text(
+                            'تسجيل الدخول باستخدام Google',
+                            style: TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 13),
+                      Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              'أو',
+                              style: TextStyle(color: Colors.black38),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextButton(
+                        onPressed: _loading
+                            ? null
+                            : () => context.go('/register'),
+                        child: const Text(
+                          'إنشاء حساب جديد',
+                          style: TextStyle(
+                            color: Color(0xFFF97316),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'بياناتك محمية باتصال Supabase Auth الحقيقي.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: SakiColors.muted, fontSize: 12),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'بتسجيل الدخول أنت توافق على شروط SAKI Chat',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BrandHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ShaderMask(
-          shaderCallback: (bounds) => SakiTheme.gradient.createShader(bounds),
-          child: const Text(
-            'SAKI',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 52,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 8,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'مرحباً بك في SAKI',
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  const _GradientButton({
-    required this.label,
-    required this.onPressed,
-    this.loading = false,
-  });
-  final String label;
-  final VoidCallback? onPressed;
-  final bool loading;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: onPressed == null
-            ? const LinearGradient(colors: [Colors.grey, Colors.grey])
-            : SakiTheme.gradient,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 17),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        child: loading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-      ),
-    );
-  }
+    ),
+  );
 }

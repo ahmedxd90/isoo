@@ -26,6 +26,50 @@ class SakiService {
     return country == null || country.isEmpty ? 'الأردن' : country;
   }
 
+  Future<List<Map<String, dynamic>>> countries() async {
+    final rows = await client
+        .from('countries')
+        .select('code,name_ar,flag')
+        .order('name_ar')
+        .limit(250);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> completeProfile({
+    required String username,
+    required String country,
+    required String gender,
+    XFile? avatar,
+  }) async {
+    String? avatarUrl;
+    if (avatar != null) {
+      final bytes = await File(avatar.path).readAsBytes();
+      final extension = avatar.path.split('.').last.toLowerCase();
+      final path =
+          '$uid/profile_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      await client.storage
+          .from('avatars')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(
+              upsert: true,
+              contentType: 'image/$extension',
+            ),
+          );
+      avatarUrl = client.storage.from('avatars').getPublicUrl(path);
+    }
+    final updates = <String, dynamic>{
+      'username': username.trim(),
+      'display_name': username.trim(),
+      'country': country,
+      'gender': gender,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+    await client.from('profiles').update(updates).eq('id', uid);
+  }
+
   Future<Map<String, dynamic>?> myOwnedRoom() async {
     final rows = await client
         .from('rooms')

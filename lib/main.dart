@@ -6,6 +6,7 @@ import 'core/config/supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
+import 'features/auth/complete_profile_page.dart';
 import 'features/home/home_page.dart';
 
 Future<void> main() async {
@@ -28,6 +29,10 @@ class SakiApp extends StatelessWidget {
         GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
         GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
         GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
+        GoRoute(
+          path: '/complete-profile',
+          builder: (_, __) => const CompleteProfilePage(),
+        ),
         GoRoute(path: '/home', builder: (_, __) => const HomePage()),
       ],
     );
