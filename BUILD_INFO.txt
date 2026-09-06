@@ -114,3 +114,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,497,628 bytes
 - SHA-256: f9b28ab2f4fcad1e6f6154ee21232f9b1a12e7ab69a9fb5104ba95c644e51a3c
+
+Gold-purchased VIP levels and image badges — 2026-09-06
+
+VIP purchases now use the authenticated user's gold wallet and set the selected level VIP 1 through VIP 7 directly, with 30-day expiry extension, profile/account synchronization, and transaction logging through the live Supabase purchase_vip function. The previous upgrade-only behavior was removed. The old MVIP label was removed from the profile page and all shared user-name rendering. Active users now receive image-based VIP badges from the existing varied VIP 1–7 artwork in the profile, messages, lists, and other shared user components. The profile page now shows a single new VIP badge and no MVIP action tile.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,497,180 bytes
+- SHA-256: fe2df4a9dd8dd39083af1a5c202e43e37656f0813708df001ea53f5131981941

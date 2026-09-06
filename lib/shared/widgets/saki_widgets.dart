@@ -208,21 +208,11 @@ class _VipUsernameState extends State<VipUsername>
             ),
           ),
           const SizedBox(width: 5),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5B93F).withValues(alpha: .22),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: const Color(0xFFFFE082), width: .7),
-            ),
-            child: Text(
-              'MVIP $level',
-              style: const TextStyle(
-                color: Color(0xFFFFE082),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+          Image.asset(
+            'assets/trace_vip/images/ic_vip_$level.png',
+            width: 46,
+            height: 18,
+            fit: BoxFit.contain,
           ),
         ],
       ),

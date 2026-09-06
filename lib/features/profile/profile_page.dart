@@ -172,7 +172,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final profile = _profile ?? {};
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
     final vipLevel = (_modules['vip_level'] as num? ?? 0).toInt();
-    final mvipLabel = _modules['vip_label'] as String? ?? 'MVIP';
     final followers = _stats['followers'] ?? 0;
 
     return Scaffold(
@@ -235,7 +234,6 @@ class _ProfilePageState extends State<ProfilePage> {
               profile: profile,
               username: username,
               vipLevel: vipLevel,
-              mvipLabel: mvipLabel,
               followers: followers,
             ),
             const SizedBox(height: 14),
@@ -257,16 +255,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     label: 'VIP',
                     color: const Color(0xFFD97706),
                     background: const Color(0xFFFFFBEB),
-                    onTap: () => _openModule('vip'),
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.chessQueen,
-                    label: 'MVIP',
-                    color: const Color(0xFF9333EA),
-                    background: const Color(0xFFFAF5FF),
                     onTap: () => _openModule('vip'),
                   ),
                 ),
@@ -309,13 +297,11 @@ class _ProfileCard extends StatelessWidget {
     required this.profile,
     required this.username,
     required this.vipLevel,
-    required this.mvipLabel,
     required this.followers,
   });
   final Map<String, dynamic> profile;
   final String username;
   final int vipLevel;
-  final String mvipLabel;
   final int followers;
 
   @override
@@ -403,18 +389,21 @@ class _ProfileCard extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 4,
                   children: [
-                    _Badge(
-                      icon: FontAwesomeIcons.shieldHalved,
-                      text: 'VIP $vipLevel',
-                      color: const Color(0xFFB45309),
-                      background: const Color(0xFFFFFBEB),
-                    ),
-                    _Badge(
-                      icon: FontAwesomeIcons.gem,
-                      text: vipLevel > 0 ? 'MVIP $vipLevel' : mvipLabel,
-                      color: const Color(0xFF7E22CE),
-                      background: const Color(0xFFFAF5FF),
-                    ),
+                    if (vipLevel > 0)
+                      Container(
+                        height: 26,
+                        padding: const EdgeInsets.symmetric(horizontal: 7),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7ED),
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(color: const Color(0xFFF59E0B)),
+                        ),
+                        child: Image.asset(
+                          'assets/trace_vip/images/ic_vip_$vipLevel.png',
+                          width: 66,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -823,7 +812,7 @@ class ModuleSheet extends StatelessWidget {
         'الرصيد المتاح: ${modules['wallet_balance'] ?? 0} ${modules['wallet_currency'] ?? 'USD'}\nرصيد المتجر: ${modules['store_credit'] ?? 0}',
       ),
       'vip' => (
-        'عضوية MVIP',
+        'عضوية VIP',
         FontAwesomeIcons.crown,
         const Color(0xFFD97706),
         'مستوى VIP الحالي: ${modules['vip_level'] ?? 0}\n${modules['vip_label'] ?? 'عضو جديد'}',

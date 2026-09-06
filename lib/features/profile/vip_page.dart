@@ -501,7 +501,7 @@ class _VipPageState extends State<VipPage> {
               ),
               const Spacer(),
               Text(
-                'ترقية VIP $level • ${_format(_prices[level]!)} عملة',
+                'شراء VIP $level • ${_format(_prices[level]!)} عملة ذهبية',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
