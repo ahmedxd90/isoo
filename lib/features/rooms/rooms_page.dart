@@ -764,6 +764,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _micMuted = true;
   bool _listenMuted = false;
   bool _isComposing = false;
+  String _micPermission = 'everyone';
+  bool _isModerator = false;
   int _comboSeconds = 0;
   Timer? _comboTimer;
   String? _lastGiftRecipient;
@@ -779,6 +781,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
     _liveBackgroundUrl = widget.room['background_url'] as String?;
+    _micPermission = widget.room['mic_permission'] as String? ?? 'everyone';
     _roomSettingsSubscription = _roomSettingsStream.listen((rows) {
       if (!mounted || rows.isEmpty) return;
       final updated = rows.first;
@@ -786,6 +789,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _liveSeatCount =
             (updated['seat_count'] as num?)?.toInt() ?? _liveSeatCount;
         _liveBackgroundUrl = updated['background_url'] as String?;
+        _micPermission = updated['mic_permission'] as String? ?? _micPermission;
       });
     });
     _messageStream = _service.roomMessagesStream(_roomId);
@@ -989,8 +993,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _loadRoomState() async {
     try {
-      final followed = await _service.isFollowingRoom(_roomId);
-      if (mounted) setState(() => _followed = followed);
+      final results = await Future.wait([
+        _service.isFollowingRoom(_roomId),
+        _service.isRoomModerator(_roomId),
+      ]);
+      if (mounted) {
+        setState(() {
+          _followed = results[0] as bool;
+          _isModerator = results[1] as bool;
+        });
+      }
     } catch (_) {}
   }
 
@@ -1139,9 +1151,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _showOwnerSettings() async {
+    final latest = await _service.myOwnedRoom();
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => RoomSettingsPage(room: widget.room, service: _service),
+        builder: (_) =>
+            RoomSettingsPage(room: latest ?? widget.room, service: _service),
       ),
     );
   }
@@ -1706,6 +1721,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await _setSeatAudio(false);
         await _service.sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat');
       } else {
+        final allowed =
+            _micPermission == 'everyone' ||
+            (_micPermission == 'followers' && _followed) ||
+            (_micPermission == 'moderators' && _isModerator) ||
+            (_micPermission == 'owner' &&
+                widget.room['owner_id'] == _service.uid);
+        if (!allowed) {
+          _messageSnack('المالك لا يسمح لك بأخذ المايك حاليًا.');
+          return;
+        }
         await _service.claimRoomSeat(_roomId, seatNo);
         await _setSeatAudio(true);
         await _service.sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat');

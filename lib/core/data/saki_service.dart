@@ -347,7 +347,7 @@ class SakiService {
     final rows = await client
         .from('rooms')
         .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
+          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,announcement,category,theme_key,membership_fee,reward_rate,mic_permission,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
         )
         .eq('owner_id', uid)
         .eq('is_active', true)
@@ -932,6 +932,7 @@ class SakiService {
       'user_id': userId,
       'created_by': uid,
     });
+    await recordRoomActivity(roomId, 'moderator_added', targetUserId: userId);
   }
 
   Future<void> removeRoomModerator(String roomId, String userId) async {
@@ -940,6 +941,7 @@ class SakiService {
         .delete()
         .eq('room_id', roomId)
         .eq('user_id', userId);
+    await recordRoomActivity(roomId, 'moderator_removed', targetUserId: userId);
   }
 
   Future<void> roomBan(String roomId, String userId, Duration? duration) async {
@@ -961,6 +963,7 @@ class SakiService {
         .delete()
         .eq('room_id', roomId)
         .eq('user_id', userId);
+    await recordRoomActivity(roomId, 'user_banned', targetUserId: userId);
   }
 
   Future<List<Map<String, dynamic>>> roomBansForOwner(String roomId) async {
@@ -980,21 +983,76 @@ class SakiService {
         .delete()
         .eq('room_id', roomId)
         .eq('user_id', userId);
+    await recordRoomActivity(roomId, 'user_unbanned', targetUserId: userId);
   }
 
   Future<void> updateRoomSettings(
     String roomId, {
     int? seatCount,
     String? backgroundUrl,
+    String? name,
+    String? announcement,
+    String? category,
+    String? themeKey,
+    int? membershipFee,
+    double? rewardRate,
+    String? micPermission,
   }) async {
     final values = <String, dynamic>{};
     if (seatCount != null) values['seat_count'] = seatCount;
     if (backgroundUrl != null) values['background_url'] = backgroundUrl;
+    if (name != null) values['name'] = name.trim();
+    if (announcement != null) values['announcement'] = announcement.trim();
+    if (category != null) values['category'] = category;
+    if (themeKey != null) values['theme_key'] = themeKey;
+    if (membershipFee != null) values['membership_fee'] = membershipFee;
+    if (rewardRate != null) values['reward_rate'] = rewardRate;
+    if (micPermission != null) values['mic_permission'] = micPermission;
     await client
         .from('rooms')
         .update(values)
         .eq('id', roomId)
         .eq('owner_id', uid);
+  }
+
+  Future<List<Map<String, dynamic>>> roomModeratorsForOwner(
+    String roomId,
+  ) async {
+    final rows = await client
+        .from('room_moderators')
+        .select(
+          'user_id,created_at,profiles:user_id(id,username,avatar_url,saki_id,vip_level)',
+        )
+        .eq('room_id', roomId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> roomActivityLogs(String roomId) async {
+    final rows = await client
+        .from('room_activity_logs')
+        .select(
+          'id,action,target_user_id,metadata,created_at,profiles:actor_id(username,avatar_url)',
+        )
+        .eq('room_id', roomId)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> recordRoomActivity(
+    String roomId,
+    String action, {
+    String? targetUserId,
+    Map<String, dynamic> metadata = const {},
+  }) async {
+    await client.from('room_activity_logs').insert({
+      'room_id': roomId,
+      'actor_id': uid,
+      'action': action,
+      'target_user_id': targetUserId,
+      'metadata': metadata,
+    });
   }
 
   Future<String> uploadRoomBackground(String roomId, XFile image) async {
