@@ -9,6 +9,7 @@ import '../profile/profile_page.dart';
 import '../reels/reels_page.dart';
 import '../rooms/rooms_page.dart';
 import '../../core/data/saki_service.dart';
+import '../../core/room_session.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _navTeal = Color(0xFF2DD4BF);
@@ -23,26 +24,94 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _index = 0;
 
-  final _pages = const [
-    RoomsPage(),
-    PostsPage(),
-    ReelsPage(),
-    MessagesPage(),
-    ProfilePage(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      const RoomsPage(),
+      const PostsPage(),
+      ReelsPage(visible: _index == 2),
+      const MessagesPage(),
+      const ProfilePage(),
+    ];
     return Scaffold(
       body: Stack(
         children: [
-          IndexedStack(index: _index, children: _pages),
+          IndexedStack(index: _index, children: pages),
           const _GlobalGiftBanner(),
         ],
       ),
       bottomNavigationBar: SakiHtmlBottomNav(
         selectedIndex: _index,
         onSelected: (index) => setState(() => _index = index),
+      ),
+    );
+  }
+}
+
+class RoomMiniBubble extends StatefulWidget {
+  const RoomMiniBubble({super.key});
+
+  @override
+  State<RoomMiniBubble> createState() => _RoomMiniBubbleState();
+}
+
+class _RoomMiniBubbleState extends State<RoomMiniBubble> {
+  final _session = RoomSessionController.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _session.addListener(_changed);
+  }
+
+  @override
+  void dispose() {
+    _session.removeListener(_changed);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final room = _session.room;
+    if (room == null || _session.engine == null) return const SizedBox.shrink();
+    final image = room['image_url'] as String?;
+    final title = room['name'] as String? ?? 'غرفة SAKI';
+    return Positioned(
+      right: 16,
+      bottom: 92,
+      child: GestureDetector(
+        onTap: () async {
+          final current = _session.room;
+          if (current == null) return;
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => RoomDetailPage(room: current)),
+          );
+        },
+        onLongPress: () {
+          _session.close();
+        },
+        child: Container(
+          width: 68,
+          height: 68,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF656BF9),
+            boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12)],
+          ),
+          child: ClipOval(
+            child: image == null || image.isEmpty
+                ? Container(
+                    color: const Color(0xFF312E81),
+                    child: const Icon(Icons.meeting_room, color: Colors.white),
+                  )
+                : Image.network(image, fit: BoxFit.cover),
+          ),
+        ),
       ),
     );
   }
@@ -195,11 +264,31 @@ class SakiHtmlBottomNav extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   static const _items = [
-    ('assets/trace_home/images/ic_main_default.png', 'assets/trace_home/images/ic_main_selected.png', 'الرئيسية'),
-    ('assets/trace_home/images/ic_feed_default.png', 'assets/trace_home/images/ic_feed_selected.png', 'اللحظات'),
-    ('assets/trace_home/images/activity_main_send_live.png', 'assets/trace_home/images/activity_main_send_live.png', 'الريلز'),
-    ('assets/trace_home/images/home_icon_message.png', 'assets/trace_home/images/home_icon_message.png', 'الرسائل'),
-    ('assets/trace_home/images/ic_profile_default.png', 'assets/trace_home/images/ic_profile_default.png', 'أنا'),
+    (
+      'assets/trace_home/images/ic_main_default.png',
+      'assets/trace_home/images/ic_main_selected.png',
+      'الرئيسية',
+    ),
+    (
+      'assets/trace_home/images/ic_feed_default.png',
+      'assets/trace_home/images/ic_feed_selected.png',
+      'اللحظات',
+    ),
+    (
+      'assets/trace_home/images/activity_main_send_live.png',
+      'assets/trace_home/images/activity_main_send_live.png',
+      'الريلز',
+    ),
+    (
+      'assets/trace_home/images/home_icon_message.png',
+      'assets/trace_home/images/home_icon_message.png',
+      'الرسائل',
+    ),
+    (
+      'assets/trace_home/images/ic_profile_default.png',
+      'assets/trace_home/images/ic_profile_default.png',
+      'أنا',
+    ),
   ];
 
   @override
@@ -253,7 +342,9 @@ class SakiHtmlBottomNav extends StatelessWidget {
                             height: active ? 25 : 22,
                             errorBuilder: (_, __, ___) => FaIcon(
                               FontAwesomeIcons.circle,
-                              color: active ? const Color(0xFF656BF9) : const Color(0xFF9CA3AF),
+                              color: active
+                                  ? const Color(0xFF656BF9)
+                                  : const Color(0xFF9CA3AF),
                               size: active ? 19 : 18,
                             ),
                           ),
@@ -263,7 +354,9 @@ class SakiHtmlBottomNav extends StatelessWidget {
                       Text(
                         item.$3,
                         style: TextStyle(
-                          color: active ? const Color(0xFF656BF9) : const Color(0xFF9CA3AF),
+                          color: active
+                              ? const Color(0xFF656BF9)
+                              : const Color(0xFF9CA3AF),
                           fontSize: 10,
                           fontWeight: active
                               ? FontWeight.w900

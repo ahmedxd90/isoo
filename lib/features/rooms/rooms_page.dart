@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
+import '../../core/room_session.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
 import 'room_settings_page.dart';
@@ -93,6 +94,7 @@ class _RoomsPageState extends State<RoomsPage> {
           .push(MaterialPageRoute(builder: (_) => const SearchPage()));
 
   Future<void> _create() async {
+    await RoomSessionController.instance.close();
     final owned = await _service.myOwnedRoom();
     if (!mounted) return;
     if (owned != null) {
@@ -534,8 +536,16 @@ class HtmlRoomCard extends StatelessWidget {
         ? const [Color(0xFFE0E0E0), Color(0xFF9E9E9E)]
         : const [Color(0xFFCD7F32), Color(0xFF8B4513)];
     return InkWell(
-      onTap: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room))),
+      onTap: () async {
+        final active = RoomSessionController.instance.room;
+        if (active != null && active['id'] != room['id']) {
+          await RoomSessionController.instance.close();
+        }
+        if (!context.mounted) return;
+        await Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
+      },
       borderRadius: BorderRadius.circular(16),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -776,6 +786,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final Set<int> _remoteUsers = <int>{};
   late int _liveSeatCount;
   String? _liveBackgroundUrl;
+  bool _minimized = false;
 
   @override
   void initState() {
@@ -808,9 +819,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         },
       )
       ..subscribe();
+    final existingEngine = RoomSessionController.instance.engine;
+    if (existingEngine != null) {
+      _engine = existingEngine;
+      final session = RoomSessionController.instance;
+      _isOnSeat = session.isOnSeat;
+      _micMuted = session.micMuted;
+      RoomSessionController.instance.clearBubble();
+    }
     _join();
     _loadRoomState();
-    _startRoomAudio();
+    if (existingEngine == null) _startRoomAudio();
   }
 
   int _numericUid(String value) {
@@ -861,9 +880,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           },
           onUserJoined: (_, remoteUid, __) {
             if (mounted) setState(() => _remoteUsers.add(remoteUid));
+            RoomSessionController.instance.updateVoiceState(
+              remoteUsers: _remoteUsers.length,
+            );
           },
           onUserOffline: (_, remoteUid, __) {
             if (mounted) setState(() => _remoteUsers.remove(remoteUid));
+            RoomSessionController.instance.updateVoiceState(
+              remoteUsers: _remoteUsers.length,
+            );
           },
           onTokenPrivilegeWillExpire: (_, __) => _refreshRoomToken(),
         ),
@@ -895,8 +920,25 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (token != null) await _engine?.renewToken(token);
   }
 
+  void _minimizeRoom() {
+    final engine = _engine;
+    if (engine == null) return;
+    _minimized = true;
+    RoomSessionController.instance.minimize(
+      room: widget.room,
+      engine: engine,
+      isOnSeat: _isOnSeat,
+      micMuted: _micMuted,
+      remoteUsers: _remoteUsers.length,
+    );
+    _engine = null;
+    _joined = false;
+    Navigator.of(context).pop();
+  }
+
   Future<void> _setSeatAudio(bool seated) async {
     _isOnSeat = seated;
+    RoomSessionController.instance.updateVoiceState(isOnSeat: seated);
     if (!seated) {
       _micMuted = true;
       await _engine?.muteLocalAudioStream(true);
@@ -932,6 +974,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
     _micMuted = !_micMuted;
+    RoomSessionController.instance.updateVoiceState(micMuted: _micMuted);
     await _engine?.updateChannelMediaOptions(
       ChannelMediaOptions(
         publishMicrophoneTrack: !_micMuted,
@@ -1090,8 +1133,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     if (result == true) {
       await _service.leaveRoom(_roomId);
+      if (RoomSessionController.instance.engine == _engine ||
+          RoomSessionController.instance.room?['id'] == _roomId) {
+        await RoomSessionController.instance.close();
+      }
       return true;
     }
+    _minimizeRoom();
     return false;
   }
 

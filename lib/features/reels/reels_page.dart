@@ -12,7 +12,8 @@ const _reelTeal = Color(0xFF2DD4BF);
 const _reelBg = Color(0xFF0D1117);
 
 class ReelsPage extends StatefulWidget {
-  const ReelsPage({super.key});
+  const ReelsPage({super.key, this.visible = true});
+  final bool visible;
   @override
   State<ReelsPage> createState() => _ReelsPageState();
 }
@@ -88,7 +89,7 @@ class _ReelsPageState extends State<ReelsPage> {
                         setState(() => _activeIndex = index),
                     itemBuilder: (_, index) => ReelCard(
                       reel: _reels[index],
-                      active: index == _activeIndex,
+                      active: widget.visible && index == _activeIndex,
                     ),
                   ),
             Positioned(

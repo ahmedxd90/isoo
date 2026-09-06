@@ -38,3 +38,14 @@ Validation APK:
 - Path: build/app/outputs/flutter-apk/app-release.apk
 - Size: 268513644 bytes
 - SHA-256: fb7fd1e3847e2e03047c9884e3e3d5ea53c51f1d303472743fbb26661dbbe636
+
+Media and mini-room session update — 2026-09-06
+
+Reels now receive an explicit visibility flag from the selected home tab. Their video controllers pause whenever the user leaves the Reels tab, so no Reel video or audio plays on Home, Moments, Messages, Profile, or Rooms.
+
+Room retention now uses RoomSessionController. Choosing احتفظ leaves the room UI and returns to the app while keeping the existing Agora engine, room membership, seat state, microphone state, and remote voice session. Home shows a circular room-image bubble on every tab; tapping it reopens the same room and removes the bubble. Long-pressing the bubble closes the retained session. Entering a different room closes the previous retained session.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 268,513,644 bytes
+- SHA-256: db607d443319a1eafa9fbbd81fb0c31da0520068b5d53afb1cc77ae43b5c42dc
