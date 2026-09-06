@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
 import 'pk_battle_page.dart';
+import 'room_gifts_sheet.dart';
 
 class AgoraLiveRoomPage extends StatefulWidget {
   const AgoraLiveRoomPage({
@@ -11,10 +12,12 @@ class AgoraLiveRoomPage extends StatefulWidget {
     required this.roomId,
     required this.channelName,
     required this.title,
+    this.isHost = false,
   });
   final String roomId;
   final String channelName;
   final String title;
+  final bool isHost;
   @override
   State<AgoraLiveRoomPage> createState() => _AgoraLiveRoomPageState();
 }
@@ -26,6 +29,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
   bool _muted = false;
   bool _cameraOff = false;
   String? _error;
+  final _comment = TextEditingController();
 
   int _numericUid(String value) =>
       int.parse((value.replaceAll('-', '').substring(0, 8)), radix: 16) &
@@ -39,6 +43,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
 
   Future<void> _start() async {
     try {
+      await SakiService.instance.joinRoom(widget.roomId);
       final permissions = await [
         Permission.microphone,
         Permission.camera,
@@ -119,14 +124,55 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
     await _engine?.stopPreview();
     await _engine?.leaveChannel();
     await _engine?.release();
+    await SakiService.instance.leaveRoom(widget.roomId);
+    if (widget.isHost) {
+      await SakiService.instance.endLiveBroadcast(widget.channelName);
+    }
     if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _showGifts() async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RoomGiftsSheet(
+        service: SakiService.instance,
+        roomId: widget.roomId,
+        onSent: (recipientId, gift) async {
+          await SakiService.instance.sendRoomGift(
+            roomId: widget.roomId,
+            recipientId: recipientId,
+            giftId: gift['id'] as String,
+          );
+          await SakiService.instance.sendRoomMessage(
+            widget.roomId,
+            'أرسل ${gift['icon'] ?? '🎁'} ${gift['name'] ?? 'هدية'}',
+            type: 'gift',
+            payload: {
+              'gift_id': gift['id'],
+              'icon': gift['icon'],
+              'name': gift['name'],
+            },
+          );
+        },
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _comment.dispose();
     _engine?.leaveChannel();
     _engine?.release();
     super.dispose();
+  }
+
+  Future<void> _sendComment() async {
+    final text = _comment.text.trim();
+    if (text.isEmpty) return;
+    _comment.clear();
+    await SakiService.instance.sendRoomMessage(widget.roomId, text);
   }
 
   @override
@@ -199,6 +245,13 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                     color: Colors.amberAccent,
                   ),
                 ),
+                IconButton(
+                  onPressed: _showGifts,
+                  icon: const Icon(
+                    Icons.card_giftcard_rounded,
+                    color: Colors.pinkAccent,
+                  ),
+                ),
                 const Chip(
                   label: Text(
                     'LIVE',
@@ -243,6 +296,81 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                 ),
               ),
             ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 86,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 110,
+                  child: StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: SakiService.instance.roomMessagesStream(
+                      widget.roomId,
+                    ),
+                    builder: (_, snapshot) {
+                      final rows =
+                          snapshot.data ?? const <Map<String, dynamic>>[];
+                      final visible = rows.length > 5
+                          ? rows.sublist(rows.length - 5)
+                          : rows;
+                      return ListView.builder(
+                        reverse: true,
+                        itemCount: visible.length,
+                        itemBuilder: (_, index) => Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              visible[visible.length - index - 1]['body']
+                                      as String? ??
+                                  '',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _comment,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'اكتب تعليقًا...',
+                          hintStyle: const TextStyle(color: Colors.white60),
+                          filled: true,
+                          fillColor: Colors.black54,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _sendComment,
+                      icon: const Icon(Icons.send_rounded, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
           Positioned(
             bottom: 22,
             left: 20,

@@ -363,6 +363,41 @@ class SakiService {
     };
   }
 
+  Future<Map<String, dynamic>> startLiveBroadcast({
+    required String roomId,
+    required String channelName,
+    required String title,
+  }) async {
+    final row = await client.rpc(
+      'start_live_broadcast',
+      params: {
+        'p_room_id': roomId,
+        'p_channel_name': channelName,
+        'p_title': title,
+      },
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<void> endLiveBroadcast(String channelName) async {
+    await client.rpc(
+      'end_live_broadcast',
+      params: {'p_channel_name': channelName},
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> liveBroadcasts() async {
+    final rows = await client
+        .from('live_broadcasts')
+        .select(
+          'id,room_id,host_id,channel_name,title,avatar_url,status,started_at,rooms:room_id(id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,is_active)',
+        )
+        .eq('status', 'live')
+        .order('started_at', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<List<Map<String, dynamic>>> feed({bool followingOnly = false}) async {
     final selection =
         'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
