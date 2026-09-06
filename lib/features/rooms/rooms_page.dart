@@ -10,6 +10,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
 import 'agora_live_room_page.dart';
+import '../search/search_page.dart';
+import 'ranking_page.dart';
 import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -34,7 +36,6 @@ class _RoomsPageState extends State<RoomsPage> {
   bool _loading = true;
   bool _followingOnly = false;
   String _country = 'الكل';
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -70,12 +71,8 @@ class _RoomsPageState extends State<RoomsPage> {
 
   List<Map<String, dynamic>> get _visibleRooms {
     final cutoff = DateTime.now().subtract(const Duration(days: 2));
-    final query = _searchQuery.trim().toLowerCase();
     return _rooms.where((room) {
-      final name = (room['name'] as String? ?? '').toLowerCase();
       final country = (room['country'] as String? ?? '').toLowerCase();
-      final matchesSearch =
-          query.isEmpty || name.contains(query) || country.contains(query);
       final matchesCountry =
           _country == 'الكل' || country.contains(_country.toLowerCase());
       final created = DateTime.tryParse(room['created_at'] as String? ?? '');
@@ -85,46 +82,15 @@ class _RoomsPageState extends State<RoomsPage> {
       final matchesFollowing =
           !_followingOnly ||
           members.any((member) => member['user_id'] == _service.uid);
-      return matchesSearch &&
-          matchesCountry &&
+      return matchesCountry &&
           matchesFollowing &&
           (!_followingOnly || (created != null && created.isAfter(cutoff)));
     }).toList();
   }
 
-  Future<void> _search() async {
-    final controller = TextEditingController(text: _searchQuery);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text(
-          'البحث في الغرف',
-          style: TextStyle(fontWeight: FontWeight.w900),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.search_rounded),
-            hintText: 'اسم الغرفة أو الدولة',
-          ),
-          onSubmitted: (value) => Navigator.pop(context, value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, ''),
-            child: const Text('مسح'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('بحث'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (result != null && mounted) setState(() => _searchQuery = result);
-  }
+  Future<void> _search() async =>
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const SearchPage()));
 
   Future<void> _create() async {
     final owned = await _service.myOwnedRoom();
@@ -145,43 +111,14 @@ class _RoomsPageState extends State<RoomsPage> {
   }
 
   void _ranking(String title, FaIconData icon) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE5E7EB),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-            const SizedBox(height: 18),
-            FaIcon(icon, color: _roomPrimary, size: 30),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'سيتم ترتيب الغرف والحسابات من البيانات الحقيقية في Supabase.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: _roomMuted),
-            ),
-          ],
-        ),
-      ),
-    );
+    final index = title.contains('الثروة')
+        ? 0
+        : title.contains('السحر')
+        ? 1
+        : 2;
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => RankingPage(initialIndex: index)));
   }
 
   @override
@@ -288,19 +225,6 @@ class _RoomsPageState extends State<RoomsPage> {
                       ),
                     ),
                   ),
-                  if (_searchQuery.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 2, 16, 4),
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Chip(
-                            label: Text(_searchQuery),
-                            onDeleted: () => setState(() => _searchQuery = ''),
-                          ),
-                        ),
-                      ),
-                    ),
                   if (_visibleRooms.isEmpty)
                     const SliverFillRemaining(
                       hasScrollBody: false,
@@ -2365,6 +2289,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => AgoraLiveRoomPage(
+                                  roomId: _roomId,
                                   channelName: _roomId,
                                   title: title,
                                 ),

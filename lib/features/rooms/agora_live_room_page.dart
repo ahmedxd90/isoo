@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
+import 'pk_battle_page.dart';
 
 class AgoraLiveRoomPage extends StatefulWidget {
   const AgoraLiveRoomPage({
     super.key,
+    required this.roomId,
     required this.channelName,
     required this.title,
   });
+  final String roomId;
   final String channelName;
   final String title;
   @override
@@ -178,6 +181,22 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                       fontWeight: FontWeight.w900,
                       fontSize: 18,
                     ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PkBattlePage(
+                        roomId: widget.roomId,
+                        channelName: widget.channelName,
+                        title: widget.title,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(
+                    Icons.flash_on_rounded,
+                    color: Colors.amberAccent,
                   ),
                 ),
                 const Chip(

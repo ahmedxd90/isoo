@@ -71,6 +71,89 @@ class SakiService {
     );
   }
 
+  Future<Map<String, dynamic>> startPkBattle(
+    String roomId,
+    String channelName,
+  ) async {
+    final row = await client.rpc(
+      'start_pk_battle',
+      params: {
+        'p_room_id': roomId,
+        'p_channel_name': channelName,
+        'p_duration_seconds': 300,
+      },
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<Map<String, dynamic>> acceptPkBattle(String battleId) async {
+    final row = await client.rpc(
+      'accept_pk_battle',
+      params: {'p_battle_id': battleId},
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<Map<String, dynamic>> addPkPoints(String battleId, int points) async {
+    final row = await client.rpc(
+      'add_pk_points',
+      params: {'p_battle_id': battleId, 'p_points': points},
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<Map<String, dynamic>> finishPkBattle(String battleId) async {
+    final row = await client.rpc(
+      'finish_pk_battle',
+      params: {'p_battle_id': battleId},
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Stream<List<Map<String, dynamic>>> pkBattlesStream(String roomId) => client
+      .from('pk_battles')
+      .stream(primaryKey: ['id'])
+      .eq('room_id', roomId)
+      .order('created_at', ascending: false)
+      .limit(1);
+
+  Future<List<Map<String, dynamic>>> wealthRanking() async {
+    final rows = await client
+        .from('saki_account_modules')
+        .select('user_id,gold_coins,profiles(username,avatar_url,vip_level)')
+        .order('gold_coins', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> charmRanking() async {
+    final rows = await client
+        .from('saki_account_modules')
+        .select('user_id,diamonds,profiles(username,avatar_url,vip_level)')
+        .order('diamonds', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> roomRanking() async {
+    final rows = await client
+        .from('rooms')
+        .select('id,name,room_id,image_url,room_members(count)')
+        .eq('is_active', true)
+        .limit(50);
+    final result = List<Map<String, dynamic>>.from(rows);
+    int count(Map<String, dynamic> row) {
+      final members = row['room_members'];
+      if (members is List && members.isNotEmpty && members.first is Map) {
+        return (members.first['count'] as num?)?.toInt() ?? 0;
+      }
+      return 0;
+    }
+
+    result.sort((a, b) => count(b).compareTo(count(a)));
+    return result;
+  }
+
   Future<Map<String, dynamic>?> activeAppBan() async {
     return client
         .from('app_bans')
