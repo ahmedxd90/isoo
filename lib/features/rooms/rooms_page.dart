@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../search/search_page.dart';
@@ -755,6 +756,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
   StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
   late final Stream<List<Map<String, dynamic>>> _messageStream;
+  late final RealtimeChannel _roomChatChannel;
+  DateTime? _chatClearedAt;
   bool _joined = false;
   bool _busy = false;
   bool _followed = false;
@@ -793,6 +796,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
     });
     _messageStream = _service.roomMessagesStream(_roomId);
+    _roomChatChannel = _service.client.channel('room-chat:$_roomId')
+      ..onBroadcast(
+        event: 'clear',
+        callback: (payload) {
+          if (!mounted) return;
+          final clearedAt = DateTime.tryParse(
+            payload['clearedAt']?.toString() ?? '',
+          );
+          _applyChatClear(clearedAt ?? DateTime.now().toUtc());
+        },
+      )
+      ..subscribe();
     _join();
     _loadRoomState();
     _startRoomAudio();
@@ -802,6 +817,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final compact = value.replaceAll('-', '');
     final prefix = compact.length > 8 ? compact.substring(0, 8) : compact;
     return int.parse(prefix, radix: 16) & 0x7fffffff;
+  }
+
+  void _applyChatClear(DateTime clearedAt) {
+    if (!mounted) return;
+    setState(() => _chatClearedAt = clearedAt.toUtc());
+  }
+
+  Future<void> _clearRoomChatForEveryone() async {
+    await _service.clearRoomMessages(_roomId);
+    final clearedAt = DateTime.now().toUtc();
+    _applyChatClear(clearedAt);
+    await _roomChatChannel.sendBroadcastMessage(
+      event: 'clear',
+      payload: {'roomId': _roomId, 'clearedAt': clearedAt.toIso8601String()},
+    );
   }
 
   Future<void> _startRoomAudio() async {
@@ -1703,7 +1733,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     if (yes == true) {
       try {
-        await _service.clearRoomMessages(_roomId);
+        await _clearRoomChatForEveryone();
         if (mounted) _messageSnack('تم مسح دردشة الغرفة للجميع.');
       } catch (_) {
         if (mounted) _messageSnack('لا تملك صلاحية مسح دردشة الغرفة.');
@@ -1937,6 +1967,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _message.dispose();
     _comboTimer?.cancel();
     _roomSettingsSubscription?.cancel();
+    _service.client.removeChannel(_roomChatChannel);
     if (_joined) _service.leaveRoom(_roomId);
     _engine?.leaveChannel();
     _engine?.release();
@@ -2241,6 +2272,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     stream: _messageStream,
                     builder: (_, snap) {
                       final messages = [...(snap.data ?? [])]
+                        ..removeWhere((message) {
+                          final clearedAt = _chatClearedAt;
+                          if (clearedAt == null) return false;
+                          final createdAt = DateTime.tryParse(
+                            message['created_at']?.toString() ?? '',
+                          );
+                          return createdAt != null &&
+                              !createdAt.toUtc().isAfter(clearedAt);
+                        })
                         ..sort(
                           (a, b) =>
                               (DateTime.tryParse(
