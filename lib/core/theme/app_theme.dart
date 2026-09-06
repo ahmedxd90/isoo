@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class SakiColors {
-  static const royalPurple = Color(0xFF7C3AED);
-  static const darkPurple = Color(0xFF4C1D95);
-  static const cyan = Color(0xFF22D3EE);
-  static const navy = Color(0xFF0F172A);
+  static const royalPurple = Color(0xFF656BF9);
+  static const darkPurple = Color(0xFF4F55C9);
+  static const cyan = Color(0xFF8E91FF);
+  static const navy = Color(0xFF1B1B23);
   static const dark = Color(0xFF09090B);
   static const card = Color(0xFF18181B);
   static const muted = Color(0xFFA1A1AA);
   static const gold = Color(0xFFF59E0B);
-  static const light = Color(0xFFF8FAFC);
+  static const light = Color(0xFFF7F7F7);
 }
 
 class SakiTheme {
