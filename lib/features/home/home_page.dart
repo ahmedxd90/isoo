@@ -207,8 +207,8 @@ class SakiHtmlBottomNav extends StatelessWidget {
     return Container(
       height: 78,
       decoration: const BoxDecoration(
-        color: Color(0xF20B0F14),
-        border: Border(top: BorderSide(color: Color(0xFF27303A))),
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
         boxShadow: [
           BoxShadow(
             color: Color(0x55000000),
@@ -228,7 +228,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
             return Expanded(
               child: InkWell(
                 onTap: () => onSelected(index),
-                splashColor: _navTeal.withValues(alpha: .12),
+                splashColor: const Color(0xFF656BF9).withValues(alpha: .12),
                 highlightColor: Colors.transparent,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -242,7 +242,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
                         height: active && index == 0 ? 34 : 30,
                         decoration: BoxDecoration(
                           color: active && index == 0
-                              ? _navTeal.withValues(alpha: .20)
+                              ? const Color(0xFF656BF9).withValues(alpha: .14)
                               : Colors.transparent,
                           shape: BoxShape.circle,
                         ),
@@ -253,7 +253,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
                             height: active ? 25 : 22,
                             errorBuilder: (_, __, ___) => FaIcon(
                               FontAwesomeIcons.circle,
-                              color: active ? _navTeal : const Color(0xFF9CA3AF),
+                              color: active ? const Color(0xFF656BF9) : const Color(0xFF9CA3AF),
                               size: active ? 19 : 18,
                             ),
                           ),
@@ -261,9 +261,9 @@ class SakiHtmlBottomNav extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        item.$2,
+                        item.$3,
                         style: TextStyle(
-                          color: active ? _navTeal : const Color(0xFF9CA3AF),
+                          color: active ? const Color(0xFF656BF9) : const Color(0xFF9CA3AF),
                           fontSize: 10,
                           fontWeight: active
                               ? FontWeight.w900
