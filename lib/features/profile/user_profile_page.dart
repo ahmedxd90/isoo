@@ -10,6 +10,10 @@ const _profileYellow = Color(0xFFFFC107);
 const _profileBg = Color(0xFFF3F4F6);
 const _profileInk = Color(0xFF111827);
 const _profileMuted = Color(0xFF9CA3AF);
+const _traceLiveBackground = 'assets/trace_profile/images/live_bg.png';
+const _traceFansBadge = 'assets/trace_profile/images/ic_fans_badge.png';
+const _traceSortPriority = 'assets/trace_profile/images/ic_sort_priority.png';
+const _traceExclusiveGift = 'assets/trace_profile/images/ic_exclusive_gift.png';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key, required this.userId});
@@ -269,12 +273,16 @@ class _ProfileHero extends StatelessWidget {
               ),
             )
           else
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF334155), Color(0xFF111827)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+            Image.asset(
+              _traceLiveBackground,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF334155), Color(0xFF111827)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
                 ),
               ),
             ),
@@ -640,6 +648,8 @@ class _ProfileTabContent extends StatelessWidget {
                 height: 1.7,
               ),
             ),
+            const SizedBox(height: 20),
+            _TraceProfileBenefits(vipLevel: profile['vip_level'] as int? ?? 0),
             const SizedBox(height: 24),
             const Text(
               'علامة التعريف',
@@ -727,6 +737,75 @@ class _ProfileTabContent extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _TraceProfileBenefits extends StatelessWidget {
+  const _TraceProfileBenefits({required this.vipLevel});
+  final int vipLevel;
+
+  @override
+  Widget build(BuildContext context) {
+    final benefits = [
+      (_traceFansBadge, 'شارة المعجبين'),
+      (_traceSortPriority, 'أولوية الترتيب'),
+      (_traceExclusiveGift, 'الهدايا الحصرية'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFFBEB), Color(0xFFFFF7ED)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const FaIcon(
+                FontAwesomeIcons.crown,
+                color: _profileYellow,
+                size: 15,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                vipLevel > 0 ? 'VIP المستوى $vipLevel' : 'مزايا الملف الشخصي',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: _profileInk,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              for (final benefit in benefits)
+                Expanded(
+                  child: Column(
+                    children: [
+                      Image.asset(benefit.$1, width: 34, height: 34),
+                      const SizedBox(height: 5),
+                      Text(
+                        benefit.$2,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: _profileMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
