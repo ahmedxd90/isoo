@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -412,12 +413,17 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
   );
 
   Future<PlatformFile?> _pickFile(List<String> extensions) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: extensions,
-      withData: false,
-    );
-    return result.isEmpty ? null : result.single;
+    await [Permission.photos, Permission.videos, Permission.storage].request();
+    // FileType.custom can hide unknown MIME types such as SVGA on Android.
+    // Open the native all-files picker and validate the extension ourselves.
+    final file = await FilePicker.pickFile(type: FileType.any);
+    if (file == null) return null;
+    final extension = file.extension?.toLowerCase();
+    if (extension == null || !extensions.contains(extension)) {
+      _snack('نوع الملف غير مدعوم. المسموح: ${extensions.join('، ')}');
+      return null;
+    }
+    return file;
   }
 
   Future<void> _add() async {

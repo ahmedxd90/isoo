@@ -69,3 +69,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,628,160 bytes
 - SHA-256: 24a171203fe202908e2ce192df8922ac02388e2a0afa498071371e7098fbefd5
+
+SVGA file picker and Android media permissions — 2026-09-06
+
+The gift uploader now uses FilePicker.pickFile with FileType.any instead of MIME filtering. This makes unknown Android extensions such as .svga selectable; the app validates the selected extension after picking and shows an Arabic error for unsupported types. It requests photos, videos, and storage permissions before opening the picker. Android now declares READ_MEDIA_IMAGES, READ_MEDIA_VIDEO, READ_MEDIA_VISUAL_USER_SELECTED, and READ_EXTERNAL_STORAGE up to API 32. The selected SVGA path is uploaded through the existing Supabase storage flow.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,562,768 bytes
+- SHA-256: cc24cbab1caa43fc04cdd8361523ffcab078de940739bbc20fa1e9d7bd93d8a1
