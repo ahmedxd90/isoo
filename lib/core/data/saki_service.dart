@@ -684,6 +684,9 @@ class SakiService {
         });
   }
 
+  Stream<List<Map<String, dynamic>>> roomSettingsStream(String roomId) =>
+      client.from('rooms').stream(primaryKey: ['id']).eq('id', roomId).limit(1);
+
   Future<void> sendRoomMessage(
     String roomId,
     String body, {

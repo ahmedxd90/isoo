@@ -830,6 +830,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final _message = TextEditingController();
   late final String _roomId = widget.room['id'] as String;
   late final Stream<List<Map<String, dynamic>>> _seatStream;
+  late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
+  StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
   late final Stream<List<Map<String, dynamic>>> _messageStream;
   bool _joined = false;
   bool _busy = false;
@@ -845,11 +847,25 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _lastGiftRecipient;
   Map<String, dynamic>? _lastGift;
   final Set<int> _remoteUsers = <int>{};
+  late int _liveSeatCount;
+  String? _liveBackgroundUrl;
 
   @override
   void initState() {
     super.initState();
     _seatStream = _service.roomSeatsStream(_roomId);
+    _roomSettingsStream = _service.roomSettingsStream(_roomId);
+    _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
+    _liveBackgroundUrl = widget.room['background_url'] as String?;
+    _roomSettingsSubscription = _roomSettingsStream.listen((rows) {
+      if (!mounted || rows.isEmpty) return;
+      final updated = rows.first;
+      setState(() {
+        _liveSeatCount =
+            (updated['seat_count'] as num?)?.toInt() ?? _liveSeatCount;
+        _liveBackgroundUrl = updated['background_url'] as String?;
+      });
+    });
     _messageStream = _service.roomMessagesStream(_roomId);
     _join();
     _loadRoomState();
@@ -1824,6 +1840,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   void dispose() {
     _message.dispose();
     _comboTimer?.cancel();
+    _roomSettingsSubscription?.cancel();
     if (_joined) _service.leaveRoom(_roomId);
     _engine?.leaveChannel();
     _engine?.release();
@@ -1835,7 +1852,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final image = widget.room['image_url'] as String?;
     final title = widget.room['name'] as String? ?? 'غرفة SAKI';
     final roomNumber = widget.room['room_id'] as String? ?? '';
-    final backgroundUrl = widget.room['background_url'] as String?;
+    final backgroundUrl = _liveBackgroundUrl;
     final backgroundColors = backgroundUrl == 'free://ocean'
         ? const [Color(0xFF0891B2), Color(0xFF1D4ED8), Color(0xFF172554)]
         : backgroundUrl == 'free://aurora'
@@ -2006,7 +2023,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       ),
                       child: GridView.builder(
                         shrinkWrap: true,
-                        itemCount: (widget.room['seat_count'] as int?) ?? 10,
+                        itemCount: _liveSeatCount,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
