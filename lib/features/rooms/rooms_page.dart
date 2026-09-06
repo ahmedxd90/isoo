@@ -1656,6 +1656,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _showRoomTools() async {
     final owner = widget.room['owner_id'] == _service.uid;
+    final moderator = owner || await _service.isRoomModerator(_roomId);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF3D0B12),
@@ -1670,7 +1671,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 'موسيقى',
                 () => Navigator.pop(context),
               ),
-              if (owner)
+              if (moderator)
                 _toolButton(Icons.delete_sweep, 'مسح الدردشة', () {
                   Navigator.pop(context);
                   _confirmClearChat();
@@ -1734,7 +1735,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         ],
       ),
     );
-    if (yes == true) await _service.clearRoomMessages(_roomId);
+    if (yes == true) {
+      try {
+        await _service.clearRoomMessages(_roomId);
+        if (mounted) _messageSnack('تم مسح دردشة الغرفة للجميع.');
+      } catch (_) {
+        if (mounted) _messageSnack('لا تملك صلاحية مسح دردشة الغرفة.');
+      }
+    }
   }
 
   Future<void> _seatAction(int seatNo, Map<String, dynamic>? occupied) async {
@@ -1780,6 +1788,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await _setSeatAudio(true);
         await _service.sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat');
       }
+    } catch (error) {
+      if (mounted) _messageSnack('تعذر استخدام المقعد: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

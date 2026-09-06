@@ -716,7 +716,17 @@ class SakiService {
   }
 
   Future<void> clearRoomMessages(String roomId) async {
-    await client.from('room_messages').delete().eq('room_id', roomId);
+    await client.rpc('clear_room_messages', params: {'p_room_id': roomId});
+  }
+
+  Future<bool> isRoomModerator(String roomId) async {
+    final row = await client
+        .from('room_moderators')
+        .select('user_id')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    return row != null;
   }
 
   Future<bool> isFollowingRoom(String roomId) async {
