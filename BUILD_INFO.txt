@@ -87,3 +87,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,563,128 bytes
 - SHA-256: 5116085ee6ee7d076287a4ad69b0e7f640aeb630201b4d36d674fcfe2f91397e
+
+Transparent immersive gifts and real thumbnail propagation — 2026-09-06
+
+Removed the black background and close button from immersive MP4/SVGA gift playback. The media is now rendered directly over the room so transparent SVGA and alpha-capable MP4 content can show naturally; the static-media card remains only for non-immersive media. Gift events now propagate thumbnail_url. The room flying banner shows the real sender avatar and gift thumbnail, while gift chat messages and the gift picker use the thumbnail URL instead of displaying a media-file URL. The gift picker background was updated toward the supplied dark glass HTML design.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,563,128 bytes
+- SHA-256: ef0f5a2746eac0f32c828f84339135aaec59a8a593fb2bcbaddfbff06ee7b66b

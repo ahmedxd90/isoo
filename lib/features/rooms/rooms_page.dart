@@ -2423,6 +2423,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       final payload = Map<String, dynamic>.from(
                                         msg['payload'] ?? const {},
                                       );
+                                      final giftThumbnail =
+                                          payload['thumbnail_url'] as String? ??
+                                          (payload['icon'] as String?);
                                       final isSpecial =
                                           messageType == 'join' ||
                                           messageType == 'seat';
@@ -2475,6 +2478,29 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     ),
                                                   ),
                                                   const SizedBox(height: 3),
+                                                  if (messageType == 'gift' &&
+                                                      giftThumbnail != null &&
+                                                      giftThumbnail.startsWith(
+                                                        'http',
+                                                      ))
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 5,
+                                                          ),
+                                                      child: ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                        child: Image.network(
+                                                          giftThumbnail,
+                                                          width: 58,
+                                                          height: 58,
+                                                          fit: BoxFit.contain,
+                                                        ),
+                                                      ),
+                                                    ),
                                                   messageType == 'dice'
                                                       ? _DiceFace(
                                                           value:
@@ -2712,7 +2738,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     final senderId = widget.message['sender_id'] as String?;
     final recipientId = _payload['recipient_id'] as String?;
     return Material(
-      color: Colors.black.withValues(alpha: .78),
+      color: Colors.transparent,
       child: FutureBuilder<List<Map<String, dynamic>?>>(
         future: Future.wait([
           if (senderId != null) SakiService.instance.userProfile(senderId),
@@ -2747,17 +2773,12 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                   ),
                 );
           final thumbnail = _payload['thumbnail_url'] as String?;
+          final senderAvatar = sender?['avatar_url'] as String?;
           return Stack(
             fit: StackFit.expand,
             alignment: Alignment.center,
             children: [
-              if (immersive)
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: Colors.black,
-                    child: Center(child: mediaView),
-                  ),
-                ),
+              if (immersive) Positioned.fill(child: Center(child: mediaView)),
               if (_payload['flying_banner'] != false)
                 Positioned(
                   top: 34,
@@ -2792,6 +2813,21 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            senderAvatar != null &&
+                                    senderAvatar.startsWith('http')
+                                ? ClipOval(
+                                    child: Image.network(
+                                      senderAvatar,
+                                      width: 32,
+                                      height: 32,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.person,
+                                    color: Colors.amberAccent,
+                                  ),
+                            const SizedBox(width: 5),
                             thumbnail != null && thumbnail.startsWith('http')
                                 ? ClipOval(
                                     child: Image.network(
@@ -2861,14 +2897,6 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                     ),
                   ),
                 ),
-              Positioned(
-                top: 8,
-                right: 24,
-                child: IconButton(
-                  onPressed: () => setState(() => _visible = false),
-                  icon: const Icon(Icons.close, color: Colors.white),
-                ),
-              ),
             ],
           );
         },

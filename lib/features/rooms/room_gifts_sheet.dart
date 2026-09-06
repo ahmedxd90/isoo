@@ -123,11 +123,12 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   Widget _giftVisual(Map<String, dynamic> gift, {double size = 30}) {
     final media = gift['media_url'] as String?;
     final icon = gift['icon'] as String? ?? '🎁';
-    if (media != null &&
-        media.isNotEmpty &&
-        !media.toLowerCase().endsWith('.mp4')) {
+    final thumbnail = icon.startsWith('http')
+        ? icon
+        : (gift['thumbnail_url'] as String?);
+    if (thumbnail != null && thumbnail.isNotEmpty) {
       return Image.network(
-        media,
+        thumbnail,
         width: size + 18,
         height: size + 18,
         fit: BoxFit.contain,
@@ -145,7 +146,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   Widget build(BuildContext context) => SafeArea(
     child: Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFF0D091A),
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
@@ -269,7 +270,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: const Color(0xFF1E1432),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: identical(gift, _selectedGift)
