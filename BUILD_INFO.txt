@@ -1,26 +1,30 @@
-SAKI reels HTML match and unified navigation — final verification — 2026-09-04
+SAKI seat leave release — v1.3.2+15 — 2026-09-06
 
 Flutter: 3.47.2
 Dart: 3.13.2
 Android package: com.saki.saki
+versionName: 1.3.2 | versionCode: 15
 compileSdk: 36 | targetSdk: 36 | minSdk: 24
 Supabase project ref: vzooppdaqayerpmvdotl
+Source commit: 7baa0449dfae313831508f8b74ecf2ddc465a668
 
-Reels page:
-The Flutter reels page now matches the attached HTML reference with a dark #0D1117/black full-screen vertical feed, autoplay for the active PageView item, pause for inactive items, tap-to-play/pause with a central play overlay, transparent Saki header with red pulse dot, Following/All tabs, teal upload button, Font Awesome reel actions, orange fire-like active state, comments, shares, rotating audio disc, description, followed badge, and source-audio line. Existing real Supabase likes, comments, shares, Following/All filtering, video upload, privacy, and video playback are preserved.
+Included update set:
+- Trace-style home, rooms, messaging, profile, VIP, and navigation updates.
+- Real room settings, moderation, extended seats, and allowing users to leave their own seat.
+- Agora live/audio room integration and room voice controls.
+- PK battles, rankings, live broadcast setup, and related Supabase modules.
+- Super Admin content/panel modules and trace profile features.
+- Supabase migrations from the trace release are present in supabase/migrations/.
 
-Bottom navigation:
-Replaced the Material NavigationBar with a custom HTML-matched black translucent five-item bar: الرئيسية, الريلز, الغرف, الرسائل, وأنا. It uses Font Awesome house, clapperboard, microphone, comments, and circle-user icons. Active states use #2DD4BF and the reel item receives the HTML-style circular teal background.
-
-Final APK outputs:
-- build/app/outputs/flutter-apk/app-release.apk — 58.6MB
-- build/app/outputs/flutter-apk/app-debug.apk — 205MB
-
-SHA-256:
-- debug: 2535405a1fc4bd1b4a99b1d7ab8f3ddf72a910a85e9cbbb501d0f09edca6041e
-- release: 3e36e7eb242bcbaf92350ab2654334031d5b209fd01afa8fa7a96e8755b6811a
+Final APK output:
+- build/app/outputs/flutter-apk/app-release.apk
+- Published delivery name: saki-seat-leave-v1.3.2+15.apk
+- Size: 268,513,644 bytes (268.5 MB)
+- SHA-256: dbc0a46463aa2bd92227adde3ed87c0d6114cb3404751d81a8bfd8f3a40b7237
 
 Validation:
 - Release APK build passed.
-- Debug APK build passed.
-- aapt confirmed com.saki.saki, target SDK 36, min SDK 24, INTERNET permission.
+- aapt confirmed package com.saki.saki, versionName 1.3.2, versionCode 15, compile/target SDK 36.
+- APK signature verification passed with APK Signature Scheme v2.
+- Supabase database already contains the trace feature migrations under applied migration records.
+- The previous main state is preserved on backup-main-before-trace-1.3.2-20260906131313.
