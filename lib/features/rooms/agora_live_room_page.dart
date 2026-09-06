@@ -8,6 +8,7 @@ import '../../core/data/saki_service.dart';
 import 'pk_battle_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
+import 'saki_wheel_game_sheet.dart';
 
 class AgoraLiveRoomPage extends StatefulWidget {
   const AgoraLiveRoomPage({
@@ -300,6 +301,17 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                   icon: const Icon(
                     Icons.card_giftcard_rounded,
                     color: Colors.pinkAccent,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => showSakiGames(
+                    context,
+                    SakiService.instance,
+                    widget.roomId,
+                  ),
+                  icon: const Icon(
+                    Icons.grid_view_rounded,
+                    color: Colors.white,
                   ),
                 ),
                 const Chip(

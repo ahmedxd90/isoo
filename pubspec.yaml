@@ -71,6 +71,8 @@ flutter:
   assets:
     - assets/saki_login_background.jpg
     - assets/saki_super_admin_badge.png
+    - assets/saki_wheel/game_card.png
+    - assets/saki_wheel/background.png
     - assets/trace_profile/images/
     - assets/trace_profile/features/
     - assets/trace_profile/svg/

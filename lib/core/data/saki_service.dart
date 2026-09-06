@@ -851,6 +851,46 @@ class SakiService {
     );
   }
 
+  Future<Map<String, dynamic>> sakiWheelCurrentRound(String roomId) async {
+    final row = await client.rpc(
+      'saki_wheel_current_round',
+      params: {'p_room_id': roomId},
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<Map<String, dynamic>> sakiWheelPlaceBet({
+    required String roomId,
+    required String foodKey,
+    required int amount,
+  }) async {
+    final row = await client.rpc(
+      'saki_wheel_place_bet',
+      params: {'p_room_id': roomId, 'p_food_key': foodKey, 'p_amount': amount},
+    );
+    if (row is List && row.isNotEmpty)
+      return Map<String, dynamic>.from(row.first);
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<Map<String, dynamic>> sakiWheelResolve(int roundId) async {
+    final row = await client.rpc(
+      'saki_wheel_resolve',
+      params: {'p_round_id': roundId},
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> sakiWheelMyBets(int roundId) async {
+    final rows = await client
+        .from('saki_wheel_bets')
+        .select('food_key,amount')
+        .eq('round_id', roundId)
+        .eq('user_id', uid)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Stream<List<Map<String, dynamic>>> roomMembersStream(String roomId) {
     return client
         .from('room_members')
