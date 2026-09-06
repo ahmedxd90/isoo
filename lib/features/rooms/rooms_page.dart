@@ -17,6 +17,8 @@ import '../search/search_page.dart';
 import 'ranking_page.dart';
 import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
+import 'room_gift_ranking_sheet.dart';
+import 'saki_wheel_game_sheet.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _roomPrimary = Color(0xFF656BF9);
@@ -791,6 +793,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _minimized = false;
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
+  List<Map<String, dynamic>> _roomMembers = [];
+  StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
+  int _roomGoldTotal = 0;
+  Map<String, dynamic>? _entranceProfile;
+  Timer? _entranceTimer;
 
   @override
   void initState() {
@@ -833,6 +840,28 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _join();
     _loadRoomState();
+    _roomMembersSubscription = _service.roomMembersStream(_roomId).listen((
+      members,
+    ) {
+      if (!mounted) return;
+      final previousIds = _roomMembers.map((m) => m['id']).toSet();
+      final entrant = members
+          .where((m) => !previousIds.contains(m['id']))
+          .firstOrNull;
+      setState(() {
+        _roomMembers = members;
+        if (entrant != null) _entranceProfile = entrant;
+      });
+      if (entrant != null) {
+        _entranceTimer?.cancel();
+        _entranceTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) setState(() => _entranceProfile = null);
+        });
+      }
+    });
+    _service.roomMembers(_roomId).then((members) {
+      if (mounted) setState(() => _roomMembers = members);
+    });
     if (existingEngine == null) _startRoomAudio();
   }
 
@@ -1090,6 +1119,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _isModerator = results[1] as bool;
         });
       }
+      final ranking = await _service.roomGiftRanking(_roomId, 'يومي');
+      if (mounted) setState(() => _roomGoldTotal = ranking.total);
     } catch (_) {}
   }
 
@@ -1749,6 +1780,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 'هدايا',
                 () => Navigator.pop(context),
               ),
+              _toolButton(Icons.casino_outlined, 'عجلة ساكي', () {
+                Navigator.pop(context);
+                showSakiWheel(context, _service, _roomId);
+              }),
             ],
           ),
         ),
@@ -2034,6 +2069,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   void dispose() {
     _message.dispose();
     _comboTimer?.cancel();
+    _entranceTimer?.cancel();
+    _roomMembersSubscription?.cancel();
     _roomSettingsSubscription?.cancel();
     _service.client.removeChannel(_roomChatChannel);
     if (_joined) _service.leaveRoom(_roomId);
@@ -2556,6 +2593,24 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       ),
                     ),
                     Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                      child: Row(
+                        children: [
+                          RoomConnectedStrip(
+                            members: _roomMembers,
+                            total: _roomMembers.length,
+                            onTap: _showOnline,
+                          ),
+                          const Spacer(),
+                          GiftGoldBadge(
+                            total: _roomGoldTotal,
+                            onTap: () =>
+                                showRoomGiftRanking(context, _service, _roomId),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                       child: Row(
                         children: [
@@ -2661,6 +2716,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 ),
               ),
             ),
+            if (_entranceProfile != null)
+              Positioned(
+                top: 108,
+                left: 18,
+                right: 18,
+                child: RoomEntranceBanner(profile: _entranceProfile!),
+              ),
             if (_activeGiftMessage != null)
               Positioned.fill(
                 child: GiftFullScreenOverlay(
