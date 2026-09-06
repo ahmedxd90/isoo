@@ -123,3 +123,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,497,180 bytes
 - SHA-256: fe2df4a9dd8dd39083af1a5c202e43e37656f0813708df001ea53f5131981941
+
+Wealth and charm levels through LV500 — 2026-09-06
+
+The profile Level page now follows the supplied HTML style with Wealth and Charm tabs, gradient hero cards, ribbon LV badges, progress bars, ornamental section titles, current-title cards, and rules. Wealth XP is earned by sending room gifts with gold; Charm XP is earned by receiving room gifts. One gold equals one XP for both. Wealth thresholds start at 5,000 for LV1 and 15,000 for LV2, then double; Charm starts at 20,000 for LV1 and 40,000 for LV2, then doubles, through LV500. Supabase transaction functions update XP and levels atomically and historical room gifts were backfilled. Levels appear on the Me page, user profiles, room chat below usernames, and the online list.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,645,340 bytes
+- SHA-256: fcf5ed109a93c216fa3ccbf4a774530300ac731018f72ee25705e54dd186e795

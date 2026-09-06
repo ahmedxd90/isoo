@@ -532,7 +532,7 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> reels({bool followingOnly = false}) async {
     final selection =
-        'id,author_id,video_url,description,visibility,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at),reel_likes(user_id),reel_comments(id)';
+        'id,author_id,video_url,description,visibility,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at,wealth_level,charm_level),reel_likes(user_id),reel_comments(id)';
     final data = followingOnly
         ? await _followingReels(selection)
         : await client
@@ -639,7 +639,7 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at,is_super_admin',
+          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
         )
         .eq('id', userId)
         .maybeSingle();
@@ -1263,7 +1263,7 @@ class SakiService {
     final posts = await client
         .from('posts')
         .select(
-          'id,content,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at)',
+          'id,content,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at,wealth_level,charm_level)',
         )
         .ilike('content', '%$term%')
         .eq('visibility', 'public')
@@ -1304,7 +1304,7 @@ class SakiService {
     final data = await client
         .from('reel_comments')
         .select(
-          'id,content,created_at,user_id,profiles:user_id(username,avatar_url,vip_level,vip_expires_at)',
+          'id,content,created_at,user_id,profiles:user_id(username,avatar_url,vip_level,vip_expires_at,wealth_level,charm_level)',
         )
         .eq('reel_id', reelId)
         .order('created_at');

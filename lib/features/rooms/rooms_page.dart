@@ -1976,7 +1976,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   void _showOnline() async {
     final rows = await _service.client
         .from('room_members')
-        .select('user_id,joined_at,profiles:user_id(username,avatar_url)')
+        .select(
+          'user_id,joined_at,profiles:user_id(username,avatar_url,wealth_level,charm_level)',
+        )
         .eq('room_id', _roomId);
     if (!mounted) return;
     showModalBottomSheet(
@@ -2009,6 +2011,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 title: Text(
                   profile['username'] as String? ?? 'عضو',
                   style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  'ثروة LV${profile['wealth_level'] ?? 0}  •  سحر LV${profile['charm_level'] ?? 0}',
+                  style: const TextStyle(color: Colors.white54, fontSize: 10),
                 ),
                 trailing: const Icon(
                   Icons.circle,
@@ -2481,6 +2487,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                       fontSize: 11,
                                                       fontWeight:
                                                           FontWeight.w900,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    'ثروة LV${profile['wealth_level'] ?? 0}  •  سحر LV${profile['charm_level'] ?? 0}',
+                                                    style: const TextStyle(
+                                                      color: Colors.white54,
+                                                      fontSize: 9,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 3),

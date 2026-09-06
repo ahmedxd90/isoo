@@ -433,7 +433,26 @@ class _ProfileHero extends StatelessWidget {
                         borderRadius: BorderRadius.all(Radius.circular(3)),
                       ),
                       child: Text(
-                        'LV$level',
+                        'ثروة LV${profile['wealth_level'] ?? 0}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFA855F7),
+                        borderRadius: BorderRadius.all(Radius.circular(3)),
+                      ),
+                      child: Text(
+                        'سحر LV${profile['charm_level'] ?? 0}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,

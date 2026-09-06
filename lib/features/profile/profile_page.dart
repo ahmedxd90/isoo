@@ -172,6 +172,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final profile = _profile ?? {};
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
     final vipLevel = (_modules['vip_level'] as num? ?? 0).toInt();
+    final wealthLevel = (_modules['wealth_level'] as num? ?? 0).toInt();
+    final charmLevel = (_modules['charm_level'] as num? ?? 0).toInt();
     final followers = _stats['followers'] ?? 0;
 
     return Scaffold(
@@ -234,6 +236,8 @@ class _ProfilePageState extends State<ProfilePage> {
               profile: profile,
               username: username,
               vipLevel: vipLevel,
+              wealthLevel: wealthLevel,
+              charmLevel: charmLevel,
               followers: followers,
             ),
             const SizedBox(height: 14),
@@ -297,11 +301,15 @@ class _ProfileCard extends StatelessWidget {
     required this.profile,
     required this.username,
     required this.vipLevel,
+    required this.wealthLevel,
+    required this.charmLevel,
     required this.followers,
   });
   final Map<String, dynamic> profile;
   final String username;
   final int vipLevel;
+  final int wealthLevel;
+  final int charmLevel;
   final int followers;
 
   @override
@@ -404,6 +412,14 @@ class _ProfileCard extends StatelessWidget {
                           fit: BoxFit.contain,
                         ),
                       ),
+                    _LevelChip(
+                      label: 'ثروة LV $wealthLevel',
+                      color: const Color(0xFF22C55E),
+                    ),
+                    _LevelChip(
+                      label: 'سحر LV $charmLevel',
+                      color: const Color(0xFFA855F7),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -422,6 +438,25 @@ class _ProfileCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LevelChip extends StatelessWidget {
+  const _LevelChip({required this.label, required this.color});
+  final String label;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .10),
+      borderRadius: BorderRadius.circular(9),
+      border: Border.all(color: color.withValues(alpha: .35)),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900),
+    ),
+  );
 }
 
 class _AvatarImage extends StatelessWidget {

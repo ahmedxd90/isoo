@@ -86,7 +86,7 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
               AgencyFeature(settings: settings, onSave: save),
             if (widget.feature == 'family')
               FamilyFeature(settings: settings, onSave: save),
-            if (widget.feature == 'level') LevelFeature(settings: settings),
+            if (widget.feature == 'level') LevelFeature(settings: modules),
           ],
         ),
       ),
@@ -391,56 +391,329 @@ class _FamilyFeatureState extends State<FamilyFeature> {
   }
 }
 
-class LevelFeature extends StatelessWidget {
+class LevelFeature extends StatefulWidget {
   const LevelFeature({super.key, required this.settings});
   final Map<String, dynamic> settings;
   @override
+  State<LevelFeature> createState() => _LevelFeatureState();
+}
+
+class _LevelFeatureState extends State<LevelFeature> {
+  int tab = 0;
+
+  int _levelFor(int xp, bool wealth) {
+    var level = 0;
+    for (var i = 1; i <= 500; i++) {
+      final required = wealth
+          ? (i == 1
+                ? 5000
+                : i == 2
+                ? 15000
+                : 15000 * (1 << (i - 2)))
+          : 20000 * (1 << (i - 1));
+      if (xp < required) break;
+      level = i;
+    }
+    return level;
+  }
+
+  int _required(int level, bool wealth) {
+    if (level <= 0) return 0;
+    if (wealth && level == 1) return 5000;
+    if (wealth && level == 2) return 15000;
+    return wealth ? 15000 * (1 << (level - 2)) : 20000 * (1 << (level - 1));
+  }
+
+  String _compact(int value) {
+    if (value >= 1000000000)
+      return '${(value / 1000000000).toStringAsFixed(1)}B';
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
+    return '$value';
+  }
+
+  Color _bandColor(int level, bool wealth) {
+    if (level < 10)
+      return wealth ? const Color(0xFFFF2E74) : const Color(0xFF9B30FF);
+    const colors = [
+      Color(0xFF22C55E),
+      Color(0xFF3B82F6),
+      Color(0xFFA855F7),
+      Color(0xFFF59E0B),
+      Color(0xFFEF4444),
+      Color(0xFF14B8A6),
+    ];
+    return colors[((level ~/ 10) - 1) % colors.length];
+  }
+
+  IconData _bandIcon(int level) {
+    if (level < 10) return Icons.star_outline_rounded;
+    const icons = [
+      Icons.emoji_events_rounded,
+      Icons.diamond_rounded,
+      Icons.auto_awesome_rounded,
+      Icons.local_fire_department_rounded,
+      Icons.workspace_premium_rounded,
+      Icons.bolt_rounded,
+    ];
+    return icons[((level ~/ 10) - 1) % icons.length];
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final points = (settings['experience_points'] as num? ?? 0).toDouble();
-    final level = points ~/ 1000 + 1;
-    final progress = (points % 1000) / 1000;
+    final wealth = tab == 0;
+    final xp = (widget.settings[wealth ? 'wealth_xp' : 'charm_xp'] as num? ?? 0)
+        .toInt();
+    final level =
+        (widget.settings[wealth ? 'wealth_level' : 'charm_level'] as num?)
+            ?.toInt() ??
+        _levelFor(xp, wealth);
+    final currentReq = _required(level, wealth);
+    final nextReq = level >= 500 ? currentReq : _required(level + 1, wealth);
+    final progress = level >= 500
+        ? 1.0
+        : ((xp - currentReq).clamp(0, nextReq - currentReq) /
+              (nextReq - currentReq));
+    final accent = _bandColor(level, wealth);
     return Column(
       children: [
-        TraceBanner(
-          image: '${_asset}grade_bg.png',
-          title: 'المستوى $level',
-          subtitle: '${points.toInt()} نقطة خبرة',
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              colors: wealth
+                  ? const [Color(0xFFFF4580), Color(0xFFFF7B8E)]
+                  : const [Color(0xFF9B30FF), Color(0xFFD17BF8)],
+            ),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: Row(
+                  children: [
+                    Expanded(child: _tabButton('مستوى الثروة', 0)),
+                    Expanded(child: _tabButton('مستوى السحر', 1)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  CircleAvatar(
+                    radius: 45,
+                    backgroundColor: Colors.white.withValues(alpha: .25),
+                    child: Icon(
+                      wealth ? Icons.send_rounded : Icons.card_giftcard_rounded,
+                      color: Colors.white,
+                      size: 42,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'LV $level',
+                      style: TextStyle(
+                        color: accent,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'LV ${level >= 500 ? 500 : level + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'LV $level',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: progress.toDouble(),
+                        minHeight: 10,
+                        backgroundColor: Colors.white38,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      level >= 500
+                          ? 'وصلت إلى أعلى مستوى'
+                          : '${_compact(xp)} خبرة • تحتاج ${_compact((nextReq - xp).clamp(0, nextReq))} خبرة للمستوى التالي',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
+        _ornamentTitle('اللقب الحالي'),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: .3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: .12),
+                ),
+                child: Icon(_bandIcon(level), color: accent, size: 30),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LV $level',
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      level < 10 ? 'اللقب الأساسي' : 'لقب جديد كل 10 مستويات',
+                      style: const TextStyle(color: _muted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _ornamentTitle('كيفية اكتساب الخبرة'),
+        const SizedBox(height: 12),
         FeatureCard(
           icon: '${_asset}grade_up.png',
-          title: 'تقدم المستوى',
-          subtitle: 'اجمع النقاط من الغرف واللحظات والريلز',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          title: wealth ? 'إرسال الهدايا في الغرف' : 'استقبال الهدايا في الغرف',
+          subtitle: 'كل 1 عملة ذهبية = 1 خبرة',
+          child: Row(
             children: [
-              LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                borderRadius: BorderRadius.circular(8),
-                color: _blue,
-                backgroundColor: _blue.withValues(alpha: .12),
+              Icon(
+                wealth ? Icons.send_rounded : Icons.card_giftcard_rounded,
+                color: accent,
+                size: 28,
               ),
-              const SizedBox(height: 8),
-              Text(
-                '${(progress * 100).toInt()}% إلى المستوى التالي',
-                style: const TextStyle(color: _muted, fontSize: 12),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  wealth
+                      ? 'أرسل هدايا من رصيدك الذهبي لرفع مستوى الثروة.'
+                      : 'استقبل هدايا ذهبية من الغرف لرفع مستوى السحر.',
+                  style: const TextStyle(
+                    color: _muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        const InfoList(
-          title: 'امتيازات المستوى',
+        InfoList(
+          title: 'نظام المستويات',
           items: [
-            'شارات مميزة',
-            'إطارات وتأثيرات إضافية',
-            'مكافآت عند الترقية',
+            wealth
+                ? 'LV 1 يبدأ عند إرسال 5K ذهب'
+                : 'LV 1 يبدأ عند استقبال 20K ذهب',
+            wealth
+                ? 'LV 2 يبدأ عند إرسال 15K ذهب'
+                : 'LV 2 يبدأ عند استقبال 40K ذهب',
+            'يتضاعف المطلوب تدريجياً حتى LV 500',
           ],
         ),
       ],
     );
   }
+
+  Widget _tabButton(String text, int value) => GestureDetector(
+    onTap: () => setState(() => tab = value),
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: tab == value
+            ? Colors.white.withValues(alpha: .22)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: tab == value ? FontWeight.w900 : FontWeight.w600,
+        ),
+      ),
+    ),
+  );
+
+  Widget _ornamentTitle(String text) => Row(
+    children: [
+      const Expanded(child: Divider(color: Color(0xFFEAD0AC))),
+      Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8EC),
+          border: Border.all(color: const Color(0xFFF1D2A3)),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFF4A3519),
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+          ),
+        ),
+      ),
+      const Expanded(child: Divider(color: Color(0xFFEAD0AC))),
+    ],
+  );
 }
 
 class TraceBanner extends StatelessWidget {
