@@ -10,6 +10,7 @@ import '../../core/data/saki_service.dart';
 import 'wallet_page.dart';
 import 'vip_page.dart';
 import 'super_admin_page.dart';
+import 'trace_profile_features_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _orange = Color(0xFFF97316);
@@ -87,6 +88,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openModule(String type) async {
+    if (type == 'store' ||
+        type == 'agency' ||
+        type == 'family' ||
+        type == 'level') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TraceProfileFeaturesPage(feature: type),
+        ),
+      );
+      if (mounted) _load();
+      return;
+    }
     if (type == 'vip') {
       final changed = await Navigator.of(context)
           .push<bool>(MaterialPageRoute(builder: (_) => const VipPage()));
@@ -108,6 +121,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openMenu(String title) async {
+    if (title == 'المستوى') {
+      await _openModule('level');
+      return;
+    }
+    if (title == 'وكالة الشحن' || title == 'الوكالة') {
+      await _openModule('agency');
+      return;
+    }
+    if (title == 'العائلة') {
+      await _openModule('family');
+      return;
+    }
     if (title == 'لوحة تحكم سوبر أدمن') {
       try {
         if (await SakiService.instance.isSuperAdmin() && mounted) {
@@ -570,6 +595,12 @@ class _MenuCard extends StatelessWidget {
         FontAwesomeIcons.handHoldingDollar,
         Color(0xFFD97706),
         Color(0xFFFFFBEB),
+      ),
+      (
+        'العائلة',
+        FontAwesomeIcons.peopleGroup,
+        Color(0xFF7C3AED),
+        Color(0xFFF5F3FF),
       ),
       (
         'لوحة تحكم سوبر أدمن',
