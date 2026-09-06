@@ -1214,87 +1214,344 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (userId == null) return;
     final isOwner = widget.room['owner_id'] == _service.uid;
     final canModerate = isOwner && userId != _service.uid;
+    final vip = (profile['vip_level'] as num?)?.toInt() ?? 0;
+    final followers = profile['followers_count'] ?? profile['followers'] ?? 0;
+    final gender =
+        (profile['gender']?.toString().toLowerCase() == 'male' ||
+            profile['gender']?.toString() == 'ذكر')
+        ? '♂'
+        : '♀';
     await showDialog<void>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF24131A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SakiAvatar(
-              url: profile['avatar_url'] as String?,
-              label: profile['username'] as String?,
-              radius: 42,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 360),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.white, Color(0xFFFFE7A3)],
             ),
-            const SizedBox(height: 12),
-            VipUsername(
-              profile: profile,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Saki ID: ${profile['saki_id'] ?? '—'}',
-              style: const TextStyle(color: Colors.white60),
-            ),
-            Text(
-              'الدولة: ${profile['country'] ?? '—'}  •  ${profile['gender'] ?? '—'}',
-              style: const TextStyle(color: Colors.white60, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            if (canModerate) ...[
-              _userAction('تعيين مشرف الغرفة', Icons.shield_rounded, () async {
-                await _service.addRoomModerator(_roomId, userId);
-                if (mounted) {
-                  Navigator.pop(context);
-                  _messageSnack('تم تعيين المستخدم مشرفًا.');
-                }
-              }),
-              _userAction('دعوة إلى مقعد', Icons.event_seat_rounded, () async {
-                await _service.inviteToRoomSeat(_roomId, userId);
-                if (mounted) {
-                  Navigator.pop(context);
-                  _messageSnack('تم إرسال دعوة المقعد.');
-                }
-              }),
-              _userAction('كتم المايك', Icons.mic_off_rounded, () async {
-                await _service.roomMute(_roomId, userId, null);
-                if (mounted) {
-                  Navigator.pop(context);
-                  _messageSnack('تم كتم المستخدم.');
-                }
-              }),
-              _userAction('طرد من الغرفة', Icons.logout_rounded, () async {
-                await _service.roomBan(
-                  _roomId,
-                  userId,
-                  const Duration(minutes: 1),
-                );
-                if (mounted) {
-                  Navigator.pop(context);
-                  _messageSnack('تم طرد المستخدم.');
-                }
-              }),
-              _userAction('حظر المستخدم', Icons.block_rounded, () async {
-                final duration = await _banDuration();
-                if (duration != null) {
-                  await _service.roomBan(_roomId, userId, duration);
-                  if (mounted) {
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: const Color(0xFFD4AF37), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x66D4AF37),
+                blurRadius: 24,
+                spreadRadius: 3,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 10,
+                left: 10,
+                child: IconButton(
+                  onPressed: () {
                     Navigator.pop(context);
-                    _messageSnack('تم حظر المستخدم.');
-                  }
-                }
-              }),
-            ] else
-              _userAction('إبلاغ عن المستخدم', Icons.flag_outlined, () {
-                Navigator.pop(context);
-                _messageSnack('تم إرسال البلاغ للمراجعة.');
-              }),
-          ],
+                    _messageSnack('تم إرسال البلاغ للمراجعة.');
+                  },
+                  icon: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFF9A6B00),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 22, 18, 14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _profileRing(profile, const Color(0xFFD4AF37)),
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFFF4C7),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.favorite_rounded,
+                            color: Color(0xFFD4AF37),
+                            size: 17,
+                          ),
+                        ),
+                        _profileRing(
+                          profile['cp_profile'] is Map
+                              ? Map<String, dynamic>.from(profile['cp_profile'])
+                              : null,
+                          const Color(0xFFEC4899),
+                          cp: true,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            profile['username'] as String? ?? 'مستخدم',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF3F2A12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          gender,
+                          style: TextStyle(
+                            color: gender == '♂' ? Colors.blue : Colors.pink,
+                            fontSize: 21,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 5,
+                      runSpacing: 5,
+                      children: [
+                        _pill('VIP $vip', const [
+                          Color(0xFFF59E0B),
+                          Color(0xFFD4AF37),
+                        ]),
+                        _pill('اللورد', const [
+                          Color(0xFF7C3AED),
+                          Color(0xFF4C1D95),
+                        ]),
+                        _pill('★ Lv.${profile['level'] ?? 21}', const [
+                          Color(0xFF22C55E),
+                          Color(0xFF15803D),
+                        ]),
+                        _pill('🔥 ${profile['charisma'] ?? '99k'}', const [
+                          Color(0xFFF472B6),
+                          Color(0xFFDB2777),
+                        ]),
+                        Text(
+                          profile['country_flag'] as String? ??
+                              profile['country'] as String? ??
+                              '🌍',
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'ID: ${profile['saki_id'] ?? '—'}   │   المتابعون: $followers',
+                      style: const TextStyle(
+                        color: Color(0xFF8A5A00),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _roundAction(
+                          Icons.alternate_email,
+                          Colors.lightBlue,
+                          () {},
+                        ),
+                        _roundAction(
+                          Icons.chat_bubble_rounded,
+                          Colors.green,
+                          () {},
+                        ),
+                        _roundAction(
+                          Icons.person_rounded,
+                          Colors.deepPurple,
+                          () {},
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showGiftPanel();
+                            },
+                            icon: const Icon(Icons.card_giftcard),
+                            label: const Text('أرسل هدايا'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.green.shade600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _messageSnack('تم إرسال طلب المتابعة.');
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('متابعة'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.green.shade700,
+                              side: BorderSide(color: Colors.green.shade600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (canModerate) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Divider(color: Color(0x66C9A227)),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _adminIcon(Icons.shield_rounded, 'مشرف', () async {
+                            await _service.addRoomModerator(_roomId, userId);
+                            if (mounted) Navigator.pop(context);
+                          }),
+                          _adminIcon(Icons.mic_off_rounded, 'مايك', () async {
+                            await _service.roomMute(_roomId, userId, null);
+                            if (mounted) Navigator.pop(context);
+                          }),
+                          _adminIcon(
+                            Icons.comment_off_rounded,
+                            'دردشة',
+                            () async {
+                              await _service.roomMute(_roomId, userId, null);
+                              if (mounted) Navigator.pop(context);
+                            },
+                          ),
+                          _adminIcon(
+                            Icons.phone_disabled_rounded,
+                            'دعوة',
+                            () async {
+                              await _service.inviteToRoomSeat(_roomId, userId);
+                              if (mounted) Navigator.pop(context);
+                            },
+                          ),
+                          _adminIcon(Icons.logout_rounded, 'طرد', () async {
+                            await _service.roomBan(
+                              _roomId,
+                              userId,
+                              const Duration(minutes: 1),
+                            );
+                            if (mounted) Navigator.pop(context);
+                          }),
+                          _adminIcon(Icons.block_rounded, 'حظر', () async {
+                            final d = await _banDuration();
+                            if (d != null)
+                              await _service.roomBan(_roomId, userId, d);
+                            if (mounted) Navigator.pop(context);
+                          }),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _profileRing(
+    Map<String, dynamic>? p,
+    Color color, {
+    bool cp = false,
+  }) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: 3),
+        ),
+        child: SakiAvatar(
+          url: p?['avatar_url'] as String?,
+          label: p?['username'] as String?,
+          radius: 30,
+        ),
+      ),
+      if (cp)
+        Positioned(
+          right: -5,
+          bottom: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.pink,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'CP',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+  Widget _pill(String text, List<Color> colors) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: colors),
+      borderRadius: BorderRadius.circular(9),
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 10,
+        fontWeight: FontWeight.w900,
+      ),
+    ),
+  );
+  Widget _roundAction(IconData icon, Color color, VoidCallback onTap) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: InkWell(
+          onTap: onTap,
+          child: CircleAvatar(
+            radius: 19,
+            backgroundColor: Colors.white,
+            child: Icon(icon, color: color, size: 19),
+          ),
+        ),
+      );
+  Widget _adminIcon(IconData icon, String label, VoidCallback onTap) => InkWell(
+    onTap: onTap,
+    child: Column(
+      children: [
+        CircleAvatar(
+          radius: 17,
+          backgroundColor: Colors.white,
+          child: Icon(icon, size: 17, color: const Color(0xFF8A5A00)),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 8, color: Color(0xFF6B4A12)),
+        ),
+      ],
+    ),
+  );
 
   Widget _userAction(String label, IconData icon, VoidCallback action) =>
       ListTile(
