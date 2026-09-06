@@ -9,8 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
-import '../../core/theme/app_theme.dart';
-import 'agora_audio_room_page.dart';
+import 'agora_live_room_page.dart';
 import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -1881,7 +1880,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               end: Alignment.bottomRight,
               colors: backgroundColors,
             ),
-            image: backgroundUrl == null || backgroundUrl.startsWith('free://')
+            image: backgroundUrl == null
+                ? const DecorationImage(
+                    image: AssetImage(
+                      'assets/trace_home/images/audio_room_background.png',
+                    ),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black54,
+                      BlendMode.darken,
+                    ),
+                  )
+                : backgroundUrl.startsWith('free://')
                 ? null
                 : DecorationImage(
                     image: NetworkImage(backgroundUrl),
@@ -2348,6 +2358,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             color: Colors.pinkAccent,
                           ),
                         ),
+                        if (widget.room['owner_id'] == _service.uid)
+                          IconButton(
+                            tooltip: 'بدء بث مباشر',
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AgoraLiveRoomPage(
+                                  channelName: _roomId,
+                                  title: title,
+                                ),
+                              ),
+                            ),
+                            icon: const Icon(
+                              Icons.live_tv_rounded,
+                              color: Colors.redAccent,
+                            ),
+                          ),
                         IconButton(
                           onPressed: _showRoomTools,
                           icon: const Icon(
