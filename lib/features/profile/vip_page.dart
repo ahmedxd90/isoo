@@ -196,6 +196,16 @@ class _VipPageState extends State<VipPage> {
   bool _loading = true;
   bool _working = false;
 
+  int _activeVipLevel(Map<String, dynamic> profile) {
+    final level = (profile['vip_level'] as num?)?.toInt() ?? 0;
+    final expires = DateTime.tryParse(
+      profile['vip_expires_at']?.toString() ?? '',
+    );
+    return level > 0 && expires != null && expires.isAfter(DateTime.now())
+        ? level
+        : 0;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -209,7 +219,7 @@ class _VipPageState extends State<VipPage> {
         _service.accountModules(),
       ]);
       final profile = results[0] as Map<String, dynamic>? ?? {};
-      final current = (profile['vip_level'] as num?)?.toInt() ?? 0;
+      final current = _activeVipLevel(profile);
       if (!mounted) return;
       setState(() {
         _profile = profile;
@@ -232,7 +242,7 @@ class _VipPageState extends State<VipPage> {
   }
 
   Future<void> _buy() async {
-    final current = (_profile['vip_level'] as num?)?.toInt() ?? 0;
+    final current = _activeVipLevel(_profile);
     if (current > _selected) {
       _message(
         'لا يمكن شراء VIP $_selected لأن عضويتك الحالية VIP $current أعلى منه.',
@@ -305,7 +315,7 @@ class _VipPageState extends State<VipPage> {
 
   @override
   Widget build(BuildContext context) {
-    final current = (_profile['vip_level'] as num?)?.toInt() ?? 0;
+    final current = _activeVipLevel(_profile);
     final points = (_account['gold_coins'] as num?)?.toInt() ?? 0;
     return Scaffold(
       backgroundColor: _pageBg,

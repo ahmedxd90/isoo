@@ -171,7 +171,16 @@ class _ProfilePageState extends State<ProfilePage> {
       return const Center(child: CircularProgressIndicator(color: _orange));
     final profile = _profile ?? {};
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
-    final vipLevel = (_modules['vip_level'] as num? ?? 0).toInt();
+    final vipExpires = DateTime.tryParse(
+      profile['vip_expires_at']?.toString() ?? '',
+    );
+    final storedVipLevel = (profile['vip_level'] as num? ?? 0).toInt();
+    final vipLevel =
+        storedVipLevel > 0 &&
+            vipExpires != null &&
+            vipExpires.isAfter(DateTime.now())
+        ? storedVipLevel
+        : 0;
     final wealthLevel = (_modules['wealth_level'] as num? ?? 0).toInt();
     final charmLevel = (_modules['charm_level'] as num? ?? 0).toInt();
     final followers = _stats['followers'] ?? 0;

@@ -1426,10 +1426,15 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> purchaseVip(int level) async {
-    final rows = await client.rpc('purchase_vip', params: {'p_level': level});
-    final list = List<Map<String, dynamic>>.from(rows as List);
-    if (list.isEmpty) throw Exception('تعذر تفعيل VIP');
-    return list.first;
+    try {
+      final rows = await client.rpc('purchase_vip', params: {'p_level': level});
+      if (rows is Map) return Map<String, dynamic>.from(rows);
+      final list = List<Map<String, dynamic>>.from(rows as List);
+      if (list.isEmpty) throw Exception('empty_purchase_result');
+      return list.first;
+    } on PostgrestException catch (error) {
+      throw Exception('${error.code ?? 'rpc_error'}:${error.message}');
+    }
   }
 
   Future<Map<String, dynamic>> giftVip({

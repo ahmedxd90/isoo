@@ -141,3 +141,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,645,448 bytes
 - SHA-256: 22d8b16fbbe7e1e52eb72446917a68c868d926932a4268c1e68b6696994c2204
+
+VIP consistency and purchase RPC fix — 2026-09-06
+
+Active VIP is now determined only by profiles.vip_level together with a future vip_expires_at. Stale module VIP values are synchronized and cleared for users without an active membership. The purchase_vip function now treats expired/null memberships as level 0, enforces lower-level protection, updates both profile and module records, and keeps authenticated-only execution. The Flutter RPC wrapper now preserves the real PostgREST error code/message for accurate Arabic feedback.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,645,448 bytes
+- SHA-256: fd2c6c1eccd1888b74527c9ea024d79fe0968436304f0427466bd594ac6f95ca
