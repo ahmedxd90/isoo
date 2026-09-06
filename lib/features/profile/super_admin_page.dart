@@ -6,17 +6,27 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import 'admin_trace_modules_page.dart';
+import 'admin_room_emojis_page.dart';
 import 'store_pages.dart';
 
-const _blue = Color(0xFF4F46E5);
+const _blue = Color(0xFFF97316);
 const _cyan = Color(0xFF06B6D4);
+const _adminInk = Color(0xFF111827);
 
 class SuperAdminPage extends StatelessWidget {
   const SuperAdminPage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF7FAFC),
     appBar: AppBar(
-      title: const Text('لوحة تحكم سوبر أدمن'),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      elevation: 0,
+      iconTheme: const IconThemeData(color: _adminInk),
+      title: const Text(
+        'لوحة تحكم سوبر أدمن',
+        style: TextStyle(color: _adminInk, fontWeight: FontWeight.w900),
+      ),
       leading: Builder(
         builder: (context) => IconButton(
           icon: const Icon(Icons.menu_rounded),
@@ -127,6 +137,20 @@ class SuperAdminPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AdminStorePage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.gif_box_rounded),
+              title: const Text('إدارة إيموجي الغرفة'),
+              subtitle: const Text('GIF فوق مقعد المستخدم لمدة 4 ثوانٍ'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminRoomEmojisPage(),
+                  ),
                 );
               },
             ),

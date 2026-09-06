@@ -796,6 +796,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _shownGiftMessageId;
   List<Map<String, dynamic>> _roomMembers = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
+  final Map<String, Timer> _roomEmojiTimers = {};
+  final Map<String, Map<String, dynamic>> _activeSeatEmojis = {};
+  List<Map<String, dynamic>> _roomEmojis = [];
   int _roomGoldTotal = 0;
   Map<String, dynamic>? _entranceProfile;
   Map<String, dynamic>? _entranceProduct;
@@ -820,6 +824,28 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
     });
     _messageStream = _service.roomMessagesStream(_roomId);
+    _service.roomEmojis().then((items) {
+      if (mounted) setState(() => _roomEmojis = items);
+    });
+    _roomEmojiSubscription = _service.roomEmojiEventsStream(_roomId).listen((
+      events,
+    ) {
+      if (events.isEmpty) return;
+      final event = events.last;
+      final userId = event['user_id']?.toString();
+      final emojiId = event['emoji_id']?.toString();
+      if (userId == null || emojiId == null) return;
+      Map<String, dynamic>? emoji;
+      for (final item in _roomEmojis) {
+        if (item['id']?.toString() == emojiId) emoji = item;
+      }
+      if (emoji == null) return;
+      _roomEmojiTimers[userId]?.cancel();
+      if (mounted) setState(() => _activeSeatEmojis[userId] = emoji!);
+      _roomEmojiTimers[userId] = Timer(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _activeSeatEmojis.remove(userId));
+      });
+    });
     _roomChatChannel = _service.client.channel('room-chat:$_roomId')
       ..onBroadcast(
         event: 'clear',
@@ -1718,28 +1744,44 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _messageSnack('اصعد إلى مقعد لاستخدام الإيموجي.');
       return;
     }
+    if (_roomEmojis.isEmpty) {
+      _messageSnack('لا توجد إيموجيات غرفة متاحة حالياً.');
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF3D0B12),
+      backgroundColor: Colors.white,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Wrap(
             spacing: 18,
             runSpacing: 16,
-            children: ['❤️', '😂', '🔥', '👏', '😍', '🎉', '👍', '😮', '💎']
+            children: _roomEmojis
                 .map(
                   (emoji) => InkWell(
                     onTap: () {
                       Navigator.pop(context);
-                      _service.sendRoomMessage(
-                        _roomId,
-                        emoji,
-                        type: 'emoji',
-                        payload: {'emoji': emoji},
-                      );
+                      _service.sendRoomEmoji(_roomId, emoji['id'] as String);
                     },
-                    child: Text(emoji, style: const TextStyle(fontSize: 30)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.network(
+                          emoji['gif_url'] as String,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.contain,
+                        ),
+                        Text(
+                          emoji['name'] as String,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 )
                 .toList(),
@@ -2081,6 +2123,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _comboTimer?.cancel();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
+    _roomEmojiSubscription?.cancel();
+    for (final timer in _roomEmojiTimers.values) timer.cancel();
     _roomSettingsSubscription?.cancel();
     _service.client.removeChannel(_roomChatChannel);
     if (_joined) _service.leaveRoom(_roomId);
@@ -2374,6 +2418,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                         child: _VipVoiceWave(
                                                           profile: profile,
                                                         ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (_activeSeatEmojis[row['user_id']
+                                                        ?.toString()] !=
+                                                    null)
+                                                  Positioned.fill(
+                                                    child: IgnorePointer(
+                                                      child: Image.network(
+                                                        _activeSeatEmojis[row['user_id']
+                                                                ?.toString()]!['gif_url']
+                                                            as String,
+                                                        fit: BoxFit.contain,
                                                       ),
                                                     ),
                                                   ),

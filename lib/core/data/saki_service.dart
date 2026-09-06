@@ -242,6 +242,79 @@ class SakiService {
     return client.storage.from('rooms').getPublicUrl(path);
   }
 
+  Future<String> adminUploadRoomEmoji(XFile file) async {
+    final bytes = await File(file.path).readAsBytes();
+    final extension = file.path.split('.').last.toLowerCase();
+    final path =
+        '$uid/room-emoji-${DateTime.now().microsecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('rooms')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(
+            upsert: true,
+            contentType: 'image/gif',
+          ),
+        );
+    return client.storage.from('rooms').getPublicUrl(path);
+  }
+
+  Future<List<Map<String, dynamic>>> roomEmojis({bool admin = false}) async {
+    final rows = admin
+        ? await client
+              .from('room_emojis')
+              .select()
+              .order('created_at', ascending: false)
+        : await client
+              .from('room_emojis')
+              .select()
+              .eq('is_active', true)
+              .order('created_at');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> adminCreateRoomEmoji({
+    required String name,
+    required String gifUrl,
+  }) async {
+    await client.from('room_emojis').insert({
+      'name': name.trim(),
+      'gif_url': gifUrl,
+    });
+  }
+
+  Future<void> adminUpdateRoomEmoji(
+    String id, {
+    required String name,
+    String? gifUrl,
+    bool? active,
+  }) async {
+    final updates = <String, dynamic>{'name': name.trim()};
+    if (gifUrl != null) updates['gif_url'] = gifUrl;
+    if (active != null) updates['is_active'] = active;
+    await client.from('room_emojis').update(updates).eq('id', id);
+  }
+
+  Future<void> adminDeleteRoomEmoji(String id) async {
+    await client.from('room_emojis').delete().eq('id', id);
+  }
+
+  Stream<List<Map<String, dynamic>>> roomEmojiEventsStream(String roomId) =>
+      client
+          .from('room_emoji_events')
+          .stream(primaryKey: ['id'])
+          .eq('room_id', roomId)
+          .order('created_at');
+
+  Future<void> sendRoomEmoji(String roomId, String emojiId) async {
+    await client.from('room_emoji_events').insert({
+      'room_id': roomId,
+      'user_id': uid,
+      'emoji_id': emojiId,
+    });
+  }
+
   Future<String> adminUploadStoreFile(XFile file) async {
     final bytes = await File(file.path).readAsBytes();
     final extension = file.path.split('.').last.toLowerCase();
