@@ -185,22 +185,46 @@ class _VipUsernameState extends State<VipUsername>
         : const [Color(0xFFFFE082), Color(0xFFD4AF37)];
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) => ShaderMask(
-        shaderCallback: (rect) {
-          final shift = (_controller.value * 2) - 1;
-          return LinearGradient(
-            colors: colors,
-            begin: Alignment(shift, 0),
-            end: Alignment(shift + 2, 0),
-          ).createShader(rect);
-        },
-        blendMode: BlendMode.srcIn,
-        child: Text(
-          text,
-          style: base.copyWith(color: Colors.white),
-          maxLines: widget.maxLines,
-          overflow: TextOverflow.ellipsis,
-        ),
+      builder: (_, __) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: ShaderMask(
+              shaderCallback: (rect) {
+                final shift = (_controller.value * 2) - 1;
+                return LinearGradient(
+                  colors: colors,
+                  begin: Alignment(shift, 0),
+                  end: Alignment(shift + 2, 0),
+                ).createShader(rect);
+              },
+              blendMode: BlendMode.srcIn,
+              child: Text(
+                text,
+                style: base.copyWith(color: Colors.white),
+                maxLines: widget.maxLines,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: 5),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE5B93F).withValues(alpha: .22),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFFFE082), width: .7),
+            ),
+            child: Text(
+              'MVIP $level',
+              style: const TextStyle(
+                color: Color(0xFFFFE082),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

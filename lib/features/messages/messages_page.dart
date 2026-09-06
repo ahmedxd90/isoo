@@ -91,7 +91,7 @@ class _MessagesPageState extends State<MessagesPage> {
                                   url: user['avatar_url'] as String?,
                                   label: username,
                                 ),
-                                title: Text(username),
+                                title: VipUsername(profile: user),
                                 subtitle: Text(
                                   'SAKI ID ${user['saki_id'] ?? '—'}',
                                 ),
@@ -186,8 +186,8 @@ class _MessagesPageState extends State<MessagesPage> {
                             label: username,
                             radius: 26,
                           ),
-                          title: Text(
-                            username,
+                          title: VipUsername(
+                            profile: profile,
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                           subtitle: Text(
@@ -289,7 +289,10 @@ class _ChatPageState extends State<ChatPage> {
               radius: 18,
             ),
             const SizedBox(width: 10),
-            Text(username),
+            VipUsername(
+              profile: widget.participant,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           ],
         ),
       ),
