@@ -427,129 +427,10 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
   }
 
   Future<void> _add() async {
-    final name = TextEditingController(), price = TextEditingController();
-    String category = 'general';
-    PlatformFile? thumbnail;
-    PlatformFile? media;
-    String mediaType = 'PNG';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (c, set) => AlertDialog(
-          backgroundColor: const Color(0xFF130F24),
-          title: const Text(
-            'رفع هدية جديدة',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              children: [
-                TextField(
-                  controller: name,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'اسم الهدية'),
-                ),
-                TextField(
-                  controller: price,
-                  style: const TextStyle(color: Colors.white),
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'السعر بالذهب'),
-                ),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: category,
-                  dropdownColor: const Color(0xFF21163B),
-                  decoration: const InputDecoration(labelText: 'فئة الهدية'),
-                  items: _categories.entries
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e.value,
-                          child: Text(e.key),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (x) => set(() => category = x ?? category),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    thumbnail = await _pickFile(['png']);
-                    set(() {});
-                  },
-                  icon: const Icon(Icons.image_outlined),
-                  label: Text(
-                    thumbnail == null
-                        ? 'رفع الصورة المصغرة PNG'
-                        : thumbnail!.name,
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    media = await _pickFile(['png', 'mp4', 'gif', 'svga']);
-                    if (media != null) {
-                      mediaType = media!.extension?.toUpperCase() ?? 'PNG';
-                    }
-                    set(() {});
-                  },
-                  icon: const Icon(Icons.cloud_upload_outlined),
-                  label: Text(
-                    media == null
-                        ? 'رفع ملف الهدية PNG / MP4 / GIF / SVGA'
-                        : '${media!.name} • $mediaType',
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'يتم اختيار الملفات من ملفات الجهاز مباشرة، وليس من معرض الصور فقط.',
-                  style: TextStyle(color: Colors.white54, fontSize: 11),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(c, false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(c, true),
-              child: const Text('حفظ'),
-            ),
-          ],
-        ),
-      ),
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AdminGiftUploadPage()),
     );
-    if (ok != true) return;
-    try {
-      if (name.text.trim().isEmpty || int.tryParse(price.text) == null) {
-        _snack('أدخل اسم الهدية والسعر بشكل صحيح.');
-        return;
-      }
-      String? thumbnailUrl;
-      String? mediaUrl;
-      if (thumbnail?.path != null) {
-        thumbnailUrl = await SakiService.instance.adminUploadGift(
-          XFile(thumbnail!.path!),
-        );
-      }
-      if (media?.path != null) {
-        mediaUrl = await SakiService.instance.adminUploadGift(
-          XFile(media!.path!),
-        );
-      }
-      await SakiService.instance.adminCreateGift(
-        name: name.text.trim(),
-        icon: thumbnailUrl ?? '🎁',
-        category: category,
-        price: int.parse(price.text),
-        mediaUrl: mediaUrl ?? thumbnailUrl,
-        mediaType: mediaUrl == null ? 'emoji' : mediaType.toLowerCase(),
-      );
-      _snack('تم حفظ الهدية وإضافتها إلى شبكة الهدايا.');
-      await _load();
-    } catch (error) {
-      _snack(error.toString());
-    }
+    if (saved == true) await _load();
   }
 
   @override
@@ -623,6 +504,367 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
           ),
         );
       },
+    ),
+  );
+}
+
+class AdminGiftUploadPage extends StatefulWidget {
+  const AdminGiftUploadPage({super.key});
+  @override
+  State<AdminGiftUploadPage> createState() => _AdminGiftUploadPageState();
+}
+
+class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
+  static const categories = {
+    'عامة': 'general',
+    'هدايا الحظ': 'luck',
+    'المشاهير': 'famous',
+    'والدول': 'countries',
+    'CP': 'cp',
+    'VIP فقط': 'vip',
+  };
+  final name = TextEditingController();
+  final price = TextEditingController();
+  PlatformFile? thumbnail;
+  PlatformFile? media;
+  String category = 'general';
+  String mediaType = 'mp4';
+  bool saving = false;
+
+  @override
+  void dispose() {
+    name.dispose();
+    price.dispose();
+    super.dispose();
+  }
+
+  Future<PlatformFile?> _pick(List<String> allowed) async {
+    await [Permission.photos, Permission.videos, Permission.storage].request();
+    final file = await FilePicker.pickFile(type: FileType.any);
+    if (file == null) return null;
+    final ext = file.extension?.toLowerCase();
+    if (ext == null || !allowed.contains(ext)) {
+      _message('الامتداد غير مدعوم. المسموح: ${allowed.join('، ')}');
+      return null;
+    }
+    return file;
+  }
+
+  void _message(String value) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(value.replaceFirst('Exception: ', ''))),
+  );
+
+  Future<void> _save() async {
+    if (name.text.trim().isEmpty || int.tryParse(price.text) == null) {
+      _message('أدخل اسم الهدية والسعر بشكل صحيح.');
+      return;
+    }
+    if (thumbnail?.path == null || media?.path == null) {
+      _message('اختر الصورة المصغرة وملف الهدية قبل الحفظ.');
+      return;
+    }
+    setState(() => saving = true);
+    try {
+      final thumbUrl = await SakiService.instance.adminUploadGift(
+        XFile(thumbnail!.path!),
+      );
+      final mediaUrl = await SakiService.instance.adminUploadGift(
+        XFile(media!.path!),
+      );
+      await SakiService.instance.adminCreateGift(
+        name: name.text.trim(),
+        icon: thumbUrl,
+        category: category,
+        price: int.parse(price.text),
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+      );
+      if (mounted) {
+        _message('تم حفظ الهدية ونشرها في شبكة الهدايا.');
+        Navigator.pop(context, true);
+      }
+    } catch (error) {
+      if (mounted) _message(error.toString());
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  InputDecoration _decoration(String label, IconData icon) => InputDecoration(
+    labelText: label,
+    prefixIcon: Icon(icon, color: const Color(0xFFA855F7)),
+    filled: true,
+    fillColor: Colors.black.withValues(alpha: .28),
+    labelStyle: const TextStyle(color: Colors.white60),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.purple.withValues(alpha: .35)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: Colors.purple.withValues(alpha: .35)),
+    ),
+  );
+
+  Widget _fileTile({
+    required String title,
+    required String hint,
+    required PlatformFile? file,
+    required VoidCallback onTap,
+    required IconData icon,
+  }) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .045),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFA855F7).withValues(alpha: .35),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFA855F7).withValues(alpha: .15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.purpleAccent),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  file?.name ?? hint,
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.upload_file_rounded, color: Colors.amberAccent),
+        ],
+      ),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFF090713),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFF0D091A),
+      title: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'استوديو رفع الهدايا',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+          Text(
+            'تصميم ونشر هدايا البث المباشر',
+            style: TextStyle(fontSize: 11, color: Colors.white54),
+          ),
+        ],
+      ),
+      actions: [
+        Container(
+          margin: const EdgeInsetsDirectional.only(
+            end: 14,
+            top: 12,
+            bottom: 12,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: .14),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.circle, size: 8, color: Colors.greenAccent),
+              SizedBox(width: 6),
+              Text(
+                'النظام جاهز',
+                style: TextStyle(fontSize: 11, color: Colors.greenAccent),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(18),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 850),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF170F26).withValues(alpha: .86),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.purple.withValues(alpha: .28),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'بيانات الهدية الجديدة',
+                      style: TextStyle(
+                        color: Color(0xFFE9D5FF),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: name,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _decoration(
+                        'اسم الهدية',
+                        Icons.card_giftcard,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: price,
+                      style: const TextStyle(color: Colors.white),
+                      keyboardType: TextInputType.number,
+                      decoration: _decoration(
+                        'السعر بالذهب',
+                        Icons.monetization_on_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: category,
+                      dropdownColor: const Color(0xFF21163B),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _decoration(
+                        'فئة الهدية',
+                        Icons.category_outlined,
+                      ),
+                      items: categories.entries
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.value,
+                              child: Text(e.key),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => category = value ?? category),
+                    ),
+                    const SizedBox(height: 18),
+                    _fileTile(
+                      title: 'الصورة المصغرة للمتجر PNG',
+                      hint: 'اضغط لاختيار صورة PNG من ملفات جهازك',
+                      file: thumbnail,
+                      icon: Icons.image_outlined,
+                      onTap: () async {
+                        final picked = await _pick(['png']);
+                        if (mounted) setState(() => thumbnail = picked);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'ملف التأثير الحقيقي للهدية',
+                      style: TextStyle(
+                        color: Color(0xFFE9D5FF),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: ['mp4', 'svga', 'gif', 'png']
+                          .map(
+                            (type) => ChoiceChip(
+                              label: Text(type.toUpperCase()),
+                              selected: mediaType == type,
+                              onSelected: (_) =>
+                                  setState(() => mediaType = type),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 10),
+                    _fileTile(
+                      title: 'رفع ملف الهدية $mediaType',
+                      hint: 'اضغط لاختيار الملف من جهازك',
+                      file: media,
+                      icon: Icons.movie_creation_outlined,
+                      onTap: () async {
+                        final picked = await _pick([
+                          'mp4',
+                          'svga',
+                          'gif',
+                          'png',
+                        ]);
+                        if (mounted)
+                          setState(() {
+                            media = picked;
+                            if (picked?.extension != null)
+                              mediaType = picked!.extension!.toLowerCase();
+                          });
+                      },
+                    ),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      height: 52,
+                      child: FilledButton.icon(
+                        onPressed: saving ? null : _save,
+                        icon: saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.save_rounded),
+                        label: Text(
+                          saving ? 'جاري الرفع والحفظ...' : 'حفظ ونشر الهدية',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF9333EA),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'يتم رفع الملفات من مدير ملفات الجهاز مباشرة، ثم تظهر الهدية في الغرف بعد الحفظ.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
     ),
   );
 }

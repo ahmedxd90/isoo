@@ -1019,6 +1019,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             payload: {
               'gift_id': gift['id'],
               'icon': gift['icon'],
+              'thumbnail_url': gift['icon'],
               'name': gift['name'],
               'media_url': gift['media_url'],
               'media_type': gift['media_type'],
@@ -1063,6 +1064,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         payload: {
           'gift_id': gift['id'],
           'icon': gift['icon'],
+          'thumbnail_url': gift['icon'],
           'name': gift['name'],
           'media_url': gift['media_url'],
           'media_type': gift['media_type'],
@@ -2724,133 +2726,150 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
           final recipient = snapshot.data != null && snapshot.data!.length > 1
               ? snapshot.data![1]
               : null;
-          return Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (_payload['flying_banner'] != false)
-                  Positioned(
-                    top: 34,
-                    left: 0,
-                    right: 0,
-                    child: Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: TweenAnimationBuilder<Offset>(
-                        tween: Tween(
-                          begin: const Offset(1.2, 0),
-                          end: Offset.zero,
-                        ),
-                        duration: const Duration(milliseconds: 900),
-                        builder: (_, offset, child) => FractionalTranslation(
-                          translation: offset,
-                          child: child,
-                        ),
-                        child: Container(
-                          margin: const EdgeInsetsDirectional.only(
-                            start: 12,
-                            end: 12,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: .86),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: Colors.amberAccent),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.card_giftcard,
-                                color: Colors.amberAccent,
-                              ),
-                              const SizedBox(width: 7),
-                              Text(
-                                '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+          final immersive = type == 'mp4' || type == 'svga';
+          final mediaView = _svga.videoItem != null
+              ? SVGAImage(_svga, fit: BoxFit.contain)
+              : _video != null && _video!.value.isInitialized
+              ? FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: _video!.value.size.width,
+                    height: _video!.value.size.height,
+                    child: VideoPlayer(_video!),
                   ),
-                Container(
-                  margin: const EdgeInsets.all(28),
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF32105C), Color(0xFF130F24)],
-                    ),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.purpleAccent, width: 2),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.purple, blurRadius: 28),
-                    ],
+                )
+              : url != null && url.isNotEmpty
+              ? Image.network(url, fit: BoxFit.contain)
+              : Center(
+                  child: Text(
+                    _payload['icon'] as String? ?? '🎁',
+                    style: const TextStyle(fontSize: 100),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${sender?['username'] ?? 'مستخدم'} أرسل هدية إلى ${recipient?['username'] ?? 'مستخدم'}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: 230,
-                        height: 230,
-                        child: _svga.videoItem != null
-                            ? SVGAImage(_svga, fit: BoxFit.contain)
-                            : _video != null && _video!.value.isInitialized
-                            ? FittedBox(
-                                fit: BoxFit.contain,
-                                child: SizedBox(
-                                  width: _video!.value.size.width,
-                                  height: _video!.value.size.height,
-                                  child: VideoPlayer(_video!),
-                                ),
-                              )
-                            : url != null && url.isNotEmpty && type != 'svga'
-                            ? Image.network(url, fit: BoxFit.contain)
-                            : Center(
-                                child: Text(
-                                  _payload['icon'] as String? ?? '🎁',
-                                  style: const TextStyle(fontSize: 100),
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        _payload['name'] as String? ?? 'هدية',
-                        style: const TextStyle(
-                          color: Colors.amberAccent,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
+                );
+          final thumbnail = _payload['thumbnail_url'] as String?;
+          return Stack(
+            fit: StackFit.expand,
+            alignment: Alignment.center,
+            children: [
+              if (immersive)
+                Positioned.fill(
+                  child: ColoredBox(
+                    color: Colors.black,
+                    child: Center(child: mediaView),
                   ),
                 ),
+              if (_payload['flying_banner'] != false)
                 Positioned(
-                  top: 8,
-                  right: 24,
-                  child: IconButton(
-                    onPressed: () => setState(() => _visible = false),
-                    icon: const Icon(Icons.close, color: Colors.white),
+                  top: 34,
+                  left: 0,
+                  right: 0,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TweenAnimationBuilder<Offset>(
+                      tween: Tween(
+                        begin: const Offset(1.2, 0),
+                        end: Offset.zero,
+                      ),
+                      duration: const Duration(milliseconds: 900),
+                      builder: (_, offset, child) => FractionalTranslation(
+                        translation: offset,
+                        child: child,
+                      ),
+                      child: Container(
+                        margin: const EdgeInsetsDirectional.only(
+                          start: 12,
+                          end: 12,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: .86),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: Colors.amberAccent),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            thumbnail != null && thumbnail.startsWith('http')
+                                ? ClipOval(
+                                    child: Image.network(
+                                      thumbnail,
+                                      width: 32,
+                                      height: 32,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.card_giftcard,
+                                    color: Colors.amberAccent,
+                                  ),
+                            const SizedBox(width: 7),
+                            Text(
+                              '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              if (!immersive)
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.all(28),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF32105C), Color(0xFF130F24)],
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: Colors.purpleAccent, width: 2),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.purple, blurRadius: 28),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${sender?['username'] ?? 'مستخدم'} أرسل هدية إلى ${recipient?['username'] ?? 'مستخدم'}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(width: 230, height: 230, child: mediaView),
+                        const SizedBox(height: 10),
+                        Text(
+                          _payload['name'] as String? ?? 'هدية',
+                          style: const TextStyle(
+                            color: Colors.amberAccent,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              Positioned(
+                top: 8,
+                right: 24,
+                child: IconButton(
+                  onPressed: () => setState(() => _visible = false),
+                  icon: const Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            ],
           );
         },
       ),

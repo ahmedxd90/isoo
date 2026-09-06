@@ -152,6 +152,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
             payload: {
               'gift_id': gift['id'],
               'icon': gift['icon'],
+              'thumbnail_url': gift['icon'],
               'name': gift['name'],
               'media_url': gift['media_url'],
               'media_type': gift['media_type'],
