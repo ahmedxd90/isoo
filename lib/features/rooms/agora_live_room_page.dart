@@ -327,6 +327,20 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
               ],
             ),
           ),
+          Positioned(
+            top: 60,
+            left: 16,
+            child: RoomConnectedStrip(
+              members: _members,
+              total: _members.length,
+              onTap: _loadRoomOverlays,
+            ),
+          ),
+          Positioned(
+            top: 60,
+            right: 16,
+            child: GiftGoldBadge(total: _goldTotal, onTap: _showRanking),
+          ),
           if (_entranceProfile != null &&
               _entranceAt != null &&
               DateTime.now().difference(_entranceAt!).inSeconds < 5)
@@ -439,22 +453,6 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          Positioned(
-            bottom: 78,
-            left: 16,
-            right: 16,
-            child: Row(
-              children: [
-                RoomConnectedStrip(
-                  members: _members,
-                  total: _members.length,
-                  onTap: _loadRoomOverlays,
-                ),
-                const Spacer(),
-                GiftGoldBadge(total: _goldTotal, onTap: _showRanking),
               ],
             ),
           ),
