@@ -155,6 +155,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final country = profile['country'] as String? ?? '—';
     final gender = profile['gender'] as String? ?? '';
     final level = (_stats['posts'] ?? 0).clamp(0, 99);
+    final isSelf = widget.userId == SakiService.instance.currentUser?.id;
 
     return Scaffold(
       backgroundColor: _profileBg,
@@ -206,12 +207,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ],
               ),
             ),
-            _ProfileBottomActions(
-              following: _following,
-              loading: _actionLoading,
-              onFollow: _toggleFollow,
-              onMessage: _message,
-            ),
+            if (!isSelf)
+              _ProfileBottomActions(
+                following: _following,
+                loading: _actionLoading,
+                onFollow: _toggleFollow,
+                onMessage: _message,
+              ),
           ],
         ),
       ),
@@ -252,7 +254,8 @@ class _ProfileHero extends StatelessWidget {
             Image.network(
               avatar!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF374151)),
+              errorBuilder: (_, __, ___) =>
+                  const ColoredBox(color: Color(0xFF374151)),
             )
           else
             Image.asset(
@@ -307,17 +310,38 @@ class _ProfileHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: .25), borderRadius: BorderRadius.circular(22)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: .25),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
                   child: Row(
                     children: [
-                      const Icon(Icons.circle, color: Colors.greenAccent, size: 10),
+                      const Icon(
+                        Icons.circle,
+                        color: Colors.greenAccent,
+                        size: 10,
+                      ),
                       const SizedBox(width: 5),
-                      const Text('متصل الآن', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                      const Text(
+                        'متصل الآن',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Image.asset('assets/trace_profile/images/ic_guard_avatar_frame.webp', width: 70, height: 70),
+                Image.asset(
+                  'assets/trace_profile/images/ic_guard_avatar_frame.webp',
+                  width: 70,
+                  height: 70,
+                ),
               ],
             ),
           ),
@@ -466,14 +490,21 @@ class _ProfileHero extends StatelessWidget {
 }
 
 class _TraceProfileSummary extends StatelessWidget {
-  const _TraceProfileSummary({required this.profile, required this.stats, required this.onCopy});
+  const _TraceProfileSummary({
+    required this.profile,
+    required this.stats,
+    required this.onCopy,
+  });
   final Map<String, dynamic> profile;
   final Map<String, int> stats;
   final VoidCallback onCopy;
 
   @override
   Widget build(BuildContext context) {
-    final username = profile['display_name'] as String? ?? profile['username'] as String? ?? 'مستخدم SAKI';
+    final username =
+        profile['display_name'] as String? ??
+        profile['username'] as String? ??
+        'مستخدم SAKI';
     final country = profile['country'] as String? ?? '—';
     final gender = profile['gender'] as String? ?? '';
     final female = gender == 'female' || gender == 'أنثى';
@@ -483,21 +514,88 @@ class _TraceProfileSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _profileInk)),
+          Text(
+            username,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: _profileInk,
+            ),
+          ),
           const SizedBox(height: 8),
-          Row(children: [
-            Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), decoration: BoxDecoration(color: Colors.blueAccent, borderRadius: BorderRadius.circular(4)), child: Row(children: [Icon(female ? Icons.female : Icons.male, size: 11, color: Colors.white), const SizedBox(width: 3), Text(female ? 'أنثى' : 'ذكر', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800))])),
-            const SizedBox(width: 7),
-            Text(country, style: const TextStyle(color: _profileMuted, fontSize: 12)),
-          ]),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      female ? Icons.female : Icons.male,
+                      size: 11,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      female ? 'أنثى' : 'ذكر',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                country,
+                style: const TextStyle(color: _profileMuted, fontSize: 12),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
-          GestureDetector(onTap: onCopy, child: Row(children: [const Icon(Icons.copy, size: 16, color: _profileMuted), const SizedBox(width: 5), Text('SAKI ID: ${profile['saki_id'] ?? '—'}', style: const TextStyle(color: _profileMuted, fontSize: 12, fontWeight: FontWeight.w800))])),
+          GestureDetector(
+            onTap: onCopy,
+            child: Row(
+              children: [
+                const Icon(Icons.copy, size: 16, color: _profileMuted),
+                const SizedBox(width: 5),
+                Text(
+                  'SAKI ID: ${profile['saki_id'] ?? '—'}',
+                  style: const TextStyle(
+                    color: _profileMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 14),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-            _ProfileStat(value: '${stats['following'] ?? 0}', label: 'المتابعة', padding: EdgeInsets.zero),
-            _ProfileStat(value: '${stats['followers'] ?? 0}', label: 'المتابعين', padding: EdgeInsets.zero),
-            _ProfileStat(value: '${stats['posts'] ?? 0}', label: 'المنشورات', padding: EdgeInsets.zero),
-          ]),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _ProfileStat(
+                value: '${stats['following'] ?? 0}',
+                label: 'المتابعة',
+                padding: EdgeInsets.zero,
+              ),
+              _ProfileStat(
+                value: '${stats['followers'] ?? 0}',
+                label: 'المتابعين',
+                padding: EdgeInsets.zero,
+              ),
+              _ProfileStat(
+                value: '${stats['posts'] ?? 0}',
+                label: 'المنشورات',
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          ),
         ],
       ),
     );

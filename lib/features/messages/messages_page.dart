@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../notifications/notifications_page.dart';
+
+const _messageRose = Color(0xFFF06B8B);
+const _messageLilac = Color(0xFF8A7CF6);
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -137,6 +141,12 @@ class _MessagesPageState extends State<MessagesPage> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsPage()),
+            ),
+            icon: const Icon(Icons.notifications_none_rounded),
+          ),
           IconButton(
             onPressed: _newMessage,
             icon: const Icon(Icons.edit_square),
