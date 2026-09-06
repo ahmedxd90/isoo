@@ -797,6 +797,76 @@ class SakiService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  Future<List<Map<String, dynamic>>> roomMembers(String roomId) async {
+    final rows = await client
+        .from('room_members')
+        .select(
+          'user_id,joined_at,profiles:user_id(id,username,avatar_url,vip_level,vip_expires_at)',
+        )
+        .eq('room_id', roomId)
+        .order('joined_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows)
+        .map((row) => Map<String, dynamic>.from(row['profiles'] ?? {}))
+        .where((profile) => profile['id'] != null)
+        .toList();
+  }
+
+  Future<RoomGiftRankingResult> roomGiftRanking(
+    String roomId,
+    String period,
+  ) async {
+    final now = DateTime.now().toUtc();
+    final days = period == 'شهري'
+        ? 30
+        : period == 'أسبوعي'
+        ? 7
+        : 1;
+    final since = now.subtract(Duration(days: days)).toIso8601String();
+    final rows = await client
+        .from('room_gifts')
+        .select(
+          'sender_id,total_price,created_at,profiles:sender_id(id,username,avatar_url,vip_level,vip_expires_at)',
+        )
+        .eq('room_id', roomId)
+        .gte('created_at', since)
+        .limit(1000);
+    final grouped = <String, Map<String, dynamic>>{};
+    for (final raw in List<Map<String, dynamic>>.from(rows)) {
+      final profile = Map<String, dynamic>.from(raw['profiles'] ?? {});
+      final id = raw['sender_id']?.toString();
+      if (id == null || id.isEmpty) continue;
+      final item = grouped.putIfAbsent(
+        id,
+        () => {'gold': 0, 'profile': profile},
+      );
+      item['gold'] =
+          (item['gold'] as int) + ((raw['total_price'] as num?)?.toInt() ?? 0);
+    }
+    final result = grouped.values.toList()
+      ..sort((a, b) => (b['gold'] as int).compareTo(a['gold'] as int));
+    return RoomGiftRankingResult(
+      result,
+      result.fold<int>(0, (sum, row) => sum + (row['gold'] as int)),
+    );
+  }
+
+  Stream<List<Map<String, dynamic>>> roomMembersStream(String roomId) {
+    return client
+        .from('room_members')
+        .stream(primaryKey: ['room_id', 'user_id'])
+        .eq('room_id', roomId)
+        .order('joined_at', ascending: false)
+        .asyncMap((rows) async {
+          final result = <Map<String, dynamic>>[];
+          for (final row in rows) {
+            final profile = await userProfile(row['user_id'] as String);
+            if (profile != null) result.add(profile);
+          }
+          return result;
+        });
+  }
+
   Future<void> claimRoomSeat(String roomId, int seatNo) async {
     await client
         .from('room_seats')
@@ -1506,4 +1576,10 @@ class SakiService {
     if (list.isEmpty) throw Exception('تعذر إرسال الهدية');
     return list.first;
   }
+}
+
+class RoomGiftRankingResult {
+  const RoomGiftRankingResult(this.rows, this.total);
+  final List<Map<String, dynamic>> rows;
+  final int total;
 }

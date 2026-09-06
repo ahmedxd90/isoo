@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -5,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/data/saki_service.dart';
 import 'pk_battle_page.dart';
 import 'room_gifts_sheet.dart';
+import 'room_gift_ranking_sheet.dart';
 
 class AgoraLiveRoomPage extends StatefulWidget {
   const AgoraLiveRoomPage({
@@ -30,6 +33,11 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
   bool _cameraOff = false;
   String? _error;
   final _comment = TextEditingController();
+  List<Map<String, dynamic>> _members = [];
+  int _goldTotal = 0;
+  Map<String, dynamic>? _entranceProfile;
+  DateTime? _entranceAt;
+  StreamSubscription<List<Map<String, dynamic>>>? _membersSubscription;
 
   int _numericUid(String value) =>
       int.parse((value.replaceAll('-', '').substring(0, 8)), radix: 16) &
@@ -39,6 +47,23 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
   void initState() {
     super.initState();
     _start();
+    _loadRoomOverlays();
+    _membersSubscription = SakiService.instance
+        .roomMembersStream(widget.roomId)
+        .listen((members) {
+          if (!mounted) return;
+          final previousIds = _members.map((m) => m['id']).toSet();
+          final entrant = members
+              .where((m) => !previousIds.contains(m['id']))
+              .firstOrNull;
+          setState(() {
+            _members = members;
+            if (entrant != null) {
+              _entranceProfile = entrant;
+              _entranceAt = DateTime.now();
+            }
+          });
+        });
   }
 
   Future<void> _start() async {
@@ -107,6 +132,24 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
     }
   }
 
+  Future<void> _loadRoomOverlays() async {
+    try {
+      final members = await SakiService.instance.roomMembers(widget.roomId);
+      final ranking = await SakiService.instance.roomGiftRanking(
+        widget.roomId,
+        'يومي',
+      );
+      if (mounted)
+        setState(() {
+          _members = members;
+          _goldTotal = ranking.total;
+        });
+    } catch (_) {}
+  }
+
+  void _showRanking() =>
+      showRoomGiftRanking(context, SakiService.instance, widget.roomId);
+
   Future<void> _renewToken() async {
     final response = await SakiService.instance.client.functions.invoke(
       'agora-token',
@@ -160,6 +203,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
               'flying_banner': flyingBanner,
             },
           );
+          await _loadRoomOverlays();
         },
       ),
     );
@@ -168,6 +212,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
   @override
   void dispose() {
     _comment.dispose();
+    _membersSubscription?.cancel();
     _engine?.leaveChannel();
     _engine?.release();
     super.dispose();
@@ -270,6 +315,15 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
               ],
             ),
           ),
+          if (_entranceProfile != null &&
+              _entranceAt != null &&
+              DateTime.now().difference(_entranceAt!).inSeconds < 5)
+            Positioned(
+              top: 92,
+              left: 0,
+              right: 0,
+              child: RoomEntranceBanner(profile: _entranceProfile!),
+            ),
           if (!_joined && _error == null)
             const Center(child: CircularProgressIndicator(color: Colors.white)),
           if (_error != null)
@@ -373,6 +427,22 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: 78,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                RoomConnectedStrip(
+                  members: _members,
+                  total: _members.length,
+                  onTap: _loadRoomOverlays,
+                ),
+                const Spacer(),
+                GiftGoldBadge(total: _goldTotal, onTap: _showRanking),
               ],
             ),
           ),
