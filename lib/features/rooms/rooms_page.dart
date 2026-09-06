@@ -1426,7 +1426,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             if (mounted) Navigator.pop(context);
                           }),
                           _adminIcon(
-                            Icons.comment_off_rounded,
+                            Icons.chat_bubble_outline_rounded,
                             'دردشة',
                             () async {
                               await _service.roomMute(_roomId, userId, null);
