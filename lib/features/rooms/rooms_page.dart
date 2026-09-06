@@ -1329,6 +1329,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (userId == null) return;
     final isOwner = widget.room['owner_id'] == _service.uid;
     final canModerate = isOwner && userId != _service.uid;
+    final moderation = canModerate
+        ? await _service.roomModerationStatus(_roomId, userId)
+        : const <String, dynamic>{};
+    final voiceMuted = moderation['mute_voice'] == true;
+    final chatMuted = moderation['mute_chat'] == true;
+    final banned = moderation['banned'] == true;
     final vip = (profile['vip_level'] as num?)?.toInt() ?? 0;
     final followers = profile['followers_count'] ?? profile['followers'] ?? 0;
     final gender =
@@ -1561,22 +1567,76 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         padding: EdgeInsets.symmetric(vertical: 10),
                         child: Divider(color: Color(0x66C9A227)),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 12,
+                        runSpacing: 10,
                         children: [
                           _adminIcon(Icons.shield_rounded, 'مشرف', () async {
                             await _service.addRoomModerator(_roomId, userId);
                             if (mounted) Navigator.pop(context);
                           }),
-                          _adminIcon(Icons.mic_off_rounded, 'مايك', () async {
-                            await _service.roomMute(_roomId, userId, null);
-                            if (mounted) Navigator.pop(context);
-                          }),
                           _adminIcon(
-                            Icons.chat_bubble_outline_rounded,
-                            'دردشة',
+                            voiceMuted
+                                ? Icons.mic_rounded
+                                : Icons.mic_off_rounded,
+                            voiceMuted ? 'إلغاء مايك' : 'كتم مايك',
                             () async {
-                              await _service.roomMute(_roomId, userId, null);
+                              if (voiceMuted) {
+                                await _service.roomUnmute(
+                                  _roomId,
+                                  userId,
+                                  'voice',
+                                );
+                              } else {
+                                await _service.roomMute(
+                                  _roomId,
+                                  userId,
+                                  null,
+                                  kind: 'voice',
+                                );
+                              }
+                              if (mounted) Navigator.pop(context);
+                            },
+                          ),
+                          _adminIcon(
+                            chatMuted
+                                ? Icons.chat_bubble_rounded
+                                : Icons.chat_bubble_outline_rounded,
+                            chatMuted ? 'إلغاء دردشة' : 'كتم دردشة',
+                            () async {
+                              if (chatMuted) {
+                                await _service.roomUnmute(
+                                  _roomId,
+                                  userId,
+                                  'chat',
+                                );
+                              } else {
+                                await _service.roomMute(
+                                  _roomId,
+                                  userId,
+                                  null,
+                                  kind: 'chat',
+                                );
+                              }
+                              if (mounted) Navigator.pop(context);
+                            },
+                          ),
+                          _adminIcon(
+                            banned
+                                ? Icons.person_add_rounded
+                                : Icons.logout_rounded,
+                            banned ? 'إلغاء طرد' : 'طرد',
+                            () async {
+                              if (banned) {
+                                await _service.removeRoomBan(_roomId, userId);
+                              } else {
+                                await _service.roomBan(
+                                  _roomId,
+                                  userId,
+                                  const Duration(minutes: 1),
+                                );
+                              }
                               if (mounted) Navigator.pop(context);
                             },
                           ),
@@ -1588,14 +1648,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               if (mounted) Navigator.pop(context);
                             },
                           ),
-                          _adminIcon(Icons.logout_rounded, 'طرد', () async {
-                            await _service.roomBan(
-                              _roomId,
-                              userId,
-                              const Duration(minutes: 1),
-                            );
-                            if (mounted) Navigator.pop(context);
-                          }),
                           _adminIcon(Icons.block_rounded, 'حظر', () async {
                             final d = await _banDuration();
                             if (d != null)

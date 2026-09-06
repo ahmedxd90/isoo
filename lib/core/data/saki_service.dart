@@ -1163,11 +1163,11 @@ class SakiService {
   }) async {
     final mute = await client
         .from('room_mutes')
-        .select('expires_at')
+        .select('expires_at,mute_chat')
         .eq('room_id', roomId)
         .eq('user_id', uid)
         .maybeSingle();
-    if (mute != null) {
+    if (mute != null && mute['mute_chat'] != false) {
       final expires = mute['expires_at'] == null
           ? null
           : DateTime.tryParse(mute['expires_at'].toString());
@@ -1396,8 +1396,10 @@ class SakiService {
   Future<void> roomMute(
     String roomId,
     String userId,
-    Duration? duration,
-  ) async {
+    Duration? duration, {
+    String kind = 'both',
+  }) async {
+    final current = await roomModerationStatus(roomId, userId);
     await client.from('room_mutes').upsert({
       'room_id': roomId,
       'user_id': userId,
@@ -1405,12 +1407,61 @@ class SakiService {
       'expires_at': duration == null
           ? null
           : DateTime.now().add(duration).toIso8601String(),
+      'mute_voice': kind == 'voice' || kind == 'both'
+          ? true
+          : current['mute_voice'] == true,
+      'mute_chat': kind == 'chat' || kind == 'both'
+          ? true
+          : current['mute_chat'] == true,
     });
     await client
         .from('room_seats')
         .update({'is_speaking': false})
         .eq('room_id', roomId)
         .eq('user_id', userId);
+  }
+
+  Future<Map<String, dynamic>> roomModerationStatus(
+    String roomId,
+    String userId,
+  ) async {
+    final mute = await client
+        .from('room_mutes')
+        .select('mute_voice,mute_chat,expires_at')
+        .eq('room_id', roomId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    final ban = await client
+        .from('room_bans')
+        .select('expires_at')
+        .eq('room_id', roomId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    return {
+      'mute_voice': mute?['mute_voice'] == true,
+      'mute_chat': mute?['mute_chat'] == true,
+      'banned': ban != null,
+      'ban_expires_at': ban?['expires_at'],
+    };
+  }
+
+  Future<void> roomUnmute(String roomId, String userId, String kind) async {
+    final current = await roomModerationStatus(roomId, userId);
+    final voice = kind == 'voice' ? false : current['mute_voice'] == true;
+    final chat = kind == 'chat' ? false : current['mute_chat'] == true;
+    if (!voice && !chat) {
+      await client
+          .from('room_mutes')
+          .delete()
+          .eq('room_id', roomId)
+          .eq('user_id', userId);
+    } else {
+      await client
+          .from('room_mutes')
+          .update({'mute_voice': voice, 'mute_chat': chat})
+          .eq('room_id', roomId)
+          .eq('user_id', userId);
+    }
   }
 
   Future<void> inviteToRoomSeat(String roomId, String userId) async {
