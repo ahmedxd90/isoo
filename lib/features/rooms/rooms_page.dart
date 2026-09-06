@@ -19,6 +19,7 @@ import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'saki_wheel_game_sheet.dart';
+import '../profile/store_pages.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _roomPrimary = Color(0xFF656BF9);
@@ -797,6 +798,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
   int _roomGoldTotal = 0;
   Map<String, dynamic>? _entranceProfile;
+  Map<String, dynamic>? _entranceProduct;
   Timer? _entranceTimer;
 
   @override
@@ -854,8 +856,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
       if (entrant != null) {
         _entranceTimer?.cancel();
+        _service.equippedEntrance(entrant['id'] as String).then((product) {
+          if (!mounted) return;
+          setState(() => _entranceProduct = product);
+        });
         _entranceTimer = Timer(const Duration(seconds: 5), () {
-          if (mounted) setState(() => _entranceProfile = null);
+          if (mounted)
+            setState(() {
+              _entranceProfile = null;
+              _entranceProduct = null;
+            });
         });
       }
     });
@@ -2722,7 +2732,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 ),
               ),
             ),
-            if (_entranceProfile != null)
+            if (_entranceProduct != null)
+              StoreEntranceOverlay(
+                product: _entranceProduct!,
+                onDone: () {
+                  if (mounted) setState(() => _entranceProduct = null);
+                },
+              )
+            else if (_entranceProfile != null)
               Positioned(
                 top: 108,
                 left: 18,

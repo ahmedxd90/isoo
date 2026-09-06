@@ -242,6 +242,122 @@ class SakiService {
     return client.storage.from('rooms').getPublicUrl(path);
   }
 
+  Future<String> adminUploadStoreFile(XFile file) async {
+    final bytes = await File(file.path).readAsBytes();
+    final extension = file.path.split('.').last.toLowerCase();
+    final path =
+        '$uid/store-${DateTime.now().microsecondsSinceEpoch}.$extension';
+    final contentType = switch (extension) {
+      'mp4' => 'video/mp4',
+      'gif' => 'image/gif',
+      'svga' => 'application/octet-stream',
+      _ => 'image/png',
+    };
+    await client.storage
+        .from('store')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: true, contentType: contentType),
+        );
+    return client.storage.from('store').getPublicUrl(path);
+  }
+
+  Future<List<Map<String, dynamic>>> storeProducts({String? category}) async {
+    final rows = category == null
+        ? await client
+              .from('saki_store_products')
+              .select()
+              .eq('is_active', true)
+        : await client
+              .from('saki_store_products')
+              .select()
+              .eq('is_active', true)
+              .eq('category', category);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> adminStoreProducts() async {
+    final rows = await client
+        .from('saki_store_products')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(300);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> adminCreateStoreProduct({
+    required String category,
+    required String name,
+    required int price,
+    required String mediaType,
+    required String mediaUrl,
+    required String thumbnailUrl,
+  }) async {
+    await client.from('saki_store_products').insert({
+      'category': category,
+      'name': name.trim(),
+      'price': price,
+      'media_type': mediaType,
+      'media_url': mediaUrl,
+      'thumbnail_url': thumbnailUrl,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> storeInventory() async {
+    final rows = await client
+        .from('saki_store_inventory')
+        .select('quantity,equipped,purchased_at,product:saki_store_products(*)')
+        .eq('user_id', uid)
+        .order('purchased_at', ascending: false)
+        .limit(300);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>> storeBuy(String productId) async {
+    final rows = await client.rpc(
+      'saki_store_buy',
+      params: {'p_product_id': productId},
+    );
+    return Map<String, dynamic>.from((rows as List).first);
+  }
+
+  Future<void> storeEquip(String productId, bool equipped) async {
+    await client.rpc(
+      'saki_store_equip',
+      params: {'p_product_id': productId, 'p_equipped': equipped},
+    );
+  }
+
+  Future<Map<String, dynamic>?> equippedEntrance(String userId) async {
+    final row = await client
+        .from('saki_store_inventory')
+        .select('product:saki_store_products(*)')
+        .eq('user_id', userId)
+        .eq('equipped', true)
+        .limit(20);
+    for (final item in List<Map<String, dynamic>>.from(row)) {
+      final product = Map<String, dynamic>.from(item['product'] ?? const {});
+      if (product['category'] == 'entrance') return product;
+    }
+    return null;
+  }
+
+  Future<void> claimEntrance(
+    String roomId,
+    String productId,
+    String playToken,
+  ) async {
+    await client.rpc(
+      'saki_store_claim_entrance',
+      params: {
+        'p_room_id': roomId,
+        'p_product_id': productId,
+        'p_play_token': playToken,
+      },
+    );
+  }
+
   Future<void> adminCreateGift({
     required String name,
     required String icon,

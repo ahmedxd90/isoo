@@ -1,0 +1,496 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
+
+import '../../core/data/saki_service.dart';
+
+const _storeGold = Color(0xFFF59E0B);
+
+class StoreEntranceOverlay extends StatefulWidget {
+  const StoreEntranceOverlay({
+    super.key,
+    required this.product,
+    required this.onDone,
+  });
+  final Map<String, dynamic> product;
+  final VoidCallback onDone;
+  @override
+  State<StoreEntranceOverlay> createState() => _StoreEntranceOverlayState();
+}
+
+class _StoreEntranceOverlayState extends State<StoreEntranceOverlay> {
+  VideoPlayerController? _video;
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    if (widget.product['media_type'] != 'mp4') return;
+    final c = VideoPlayerController.networkUrl(
+      Uri.parse(widget.product['media_url'] as String),
+    );
+    try {
+      await c.initialize();
+      await c.setLooping(false);
+      await c.play();
+      if (!mounted) {
+        await c.dispose();
+        return;
+      }
+      setState(() => _video = c);
+      c.addListener(() {
+        if (c.value.isInitialized && c.value.position >= c.value.duration)
+          widget.onDone();
+      });
+    } catch (_) {
+      await c.dispose();
+    }
+  }
+
+  @override
+  void dispose() {
+    _video?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = widget.product['media_type'];
+    Widget media;
+    if (type == 'mp4' && _video?.value.isInitialized == true) {
+      media = FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: _video!.value.size.width,
+          height: _video!.value.size.height,
+          child: VideoPlayer(_video!),
+        ),
+      );
+    } else {
+      media = Image.network(
+        widget.product['media_url'] as String,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+      );
+    }
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Material(color: Colors.transparent, child: media),
+      ),
+    );
+  }
+}
+
+class StorePage extends StatefulWidget {
+  const StorePage({super.key});
+  @override
+  State<StorePage> createState() => _StorePageState();
+}
+
+class _StorePageState extends State<StorePage> {
+  String _category = 'frame';
+  late Future<List<Map<String, dynamic>>> _future;
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() =>
+      _future = SakiService.instance.storeProducts(category: _category);
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('متجر SAKI'),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.shopping_bag_rounded),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BagPage()),
+          ),
+        ),
+      ],
+    ),
+    body: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                value: 'frame',
+                label: Text('الإطارات'),
+                icon: Icon(Icons.crop_square_rounded),
+              ),
+              ButtonSegment(
+                value: 'entrance',
+                label: Text('الدخوليات'),
+                icon: Icon(Icons.auto_awesome),
+              ),
+            ],
+            selected: {_category},
+            onSelectionChanged: (v) => setState(() {
+              _category = v.first;
+              _reload();
+            }),
+          ),
+        ),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (_, snap) {
+              if (!snap.hasData)
+                return const Center(child: CircularProgressIndicator());
+              final items = snap.data!;
+              if (items.isEmpty)
+                return const Center(child: Text('لا توجد منتجات متاحة حالياً'));
+              return GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: .72,
+                ),
+                itemCount: items.length,
+                itemBuilder: (_, i) =>
+                    ProductCard(product: items[i], onBought: _reload),
+              );
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class ProductCard extends StatelessWidget {
+  const ProductCard({super.key, required this.product, required this.onBought});
+  final Map<String, dynamic> product;
+  final VoidCallback onBought;
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Image.network(
+            product['thumbnail_url'] as String,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.image_not_supported, size: 50),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+          child: Text(
+            product['name'] as String,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          child: Row(
+            children: [
+              const Icon(Icons.monetization_on, color: _storeGold, size: 17),
+              const SizedBox(width: 4),
+              Text('${product['price']}'),
+              const Spacer(),
+              FilledButton(
+                onPressed: () async {
+                  try {
+                    await SakiService.instance.storeBuy(
+                      product['id'] as String,
+                    );
+                    onBought();
+                    if (context.mounted)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('تم الشراء وإضافة المنتج إلى الحقيبة'),
+                        ),
+                      );
+                  } catch (e) {
+                    if (context.mounted)
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            e.toString().replaceFirst('Exception: ', ''),
+                          ),
+                        ),
+                      );
+                  }
+                },
+                child: const Text('شراء'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class BagPage extends StatefulWidget {
+  const BagPage({super.key});
+  @override
+  State<BagPage> createState() => _BagPageState();
+}
+
+class _BagPageState extends State<BagPage> {
+  late Future<List<Map<String, dynamic>>> _future;
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  void _reload() => _future = SakiService.instance.storeInventory();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('حقيبتي')),
+    body: FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (_, snap) {
+        if (!snap.hasData)
+          return const Center(child: CircularProgressIndicator());
+        final all = snap.data!;
+        return ListView(
+          padding: const EdgeInsets.all(14),
+          children: ['frame', 'entrance'].map((category) {
+            final rows = all
+                .where((r) => (r['product'] as Map)['category'] == category)
+                .toList();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  category == 'frame' ? 'الإطارات' : 'الدخوليات',
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (rows.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 18),
+                    child: Text('لا توجد منتجات'),
+                  ),
+                ...rows.map(
+                  (row) => BagRow(row: row, onChanged: () => setState(_reload)),
+                ),
+              ],
+            );
+          }).toList(),
+        );
+      },
+    ),
+  );
+}
+
+class BagRow extends StatelessWidget {
+  const BagRow({super.key, required this.row, required this.onChanged});
+  final Map<String, dynamic> row;
+  final VoidCallback onChanged;
+  @override
+  Widget build(BuildContext context) {
+    final product = Map<String, dynamic>.from(row['product'] as Map);
+    final equipped = row['equipped'] == true;
+    return Card(
+      child: ListTile(
+        leading: Image.network(
+          product['thumbnail_url'] as String,
+          width: 54,
+          height: 54,
+          fit: BoxFit.cover,
+        ),
+        title: Text(
+          product['name'] as String,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          'الكمية: ${row['quantity']} • ${equipped ? 'مفعّل' : 'غير مفعّل'}',
+        ),
+        trailing: FilledButton(
+          onPressed: () async {
+            await SakiService.instance.storeEquip(
+              product['id'] as String,
+              !equipped,
+            );
+            onChanged();
+          },
+          child: Text(equipped ? 'إلغاء' : 'تفعيل'),
+        ),
+      ),
+    );
+  }
+}
+
+class AdminStorePage extends StatefulWidget {
+  const AdminStorePage({super.key});
+  @override
+  State<AdminStorePage> createState() => _AdminStorePageState();
+}
+
+class _AdminStorePageState extends State<AdminStorePage> {
+  List<Map<String, dynamic>> _products = [];
+  bool _loading = true;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    _products = await SakiService.instance.adminStoreProducts();
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<XFile?> _pick(String ext) async {
+    final result = await FilePicker.pickFile(type: FileType.any);
+    final path = result?.path;
+    if (path == null || result?.extension?.toLowerCase() != ext) return null;
+    return XFile(path);
+  }
+
+  Future<void> _add() async {
+    final name = TextEditingController();
+    final price = TextEditingController();
+    String category = 'frame';
+    String mediaType = 'mp4';
+    XFile? media;
+    XFile? thumbnail;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (dialogContext, setDialog) => AlertDialog(
+          title: const Text('إضافة منتج إلى المتجر'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'اسم المنتج'),
+                ),
+                TextField(
+                  controller: price,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'السعر بالذهب'),
+                ),
+                DropdownButtonFormField<String>(
+                  value: category,
+                  decoration: const InputDecoration(labelText: 'الفئة'),
+                  items: const [
+                    DropdownMenuItem(value: 'frame', child: Text('إطارات')),
+                    DropdownMenuItem(value: 'entrance', child: Text('دخوليات')),
+                  ],
+                  onChanged: (v) => setDialog(() => category = v!),
+                ),
+                DropdownButtonFormField<String>(
+                  value: mediaType,
+                  decoration: const InputDecoration(labelText: 'نوع الملف'),
+                  items: const [
+                    DropdownMenuItem(value: 'mp4', child: Text('MP4')),
+                    DropdownMenuItem(value: 'svga', child: Text('SVGA')),
+                    DropdownMenuItem(value: 'gif', child: Text('GIF')),
+                  ],
+                  onChanged: (v) => setDialog(() => mediaType = v!),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final f = await _pick(mediaType);
+                    if (f != null) setDialog(() => media = f);
+                  },
+                  icon: const Icon(Icons.upload_file),
+                  label: Text(
+                    media == null ? 'اختيار ملف المنتج' : 'تم اختيار الملف',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final f = await _pick('png');
+                    if (f != null) setDialog(() => thumbnail = f);
+                  },
+                  icon: const Icon(Icons.image),
+                  label: Text(
+                    thumbnail == null
+                        ? 'اختيار صورة مصغرة PNG'
+                        : 'تم اختيار الصورة',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: media == null || thumbnail == null
+                  ? null
+                  : () async {
+                      final mediaUrl = await SakiService.instance
+                          .adminUploadStoreFile(media!);
+                      final thumbUrl = await SakiService.instance
+                          .adminUploadStoreFile(thumbnail!);
+                      await SakiService.instance.adminCreateStoreProduct(
+                        category: category,
+                        name: name.text,
+                        price: int.tryParse(price.text) ?? 0,
+                        mediaType: mediaType,
+                        mediaUrl: mediaUrl,
+                        thumbnailUrl: thumbUrl,
+                      );
+                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                    },
+              child: const Text('حفظ ونشر'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (mounted) _load();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('إدارة متجر SAKI'),
+      actions: [
+        IconButton(
+          onPressed: _add,
+          icon: const Icon(Icons.add_business_rounded),
+        ),
+      ],
+    ),
+    body: _loading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView.builder(
+            itemCount: _products.length,
+            itemBuilder: (_, i) {
+              final p = _products[i];
+              return ListTile(
+                leading: Image.network(
+                  p['thumbnail_url'] as String,
+                  width: 54,
+                  height: 54,
+                  fit: BoxFit.cover,
+                ),
+                title: Text(p['name'] as String),
+                subtitle: Text(
+                  '${p['category']} • ${p['price']} ذهب • ${p['media_type']}',
+                ),
+              );
+            },
+          ),
+  );
+}

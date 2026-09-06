@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import 'admin_trace_modules_page.dart';
+import 'store_pages.dart';
 
 const _blue = Color(0xFF4F46E5);
 const _cyan = Color(0xFF06B6D4);
@@ -14,7 +15,125 @@ class SuperAdminPage extends StatelessWidget {
   const SuperAdminPage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('لوحة تحكم سوبر أدمن')),
+    appBar: AppBar(
+      title: const Text('لوحة تحكم سوبر أدمن'),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(Icons.menu_rounded),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'الحقيبة',
+          icon: const Icon(Icons.shopping_bag_rounded),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const BagPage()),
+          ),
+        ),
+      ],
+    ),
+    drawer: Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [_blue, _cyan]),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Icon(
+                    Icons.verified_user_rounded,
+                    color: Colors.white,
+                    size: 42,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'SAKI SUPER ADMIN',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.people_alt_rounded),
+              title: const Text('إدارة المستخدمين'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminUsersPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.meeting_room_rounded),
+              title: const Text('إدارة الغرف'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminRoomsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.card_giftcard_rounded),
+              title: const Text('إدارة الهدايا'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminGiftsPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.business_rounded),
+              title: const Text('إدارة الوكالات'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminAgenciesPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.groups_rounded),
+              title: const Text('إدارة العائلات'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminFamiliesPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.storefront_rounded),
+              title: const Text('إدارة المتجر'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminStorePage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(18),
       children: [

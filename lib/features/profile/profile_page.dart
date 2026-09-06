@@ -10,6 +10,7 @@ import '../../core/data/saki_service.dart';
 import 'wallet_page.dart';
 import 'vip_page.dart';
 import 'super_admin_page.dart';
+import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
@@ -88,10 +89,13 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openModule(String type) async {
-    if (type == 'store' ||
-        type == 'agency' ||
-        type == 'family' ||
-        type == 'level') {
+    if (type == 'store') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const StorePage()));
+      if (mounted) _load();
+      return;
+    }
+    if (type == 'agency' || type == 'family' || type == 'level') {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TraceProfileFeaturesPage(feature: type),
