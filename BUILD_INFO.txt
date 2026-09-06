@@ -132,3 +132,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,645,340 bytes
 - SHA-256: fcf5ed109a93c216fa3ccbf4a774530300ac731018f72ee25705e54dd186e795
+
+VIP purchase error and modern notices — 2026-09-06
+
+VIP purchase now maps Supabase errors to clear Arabic messages and uses a modern confirmation/result dialog with orange, cyan, and white styling and an explicit موافق button. The UI blocks a lower selected level when the user already owns a higher VIP level, while allowing renewal of the current level or purchase of a higher level. Supabase purchase_vip now enforces the same rule server-side with vip_level_lower_than_current, so it cannot be bypassed from a client.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,645,448 bytes
+- SHA-256: 22d8b16fbbe7e1e52eb72446917a68c868d926932a4268c1e68b6696994c2204

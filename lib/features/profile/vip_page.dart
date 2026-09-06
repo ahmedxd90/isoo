@@ -9,6 +9,115 @@ class VipPage extends StatefulWidget {
   State<VipPage> createState() => _VipPageState();
 }
 
+class _VipDialog extends StatelessWidget {
+  const _VipDialog({
+    required this.title,
+    required this.body,
+    this.success = true,
+    this.confirm = false,
+  });
+  final String title;
+  final String body;
+  final bool success;
+  final bool confirm;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = success ? const Color(0xFF06B6D4) : const Color(0xFFF97316);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: accent.withValues(alpha: .35), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: accent.withValues(alpha: .22), blurRadius: 24),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: AlignmentDirectional.topEnd,
+              child: IconButton(
+                onPressed: () => Navigator.pop(context, false),
+                icon: const Icon(Icons.close_rounded, color: Colors.black45),
+              ),
+            ),
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accent.withValues(alpha: .12),
+              ),
+              child: Icon(
+                success ? Icons.check_circle_rounded : Icons.info_rounded,
+                color: accent,
+                size: 34,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF1F2937),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                if (confirm)
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF64748B),
+                        side: const BorderSide(color: Color(0xFFE2E8F0)),
+                        minimumSize: const Size.fromHeight(46),
+                        shape: const StadiumBorder(),
+                      ),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                if (confirm) const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(46),
+                      shape: const StadiumBorder(),
+                    ),
+                    child: Text(confirm ? 'تأكيد الشراء' : 'موافق'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _VipPageState extends State<VipPage> {
   static const _rose = Color(0xFFFFD6E5);
   static const _roseDark = Color(0xFFE889A9);
@@ -123,10 +232,23 @@ class _VipPageState extends State<VipPage> {
   }
 
   Future<void> _buy() async {
+    final current = (_profile['vip_level'] as num?)?.toInt() ?? 0;
+    if (current > _selected) {
+      _message(
+        'لا يمكن شراء VIP $_selected لأن عضويتك الحالية VIP $current أعلى منه.',
+        title: 'مستوى VIP غير متاح',
+        success: false,
+      );
+      return;
+    }
     final price = _prices[_selected]!;
     final balance = (_account['gold_coins'] as num?)?.toInt() ?? 0;
     if (balance < price) {
-      _message('رصيد العملات الذهبية غير كافٍ.');
+      _message(
+        'رصيد العملات الذهبية غير كافٍ.',
+        title: 'الرصيد غير كافٍ',
+        success: false,
+      );
       return;
     }
     final ok = await _confirm(
@@ -137,10 +259,19 @@ class _VipPageState extends State<VipPage> {
     setState(() => _working = true);
     try {
       await _service.purchaseVip(_selected);
-      _message('تم تفعيل VIP $_selected لمدة 30 يومًا.');
+      _message(
+        'تم شراء VIP $_selected وتفعيله لمدة 30 يومًا.',
+        title: 'تم الشراء بنجاح',
+      );
       await _load();
-    } catch (_) {
-      _message('تعذر تنفيذ شراء VIP.');
+    } catch (error) {
+      final raw = error.toString().toLowerCase();
+      final text = raw.contains('insufficient_gold')
+          ? 'رصيد العملات الذهبية غير كافٍ.'
+          : raw.contains('vip_level_lower_than_current')
+          ? 'لا يمكنك شراء مستوى أقل من مستواك الحالي.'
+          : 'تعذر تنفيذ الشراء. تحقق من اتصالك ورصيدك ثم حاول مرة أخرى.';
+      _message(text, title: 'تعذر شراء VIP', success: false);
     } finally {
       if (mounted) setState(() => _working = false);
     }
@@ -149,29 +280,22 @@ class _VipPageState extends State<VipPage> {
   Future<bool> _confirm(String title, String body) async {
     return await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
-            title: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w900),
-            ),
-            content: Text(body),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('تأكيد'),
-              ),
-            ],
-          ),
+          builder: (_) => _VipDialog(title: title, body: body, confirm: true),
         ) ??
         false;
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  Future<void> _message(
+    String text, {
+    String title = 'تنبيه',
+    bool success = true,
+  }) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _VipDialog(title: title, body: text, success: success),
+    );
+  }
 
   @override
   void dispose() {
