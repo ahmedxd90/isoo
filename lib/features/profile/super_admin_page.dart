@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -382,6 +383,15 @@ class AdminGiftsPage extends StatefulWidget {
 
 class _AdminGiftsPageState extends State<AdminGiftsPage> {
   List<Map<String, dynamic>> _gifts = [];
+  static const _categories = {
+    'عامة': 'general',
+    'هدايا الحظ': 'luck',
+    'المشاهير': 'famous',
+    'والدول': 'countries',
+    'CP': 'cp',
+    'VIP فقط': 'vip',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -389,67 +399,103 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
   }
 
   Future<void> _load() async {
-    _gifts = await SakiService.instance.adminGiftCatalog();
-    if (mounted) setState(() {});
+    try {
+      _gifts = await SakiService.instance.adminGiftCatalog();
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) _snack(error.toString());
+    }
+  }
+
+  void _snack(String value) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(value.replaceFirst('Exception: ', ''))),
+  );
+
+  Future<PlatformFile?> _pickFile(List<String> extensions) async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: extensions,
+      withData: false,
+    );
+    return result.isEmpty ? null : result.single;
   }
 
   Future<void> _add() async {
-    final name = TextEditingController(),
-        icon = TextEditingController(text: '🎁'),
-        price = TextEditingController();
+    final name = TextEditingController(), price = TextEditingController();
     String category = 'general';
-    XFile? file;
+    PlatformFile? thumbnail;
+    PlatformFile? media;
+    String mediaType = 'PNG';
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (c, set) => AlertDialog(
-          title: const Text('إضافة هدية'),
+          backgroundColor: const Color(0xFF130F24),
+          title: const Text(
+            'رفع هدية جديدة',
+            style: TextStyle(color: Colors.white),
+          ),
           content: SingleChildScrollView(
             child: Column(
               children: [
                 TextField(
                   controller: name,
+                  style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(labelText: 'اسم الهدية'),
                 ),
                 TextField(
-                  controller: icon,
-                  decoration: const InputDecoration(
-                    labelText: 'رمز/صورة مصغرة',
-                  ),
-                ),
-                TextField(
                   controller: price,
+                  style: const TextStyle(color: Colors.white),
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'السعر بالذهب'),
                 ),
-                DropdownButton<String>(
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
                   value: category,
-                  items:
-                      const [
-                            'general',
-                            'luck',
-                            'famous',
-                            'countries',
-                            'vip',
-                            'cp',
-                          ]
-                          .map(
-                            (x) => DropdownMenuItem(value: x, child: Text(x)),
-                          )
-                          .toList(),
-                  onChanged: (x) => set(() => category = x!),
+                  dropdownColor: const Color(0xFF21163B),
+                  decoration: const InputDecoration(labelText: 'فئة الهدية'),
+                  items: _categories.entries
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e.value,
+                          child: Text(e.key),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (x) => set(() => category = x ?? category),
                 ),
                 OutlinedButton.icon(
                   onPressed: () async {
-                    file = await ImagePicker().pickImage(
-                      source: ImageSource.gallery,
-                    );
+                    thumbnail = await _pickFile(['png']);
                     set(() {});
                   },
-                  icon: const Icon(Icons.attach_file),
+                  icon: const Icon(Icons.image_outlined),
                   label: Text(
-                    file == null ? 'اختيار PNG/GIF' : 'تم اختيار الملف',
+                    thumbnail == null
+                        ? 'رفع الصورة المصغرة PNG'
+                        : thumbnail!.name,
                   ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    media = await _pickFile(['png', 'mp4', 'gif', 'svga']);
+                    if (media != null) {
+                      mediaType = media!.extension?.toUpperCase() ?? 'PNG';
+                    }
+                    set(() {});
+                  },
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: Text(
+                    media == null
+                        ? 'رفع ملف الهدية PNG / MP4 / GIF / SVGA'
+                        : '${media!.name} • $mediaType',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'يتم اختيار الملفات من ملفات الجهاز مباشرة، وليس من معرض الصور فقط.',
+                  style: TextStyle(color: Colors.white54, fontSize: 11),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -468,42 +514,106 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
       ),
     );
     if (ok != true) return;
-    String? url;
-    if (file != null) url = await SakiService.instance.adminUploadGift(file!);
-    await SakiService.instance.adminCreateGift(
-      name: name.text,
-      icon: icon.text,
-      category: category,
-      price: int.parse(price.text),
-      mediaUrl: url,
-      mediaType: url == null ? 'emoji' : 'image',
-    );
-    _load();
+    try {
+      if (name.text.trim().isEmpty || int.tryParse(price.text) == null) {
+        _snack('أدخل اسم الهدية والسعر بشكل صحيح.');
+        return;
+      }
+      String? thumbnailUrl;
+      String? mediaUrl;
+      if (thumbnail?.path != null) {
+        thumbnailUrl = await SakiService.instance.adminUploadGift(
+          XFile(thumbnail!.path!),
+        );
+      }
+      if (media?.path != null) {
+        mediaUrl = await SakiService.instance.adminUploadGift(
+          XFile(media!.path!),
+        );
+      }
+      await SakiService.instance.adminCreateGift(
+        name: name.text.trim(),
+        icon: thumbnailUrl ?? '🎁',
+        category: category,
+        price: int.parse(price.text),
+        mediaUrl: mediaUrl ?? thumbnailUrl,
+        mediaType: mediaUrl == null ? 'emoji' : mediaType.toLowerCase(),
+      );
+      _snack('تم حفظ الهدية وإضافتها إلى شبكة الهدايا.');
+      await _load();
+    } catch (error) {
+      _snack(error.toString());
+    }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFF0B0914),
     appBar: AppBar(
-      title: const Text('إدارة الهدايا'),
-      actions: [IconButton(onPressed: _add, icon: const Icon(Icons.add))],
+      backgroundColor: const Color(0xFF130F24),
+      title: const Text('متجر الهدايا التفاعلية'),
+      actions: [
+        FilledButton.icon(
+          onPressed: _add,
+          icon: const Icon(Icons.cloud_upload_outlined),
+          label: const Text('رفع هدية'),
+        ),
+        const SizedBox(width: 10),
+      ],
     ),
-    body: ListView.builder(
+    body: GridView.builder(
+      padding: const EdgeInsets.all(16),
       itemCount: _gifts.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: .78,
+      ),
       itemBuilder: (_, i) {
         final g = _gifts[i];
-        return ListTile(
-          leading: Text(
-            g['icon'] ?? '🎁',
-            style: const TextStyle(fontSize: 28),
+        final icon = g['icon'] as String? ?? '🎁';
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.purple.withValues(alpha: .35)),
           ),
-          title: Text(g['name'] ?? ''),
-          subtitle: Text('${g['price'] ?? 0} ذهب • ${g['category'] ?? ''}'),
-          trailing: IconButton(
-            onPressed: () async {
-              await SakiService.instance.adminDeleteGift(g['id'] as String);
-              _load();
-            },
-            icon: const Icon(Icons.delete, color: Colors.red),
+          child: Column(
+            children: [
+              Expanded(
+                child: icon.startsWith('http')
+                    ? Image.network(icon, fit: BoxFit.contain)
+                    : Center(
+                        child: Text(icon, style: const TextStyle(fontSize: 35)),
+                      ),
+              ),
+              Text(
+                g['name'] as String? ?? 'هدية',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '${g['price'] ?? 0} ذهب',
+                style: const TextStyle(color: Colors.amberAccent, fontSize: 11),
+              ),
+              IconButton(
+                onPressed: () async {
+                  await SakiService.instance.adminDeleteGift(g['id'] as String);
+                  _load();
+                },
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.redAccent,
+                  size: 20,
+                ),
+              ),
+            ],
           ),
         );
       },

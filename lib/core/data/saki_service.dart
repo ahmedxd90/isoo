@@ -225,15 +225,19 @@ class SakiService {
     final extension = file.path.split('.').last.toLowerCase();
     final path =
         '$uid/admin-gift-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    final contentType = switch (extension) {
+      'png' => 'image/png',
+      'gif' => 'image/gif',
+      'mp4' => 'video/mp4',
+      'svga' => 'application/octet-stream',
+      _ => 'application/octet-stream',
+    };
     await client.storage
         .from('rooms')
         .uploadBinary(
           path,
           bytes,
-          fileOptions: FileOptions(
-            upsert: true,
-            contentType: extension == 'mp4' ? 'video/mp4' : 'image/$extension',
-          ),
+          fileOptions: FileOptions(upsert: true, contentType: contentType),
         );
     return client.storage.from('rooms').getPublicUrl(path);
   }

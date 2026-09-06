@@ -139,7 +139,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
       builder: (_) => RoomGiftsSheet(
         service: SakiService.instance,
         roomId: widget.roomId,
-        onSent: (recipientId, gift) async {
+        onSent: (recipientId, gift, flyingBanner) async {
           await SakiService.instance.sendRoomGift(
             roomId: widget.roomId,
             recipientId: recipientId,
@@ -153,6 +153,10 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
               'gift_id': gift['id'],
               'icon': gift['icon'],
               'name': gift['name'],
+              'media_url': gift['media_url'],
+              'media_type': gift['media_type'],
+              'recipient_id': recipientId,
+              'flying_banner': flyingBanner,
             },
           );
         },

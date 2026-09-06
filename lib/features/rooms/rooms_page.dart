@@ -8,6 +8,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/room_session.dart';
@@ -1000,7 +1001,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       builder: (_) => RoomGiftsSheet(
         service: _service,
         roomId: _roomId,
-        onSent: (recipientId, gift) async {
+        onSent: (recipientId, gift, flyingBanner) async {
           _lastGiftRecipient = recipientId;
           _lastGift = gift;
           await _service.sendRoomGift(
@@ -1016,6 +1017,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               'gift_id': gift['id'],
               'icon': gift['icon'],
               'name': gift['name'],
+              'media_url': gift['media_url'],
+              'media_type': gift['media_type'],
+              'recipient_id': recipientId,
+              'flying_banner': flyingBanner,
             },
           );
         },
@@ -1056,6 +1061,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           'gift_id': gift['id'],
           'icon': gift['icon'],
           'name': gift['name'],
+          'media_url': gift['media_url'],
+          'media_type': gift['media_type'],
+          'recipient_id': recipient,
+          'flying_banner': true,
         },
       );
       _startGiftCombo();
@@ -2342,110 +2351,135 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                         DateTime.fromMillisecondsSinceEpoch(0),
                                   ),
                         );
-                      return ListView.builder(
-                        reverse: true,
-                        padding: const EdgeInsets.all(14),
-                        itemCount: messages.length + 1,
-                        itemBuilder: (_, i) {
-                          if (i == messages.length) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.black26,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Text(
-                                'مرحباً بكم في ساكي، نرجو احترام الآخرين',
-                                style: TextStyle(
-                                  color: Colors.amberAccent,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            );
-                          }
-                          final msg = messages[messages.length - 1 - i];
-                          final senderId = msg['sender_id'] as String? ?? '';
-                          final messageType =
-                              msg['message_type'] as String? ?? 'chat';
-                          return FutureBuilder<Map<String, dynamic>?>(
-                            future: _service.userProfile(senderId),
-                            builder: (_, profileSnap) {
-                              final profile =
-                                  profileSnap.data ?? const <String, dynamic>{};
-                              final username =
-                                  profile['username'] as String? ?? 'عضو';
-                              final body = msg['body'] as String? ?? '';
-                              final payload = Map<String, dynamic>.from(
-                                msg['payload'] ?? const {},
-                              );
-                              final isSpecial =
-                                  messageType == 'join' ||
-                                  messageType == 'seat';
-                              final isEmoji = messageType == 'emoji';
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: isSpecial
-                                      ? Border.all(
-                                          color: Colors.amber.withValues(
-                                            alpha: .35,
-                                          ),
-                                        )
-                                      : null,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => _showUserCard(profile),
-                                      child: SakiAvatar(
-                                        url: profile['avatar_url'] as String?,
-                                        label: username,
-                                        radius: 17,
-                                      ),
+                      final latestMessage = messages.isEmpty
+                          ? const <String, dynamic>{}
+                          : messages.last;
+                      final latestGift = latestMessage['message_type'] == 'gift'
+                          ? latestMessage
+                          : const <String, dynamic>{};
+                      return Stack(
+                        children: [
+                          ListView.builder(
+                            reverse: true,
+                            padding: const EdgeInsets.all(14),
+                            itemCount: messages.length + 1,
+                            itemBuilder: (_, i) {
+                              if (i == messages.length) {
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Text(
+                                    'مرحباً بكم في ساكي، نرجو احترام الآخرين',
+                                    style: TextStyle(
+                                      color: Colors.amberAccent,
+                                      fontSize: 12,
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          VipUsername(
-                                            profile: profile,
-                                            style: const TextStyle(
-                                              color: Colors.amberAccent,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w900,
-                                            ),
+                                  ),
+                                );
+                              }
+                              final msg = messages[messages.length - 1 - i];
+                              final senderId =
+                                  msg['sender_id'] as String? ?? '';
+                              final messageType =
+                                  msg['message_type'] as String? ?? 'chat';
+                              return FutureBuilder<Map<String, dynamic>?>(
+                                future: _service.userProfile(senderId),
+                                builder: (_, profileSnap) {
+                                  final profile =
+                                      profileSnap.data ??
+                                      const <String, dynamic>{};
+                                  final username =
+                                      profile['username'] as String? ?? 'عضو';
+                                  final body = msg['body'] as String? ?? '';
+                                  final payload = Map<String, dynamic>.from(
+                                    msg['payload'] ?? const {},
+                                  );
+                                  final isSpecial =
+                                      messageType == 'join' ||
+                                      messageType == 'seat';
+                                  final isEmoji = messageType == 'emoji';
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black26,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: isSpecial
+                                          ? Border.all(
+                                              color: Colors.amber.withValues(
+                                                alpha: .35,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        GestureDetector(
+                                          onTap: () => _showUserCard(profile),
+                                          child: SakiAvatar(
+                                            url:
+                                                profile['avatar_url']
+                                                    as String?,
+                                            label: username,
+                                            radius: 17,
                                           ),
-                                          const SizedBox(height: 3),
-                                          messageType == 'dice'
-                                              ? _DiceFace(
-                                                  value:
-                                                      (payload['value'] as num?)
-                                                          ?.toInt() ??
-                                                      1,
-                                                )
-                                              : Text(
-                                                  body,
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: isEmoji ? 28 : 13,
-                                                  ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              VipUsername(
+                                                profile: profile,
+                                                style: const TextStyle(
+                                                  color: Colors.amberAccent,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w900,
                                                 ),
-                                        ],
-                                      ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              messageType == 'dice'
+                                                  ? _DiceFace(
+                                                      value:
+                                                          (payload['value']
+                                                                  as num?)
+                                                              ?.toInt() ??
+                                                          1,
+                                                    )
+                                                  : Text(
+                                                      body,
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: isEmoji
+                                                            ? 28
+                                                            : 13,
+                                                      ),
+                                                    ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
+                          ),
+                          if (latestGift.isNotEmpty)
+                            Positioned.fill(
+                              child: GiftFullScreenOverlay(
+                                message: latestGift,
+                                onClose: () {},
+                              ),
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -2553,6 +2587,209 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class GiftFullScreenOverlay extends StatefulWidget {
+  const GiftFullScreenOverlay({
+    super.key,
+    required this.message,
+    required this.onClose,
+  });
+  final Map<String, dynamic> message;
+  final VoidCallback onClose;
+
+  @override
+  State<GiftFullScreenOverlay> createState() => _GiftFullScreenOverlayState();
+}
+
+class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay> {
+  VideoPlayerController? _video;
+  bool _visible = true;
+
+  Map<String, dynamic> get _payload =>
+      Map<String, dynamic>.from(widget.message['payload'] ?? const {});
+
+  @override
+  void initState() {
+    super.initState();
+    final url = _payload['media_url'] as String?;
+    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
+    if (url != null && url.isNotEmpty && type == 'mp4') {
+      final video = VideoPlayerController.networkUrl(Uri.parse(url));
+      _video = video;
+      video.initialize().then((_) {
+        if (mounted) {
+          video.setLooping(true);
+          video.play();
+          setState(() {});
+        }
+      });
+    }
+    Future<void>.delayed(const Duration(seconds: 6), () {
+      if (!mounted) return;
+      setState(() => _visible = false);
+      widget.onClose();
+    });
+  }
+
+  @override
+  void dispose() {
+    _video?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.shrink();
+    final url = _payload['media_url'] as String?;
+    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
+    final senderId = widget.message['sender_id'] as String?;
+    final recipientId = _payload['recipient_id'] as String?;
+    return Material(
+      color: Colors.black.withValues(alpha: .78),
+      child: FutureBuilder<List<Map<String, dynamic>?>>(
+        future: Future.wait([
+          if (senderId != null) SakiService.instance.userProfile(senderId),
+          if (recipientId != null)
+            SakiService.instance.userProfile(recipientId),
+        ]),
+        builder: (_, snapshot) {
+          final sender = snapshot.data?.isNotEmpty == true
+              ? snapshot.data!.first
+              : null;
+          final recipient = snapshot.data != null && snapshot.data!.length > 1
+              ? snapshot.data![1]
+              : null;
+          return Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (_payload['flying_banner'] != false)
+                  Positioned(
+                    top: 34,
+                    left: 0,
+                    right: 0,
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TweenAnimationBuilder<Offset>(
+                        tween: Tween(
+                          begin: const Offset(1.2, 0),
+                          end: Offset.zero,
+                        ),
+                        duration: const Duration(milliseconds: 900),
+                        builder: (_, offset, child) => FractionalTranslation(
+                          translation: offset,
+                          child: child,
+                        ),
+                        child: Container(
+                          margin: const EdgeInsetsDirectional.only(
+                            start: 12,
+                            end: 12,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: .86),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(color: Colors.amberAccent),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.card_giftcard,
+                                color: Colors.amberAccent,
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                Container(
+                  margin: const EdgeInsets.all(28),
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF32105C), Color(0xFF130F24)],
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: Colors.purpleAccent, width: 2),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.purple, blurRadius: 28),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${sender?['username'] ?? 'مستخدم'} أرسل هدية إلى ${recipient?['username'] ?? 'مستخدم'}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: 230,
+                        height: 230,
+                        child: _video != null && _video!.value.isInitialized
+                            ? FittedBox(
+                                fit: BoxFit.contain,
+                                child: SizedBox(
+                                  width: _video!.value.size.width,
+                                  height: _video!.value.size.height,
+                                  child: VideoPlayer(_video!),
+                                ),
+                              )
+                            : url != null && url.isNotEmpty && type != 'svga'
+                            ? Image.network(url, fit: BoxFit.contain)
+                            : Center(
+                                child: Text(
+                                  _payload['icon'] as String? ?? '🎁',
+                                  style: const TextStyle(fontSize: 100),
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        _payload['name'] as String? ?? 'هدية',
+                        style: const TextStyle(
+                          color: Colors.amberAccent,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 24,
+                  child: IconButton(
+                    onPressed: () => setState(() => _visible = false),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

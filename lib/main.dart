@@ -53,9 +53,14 @@ class SakiApp extends StatelessWidget {
       themeMode: ThemeMode.light,
       routerConfig: router,
       locale: const Locale('ar'),
-      builder: (context, child) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => Stack(
+        children: [
+          Directionality(
+            textDirection: TextDirection.rtl,
+            child: child ?? const SizedBox.shrink(),
+          ),
+          const RoomMiniBubble(),
+        ],
       ),
     );
   }

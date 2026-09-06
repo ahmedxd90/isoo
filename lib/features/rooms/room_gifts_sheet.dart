@@ -15,7 +15,11 @@ class RoomGiftsSheet extends StatefulWidget {
   });
   final SakiService service;
   final String roomId;
-  final Future<void> Function(String recipientId, Map<String, dynamic> gift)
+  final Future<void> Function(
+    String recipientId,
+    Map<String, dynamic> gift,
+    bool flyingBanner,
+  )
   onSent;
   @override
   State<RoomGiftsSheet> createState() => _RoomGiftsSheetState();
@@ -24,21 +28,23 @@ class RoomGiftsSheet extends StatefulWidget {
 class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   final _categories = const {
     'الكل': null,
-    'العامة': 'general',
+    'عامة': 'general',
     'هدايا الحظ': 'luck',
-    'مشاهير': 'famous',
-    'الدول': 'countries',
-    'VIP': 'vip',
     'CP': 'cp',
+    'المشاهير': 'famous',
+    'والدول': 'countries',
+    'VIP فقط': 'vip',
     'الحقيبة': 'bag',
   };
   String _category = 'الكل';
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _recipients = [];
   Map<String, dynamic>? _selected;
+  Map<String, dynamic>? _selectedGift;
   int _gold = 0;
   bool _loading = true;
   bool _sending = false;
+  bool _flyingBanner = true;
   @override
   void initState() {
     super.initState();
@@ -102,7 +108,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
     }
     setState(() => _sending = true);
     try {
-      await widget.onSent(_selected!['id'] as String, gift);
+      await widget.onSent(_selected!['id'] as String, gift, _flyingBanner);
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted)
@@ -112,6 +118,27 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Widget _giftVisual(Map<String, dynamic> gift, {double size = 30}) {
+    final media = gift['media_url'] as String?;
+    final icon = gift['icon'] as String? ?? '🎁';
+    if (media != null &&
+        media.isNotEmpty &&
+        !media.toLowerCase().endsWith('.mp4')) {
+      return Image.network(
+        media,
+        width: size + 18,
+        height: size + 18,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) =>
+            Text(icon, style: TextStyle(fontSize: size)),
+      );
+    }
+    return Text(
+      media != null && media.toLowerCase().endsWith('.mp4') ? '▶️' : icon,
+      style: TextStyle(fontSize: size),
+    );
   }
 
   @override
@@ -174,6 +201,32 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
             ),
           ),
           const Divider(height: 8),
+          if (_selectedGift != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFA855F7).withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFA855F7)),
+              ),
+              child: Row(
+                children: [
+                  _giftVisual(_selectedGift!, size: 24),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _selectedGift!['name'] as String? ?? 'هدية',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Text(
+                    '${_selectedGift!['price'] ?? 0} ذهب',
+                    style: const TextStyle(color: _giftOrange),
+                  ),
+                ],
+              ),
+            ),
           SizedBox(
             height: 42,
             child: ListView(
@@ -210,24 +263,26 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                     itemBuilder: (_, i) {
                       final gift = _gifts[i];
                       return InkWell(
-                        onTap: _sending ? null : () => _send(gift),
+                        onTap: _sending
+                            ? null
+                            : () => setState(() => _selectedGift = gift),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: _giftCyan.withValues(alpha: .14),
+                              color: identical(gift, _selectedGift)
+                                  ? const Color(0xFFA855F7)
+                                  : _giftCyan.withValues(alpha: .14),
+                              width: identical(gift, _selectedGift) ? 2 : 1,
                             ),
                           ),
                           padding: const EdgeInsets.all(6),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(
-                                gift['icon'] as String? ?? '🎁',
-                                style: const TextStyle(fontSize: 30),
-                              ),
+                              _giftVisual(gift),
                               Text(
                                 gift['name'] as String? ?? 'هدية',
                                 maxLines: 1,
@@ -252,6 +307,19 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                   ),
           ),
           const Divider(),
+          SwitchListTile.adaptive(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            value: _flyingBanner,
+            onChanged: _sending
+                ? null
+                : (value) => setState(() => _flyingBanner = value),
+            title: const Text('إظهار شريط طائر للجميع'),
+            subtitle: const Text(
+              'يظهر اسم المرسل والمستقبل وصورة الهدية أعلى الغرفة',
+            ),
+            activeColor: const Color(0xFFA855F7),
+          ),
           Row(
             children: [
               Text(
@@ -265,9 +333,9 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
               FilledButton.icon(
                 onPressed: _sending
                     ? null
-                    : () {
-                        if (_gifts.isNotEmpty) _send(_gifts.first);
-                      },
+                    : _selectedGift == null
+                    ? null
+                    : () => _send(_selectedGift!),
                 icon: const Icon(Icons.send_rounded),
                 label: const Text('إرسال هدية'),
                 style: FilledButton.styleFrom(backgroundColor: _giftOrange),
