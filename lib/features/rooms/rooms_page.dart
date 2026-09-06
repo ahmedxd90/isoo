@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -788,6 +789,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late int _liveSeatCount;
   String? _liveBackgroundUrl;
   bool _minimized = false;
+  Map<String, dynamic>? _activeGiftMessage;
+  String? _shownGiftMessageId;
 
   @override
   void initState() {
@@ -2048,544 +2051,577 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       onWillPop: () async => await _confirmExit(),
       child: Scaffold(
         backgroundColor: const Color(0xFF4A0E17),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: backgroundColors,
-            ),
-            image: backgroundUrl == null
-                ? const DecorationImage(
-                    image: AssetImage(
-                      'assets/trace_home/images/audio_room_background.png',
-                    ),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                      Colors.black54,
-                      BlendMode.darken,
-                    ),
-                  )
-                : backgroundUrl.startsWith('free://')
-                ? null
-                : DecorationImage(
-                    image: NetworkImage(backgroundUrl),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withValues(alpha: .38),
-                      BlendMode.darken,
-                    ),
-                  ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _showRoomInfo,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: image == null
-                              ? Container(
-                                  width: 42,
-                                  height: 42,
-                                  color: Colors.white12,
-                                  child: const Icon(
-                                    Icons.meeting_room,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Image.network(
-                                  image,
-                                  width: 42,
-                                  height: 42,
-                                  fit: BoxFit.cover,
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _showRoomInfo,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              Text(
-                                'ID: $roomNumber',
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              Text(
-                                _isOnSeat
-                                    ? (_micMuted
-                                          ? 'على مقعد • المايك مكتوم'
-                                          : 'يتحدث الآن')
-                                    : 'مستمع • ${_remoteUsers.length} متحدث',
-                                style: TextStyle(
-                                  color: _isOnSeat && !_micMuted
-                                      ? Colors.greenAccent
-                                      : Colors.white54,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _showOnline,
-                        icon: const Icon(
-                          Icons.people_alt_outlined,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () async {
-                          if (await _confirmExit() && mounted)
-                            Navigator.pop(context);
-                        },
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
+        body: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: backgroundColors,
                 ),
-                if (_comboSeconds > 0)
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                        end: 18,
-                        bottom: 4,
+                image: backgroundUrl == null
+                    ? const DecorationImage(
+                        image: AssetImage(
+                          'assets/trace_home/images/audio_room_background.png',
+                        ),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black54,
+                          BlendMode.darken,
+                        ),
+                      )
+                    : backgroundUrl.startsWith('free://')
+                    ? null
+                    : DecorationImage(
+                        image: NetworkImage(backgroundUrl),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withValues(alpha: .38),
+                          BlendMode.darken,
+                        ),
                       ),
-                      child: InkWell(
-                        onTap: _sendComboAgain,
-                        borderRadius: BorderRadius.circular(32),
-                        child: CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.orangeAccent,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                'COMBO',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _showRoomInfo,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: image == null
+                                  ? Container(
+                                      width: 42,
+                                      height: 42,
+                                      color: Colors.white12,
+                                      child: const Icon(
+                                        Icons.meeting_room,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Image.network(
+                                      image,
+                                      width: 42,
+                                      height: 42,
+                                      fit: BoxFit.cover,
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _showRoomInfo,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  Text(
+                                    'ID: $roomNumber',
+                                    style: const TextStyle(
+                                      color: Colors.white60,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  Text(
+                                    _isOnSeat
+                                        ? (_micMuted
+                                              ? 'على مقعد • المايك مكتوم'
+                                              : 'يتحدث الآن')
+                                        : 'مستمع • ${_remoteUsers.length} متحدث',
+                                    style: TextStyle(
+                                      color: _isOnSeat && !_micMuted
+                                          ? Colors.greenAccent
+                                          : Colors.white54,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              Text(
-                                '$_comboSeconds',
-                                style: const TextStyle(
-                                  fontSize: 19,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _showOnline,
+                            icon: const Icon(
+                              Icons.people_alt_outlined,
+                              color: Colors.white,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () async {
+                              if (await _confirmExit() && mounted)
+                                Navigator.pop(context);
+                            },
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_comboSeconds > 0)
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.only(
+                            end: 18,
+                            bottom: 4,
+                          ),
+                          child: InkWell(
+                            onTap: _sendComboAgain,
+                            borderRadius: BorderRadius.circular(32),
+                            child: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: Colors.orangeAccent,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Text(
+                                    'COMBO',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$_comboSeconds',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _seatStream,
-                  builder: (_, snap) {
-                    final seats = {
-                      for (final row in (snap.data ?? []))
-                        row['seat_no'] as int: row,
-                    };
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        itemCount: _liveSeatCount,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 5,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 10,
-                              childAspectRatio: .8,
-                            ),
-                        itemBuilder: (_, index) {
-                          final seatNo = index + 1;
-                          final row = seats[seatNo];
-                          final profile = Map<String, dynamic>.from(
-                            row?['profiles'] ?? const {},
-                          );
-                          final occupied = row != null;
-                          final isOwnSeat = row?['user_id'] == _service.uid;
-                          return GestureDetector(
-                            onTap: () => isOwnSeat
-                                ? _showUserCard(profile, selfSeat: true)
-                                : _seatAction(seatNo, row),
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: occupied
-                                        ? const Color(0xFFEAB308)
-                                        : Colors.white10,
-                                    border: Border.all(
-                                      color: occupied
-                                          ? Colors.yellowAccent
-                                          : Colors.white24,
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: occupied
-                                        ? const [
-                                            BoxShadow(
-                                              color: Colors.amber,
-                                              blurRadius: 10,
+                    StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: _seatStream,
+                      builder: (_, snap) {
+                        final seats = {
+                          for (final row in (snap.data ?? []))
+                            row['seat_no'] as int: row,
+                        };
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            itemCount: _liveSeatCount,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 5,
+                                  mainAxisSpacing: 12,
+                                  crossAxisSpacing: 10,
+                                  childAspectRatio: .8,
+                                ),
+                            itemBuilder: (_, index) {
+                              final seatNo = index + 1;
+                              final row = seats[seatNo];
+                              final profile = Map<String, dynamic>.from(
+                                row?['profiles'] ?? const {},
+                              );
+                              final occupied = row != null;
+                              final isOwnSeat = row?['user_id'] == _service.uid;
+                              return GestureDetector(
+                                onTap: () => isOwnSeat
+                                    ? _showUserCard(profile, selfSeat: true)
+                                    : _seatAction(seatNo, row),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: occupied
+                                            ? const Color(0xFFEAB308)
+                                            : Colors.white10,
+                                        border: Border.all(
+                                          color: occupied
+                                              ? Colors.yellowAccent
+                                              : Colors.white24,
+                                          width: 1.5,
+                                        ),
+                                        boxShadow: occupied
+                                            ? const [
+                                                BoxShadow(
+                                                  color: Colors.amber,
+                                                  blurRadius: 10,
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      child: occupied
+                                          ? Stack(
+                                              alignment: Alignment.center,
+                                              children: [
+                                                GestureDetector(
+                                                  onTap: () => _showUserCard(
+                                                    profile,
+                                                    selfSeat: isOwnSeat,
+                                                  ),
+                                                  child: SakiAvatar(
+                                                    url:
+                                                        profile['avatar_url']
+                                                            as String?,
+                                                    label:
+                                                        profile['username']
+                                                            as String?,
+                                                    radius: 25,
+                                                  ),
+                                                ),
+                                                if (row['is_speaking'] == true)
+                                                  Positioned.fill(
+                                                    child: IgnorePointer(
+                                                      child: Center(
+                                                        child: _VipVoiceWave(
+                                                          profile: profile,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            )
+                                          : const Icon(
+                                              Icons.mic_none_rounded,
+                                              color: Colors.white70,
                                             ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: occupied
-                                      ? Stack(
-                                          alignment: Alignment.center,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    occupied
+                                        ? VipUsername(
+                                            profile: profile,
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 10,
+                                            ),
+                                          )
+                                        : Text(
+                                            '$seatNo',
+                                            style: const TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    Expanded(
+                      child: StreamBuilder<List<Map<String, dynamic>>>(
+                        stream: _messageStream,
+                        builder: (_, snap) {
+                          final messages = [...(snap.data ?? [])]
+                            ..removeWhere((message) {
+                              final clearedAt = _chatClearedAt;
+                              if (clearedAt == null) return false;
+                              final createdAt = DateTime.tryParse(
+                                message['created_at']?.toString() ?? '',
+                              );
+                              return createdAt != null &&
+                                  !createdAt.toUtc().isAfter(clearedAt);
+                            })
+                            ..sort(
+                              (a, b) =>
+                                  (DateTime.tryParse(
+                                            a['created_at']?.toString() ?? '',
+                                          ) ??
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                            0,
+                                          ))
+                                      .compareTo(
+                                        DateTime.tryParse(
+                                              b['created_at']?.toString() ?? '',
+                                            ) ??
+                                            DateTime.fromMillisecondsSinceEpoch(
+                                              0,
+                                            ),
+                                      ),
+                            );
+                          final latestMessage = messages.isEmpty
+                              ? const <String, dynamic>{}
+                              : messages.last;
+                          final latestGift =
+                              latestMessage['message_type'] == 'gift'
+                              ? latestMessage
+                              : const <String, dynamic>{};
+                          if (latestGift.isNotEmpty &&
+                              latestGift['id'] != _shownGiftMessageId) {
+                            final gift = Map<String, dynamic>.from(latestGift);
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted || gift['id'] == _shownGiftMessageId)
+                                return;
+                              setState(() {
+                                _shownGiftMessageId = gift['id']?.toString();
+                                _activeGiftMessage = gift;
+                              });
+                            });
+                          }
+                          return Stack(
+                            children: [
+                              ListView.builder(
+                                reverse: true,
+                                padding: const EdgeInsets.all(14),
+                                itemCount: messages.length + 1,
+                                itemBuilder: (_, i) {
+                                  if (i == messages.length) {
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 10),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Text(
+                                        'مرحباً بكم في ساكي، نرجو احترام الآخرين',
+                                        style: TextStyle(
+                                          color: Colors.amberAccent,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  final msg = messages[messages.length - 1 - i];
+                                  final senderId =
+                                      msg['sender_id'] as String? ?? '';
+                                  final messageType =
+                                      msg['message_type'] as String? ?? 'chat';
+                                  return FutureBuilder<Map<String, dynamic>?>(
+                                    future: _service.userProfile(senderId),
+                                    builder: (_, profileSnap) {
+                                      final profile =
+                                          profileSnap.data ??
+                                          const <String, dynamic>{};
+                                      final username =
+                                          profile['username'] as String? ??
+                                          'عضو';
+                                      final body = msg['body'] as String? ?? '';
+                                      final payload = Map<String, dynamic>.from(
+                                        msg['payload'] ?? const {},
+                                      );
+                                      final isSpecial =
+                                          messageType == 'join' ||
+                                          messageType == 'seat';
+                                      final isEmoji = messageType == 'emoji';
+                                      return Container(
+                                        margin: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          border: isSpecial
+                                              ? Border.all(
+                                                  color: Colors.amber
+                                                      .withValues(alpha: .35),
+                                                )
+                                              : null,
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             GestureDetector(
-                                              onTap: () => _showUserCard(
-                                                profile,
-                                                selfSeat: isOwnSeat,
-                                              ),
+                                              onTap: () =>
+                                                  _showUserCard(profile),
                                               child: SakiAvatar(
                                                 url:
                                                     profile['avatar_url']
                                                         as String?,
-                                                label:
-                                                    profile['username']
-                                                        as String?,
-                                                radius: 25,
+                                                label: username,
+                                                radius: 17,
                                               ),
                                             ),
-                                            if (row['is_speaking'] == true)
-                                              Positioned.fill(
-                                                child: IgnorePointer(
-                                                  child: Center(
-                                                    child: _VipVoiceWave(
-                                                      profile: profile,
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  VipUsername(
+                                                    profile: profile,
+                                                    style: const TextStyle(
+                                                      color: Colors.amberAccent,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w900,
                                                     ),
                                                   ),
-                                                ),
+                                                  const SizedBox(height: 3),
+                                                  messageType == 'dice'
+                                                      ? _DiceFace(
+                                                          value:
+                                                              (payload['value']
+                                                                      as num?)
+                                                                  ?.toInt() ??
+                                                              1,
+                                                        )
+                                                      : Text(
+                                                          body,
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: isEmoji
+                                                                ? 28
+                                                                : 13,
+                                                          ),
+                                                        ),
+                                                ],
                                               ),
+                                            ),
                                           ],
-                                        )
-                                      : const Icon(
-                                          Icons.mic_none_rounded,
-                                          color: Colors.white70,
                                         ),
-                                ),
-                                const SizedBox(height: 4),
-                                occupied
-                                    ? VipUsername(
-                                        profile: profile,
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 10,
-                                        ),
-                                      )
-                                    : Text(
-                                        '$seatNo',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 10,
-                                        ),
-                                      ),
-                              ],
-                            ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
                           );
                         },
                       ),
-                    );
-                  },
-                ),
-                Expanded(
-                  child: StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: _messageStream,
-                    builder: (_, snap) {
-                      final messages = [...(snap.data ?? [])]
-                        ..removeWhere((message) {
-                          final clearedAt = _chatClearedAt;
-                          if (clearedAt == null) return false;
-                          final createdAt = DateTime.tryParse(
-                            message['created_at']?.toString() ?? '',
-                          );
-                          return createdAt != null &&
-                              !createdAt.toUtc().isAfter(clearedAt);
-                        })
-                        ..sort(
-                          (a, b) =>
-                              (DateTime.tryParse(
-                                        a['created_at']?.toString() ?? '',
-                                      ) ??
-                                      DateTime.fromMillisecondsSinceEpoch(0))
-                                  .compareTo(
-                                    DateTime.tryParse(
-                                          b['created_at']?.toString() ?? '',
-                                        ) ??
-                                        DateTime.fromMillisecondsSinceEpoch(0),
-                                  ),
-                        );
-                      final latestMessage = messages.isEmpty
-                          ? const <String, dynamic>{}
-                          : messages.last;
-                      final latestGift = latestMessage['message_type'] == 'gift'
-                          ? latestMessage
-                          : const <String, dynamic>{};
-                      return Stack(
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                      child: Row(
                         children: [
-                          ListView.builder(
-                            reverse: true,
-                            padding: const EdgeInsets.all(14),
-                            itemCount: messages.length + 1,
-                            itemBuilder: (_, i) {
-                              if (i == messages.length) {
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  padding: const EdgeInsets.all(12),
+                          if (_isComposing) ...[
+                            Expanded(
+                              child: TextField(
+                                controller: _message,
+                                autofocus: true,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: 'كتابة رسالة...',
+                                  hintStyle: const TextStyle(
+                                    color: Colors.white54,
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.black38,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                                onSubmitted: (_) => _send(),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _send,
+                              icon: const Icon(
+                                Icons.send_rounded,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ] else ...[
+                            Expanded(
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(24),
+                                onTap: () =>
+                                    setState(() => _isComposing = true),
+                                child: Container(
+                                  height: 48,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                  ),
+                                  alignment: Alignment.centerLeft,
                                   decoration: BoxDecoration(
-                                    color: Colors.black26,
-                                    borderRadius: BorderRadius.circular(14),
+                                    color: Colors.black38,
+                                    borderRadius: BorderRadius.circular(24),
                                   ),
                                   child: const Text(
-                                    'مرحباً بكم في ساكي، نرجو احترام الآخرين',
-                                    style: TextStyle(
-                                      color: Colors.amberAccent,
-                                      fontSize: 12,
-                                    ),
+                                    'كتابة رسالة...',
+                                    style: TextStyle(color: Colors.white54),
                                   ),
-                                );
-                              }
-                              final msg = messages[messages.length - 1 - i];
-                              final senderId =
-                                  msg['sender_id'] as String? ?? '';
-                              final messageType =
-                                  msg['message_type'] as String? ?? 'chat';
-                              return FutureBuilder<Map<String, dynamic>?>(
-                                future: _service.userProfile(senderId),
-                                builder: (_, profileSnap) {
-                                  final profile =
-                                      profileSnap.data ??
-                                      const <String, dynamic>{};
-                                  final username =
-                                      profile['username'] as String? ?? 'عضو';
-                                  final body = msg['body'] as String? ?? '';
-                                  final payload = Map<String, dynamic>.from(
-                                    msg['payload'] ?? const {},
-                                  );
-                                  final isSpecial =
-                                      messageType == 'join' ||
-                                      messageType == 'seat';
-                                  final isEmoji = messageType == 'emoji';
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black26,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: isSpecial
-                                          ? Border.all(
-                                              color: Colors.amber.withValues(
-                                                alpha: .35,
-                                              ),
-                                            )
-                                          : null,
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: () => _showUserCard(profile),
-                                          child: SakiAvatar(
-                                            url:
-                                                profile['avatar_url']
-                                                    as String?,
-                                            label: username,
-                                            radius: 17,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              VipUsername(
-                                                profile: profile,
-                                                style: const TextStyle(
-                                                  color: Colors.amberAccent,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 3),
-                                              messageType == 'dice'
-                                                  ? _DiceFace(
-                                                      value:
-                                                          (payload['value']
-                                                                  as num?)
-                                                              ?.toInt() ??
-                                                          1,
-                                                    )
-                                                  : Text(
-                                                      body,
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: isEmoji
-                                                            ? 28
-                                                            : 13,
-                                                      ),
-                                                    ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                          if (latestGift.isNotEmpty)
-                            Positioned.fill(
-                              child: GiftFullScreenOverlay(
-                                message: latestGift,
-                                onClose: () {},
+                                ),
                               ),
                             ),
+                            IconButton(
+                              onPressed: _showEmojiPanel,
+                              icon: const Icon(
+                                Icons.emoji_emotions_outlined,
+                                color: Colors.amberAccent,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _toggleListenMute,
+                              icon: Icon(
+                                _listenMuted
+                                    ? Icons.volume_off_rounded
+                                    : Icons.volume_up_rounded,
+                                color: _listenMuted
+                                    ? Colors.redAccent
+                                    : Colors.white70,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _toggleRoomMic,
+                              icon: Icon(
+                                _micMuted
+                                    ? Icons.mic_off_rounded
+                                    : Icons.mic_rounded,
+                                color: _isOnSeat
+                                    ? Colors.amberAccent
+                                    : Colors.white38,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _showGiftPanel,
+                              icon: const Icon(
+                                Icons.card_giftcard_rounded,
+                                color: Colors.pinkAccent,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _showRoomTools,
+                              icon: const Icon(
+                                Icons.grid_view_rounded,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
                         ],
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                  child: Row(
-                    children: [
-                      if (_isComposing) ...[
-                        Expanded(
-                          child: TextField(
-                            controller: _message,
-                            autofocus: true,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              hintText: 'كتابة رسالة...',
-                              hintStyle: const TextStyle(color: Colors.white54),
-                              filled: true,
-                              fillColor: Colors.black38,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide.none,
-                              ),
-                            ),
-                            onSubmitted: (_) => _send(),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _send,
-                          icon: const Icon(
-                            Icons.send_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ] else ...[
-                        Expanded(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: () => setState(() => _isComposing = true),
-                            child: Container(
-                              height: 48,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                              ),
-                              alignment: Alignment.centerLeft,
-                              decoration: BoxDecoration(
-                                color: Colors.black38,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: const Text(
-                                'كتابة رسالة...',
-                                style: TextStyle(color: Colors.white54),
-                              ),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _showEmojiPanel,
-                          icon: const Icon(
-                            Icons.emoji_emotions_outlined,
-                            color: Colors.amberAccent,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _toggleListenMute,
-                          icon: Icon(
-                            _listenMuted
-                                ? Icons.volume_off_rounded
-                                : Icons.volume_up_rounded,
-                            color: _listenMuted
-                                ? Colors.redAccent
-                                : Colors.white70,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _toggleRoomMic,
-                          icon: Icon(
-                            _micMuted
-                                ? Icons.mic_off_rounded
-                                : Icons.mic_rounded,
-                            color: _isOnSeat
-                                ? Colors.amberAccent
-                                : Colors.white38,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _showGiftPanel,
-                          icon: const Icon(
-                            Icons.card_giftcard_rounded,
-                            color: Colors.pinkAccent,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: _showRoomTools,
-                          icon: const Icon(
-                            Icons.grid_view_rounded,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            if (_activeGiftMessage != null)
+              Positioned.fill(
+                child: GiftFullScreenOverlay(
+                  key: ValueKey(_activeGiftMessage!['id']),
+                  message: _activeGiftMessage!,
+                  onClose: () {
+                    if (mounted) setState(() => _activeGiftMessage = null);
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -2605,8 +2641,10 @@ class GiftFullScreenOverlay extends StatefulWidget {
   State<GiftFullScreenOverlay> createState() => _GiftFullScreenOverlayState();
 }
 
-class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay> {
+class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
+    with SingleTickerProviderStateMixin {
   VideoPlayerController? _video;
+  late final SVGAAnimationController _svga;
   bool _visible = true;
 
   Map<String, dynamic> get _payload =>
@@ -2615,29 +2653,52 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay> {
   @override
   void initState() {
     super.initState();
+    _svga = SVGAAnimationController(vsync: this)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) _hide();
+      });
     final url = _payload['media_url'] as String?;
     final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    if (url != null && url.isNotEmpty && type == 'mp4') {
+    if (url != null && url.isNotEmpty && type == 'svga') {
+      SVGAParser.shared
+          .decodeFromURL(url)
+          .then((movie) {
+            if (!mounted) return;
+            _svga.videoItem = movie;
+            _svga.forward(from: 0);
+            setState(() {});
+          })
+          .catchError((_) {
+            if (mounted) setState(() {});
+          });
+    } else if (url != null && url.isNotEmpty && type == 'mp4') {
       final video = VideoPlayerController.networkUrl(Uri.parse(url));
       _video = video;
       video.initialize().then((_) {
         if (mounted) {
-          video.setLooping(true);
           video.play();
           setState(() {});
         }
       });
+      video.addListener(() {
+        if (!video.value.isInitialized || video.value.isPlaying) return;
+        if (video.value.position >= video.value.duration) _hide();
+      });
+    } else {
+      Future<void>.delayed(const Duration(seconds: 6), _hide);
     }
-    Future<void>.delayed(const Duration(seconds: 6), () {
-      if (!mounted) return;
-      setState(() => _visible = false);
-      widget.onClose();
-    });
+  }
+
+  void _hide() {
+    if (!mounted || !_visible) return;
+    setState(() => _visible = false);
+    widget.onClose();
   }
 
   @override
   void dispose() {
     _video?.dispose();
+    _svga.dispose();
     super.dispose();
   }
 
@@ -2748,7 +2809,9 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay> {
                       SizedBox(
                         width: 230,
                         height: 230,
-                        child: _video != null && _video!.value.isInitialized
+                        child: _svga.videoItem != null
+                            ? SVGAImage(_svga, fit: BoxFit.contain)
+                            : _video != null && _video!.value.isInitialized
                             ? FittedBox(
                                 fit: BoxFit.contain,
                                 child: SizedBox(
