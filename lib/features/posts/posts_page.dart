@@ -627,12 +627,16 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                                   ),
                                 ),
                               ),
-                              icon: FaIcon(
-                                _following
-                                    ? FontAwesomeIcons.check
-                                    : FontAwesomeIcons.plus,
-                                size: 9,
-                              ),
+                              icon: _following
+                                  ? const FaIcon(
+                                      FontAwesomeIcons.check,
+                                      size: 9,
+                                    )
+                                  : Image.asset(
+                                      'assets/trace_moments_reels/images/feed_icon_details_share_new.png',
+                                      width: 12,
+                                      height: 12,
+                                    ),
                               label: Text(
                                 _following ? 'متابعة' : 'متابعة',
                                 style: const TextStyle(
@@ -709,12 +713,14 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                             placeholder: (_, __) => const Center(
                               child: CircularProgressIndicator(color: _brand),
                             ),
-                            errorWidget: (_, __, ___) => const ColoredBox(
+                            errorWidget: (_, __, ___) => ColoredBox(
                               color: _brandSoft,
                               child: Center(
-                                child: FaIcon(
-                                  FontAwesomeIcons.image,
-                                  color: _brand,
+                                child: Image.asset(
+                                  'assets/trace_moments_reels/images/blurred_image.jpg',
+                                  width: 54,
+                                  height: 54,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),

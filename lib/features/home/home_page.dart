@@ -24,9 +24,9 @@ class _HomePageState extends State<HomePage> {
   int _index = 0;
 
   final _pages = const [
+    RoomsPage(),
     PostsPage(),
     ReelsPage(),
-    RoomsPage(),
     MessagesPage(),
     ProfilePage(),
   ];
@@ -195,9 +195,9 @@ class SakiHtmlBottomNav extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   static const _items = [
-    (FontAwesomeIcons.house, 'الرئيسية'),
+    (FontAwesomeIcons.microphone, 'الرئيسية'),
+    (FontAwesomeIcons.images, 'اللحظات'),
     (FontAwesomeIcons.clapperboard, 'الريلز'),
-    (FontAwesomeIcons.microphone, 'الغرف'),
     (FontAwesomeIcons.comments, 'الرسائل'),
     (FontAwesomeIcons.circleUser, 'أنا'),
   ];
@@ -238,10 +238,10 @@ class SakiHtmlBottomNav extends StatelessWidget {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
-                        width: active && index == 1 ? 34 : 30,
-                        height: active && index == 1 ? 34 : 30,
+                        width: active && index == 0 ? 34 : 30,
+                        height: active && index == 0 ? 34 : 30,
                         decoration: BoxDecoration(
-                          color: active && index == 1
+                          color: active && index == 0
                               ? _navTeal.withValues(alpha: .20)
                               : Colors.transparent,
                           shape: BoxShape.circle,
