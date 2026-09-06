@@ -9,10 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
-import 'agora_live_room_page.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
-import 'live_broadcast_setup_page.dart';
 import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -48,19 +46,6 @@ class _RoomsPageState extends State<RoomsPage> {
     setState(() => _loading = true);
     try {
       final rooms = await _service.rooms();
-      final broadcasts = await _service.liveBroadcasts();
-      for (final broadcast in broadcasts) {
-        final base = Map<String, dynamic>.from(broadcast['rooms'] ?? const {});
-        if (base.isEmpty) continue;
-        rooms.insert(0, {
-          ...base,
-          'name': broadcast['title'] ?? base['name'],
-          'image_url': broadcast['avatar_url'] ?? base['image_url'],
-          'is_live': true,
-          'live_channel': broadcast['channel_name'],
-          'broadcast_id': broadcast['id'],
-        });
-      }
       List<Map<String, dynamic>> banners = [];
       try {
         banners = await _service.roomBanners();
@@ -107,111 +92,21 @@ class _RoomsPageState extends State<RoomsPage> {
           .push(MaterialPageRoute(builder: (_) => const SearchPage()));
 
   Future<void> _create() async {
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'ماذا تريد أن تبدأ؟',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFF656BF9),
-                  child: Icon(Icons.mic, color: Colors.white),
-                ),
-                title: const Text(
-                  'بث صوتي',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: const Text('غرفة صوتية مع المقاعد والهدايا'),
-                onTap: () => Navigator.pop(context, 'voice'),
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.redAccent,
-                  child: Icon(Icons.live_tv, color: Colors.white),
-                ),
-                title: const Text(
-                  'بث مباشر',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: const Text('فيديو مباشر مع التعليقات والهدايا وPK'),
-                onTap: () => Navigator.pop(context, 'live'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (!mounted || choice == null) return;
     final owned = await _service.myOwnedRoom();
     if (!mounted) return;
-    if (owned == null) {
-      final created = await Navigator.of(context).push<Map<String, dynamic>>(
-        MaterialPageRoute(builder: (_) => const CreateRoomPage()),
-      );
-      if (!mounted || created == null) return;
-      if (choice == 'voice') {
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => RoomDetailPage(room: created)),
-        );
-      } else {
-        await _startLive(created);
-      }
+    if (owned != null) {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: owned)));
       return;
     }
-    if (choice == 'voice') {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: owned)));
-    } else {
-      await _startLive(owned);
-    }
-  }
-
-  Future<void> _startLive(Map<String, dynamic> room) async {
-    final title = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => LiveBroadcastSetupPage(room: room)),
+    final created = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (_) => const CreateRoomPage()),
     );
-    if (!mounted || title == null) return;
-    final channel =
-        'live_${room['id']}_${DateTime.now().millisecondsSinceEpoch}';
-    await _service.startLiveBroadcast(
-      roomId: room['id'] as String,
-      channelName: channel,
-      title: title,
-    );
+    if (!mounted || created == null) return;
     await _load();
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AgoraLiveRoomPage(
-          roomId: room['id'] as String,
-          channelName: channel,
-          title: title,
-          isHost: true,
-        ),
-      ),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: created)));
   }
 
   void _ranking(String title, FaIconData icon) {
@@ -637,20 +532,9 @@ class HtmlRoomCard extends StatelessWidget {
         : rank == 2
         ? const [Color(0xFFE0E0E0), Color(0xFF9E9E9E)]
         : const [Color(0xFFCD7F32), Color(0xFF8B4513)];
-    final isLive = room['is_live'] == true;
     return InkWell(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => isLive
-              ? AgoraLiveRoomPage(
-                  roomId: room['id'] as String,
-                  channelName: room['live_channel'] as String,
-                  title: name,
-                  isHost: room['owner_id'] == SakiService.instance.uid,
-                )
-              : RoomDetailPage(room: room),
-        ),
-      ),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room))),
       borderRadius: BorderRadius.circular(16),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -709,29 +593,6 @@ class HtmlRoomCard extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-            if (isLive)
-              Positioned(
-                top: 46,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'LIVE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -2420,24 +2281,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             color: Colors.pinkAccent,
                           ),
                         ),
-                        if (widget.room['owner_id'] == _service.uid)
-                          IconButton(
-                            tooltip: 'بدء بث مباشر',
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AgoraLiveRoomPage(
-                                  roomId: _roomId,
-                                  channelName: _roomId,
-                                  title: title,
-                                ),
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.live_tv_rounded,
-                              color: Colors.redAccent,
-                            ),
-                          ),
                         IconButton(
                           onPressed: _showRoomTools,
                           icon: const Icon(
