@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import 'admin_trace_modules_page.dart';
 
 const _blue = Color(0xFF4F46E5);
 const _cyan = Color(0xFF06B6D4);
@@ -106,6 +107,33 @@ class SuperAdminPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AdminRoomsPage()),
+          ),
+        ),
+        _AdminCard(
+          icon: Icons.business_rounded,
+          title: 'إدارة الوكالات',
+          subtitle: 'عرض الوكالات وتفعيلها أو تعليقها أو إغلاقها',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminAgenciesPage()),
+          ),
+        ),
+        _AdminCard(
+          icon: Icons.groups_rounded,
+          title: 'إدارة العائلات',
+          subtitle: 'عرض العائلات وتغيير الحالة الإدارية',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminFamiliesPage()),
+          ),
+        ),
+        _AdminCard(
+          icon: Icons.military_tech_rounded,
+          title: 'إدارة المستويات والجوائز',
+          subtitle: 'المستويات والنقاط والجوائز المرتبطة بالمستخدمين',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminLevelsPage()),
           ),
         ),
       ],
