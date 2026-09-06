@@ -1161,7 +1161,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  Future<void> _showUserCard(Map<String, dynamic> profile) async {
+  Future<void> _showUserCard(
+    Map<String, dynamic> profile, {
+    bool selfSeat = false,
+  }) async {
     if (profile.isEmpty) return;
     final userId = profile['id'] as String?;
     if (userId == null) return;
@@ -1176,7 +1179,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         : '♀';
     await showDialog<void>(
       context: context,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
         child: Container(
@@ -1368,6 +1371,32 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         ),
                       ],
                     ),
+                    if (selfSeat) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            final left = await _confirmLeaveSeat();
+                            if (!left || !mounted) return;
+                            await _leaveOwnSeat();
+                            if (dialogContext.mounted) {
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                          icon: const Icon(Icons.mic_off_rounded),
+                          label: const Text('النزول من المقعد'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFF97316),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                     if (canModerate) ...[
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 10),
@@ -1679,6 +1708,116 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       } catch (_) {
         if (mounted) _messageSnack('لا تملك صلاحية مسح دردشة الغرفة.');
       }
+    }
+  }
+
+  Future<bool> _confirmLeaveSeat() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(color: const Color(0xFF06B6D4), width: 1.5),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x6606B6D4),
+                blurRadius: 22,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFF97316), Color(0xFF06B6D4)],
+                  ),
+                ),
+                child: const Icon(
+                  Icons.mic_off_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'النزول من المقعد؟',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF172033),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'سيتم إيقاف المايك وإخلاء مقعدك للآخرين داخل الغرفة.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF64748B), height: 1.45),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF06B6D4),
+                        side: const BorderSide(color: Color(0xFF06B6D4)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text('إلغاء'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(dialogContext, true),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFF97316),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text('نعم، انزل'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _leaveOwnSeat() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await _service.leaveRoomSeat(_roomId);
+      await _setSeatAudio(false);
+      await _service.sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat');
+      if (mounted) _messageSnack('تم النزول من المقعد بنجاح.');
+    } catch (error) {
+      if (mounted) _messageSnack('تعذر النزول من المقعد: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -2007,8 +2146,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             row?['profiles'] ?? const {},
                           );
                           final occupied = row != null;
+                          final isOwnSeat = row?['user_id'] == _service.uid;
                           return GestureDetector(
-                            onTap: () => _seatAction(seatNo, row),
+                            onTap: () => isOwnSeat
+                                ? _showUserCard(profile, selfSeat: true)
+                                : _seatAction(seatNo, row),
                             child: Column(
                               children: [
                                 Container(
@@ -2039,8 +2181,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                           alignment: Alignment.center,
                                           children: [
                                             GestureDetector(
-                                              onTap: () =>
-                                                  _showUserCard(profile),
+                                              onTap: () => _showUserCard(
+                                                profile,
+                                                selfSeat: isOwnSeat,
+                                              ),
                                               child: SakiAvatar(
                                                 url:
                                                     profile['avatar_url']
