@@ -147,7 +147,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
           );
           await SakiService.instance.sendRoomMessage(
             widget.roomId,
-            'أرسل ${gift['icon'] ?? '🎁'} ${gift['name'] ?? 'هدية'}',
+            'أرسل هدية ${gift['name'] ?? 'هدية'}',
             type: 'gift',
             payload: {
               'gift_id': gift['id'],

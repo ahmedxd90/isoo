@@ -105,3 +105,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,497,628 bytes
 - SHA-256: e66932ac27cd8e331ee10e3bc39c491f4d47cee80a5524f650b7f7eb5f263b76
+
+Gift chat URL fix — 2026-09-06
+
+Gift chat messages no longer print the icon field as text. Since icon stores the thumbnail URL, the old message body exposed a Supabase storage URL. New room and live gift messages now use a safe Arabic body containing only the gift name. Existing gift messages are sanitized at render time from their payload, so old stored URLs are also hidden. The thumbnail remains rendered through Image.network in the gift chat row and flying banner.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,497,628 bytes
+- SHA-256: f9b28ab2f4fcad1e6f6154ee21232f9b1a12e7ab69a9fb5104ba95c644e51a3c

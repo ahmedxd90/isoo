@@ -1014,7 +1014,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           );
           await _service.sendRoomMessage(
             _roomId,
-            'أرسل ${gift['icon'] ?? '🎁'} ${gift['name'] ?? 'هدية'}',
+            'أرسل هدية ${gift['name'] ?? 'هدية'}',
             type: 'gift',
             payload: {
               'gift_id': gift['id'],
@@ -1059,7 +1059,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
       await _service.sendRoomMessage(
         _roomId,
-        'أرسل ${gift['icon'] ?? '🎁'} ${gift['name'] ?? 'هدية'}',
+        'أرسل هدية ${gift['name'] ?? 'هدية'}',
         type: 'gift',
         payload: {
           'gift_id': gift['id'],
@@ -2426,6 +2426,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       final payload = Map<String, dynamic>.from(
                                         msg['payload'] ?? const {},
                                       );
+                                      final displayBody = messageType == 'gift'
+                                          ? 'أرسل هدية ${payload['name'] ?? 'هدية'}'
+                                          : body;
                                       final giftThumbnail =
                                           payload['thumbnail_url'] as String? ??
                                           (payload['icon'] as String?);
@@ -2513,7 +2516,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                               1,
                                                         )
                                                       : Text(
-                                                          body,
+                                                          displayBody,
                                                           style: TextStyle(
                                                             color: Colors.white,
                                                             fontSize: isEmoji
