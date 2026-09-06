@@ -1355,6 +1355,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         fontSize: 12,
                       ),
                     ),
+                    if (profile['is_super_admin'] == true ||
+                        (profile['saki_id'] as num?)?.toInt() == 1000)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: SuperAdminBadge(),
+                      ),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

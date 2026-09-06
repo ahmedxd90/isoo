@@ -69,6 +69,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/saki_login_background.jpg
+    - assets/saki_super_admin_badge.png
 
   # To add an image asset to your application, add an assets section, like this:
   # assets:

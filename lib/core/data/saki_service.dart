@@ -471,7 +471,7 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at',
+          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at,is_super_admin',
         )
         .eq('id', userId)
         .maybeSingle();
