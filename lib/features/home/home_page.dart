@@ -195,11 +195,11 @@ class SakiHtmlBottomNav extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   static const _items = [
-    (FontAwesomeIcons.microphone, 'الرئيسية'),
-    (FontAwesomeIcons.images, 'اللحظات'),
-    (FontAwesomeIcons.clapperboard, 'الريلز'),
-    (FontAwesomeIcons.comments, 'الرسائل'),
-    (FontAwesomeIcons.circleUser, 'أنا'),
+    ('assets/trace_home/images/ic_main_default.png', 'assets/trace_home/images/ic_main_selected.png', 'الرئيسية'),
+    ('assets/trace_home/images/ic_feed_default.png', 'assets/trace_home/images/ic_feed_selected.png', 'اللحظات'),
+    ('assets/trace_home/images/activity_main_send_live.png', 'assets/trace_home/images/activity_main_send_live.png', 'الريلز'),
+    ('assets/trace_home/images/home_icon_message.png', 'assets/trace_home/images/home_icon_message.png', 'الرسائل'),
+    ('assets/trace_home/images/ic_profile_default.png', 'assets/trace_home/images/ic_profile_default.png', 'أنا'),
   ];
 
   @override
@@ -247,10 +247,15 @@ class SakiHtmlBottomNav extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: FaIcon(
-                            item.$1,
-                            color: active ? _navTeal : const Color(0xFF9CA3AF),
-                            size: active ? 19 : 18,
+                          child: Image.asset(
+                            active ? item.$2 : item.$1,
+                            width: active ? 25 : 22,
+                            height: active ? 25 : 22,
+                            errorBuilder: (_, __, ___) => FaIcon(
+                              FontAwesomeIcons.circle,
+                              color: active ? _navTeal : const Color(0xFF9CA3AF),
+                              size: active ? 19 : 18,
+                            ),
                           ),
                         ),
                       ),

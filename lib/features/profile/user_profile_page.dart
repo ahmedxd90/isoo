@@ -178,6 +178,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     ),
                   ),
                   SliverToBoxAdapter(
+                    child: _TraceProfileSummary(
+                      profile: profile,
+                      stats: _stats,
+                      onCopy: _copyId,
+                    ),
+                  ),
+                  SliverToBoxAdapter(
                     child: Container(height: 8, color: _profileBg),
                   ),
                   SliverPersistentHeader(
@@ -237,40 +244,15 @@ class _ProfileHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFemale = gender == 'female' || gender == 'أنثى';
     return SizedBox(
-      height: 400,
+      height: 360,
       child: Stack(
         fit: StackFit.expand,
         children: [
           if (avatar != null && avatar!.isNotEmpty)
-            ColorFiltered(
-              colorFilter: const ColorFilter.matrix(<double>[
-                .2126,
-                .7152,
-                .0722,
-                0,
-                0,
-                .2126,
-                .7152,
-                .0722,
-                0,
-                0,
-                .2126,
-                .7152,
-                .0722,
-                0,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-              ]),
-              child: Image.network(
-                avatar!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    const ColoredBox(color: Color(0xFF374151)),
-              ),
+            Image.network(
+              avatar!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFF374151)),
             )
           else
             Image.asset(
@@ -317,7 +299,30 @@ class _ProfileHero extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 48,
+            bottom: 20,
+            left: 16,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: .25), borderRadius: BorderRadius.circular(22)),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.circle, color: Colors.greenAccent, size: 10),
+                      const SizedBox(width: 5),
+                      const Text('متصل الآن', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                Image.asset('assets/trace_profile/images/ic_guard_avatar_frame.webp', width: 70, height: 70),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: 92,
             right: 16,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -454,31 +459,45 @@ class _ProfileHero extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
-            bottom: 10,
-            right: 16,
-            left: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _ProfileStat(
-                  value: '${stats['followers'] ?? 0}',
-                  label: 'المتابعين',
-                  padding: const EdgeInsets.only(left: 14),
-                ),
-                _ProfileStat(
-                  value: '${stats['following'] ?? 0}',
-                  label: 'متابعة',
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                ),
-                const _ProfileStat(
-                  value: '—',
-                  label: 'زائر',
-                  padding: EdgeInsets.only(right: 14),
-                ),
-              ],
-            ),
-          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TraceProfileSummary extends StatelessWidget {
+  const _TraceProfileSummary({required this.profile, required this.stats, required this.onCopy});
+  final Map<String, dynamic> profile;
+  final Map<String, int> stats;
+  final VoidCallback onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final username = profile['display_name'] as String? ?? profile['username'] as String? ?? 'مستخدم SAKI';
+    final country = profile['country'] as String? ?? '—';
+    final gender = profile['gender'] as String? ?? '';
+    final female = gender == 'female' || gender == 'أنثى';
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _profileInk)),
+          const SizedBox(height: 8),
+          Row(children: [
+            Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), decoration: BoxDecoration(color: Colors.blueAccent, borderRadius: BorderRadius.circular(4)), child: Row(children: [Icon(female ? Icons.female : Icons.male, size: 11, color: Colors.white), const SizedBox(width: 3), Text(female ? 'أنثى' : 'ذكر', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800))])),
+            const SizedBox(width: 7),
+            Text(country, style: const TextStyle(color: _profileMuted, fontSize: 12)),
+          ]),
+          const SizedBox(height: 10),
+          GestureDetector(onTap: onCopy, child: Row(children: [const Icon(Icons.copy, size: 16, color: _profileMuted), const SizedBox(width: 5), Text('SAKI ID: ${profile['saki_id'] ?? '—'}', style: const TextStyle(color: _profileMuted, fontSize: 12, fontWeight: FontWeight.w800))])),
+          const SizedBox(height: 14),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+            _ProfileStat(value: '${stats['following'] ?? 0}', label: 'المتابعة', padding: EdgeInsets.zero),
+            _ProfileStat(value: '${stats['followers'] ?? 0}', label: 'المتابعين', padding: EdgeInsets.zero),
+            _ProfileStat(value: '${stats['posts'] ?? 0}', label: 'المنشورات', padding: EdgeInsets.zero),
+          ]),
         ],
       ),
     );
@@ -544,24 +563,19 @@ class _ProfileTabsDelegate extends SliverPersistentHeaderDelegate {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _ProfileTab(
-            label: 'الصفحة الشخصية',
+            label: 'البيانات',
             selected: selected == 0,
             onTap: () => onSelect(0),
           ),
           _ProfileTab(
-            label: 'المنشورات',
+            label: 'الهدايا',
             selected: selected == 1,
             onTap: () => onSelect(1),
           ),
           _ProfileTab(
-            label: 'الريلز',
+            label: 'اللحظات',
             selected: selected == 2,
             onTap: () => onSelect(2),
-          ),
-          _ProfileTab(
-            label: 'الهدايا',
-            selected: selected == 3,
-            onTap: () => onSelect(3),
           ),
         ],
       ),

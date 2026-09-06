@@ -15,10 +15,10 @@ import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
-const _roomPrimary = Color(0xFF8B5CF6);
-const _roomSecondary = Color(0xFFEC4899);
+const _roomPrimary = Color(0xFF656BF9);
+const _roomSecondary = Color(0xFF8E91FF);
 const _roomAccent = Color(0xFFF59E0B);
-const _roomBg = Color(0xFFF8FAFC);
+const _roomBg = Color(0xFFF7F7F7);
 const _roomMuted = Color(0xFF9CA3AF);
 
 class RoomsPage extends StatefulWidget {
