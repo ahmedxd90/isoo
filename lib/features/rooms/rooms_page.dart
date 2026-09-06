@@ -2196,13 +2196,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             ),
                           ),
                           IconButton(
-                            onPressed: _showOnline,
-                            icon: const Icon(
-                              Icons.people_alt_outlined,
-                              color: Colors.white,
-                            ),
-                          ),
-                          IconButton(
                             onPressed: () async {
                               if (await _confirmExit() && mounted)
                                 Navigator.pop(context);
@@ -2254,6 +2247,37 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           ),
                         ),
                       ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+                      child: SizedBox(
+                        height: 44,
+                        child: Stack(
+                          children: [
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              child: RoomConnectedStrip(
+                                members: _roomMembers,
+                                total: _roomMembers.length,
+                                onTap: _showOnline,
+                              ),
+                            ),
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: GiftGoldBadge(
+                                total: _roomGoldTotal,
+                                onTap: () => showRoomGiftRanking(
+                                  context,
+                                  _service,
+                                  _roomId,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                     StreamBuilder<List<Map<String, dynamic>>>(
                       stream: _seatStream,
                       builder: (_, snap) {
@@ -2590,24 +2614,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             ],
                           );
                         },
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-                      child: Row(
-                        children: [
-                          RoomConnectedStrip(
-                            members: _roomMembers,
-                            total: _roomMembers.length,
-                            onTap: _showOnline,
-                          ),
-                          const Spacer(),
-                          GiftGoldBadge(
-                            total: _roomGoldTotal,
-                            onTap: () =>
-                                showRoomGiftRanking(context, _service, _roomId),
-                          ),
-                        ],
                       ),
                     ),
                     Padding(
