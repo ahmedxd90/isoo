@@ -96,3 +96,12 @@ Validation APK:
 - Version: 1.3.2+15
 - Size: 269,563,128 bytes
 - SHA-256: ef0f5a2746eac0f32c828f84339135aaec59a8a593fb2bcbaddfbff06ee7b66b
+
+Real VIP purchase and seat-title update — 2026-09-06
+
+VipPage now uses the existing Supabase purchase_vip RPC for real gold deduction, 30-day extension, profile/account VIP update, and transaction logging. The send-VIP UI and code were removed from the page. A fixed bottom purchase bar shows the selected level, price, duration, and real purchase action. Privileges are distributed by required VIP level and locked items show their required level. VIP expiry is shown from vip_expires_at. The room seat label now displays the plain username only; VipUsername remains active elsewhere in the application.
+
+Validation APK:
+- Version: 1.3.2+15
+- Size: 269,497,628 bytes
+- SHA-256: e66932ac27cd8e331ee10e3bc39c491f4d47cee80a5524f650b7f7eb5f263b76

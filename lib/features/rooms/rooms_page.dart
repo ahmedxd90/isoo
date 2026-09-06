@@ -2309,8 +2309,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     occupied
-                                        ? VipUsername(
-                                            profile: profile,
+                                        ? Text(
+                                            profile['username'] as String? ??
+                                                'عضو',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               color: Colors.white70,
                                               fontSize: 10,
