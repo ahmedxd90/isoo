@@ -184,46 +184,22 @@ class _VipUsernameState extends State<VipUsername>
       );
     }
     if (superAdmin) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF312E81), Color(0xFF06B6D4), Color(0xFFF59E0B)],
-          ),
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: const [BoxShadow(color: Color(0x6606B6D4), blurRadius: 8)],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.verified_user_rounded,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: base.copyWith(
               color: Colors.white,
-              size: 13,
+              fontWeight: FontWeight.w900,
             ),
-            const SizedBox(width: 4),
-            Text(
-              'SUPER ADMIN',
-              style: base.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-              ),
-              maxLines: 1,
-            ),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                text,
-                style: base.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
-                maxLines: widget.maxLines,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+            maxLines: widget.maxLines,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 3),
+          const SuperAdminBadge(),
+        ],
       );
     }
     final colors = level >= 6
@@ -250,4 +226,34 @@ class _VipUsernameState extends State<VipUsername>
       ),
     );
   }
+}
+
+class SuperAdminBadge extends StatelessWidget {
+  const SuperAdminBadge({super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFF312E81), Color(0xFF06B6D4), Color(0xFFF59E0B)],
+      ),
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: const [BoxShadow(color: Color(0x6606B6D4), blurRadius: 8)],
+    ),
+    child: const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.verified_user_rounded, color: Colors.white, size: 13),
+        SizedBox(width: 4),
+        Text(
+          'SUPER ADMIN',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
 }

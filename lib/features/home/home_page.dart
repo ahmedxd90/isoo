@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -46,8 +48,22 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _GlobalGiftBanner extends StatelessWidget {
+class _GlobalGiftBanner extends StatefulWidget {
   const _GlobalGiftBanner();
+  @override
+  State<_GlobalGiftBanner> createState() => _GlobalGiftBannerState();
+}
+
+class _GlobalGiftBannerState extends State<_GlobalGiftBanner> {
+  String? _activeId;
+  String? _shownId;
+  Timer? _hideTimer;
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
   Future<Map<String, dynamic>?> _load(Map<String, dynamic> row) async {
     final sender = await SakiService.instance.client
         .from('profiles')
@@ -77,6 +93,16 @@ class _GlobalGiftBanner extends StatelessWidget {
           .where((r) => ((r['total_price'] as num?)?.toInt() ?? 0) >= 100000)
           .toList();
       if (rows.isEmpty) return const SizedBox.shrink();
+      final newestId = rows.first['id']?.toString();
+      if (newestId != null && newestId != _shownId) {
+        _shownId = newestId;
+        _activeId = newestId;
+        _hideTimer?.cancel();
+        _hideTimer = Timer(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _activeId = null);
+        });
+      }
+      if (_activeId != newestId) return const SizedBox.shrink();
       return Positioned(
         top: 72,
         left: 0,
