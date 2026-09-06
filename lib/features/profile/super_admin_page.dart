@@ -46,6 +46,41 @@ class SuperAdminPage extends StatelessWidget {
             ],
           ),
         ),
+        FutureBuilder<Map<String, dynamic>>(
+          future: SakiService.instance.adminDashboard(),
+          builder: (_, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LinearProgressIndicator(),
+              );
+            }
+            final data = snapshot.data ?? const <String, dynamic>{};
+            return GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.8,
+              children: [
+                _MetricCard('المستخدمون', data['users'], Icons.people_alt),
+                _MetricCard(
+                  'VIP نشط',
+                  data['active_vip'],
+                  Icons.workspace_premium,
+                ),
+                _MetricCard('الغرف', data['rooms'], Icons.meeting_room),
+                _MetricCard('الرسائل', data['messages'], Icons.forum),
+                _MetricCard('الوكالات', data['agencies'], Icons.business),
+                _MetricCard('العائلات', data['families'], Icons.groups),
+                _MetricCard('المنشورات', data['posts'], Icons.article),
+                _MetricCard('الحظر النشط', data['bans'], Icons.block),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 16),
         _AdminCard(
           icon: Icons.people_alt_rounded,
           title: 'إدارة المستخدمين',
@@ -74,6 +109,46 @@ class SuperAdminPage extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard(this.label, this.value, this.icon);
+  final String label;
+  final Object? value;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Card(
+    elevation: 0,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Icon(icon, color: _blue, size: 25),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '${value ?? 0}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                  ),
+                ),
+                Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }

@@ -25,6 +25,52 @@ class SakiService {
     return result == true;
   }
 
+  Future<Map<String, dynamic>> adminDashboard() async {
+    final result = await client.rpc('saki_admin_dashboard');
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> adminAgencies() async {
+    final rows = await client
+        .from('trace_agencies')
+        .select('id,name,agent_code,status,created_at,owner_id')
+        .order('created_at', ascending: false)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> adminFamilies() async {
+    final rows = await client
+        .from('trace_families')
+        .select('id,name,invite_code,status,created_at,owner_id')
+        .order('created_at', ascending: false)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> adminLevels() async {
+    final rows = await client
+        .from('trace_level_rewards')
+        .select('id,level,title,description,reward_type,reward_value')
+        .order('level')
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> adminSetAgencyStatus(String id, String status) async {
+    await client.rpc(
+      'admin_set_agency_status',
+      params: {'p_agency_id': id, 'p_status': status},
+    );
+  }
+
+  Future<void> adminSetFamilyStatus(String id, String status) async {
+    await client.rpc(
+      'admin_set_family_status',
+      params: {'p_family_id': id, 'p_status': status},
+    );
+  }
+
   Future<Map<String, dynamic>?> activeAppBan() async {
     return client
         .from('app_bans')
