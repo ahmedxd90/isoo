@@ -634,8 +634,47 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
               ),
               IconButton(
                 onPressed: () async {
-                  await SakiService.instance.adminDeleteGift(g['id'] as String);
-                  _load();
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('حذف الهدية نهائيًا؟'),
+                      content: Text(
+                        'سيتم حذف ${g['name'] ?? 'الهدية'} من الكتالوج وسجل الهدايا ومخزون المستخدمين.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('إلغاء'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('حذف نهائي'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                  try {
+                    await SakiService.instance.adminDeleteGift(
+                      g['id'] as String,
+                    );
+                    await _load();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'تم حذف الهدية من قاعدة البيانات بنجاح',
+                          ),
+                        ),
+                      );
+                    }
+                  } catch (error) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تعذر حذف الهدية: $error')),
+                      );
+                    }
+                  }
                 },
                 icon: const Icon(
                   Icons.delete_outline,

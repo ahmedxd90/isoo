@@ -453,8 +453,9 @@ class SakiService {
 
   Future<void> adminUpdateGift(String id, Map<String, dynamic> values) async =>
       client.from('room_gift_catalog').update(values).eq('id', id);
-  Future<void> adminDeleteGift(String id) async =>
-      client.from('room_gift_catalog').delete().eq('id', id);
+  Future<void> adminDeleteGift(String id) async {
+    await client.rpc('admin_delete_room_gift', params: {'p_gift_id': id});
+  }
 
   Future<List<Map<String, dynamic>>> adminRooms() async {
     final rows = await client
