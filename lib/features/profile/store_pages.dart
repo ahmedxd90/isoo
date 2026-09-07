@@ -286,6 +286,145 @@ class _StorePageState extends State<StorePage> {
     }
   }
 
+  Future<void> _confirmBuy() async {
+    final product = _selectedProduct;
+    if (product == null || _buying) return;
+    final confirmed = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'تأكيد الشراء',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (_, __, ___) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.sizeOf(context).width * .84,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 24),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'تأكيد الشراء',
+                  style: TextStyle(
+                    color: _storeInk,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'هل تريد شراء هذا المنتج؟',
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    product['thumbnail_url'] as String,
+                    width: 108,
+                    height: 92,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  product['name'] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _storeInk,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.monetization_on_rounded,
+                      color: _storeGold,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${product['discounted_price'] ?? product['price']} عملة ذهبية',
+                      style: const TextStyle(
+                        color: _storeOrange,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context, false),
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: _storeSurface,
+                            borderRadius: BorderRadius.circular(13),
+                          ),
+                          child: const Text(
+                            'إلغاء',
+                            style: TextStyle(
+                              color: _storeInk,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context, true),
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [_storeGold, Color(0xFFFF8F00)],
+                            ),
+                            borderRadius: BorderRadius.all(Radius.circular(13)),
+                          ),
+                          child: const Text(
+                            'تأكيد الشراء',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      transitionBuilder: (_, animation, __, child) => ScaleTransition(
+        scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+        child: child,
+      ),
+    );
+    if (confirmed == true && mounted) await _buySelected();
+  }
+
   void _sendSelected() {
     if (_selectedProduct == null) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -468,7 +607,7 @@ class _StorePageState extends State<StorePage> {
             product: _selectedProduct!,
             buying: _buying,
             onSend: _sendSelected,
-            onBuy: _buySelected,
+            onBuy: _confirmBuy,
           ),
   );
 
