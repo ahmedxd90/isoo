@@ -155,6 +155,30 @@ class SakiService {
     return result;
   }
 
+  Future<List<Map<String, dynamic>>> globalWealthRanking(String period) async {
+    final rows = await client.rpc(
+      'global_gift_user_leaderboard',
+      params: {'p_period': period, 'p_mode': 'wealth'},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<List<Map<String, dynamic>>> globalCharmRanking(String period) async {
+    final rows = await client.rpc(
+      'global_gift_user_leaderboard',
+      params: {'p_period': period, 'p_mode': 'charm'},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<List<Map<String, dynamic>>> globalRoomRanking(String period) async {
+    final rows = await client.rpc(
+      'global_gift_room_leaderboard',
+      params: {'p_period': period},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<Map<String, dynamic>?> activeAppBan() async {
     return client
         .from('app_bans')

@@ -25,6 +25,7 @@ import '../../shared/widgets/saki_widgets.dart';
 const _roomPrimary = Color(0xFF656BF9);
 const _roomSecondary = Color(0xFF8E91FF);
 const _roomAccent = Color(0xFFF59E0B);
+const _roomTrophyGold = Color(0xFFF3B83F);
 const _roomBg = Color(0xFFF7F7F7);
 const _roomMuted = Color(0xFF9CA3AF);
 
@@ -117,17 +118,6 @@ class _RoomsPageState extends State<RoomsPage> {
         .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: created)));
   }
 
-  void _ranking(String title, FaIconData icon) {
-    final index = title.contains('الثروة')
-        ? 0
-        : title.contains('السحر')
-        ? 1
-        : 2;
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => RankingPage(initialIndex: index)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final countries = ['الكل', 'السعودية', 'المغرب', 'مصر', 'الإمارات'];
@@ -155,6 +145,13 @@ class _RoomsPageState extends State<RoomsPage> {
           ],
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 2),
+            child: _AnimatedTrophyButton(
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const RankingPage())),
+            ),
+          ),
           IconButton(
             onPressed: _search,
             icon: const FaIcon(
@@ -198,7 +195,6 @@ class _RoomsPageState extends State<RoomsPage> {
                   SliverToBoxAdapter(
                     child: RoomBannerCarousel(banners: _banners),
                   ),
-                  SliverToBoxAdapter(child: _RoomRankings(onTap: _ranking)),
                   SliverToBoxAdapter(
                     child: SizedBox(
                       height: 54,
@@ -301,6 +297,65 @@ class _RoomHeaderTab extends StatelessWidget {
           color: selected ? const Color(0xFF111827) : _roomMuted,
           fontSize: selected ? 19 : 17,
           fontWeight: FontWeight.w900,
+        ),
+      ),
+    ),
+  );
+}
+
+class _AnimatedTrophyButton extends StatefulWidget {
+  const _AnimatedTrophyButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_AnimatedTrophyButton> createState() => _AnimatedTrophyButtonState();
+}
+
+class _AnimatedTrophyButtonState extends State<_AnimatedTrophyButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: widget.onTap,
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (_, child) => Transform.translate(
+        offset: Offset(0, -1.5 * _controller.value),
+        child: Transform.rotate(
+          angle: (_controller.value - .5) * .10,
+          child: child,
+        ),
+      ),
+      child: Container(
+        width: 42,
+        height: 42,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _roomTrophyGold.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _roomTrophyGold.withValues(alpha: .35)),
+        ),
+        child: Image.asset(
+          'assets/saki_leaderboard_trophy.png',
+          width: 34,
+          height: 34,
+          fit: BoxFit.contain,
         ),
       ),
     ),
