@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
@@ -21,11 +23,20 @@ class _MessagesPageState extends State<MessagesPage>
   final _search = TextEditingController();
   List<Map<String, dynamic>> _conversations = [];
   bool _loading = true;
+  StreamSubscription<List<Map<String, dynamic>>>? _notificationSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _messageSubscription;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
+    _notificationSubscription = SakiService.instance
+        .notificationsStream()
+        .listen((_) => _scheduleRefresh());
+    _messageSubscription = SakiService.instance.inboxMessagesStream().listen(
+      (_) => _scheduleRefresh(),
+    );
     _load();
   }
 
@@ -33,6 +44,9 @@ class _MessagesPageState extends State<MessagesPage>
   void dispose() {
     _tabs.dispose();
     _search.dispose();
+    _notificationSubscription?.cancel();
+    _messageSubscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -44,6 +58,11 @@ class _MessagesPageState extends State<MessagesPage>
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _scheduleRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(const Duration(milliseconds: 250), _load);
   }
 
   void _activity(String title, String? filter) => Navigator.push(
@@ -275,9 +294,9 @@ class _MessagesPageState extends State<MessagesPage>
         trailing: unread > 0
             ? CircleAvatar(
                 radius: 11,
-                backgroundColor: _blue,
+                backgroundColor: Colors.redAccent,
                 child: Text(
-                  '$unread',
+                  unread > 99 ? '99+' : '$unread',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -454,15 +473,43 @@ class ChatPage extends StatefulWidget {
 
 class _ChatPageState extends State<ChatPage> {
   final _controller = TextEditingController();
+  final List<Map<String, dynamic>> _pendingMessages = [];
   bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SakiService.instance.markConversationRead(widget.conversationId);
+  }
 
   Future<void> _send() async {
     final body = _controller.text.trim();
     if (body.isEmpty || _sending) return;
-    setState(() => _sending = true);
+    final pending = <String, dynamic>{
+      'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
+      'sender_id': SakiService.instance.uid,
+      'body': body,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    setState(() {
+      _sending = true;
+      _pendingMessages.add(pending);
+    });
     try {
       await SakiService.instance.sendMessage(widget.conversationId, body);
       _controller.clear();
+    } catch (error) {
+      if (mounted) {
+        setState(
+          () =>
+              _pendingMessages.removeWhere((row) => row['id'] == pending['id']),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -514,7 +561,17 @@ class _ChatPageState extends State<ChatPage> {
                 widget.conversationId,
               ),
               builder: (_, snapshot) {
-                final rows = snapshot.data ?? <Map<String, dynamic>>[];
+                final serverRows = snapshot.data ?? <Map<String, dynamic>>[];
+                final rows = [
+                  ...serverRows,
+                  ..._pendingMessages.where(
+                    (pending) => !serverRows.any(
+                      (remote) =>
+                          remote['sender_id'] == pending['sender_id'] &&
+                          remote['body'] == pending['body'],
+                    ),
+                  ),
+                ];
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     rows.isEmpty)
                   return const SakiLoading();

@@ -980,6 +980,13 @@ class SakiService {
         .order('created_at');
   }
 
+  Stream<List<Map<String, dynamic>>> inboxMessagesStream() {
+    return client
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .order('created_at');
+  }
+
   Future<void> sendMessage(String conversationId, String body) async {
     await client.from('messages').insert({
       'conversation_id': conversationId,
@@ -990,6 +997,29 @@ class SakiService {
         .from('conversations')
         .update({'updated_at': DateTime.now().toIso8601String()})
         .eq('id', conversationId);
+    try {
+      final members = await client
+          .from('conversation_members')
+          .select('user_id')
+          .eq('conversation_id', conversationId)
+          .neq('user_id', uid);
+      final rows = List<Map<String, dynamic>>.from(members)
+          .map(
+            (member) => {
+              'user_id': member['user_id'],
+              'actor_id': uid,
+              'type': 'message',
+              'entity_id': conversationId,
+              'is_read': false,
+            },
+          )
+          .toList();
+      if (rows.isNotEmpty) {
+        await client.from('notifications').insert(rows);
+      }
+    } catch (_) {
+      // The message is already saved; notification policies may be disabled.
+    }
   }
 
   Future<List<Map<String, dynamic>>> rooms() async {
