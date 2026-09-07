@@ -224,19 +224,15 @@ class _RoomsPageState extends State<RoomsPage> {
                     )
                   else
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                      sliver: SliverGrid.builder(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
+                      sliver: SliverList.builder(
                         itemCount: _visibleRooms.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                              childAspectRatio: 1,
-                            ),
-                        itemBuilder: (_, index) => HtmlRoomCard(
-                          room: _visibleRooms[index],
-                          rank: index + 1,
+                        itemBuilder: (_, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: HtmlRoomCard(
+                            room: _visibleRooms[index],
+                            rank: index + 1,
+                          ),
                         ),
                       ),
                     ),
@@ -748,178 +744,279 @@ class _RoomBannerCarouselState extends State<RoomBannerCarousel> {
   }
 }
 
-class HtmlRoomCard extends StatelessWidget {
-  const HtmlRoomCard({super.key, required this.room, required this.rank});
+class _ReferenceRoomCard extends StatelessWidget {
+  const _ReferenceRoomCard({required this.room, required this.rank});
   final Map<String, dynamic> room;
   final int rank;
 
   @override
   Widget build(BuildContext context) {
-    final profile = Map<String, dynamic>.from(room['profiles'] ?? const {});
     final name = room['name'] as String? ?? 'غرفة SAKI';
     final image = room['image_url'] as String?;
+    final country = room['country'] as String? ?? '';
     final members = room['_members_count'] as int? ?? 0;
-    final country = room['country'] as String? ?? '🌐';
-    final badge = rank <= 3 ? 'TOP $rank' : null;
-    final badgeColors = rank == 1
-        ? const [Color(0xFFFFD700), Color(0xFFFFA500)]
+    final description = (room['description'] as String?)?.trim();
+    final official =
+        room['is_official'] == true ||
+        room['room_type']?.toString().toLowerCase() == 'official';
+    final accent = rank == 1
+        ? const Color(0xFFF59E0B)
         : rank == 2
-        ? const [Color(0xFFE0E0E0), Color(0xFF9E9E9E)]
-        : const [Color(0xFFCD7F32), Color(0xFF8B4513)];
-    return InkWell(
-      onTap: () async {
-        final active = RoomSessionController.instance.room;
-        if (active != null && active['id'] != room['id']) {
-          await RoomSessionController.instance.close();
-        }
-        if (!context.mounted) return;
-        await Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
+        ? const Color(0xFF94A3B8)
+        : rank == 3
+        ? const Color(0xFFD97706)
+        : const Color(0xFFE2E8F0);
+    final badgeIcon = rank == 1
+        ? FontAwesomeIcons.crown
+        : rank == 2
+        ? FontAwesomeIcons.award
+        : FontAwesomeIcons.medal;
+
+    Future<void> openRoom() async {
+      final active = RoomSessionController.instance.room;
+      if (active != null && active['id'] != room['id']) {
+        await RoomSessionController.instance.close();
+      }
+      if (!context.mounted) return;
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
+    }
+
+    return GestureDetector(
+      onTap: openRoom,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: accent, width: rank <= 3 ? 1.5 : 1),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: rank <= 3 ? .14 : .06),
+              blurRadius: rank <= 3 ? 15 : 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            image == null || image.isEmpty
-                ? const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_roomPrimary, _roomSecondary],
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: image == null || image.isEmpty
+                        ? const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [_roomPrimary, _roomSecondary],
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.mic_external_on_rounded,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          )
+                        : Image.network(
+                            image,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [_roomPrimary, _roomSecondary],
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                  Positioned(
+                    left: 4,
+                    right: 4,
+                    bottom: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .92),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const _ReferenceWave(),
+                          const Text(
+                            'مباشر',
+                            style: TextStyle(
+                              color: Color(0xFFDB2777),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                : Image.network(
-                    image,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const DecoratedBox(
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF1E293B),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      if (official)
+                        const Padding(
+                          padding: EdgeInsets.only(left: 4),
+                          child: Icon(
+                            Icons.verified_rounded,
+                            color: Color(0xFF3B82F6),
+                            size: 16,
+                          ),
+                        ),
+                      if (country.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 3),
+                          child: Text(
+                            _flagForCountry(country),
+                            style: const TextStyle(fontSize: 17),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (official)
+                    Container(
+                      margin: const EdgeInsets.only(top: 5, bottom: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [_roomPrimary, _roomSecondary],
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: const Text(
+                        'غرفة رسمية',
+                        style: TextStyle(
+                          color: Color(0xFF2563EB),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
-                  ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xE6000000),
-                    Color(0x66000000),
-                    Colors.transparent,
-                  ],
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                ),
-              ),
-            ),
-            if (badge != null)
-              Positioned(
-                top: 0,
-                left: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: badgeColors),
-                    borderRadius: const BorderRadius.only(
-                      bottomRight: Radius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    badge,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: SakiAvatar(
-                url: profile['avatar_url'] as String?,
-                label: profile['username'] as String?,
-                radius: 17,
-              ),
-            ),
-            Positioned(
-              top: 8,
-              right: 48,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: .5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  country,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 11,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+                  if (!official) const SizedBox(height: 8),
                   Text(
-                    name,
+                    description == null || description.isEmpty
+                        ? 'انضم الآن وشارك في الحوار الصوتي المباشر.'
+                        : description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const _RoomWave(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: .45),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                  const SizedBox(height: 9),
+                  Container(
+                    padding: const EdgeInsets.only(top: 7),
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            const FaIcon(
-                              FontAwesomeIcons.headphones,
-                              color: Colors.white,
-                              size: 10,
+                            const Icon(
+                              Icons.people_alt_rounded,
+                              color: Color(0xFF10B981),
+                              size: 14,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '$members',
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF059669),
                                 fontSize: 11,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        if (rank <= 3)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: rank == 1
+                                    ? const [
+                                        Color(0xFFFBBF24),
+                                        Color(0xFFF59E0B),
+                                      ]
+                                    : rank == 2
+                                    ? const [
+                                        Color(0xFFE2E8F0),
+                                        Color(0xFF94A3B8),
+                                      ]
+                                    : const [
+                                        Color(0xFFD97706),
+                                        Color(0xFFB45309),
+                                      ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                FaIcon(
+                                  badgeIcon,
+                                  color: rank == 2
+                                      ? const Color(0xFF1E293B)
+                                      : Colors.white,
+                                  size: 10,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'TOP $rank',
+                                  style: TextStyle(
+                                    color: rank == 2
+                                        ? const Color(0xFF1E293B)
+                                        : Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -929,6 +1026,61 @@ class HtmlRoomCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ReferenceWave extends StatefulWidget {
+  const _ReferenceWave();
+  @override
+  State<_ReferenceWave> createState() => _ReferenceWaveState();
+}
+
+class _ReferenceWaveState extends State<_ReferenceWave>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (_, __) => Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(4, (index) {
+        final height = 3 + (index.isEven ? 7 : 12) * (0.35 + _controller.value);
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          width: 3,
+          height: height,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEC4899),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        );
+      }),
+    ),
+  );
+}
+
+class HtmlRoomCard extends StatelessWidget {
+  const HtmlRoomCard({super.key, required this.room, required this.rank});
+  final Map<String, dynamic> room;
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) =>
+      _ReferenceRoomCard(room: room, rank: rank);
 }
 
 class _RoomWave extends StatefulWidget {
