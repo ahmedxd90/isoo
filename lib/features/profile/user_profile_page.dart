@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import 'dart:developer' as developer;
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../messages/messages_page.dart';
@@ -105,19 +109,81 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ),
       );
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'تعذر فتح المحادثة الخاصة: ${error.toString().replaceFirst('Exception: ', '')}',
-            ),
-          ),
-        );
-      }
+    } catch (error, stackTrace) {
+      final details = _privateChatErrorDetails(error, stackTrace);
+      developer.log(
+        details,
+        name: 'SAKI_PRIVATE_CHAT',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) await _showPrivateChatDiagnostics(details);
     } finally {
       if (mounted) setState(() => _actionLoading = false);
     }
+  }
+
+  String _privateChatErrorDetails(Object error, StackTrace stackTrace) {
+    final authUser = SakiService.instance.currentUser;
+    final lines = <String>[
+      'SAKI_PRIVATE_CHAT_ERROR',
+      'time: ${DateTime.now().toIso8601String()}',
+      'other_user_id: ${widget.userId}',
+      'current_user_id: ${authUser?.id ?? '<null>'}',
+      'session_present: ${authUser != null}',
+      'error_type: ${error.runtimeType}',
+      'error: $error',
+    ];
+    if (error is PostgrestException) {
+      lines.add('postgrest_code: ${error.code ?? '<null>'}');
+      lines.add('postgrest_message: ${error.message}');
+      lines.add('postgrest_details: ${error.details}');
+      lines.add('postgrest_hint: ${error.hint ?? '<null>'}');
+    }
+    lines
+      ..add('stack_trace:')
+      ..add(stackTrace.toString());
+    return lines.join('\n');
+  }
+
+  Future<void> _showPrivateChatDiagnostics(String details) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('خطأ فتح المحادثة - التشخيص'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              details,
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: details));
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('تم نسخ الخطأ كاملًا')),
+                );
+              }
+            },
+            child: const Text('نسخ الخطأ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _copyId() async {
