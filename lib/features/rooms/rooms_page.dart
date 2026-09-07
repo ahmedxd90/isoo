@@ -1226,6 +1226,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _activeMusic;
   bool _musicPlaying = false;
   double _musicVolume = 1;
+  double _musicDurationSeconds = 0;
+  String? _musicOwnerId;
+  Set<String> _previousSeatUserIds = <String>{};
+  bool _seatStopPending = false;
 
   @override
   void initState() {
@@ -2454,8 +2458,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(value)));
 
+  bool get _canOpenMusic => _isOnSeat;
+
   bool get _canControlMusic =>
-      widget.room['owner_id'] == _service.uid || _isModerator;
+      _activeMusic?['owner_id']?.toString() == _service.uid;
 
   Future<void> _loadRoomMusic() async {
     try {
@@ -2468,10 +2474,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _roomMusic = List<Map<String, dynamic>>.from(results[0] as List);
         _activeMusic = results[1] as Map<String, dynamic>?;
         _musicPlaying = _activeMusic?['is_playing'] == true;
+        _musicOwnerId = _activeMusic?['owner_id']?.toString();
+        _musicVolume = ((_activeMusic?['volume'] as num?) ?? 1)
+            .toDouble()
+            .clamp(0.0, 1.0);
       });
       final nested = _activeMusic?['room_music'];
       if (_musicPlaying && _isOnSeat && nested is Map) {
-        await _musicPlayer.setUrl(nested['audio_url'] as String);
+        final duration = await _musicPlayer.setUrl(
+          nested['audio_url'] as String,
+        );
+        _musicDurationSeconds = duration?.inMilliseconds.toDouble() == null
+            ? 0
+            : duration!.inMilliseconds / 1000;
         await _musicPlayer.setVolume(_musicVolume);
         await _musicPlayer.play();
       }
@@ -2480,8 +2495,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _syncMusicSeatAccess(bool seated) async {
     if (seated || !_musicPlaying) return;
-    await _musicPlayer.stop();
-    if (mounted) setState(() => _musicPlaying = false);
+    await _stopRoomMusic(broadcastOnly: true);
   }
 
   Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
@@ -2490,6 +2504,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
     final action = event['action']?.toString();
+    if (action == 'volume') {
+      final value = ((event['volume'] as num?) ?? 1).toDouble().clamp(0.0, 1.0);
+      await _musicPlayer.setVolume(value);
+      if (mounted) setState(() => _musicVolume = value);
+      return;
+    }
+    if (action == 'seek') {
+      final seconds = ((event['position_seconds'] as num?) ?? 0).toDouble();
+      await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
+      return;
+    }
     if (action == 'stop') {
       await _musicPlayer.stop();
       if (mounted) setState(() => _musicPlaying = false);
@@ -2499,7 +2524,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final url = music['audio_url']?.toString();
     if (url == null || url.isEmpty) return;
     if (_activeMusic?['music_id']?.toString() != music['id']?.toString()) {
-      await _musicPlayer.setUrl(url);
+      final duration = await _musicPlayer.setUrl(url);
+      _musicDurationSeconds = duration?.inMilliseconds.toDouble() == null
+          ? 0
+          : duration!.inMilliseconds / 1000;
     }
     if (event['position_seconds'] is num) {
       await _musicPlayer.seek(
@@ -2516,6 +2544,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (mounted) {
       setState(() {
         _activeMusic = {'music_id': music['id'], 'room_music': music};
+        _musicOwnerId = music['owner_id']?.toString();
         _musicPlaying = action != 'pause';
       });
     }
@@ -2525,6 +2554,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     String action,
     Map<String, dynamic> music,
   ) async {
+    if (action == 'pause' && !_canControlMusic) {
+      _messageSnack('صاحب الأغنية فقط يستطيع إيقافها.');
+      return;
+    }
+    if (action == 'play' &&
+        _activeMusic != null &&
+        _activeMusic?['owner_id']?.toString() != _service.uid) {
+      _messageSnack('صاحب الأغنية الحالية يتحكم بها.');
+      return;
+    }
     final changingTrack =
         _activeMusic?['music_id']?.toString() != music['id']?.toString();
     final position = changingTrack
@@ -2534,25 +2573,82 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'action': action,
       'music': music,
       'position_seconds': position,
+      'volume': _musicVolume,
     };
     await _service.setActiveRoomMusic(
       _roomId,
       musicId: music['id'] as String?,
+      ownerId: music['owner_id']?.toString(),
       isPlaying: action == 'play',
       positionSeconds: position,
+      volume: _musicVolume,
     );
     await _roomChatChannel.sendBroadcastMessage(event: 'music', payload: event);
     await _handleMusicEvent(event);
   }
 
-  Future<void> _stopRoomMusic() async {
-    await _service.setActiveRoomMusic(_roomId, isPlaying: false);
+  Future<void> _broadcastMusicVolume(double value) async {
+    if (!_canControlMusic) {
+      _messageSnack('صاحب الأغنية فقط يستطيع تغيير الصوت.');
+      return;
+    }
+    final volume = value.clamp(0.0, 1.0);
+    setState(() => _musicVolume = volume);
+    await _musicPlayer.setVolume(volume);
+    try {
+      await _service.setActiveRoomMusic(
+        _roomId,
+        musicId: _activeMusic?['music_id']?.toString(),
+        ownerId: _musicOwnerId,
+        isPlaying: _musicPlaying,
+        positionSeconds: _musicPlayer.position.inMilliseconds / 1000,
+        volume: volume,
+      );
+    } catch (_) {}
+    await _roomChatChannel.sendBroadcastMessage(
+      event: 'music',
+      payload: {'action': 'volume', 'volume': volume},
+    );
+  }
+
+  Future<void> _broadcastMusicSeek(double seconds) async {
+    if (!_canControlMusic) {
+      _messageSnack('صاحب الأغنية فقط يستطيع تحريك شريط التقدم.');
+      return;
+    }
+    await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
+    await _roomChatChannel.sendBroadcastMessage(
+      event: 'music',
+      payload: {'action': 'seek', 'position_seconds': seconds},
+    );
+  }
+
+  Future<void> _stopRoomMusic({bool broadcastOnly = false}) async {
+    if (!broadcastOnly && !_canControlMusic) {
+      _messageSnack('صاحب الأغنية فقط يستطيع إيقافها.');
+      return;
+    }
+    if (!broadcastOnly) {
+      try {
+        await _service.setActiveRoomMusic(
+          _roomId,
+          musicId: _activeMusic?['music_id']?.toString(),
+          ownerId: _musicOwnerId,
+          isPlaying: false,
+          volume: _musicVolume,
+        );
+      } catch (_) {}
+    }
     await _roomChatChannel.sendBroadcastMessage(
       event: 'music',
       payload: {'action': 'stop'},
     );
     await _musicPlayer.stop();
-    if (mounted) setState(() => _musicPlaying = false);
+    if (mounted)
+      setState(() {
+        _musicPlaying = false;
+        _musicOwnerId = null;
+      });
   }
 
   Future<void> _uploadRoomMusic() async {
@@ -2585,8 +2681,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _showMusicSheet() async {
-    if (!_canControlMusic) {
-      _messageSnack('الموسيقى متاحة لمالك الغرفة والمشرفين فقط.');
+    if (!_canOpenMusic) {
+      _messageSnack('يجب الجلوس على مقعد لفتح موسيقى الغرفة.');
       return;
     }
     await showModalBottomSheet<void>(
@@ -2602,10 +2698,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         onPlay: (music) => _broadcastMusic('play', music),
         onPause: (music) => _broadcastMusic('pause', music),
         onStop: _stopRoomMusic,
-        onVolume: (value) {
-          setState(() => _musicVolume = value);
-          _musicPlayer.setVolume(value);
-        },
+        canControl: _canControlMusic,
+        onVolume: _broadcastMusicVolume,
+        onSeek: _broadcastMusicSeek,
+        positionSeconds: _musicPlayer.position.inMilliseconds / 1000,
+        durationSeconds: _musicDurationSeconds,
       ),
     );
   }
@@ -2622,7 +2719,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              if (moderator)
+              if (_isOnSeat)
                 _toolButton(Icons.music_note, 'موسيقى', () {
                   Navigator.pop(context);
                   _showMusicSheet();
@@ -2947,6 +3044,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomEmojiSubscription?.cancel();
     for (final timer in _roomEmojiTimers.values) timer.cancel();
     _roomSettingsSubscription?.cancel();
+    if (_musicPlaying) {
+      _roomChatChannel.sendBroadcastMessage(
+        event: 'music',
+        payload: {'action': 'stop', 'reason': 'room_exit'},
+      );
+      _musicPlayer.stop();
+    }
     _service.client.removeChannel(_roomChatChannel);
     _musicPlayer.dispose();
     if (_joined) _service.leaveRoom(_roomId);
@@ -3120,6 +3224,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       stream: _seatStream,
                       builder: (_, snap) {
                         final seatRows = snap.data ?? <Map<String, dynamic>>[];
+                        final seatUserIds = seatRows
+                            .map((row) => row['user_id']?.toString())
+                            .whereType<String>()
+                            .toSet();
+                        final someoneLeft =
+                            _previousSeatUserIds.isNotEmpty &&
+                            seatUserIds.length < _previousSeatUserIds.length;
+                        if (someoneLeft && _musicPlaying && !_seatStopPending) {
+                          _seatStopPending = true;
+                          scheduleMicrotask(() async {
+                            await _stopRoomMusic(broadcastOnly: true);
+                            _seatStopPending = false;
+                          });
+                        }
+                        _previousSeatUserIds = seatUserIds;
                         final ownSeat = seatRows.any(
                           (row) => row['user_id'] == _service.uid,
                         );
@@ -4544,6 +4663,10 @@ class RoomMusicSheet extends StatelessWidget {
     required this.onPause,
     required this.onStop,
     required this.onVolume,
+    required this.onSeek,
+    required this.canControl,
+    required this.positionSeconds,
+    required this.durationSeconds,
   });
 
   final List<Map<String, dynamic>> music;
@@ -4555,6 +4678,10 @@ class RoomMusicSheet extends StatelessWidget {
   final Future<void> Function(Map<String, dynamic>) onPause;
   final Future<void> Function() onStop;
   final ValueChanged<double> onVolume;
+  final ValueChanged<double> onSeek;
+  final bool canControl;
+  final double positionSeconds;
+  final double durationSeconds;
 
   Map<String, dynamic>? get _active {
     final nested = activeMusic?['room_music'];
@@ -4749,6 +4876,15 @@ class RoomMusicSheet extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (active != null && !canControl)
+                        const Text(
+                          'تحكم المالك',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       GestureDetector(
                         onTap: onStop,
                         child: const Text(
@@ -4762,11 +4898,48 @@ class RoomMusicSheet extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  if (active != null && durationSeconds > 0)
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.fast_forward_rounded,
+                          color: Colors.white54,
+                          size: 16,
+                        ),
+                        Expanded(
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: const Color(0xFF8B7BFF),
+                              inactiveTrackColor: Colors.white12,
+                              thumbColor: Colors.white,
+                              trackHeight: 3,
+                            ),
+                            child: Slider(
+                              value: positionSeconds.clamp(
+                                0.0,
+                                durationSeconds,
+                              ),
+                              min: 0,
+                              max: durationSeconds,
+                              onChanged: canControl ? onSeek : null,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${positionSeconds.floor()}s',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
                   Row(
                     children: [
                       IconButton(
-                        onPressed: () =>
-                            onVolume((volume - .1).clamp(0.0, 1.0)),
+                        onPressed: canControl
+                            ? () => onVolume((volume - .1).clamp(0.0, 1.0))
+                            : null,
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(
                           Icons.volume_down_rounded,
@@ -4787,13 +4960,14 @@ class RoomMusicSheet extends StatelessWidget {
                             value: volume.clamp(0.0, 1.0),
                             min: 0,
                             max: 1,
-                            onChanged: onVolume,
+                            onChanged: canControl ? onVolume : null,
                           ),
                         ),
                       ),
                       IconButton(
-                        onPressed: () =>
-                            onVolume((volume + .1).clamp(0.0, 1.0)),
+                        onPressed: canControl
+                            ? () => onVolume((volume + .1).clamp(0.0, 1.0))
+                            : null,
                         visualDensity: VisualDensity.compact,
                         icon: const Icon(
                           Icons.volume_up_rounded,

@@ -1394,7 +1394,7 @@ class SakiService {
     final rows = await client
         .from('room_music')
         .select('id,room_id,owner_id,title,storage_path,audio_url,created_at')
-        .eq('room_id', roomId)
+        .eq('owner_id', uid)
         .order('created_at', ascending: false)
         .limit(100);
     return List<Map<String, dynamic>>.from(rows);
@@ -1408,8 +1408,7 @@ class SakiService {
     String contentType,
   ) async {
     final safeExtension = extension.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-    final path =
-        '$uid/$roomId/${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
+    final path = '$uid/${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
     await client.storage
         .from('room_music')
         .uploadBinary(
@@ -1421,7 +1420,7 @@ class SakiService {
     final row = await client
         .from('room_music')
         .insert({
-          'room_id': roomId,
+          'room_id': null,
           'owner_id': uid,
           'title': title,
           'storage_path': path,
@@ -1436,7 +1435,7 @@ class SakiService {
     final row = await client
         .from('room_music_state')
         .select(
-          'room_id,music_id,is_playing,position_seconds,updated_at,room_music(*)',
+          'room_id,music_id,owner_id,is_playing,position_seconds,volume,updated_at,room_music(*)',
         )
         .eq('room_id', roomId)
         .maybeSingle();
@@ -1446,14 +1445,18 @@ class SakiService {
   Future<void> setActiveRoomMusic(
     String roomId, {
     String? musicId,
+    String? ownerId,
     required bool isPlaying,
     double positionSeconds = 0,
+    double volume = 1,
   }) async {
     await client.from('room_music_state').upsert({
       'room_id': roomId,
       'music_id': musicId,
+      'owner_id': ownerId,
       'is_playing': isPlaying,
       'position_seconds': positionSeconds,
+      'volume': volume,
       'updated_by': uid,
       'updated_at': DateTime.now().toUtc().toIso8601String(),
     });
