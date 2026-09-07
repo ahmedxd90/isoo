@@ -3552,13 +3552,20 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   late final SVGAAnimationController _svga;
   bool _visible = true;
   bool _flyingToSeat = false;
+  bool _flightVisible = true;
+  bool _bannerEntered = false;
+  bool _bannerLeaving = false;
+  String? _recipientAvatar;
+  Timer? _flightTimer;
+  Timer? _flightHideTimer;
+  Timer? _bannerTimer;
 
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
   bool get _compactGift {
     final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    return type != 'svga' && type != 'mp4' && type != 'gif';
+    return type != 'svga' && type != 'mp4';
   }
 
   @override
@@ -3568,11 +3575,28 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed) _hide();
       });
-    if (_compactGift) {
-      Future<void>.delayed(const Duration(milliseconds: 2100), () {
-        if (mounted) setState(() => _flyingToSeat = true);
+    final recipientId = _payload['recipient_id'] as String?;
+    if (recipientId != null) {
+      SakiService.instance.userProfile(recipientId).then((profile) {
+        if (mounted) {
+          setState(() => _recipientAvatar = profile?['avatar_url'] as String?);
+        }
       });
-      Future<void>.delayed(const Duration(milliseconds: 3300), _hide);
+    }
+    _flightTimer = Timer(const Duration(milliseconds: 2100), () {
+      if (mounted) setState(() => _flyingToSeat = true);
+    });
+    _flightHideTimer = Timer(const Duration(milliseconds: 3300), () {
+      if (mounted) setState(() => _flightVisible = false);
+    });
+    _bannerTimer = Timer(const Duration(milliseconds: 3900), () {
+      if (mounted) setState(() => _bannerLeaving = true);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _bannerEntered = true);
+    });
+    if (_compactGift) {
+      Future<void>.delayed(const Duration(milliseconds: 3600), _hide);
       return;
     }
     final url = _payload['media_url'] as String?;
@@ -3617,12 +3641,15 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
 
   @override
   void dispose() {
+    _flightTimer?.cancel();
+    _flightHideTimer?.cancel();
+    _bannerTimer?.cancel();
     _video?.dispose();
     _svga.dispose();
     super.dispose();
   }
 
-  Widget _buildCompactGift(BuildContext context) {
+  Widget _buildGiftFlight(BuildContext context) {
     final payload = _payload;
     final thumbnail = payload['thumbnail_url'] as String?;
     final media = payload['media_url'] as String?;
@@ -3658,6 +3685,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             payload['icon'] as String? ?? '🎁',
             style: const TextStyle(fontSize: 48),
           );
+    if (!_flightVisible) return const SizedBox.shrink();
     return IgnorePointer(
       child: TweenAnimationBuilder<Offset>(
         tween: Tween(
@@ -3674,7 +3702,29 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
           curve: Curves.easeOutBack,
           builder: (_, scale, child) =>
               Transform.scale(scale: scale, child: child),
-          child: Center(child: image),
+          child: Center(
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                image,
+                if (_recipientAvatar != null &&
+                    _recipientAvatar!.startsWith('http'))
+                  Positioned(
+                    right: -10,
+                    bottom: -6,
+                    child: ClipOval(
+                      child: Image.network(
+                        _recipientAvatar!,
+                        width: 27,
+                        height: 27,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -3683,7 +3733,6 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   @override
   Widget build(BuildContext context) {
     if (!_visible) return const SizedBox.shrink();
-    if (_compactGift) return _buildCompactGift(context);
     final url = _payload['media_url'] as String?;
     final type = (_payload['media_type'] as String? ?? '').toLowerCase();
     final senderId = widget.message['sender_id'] as String?;
@@ -3730,23 +3779,21 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             alignment: Alignment.center,
             children: [
               if (immersive) Positioned.fill(child: Center(child: mediaView)),
-              if (!immersive && _payload['flying_banner'] != false)
+              if (_payload['flying_banner'] != false)
                 Positioned(
                   top: 34,
                   left: 0,
                   right: 0,
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TweenAnimationBuilder<Offset>(
-                      tween: Tween(
-                        begin: const Offset(1.2, 0),
-                        end: Offset.zero,
-                      ),
-                      duration: const Duration(milliseconds: 900),
-                      builder: (_, offset, child) => FractionalTranslation(
-                        translation: offset,
-                        child: child,
-                      ),
+                  child: AnimatedSlide(
+                    offset: _bannerLeaving
+                        ? const Offset(1.35, 0)
+                        : _bannerEntered
+                        ? Offset.zero
+                        : const Offset(-1.35, 0),
+                    duration: const Duration(milliseconds: 900),
+                    curve: Curves.easeInOutCubic,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsetsDirectional.only(
                           start: 12,
@@ -3807,7 +3854,9 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                     ),
                   ),
                 ),
-              if (!immersive)
+              if (!_compactGift && _flightVisible)
+                Positioned.fill(child: _buildGiftFlight(context)),
+              if (_compactGift)
                 Center(
                   child: Container(
                     margin: const EdgeInsets.all(28),
