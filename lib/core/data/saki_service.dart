@@ -1872,6 +1872,105 @@ class SakiService {
     return Map<String, dynamic>.from(created);
   }
 
+  Future<List<Map<String, dynamic>>> familySquare({String? query}) async {
+    var request = client.from('family_square').select();
+    if (query != null && query.trim().isNotEmpty) {
+      request = request.ilike('name', '%${query.trim()}%');
+    }
+    final rows = await request.order('stars', ascending: false).limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>?> myFamily() async {
+    final member = await client
+        .from('family_members')
+        .select('family_id,role,status,families(*)')
+        .eq('user_id', uid)
+        .eq('status', 'active')
+        .maybeSingle();
+    if (member == null) return null;
+    final family = Map<String, dynamic>.from(member['families'] ?? const {});
+    family['role'] = member['role'];
+    return family;
+  }
+
+  Future<Map<String, dynamic>> createFamily({
+    required String name,
+    required String alias,
+    required String description,
+    String? avatarUrl,
+  }) async {
+    final result = await client.rpc(
+      'create_family',
+      params: {
+        'p_name': name.trim(),
+        'p_alias': alias.trim(),
+        'p_description': description.trim(),
+        'p_avatar_url': avatarUrl,
+      },
+    );
+    if (result is Map) return Map<String, dynamic>.from(result);
+    final rows = List<Map<String, dynamic>>.from(result as List);
+    if (rows.isEmpty) throw Exception('تعذر إنشاء العائلة');
+    return rows.first;
+  }
+
+  Future<void> requestFamilyJoin(String familyId) async {
+    await client.rpc('request_family_join', params: {'p_family_id': familyId});
+  }
+
+  Future<List<Map<String, dynamic>>> familyMembers(String familyId) async {
+    final rows = await client
+        .from('family_members')
+        .select(
+          'user_id,role,joined_at,profiles:user_id(id,username,avatar_url,saki_id)',
+        )
+        .eq('family_id', familyId)
+        .eq('status', 'active')
+        .order('joined_at')
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> familyTasks(String familyId) async {
+    final rows = await client
+        .from('family_tasks')
+        .select()
+        .eq('family_id', familyId)
+        .order('created_at')
+        .limit(30);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> familyGiftLeaderboard(
+    String familyId,
+    String mode,
+  ) async {
+    final rows = await client.rpc(
+      'family_gift_leaderboard',
+      params: {'p_family_id': familyId, 'p_mode': mode},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<Map<String, dynamic>?> uploadFamilyImage(XFile image) async {
+    final bytes = await File(image.path).readAsBytes();
+    final extension = image.path.split('.').last.toLowerCase();
+    final path =
+        '$uid/family_${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: 'image/$extension',
+          ),
+        );
+    return {'url': client.storage.from('avatars').getPublicUrl(path)};
+  }
+
   Future<Map<String, dynamic>> accountModulesForUser(String userId) async {
     final row = await client
         .from('saki_account_modules')

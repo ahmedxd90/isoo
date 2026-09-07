@@ -12,6 +12,7 @@ import 'vip_page.dart';
 import 'super_admin_page.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
+import 'family_square_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _orange = Color(0xFFF97316);
@@ -98,7 +99,13 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) _load();
       return;
     }
-    if (type == 'agency' || type == 'family' || type == 'level') {
+    if (type == 'family') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const FamilySquarePage()));
+      if (mounted) _load();
+      return;
+    }
+    if (type == 'agency' || type == 'level') {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TraceProfileFeaturesPage(feature: type),
@@ -130,10 +137,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _openMenu(String title) async {
     if (title == 'المستوى') {
       await _openModule('level');
-      return;
-    }
-    if (title == 'وكالة الشحن' || title == 'الوكالة') {
-      await _openModule('agency');
       return;
     }
     if (title == 'العائلة') {
@@ -629,12 +632,6 @@ class _MenuCard extends StatelessWidget {
         FontAwesomeIcons.listCheck,
         Color(0xFF16A34A),
         Color(0xFFF0FDF4),
-      ),
-      (
-        'وكالة الشحن',
-        FontAwesomeIcons.handHoldingDollar,
-        Color(0xFFD97706),
-        Color(0xFFFFFBEB),
       ),
       (
         'العائلة',
