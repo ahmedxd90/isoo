@@ -800,6 +800,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
   final Map<String, Timer> _roomEmojiTimers = {};
   final Map<String, Map<String, dynamic>> _activeSeatEmojis = {};
+  final Map<String, GlobalKey> _seatKeys = {};
   List<Map<String, dynamic>> _roomEmojis = [];
   int _roomGoldTotal = 0;
   Map<String, dynamic>? _entranceProfile;
@@ -1098,6 +1099,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               'name': gift['name'],
               'media_url': gift['media_url'],
               'media_type': gift['media_type'],
+              'category': gift['category'],
               'recipient_id': recipientId,
               'flying_banner': flyingBanner,
             },
@@ -1143,6 +1145,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           'name': gift['name'],
           'media_url': gift['media_url'],
           'media_type': gift['media_type'],
+          'category': gift['category'],
           'recipient_id': recipient,
           'flying_banner': true,
         },
@@ -1151,6 +1154,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     } catch (e) {
       _messageSnack(e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  GlobalKey? _seatKeyForGift(Map<String, dynamic> message) {
+    final payload = message['payload'];
+    if (payload is! Map) return null;
+    return _seatKeys[payload['recipient_id']?.toString()];
   }
 
   Future<void> _loadRoomState() async {
@@ -2418,45 +2427,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         ],
                       ),
                     ),
-                    if (_comboSeconds > 0)
-                      Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: Padding(
-                          padding: const EdgeInsetsDirectional.only(
-                            end: 18,
-                            bottom: 4,
-                          ),
-                          child: InkWell(
-                            onTap: _sendComboAgain,
-                            borderRadius: BorderRadius.circular(32),
-                            child: CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.orangeAccent,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Text(
-                                    'COMBO',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Text(
-                                    '$_comboSeconds',
-                                    style: const TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
                       child: SizedBox(
@@ -2527,6 +2497,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                 child: Column(
                                   children: [
                                     Container(
+                                      key: occupied
+                                          ? _seatKeys.putIfAbsent(
+                                              row['user_id'].toString(),
+                                              GlobalKey.new,
+                                            )
+                                          : null,
                                       width: 52,
                                       height: 52,
                                       decoration: BoxDecoration(
@@ -2925,23 +2901,58 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                     : Colors.white38,
                               ),
                             ),
-                            GestureDetector(
-                              onTap: _showGiftPanel,
-                              child: Container(
-                                width: 44,
-                                height: 44,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: Colors.white12),
-                                ),
-                                child: Image.asset(
-                                  'assets/saki_gift_box_icon.png',
-                                  width: 31,
-                                  height: 31,
-                                  fit: BoxFit.contain,
-                                ),
+                            SizedBox(
+                              width: 48,
+                              height: _comboSeconds > 0 ? 76 : 44,
+                              child: Stack(
+                                alignment: AlignmentDirectional.bottomCenter,
+                                children: [
+                                  GestureDetector(
+                                    onTap: _showGiftPanel,
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black26,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: Colors.white12,
+                                        ),
+                                      ),
+                                      child: Image.asset(
+                                        'assets/saki_gift_box_icon.png',
+                                        width: 31,
+                                        height: 31,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_comboSeconds > 0)
+                                    Positioned(
+                                      top: 0,
+                                      child: GestureDetector(
+                                        onTap: _sendComboAgain,
+                                        child: Container(
+                                          width: 34,
+                                          height: 34,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.orangeAccent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '$_comboSeconds',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             IconButton(
@@ -2984,6 +2995,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 child: GiftFullScreenOverlay(
                   key: ValueKey(_activeGiftMessage!['id']),
                   message: _activeGiftMessage!,
+                  seatKey: _seatKeyForGift(_activeGiftMessage!),
                   onClose: () {
                     if (mounted) setState(() => _activeGiftMessage = null);
                   },
@@ -3000,9 +3012,11 @@ class GiftFullScreenOverlay extends StatefulWidget {
   const GiftFullScreenOverlay({
     super.key,
     required this.message,
+    this.seatKey,
     required this.onClose,
   });
   final Map<String, dynamic> message;
+  final GlobalKey? seatKey;
   final VoidCallback onClose;
 
   @override
@@ -3018,6 +3032,13 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
+  bool get _compactGift {
+    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
+    final category = (_payload['category'] as String? ?? '').toLowerCase();
+    final url = (_payload['media_url'] as String? ?? '').toLowerCase();
+    return category == 'luck' || type == 'png' || url.endsWith('.png');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -3025,6 +3046,10 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
       ..addStatusListener((status) {
         if (status == AnimationStatus.completed) _hide();
       });
+    if (_compactGift) {
+      Future<void>.delayed(const Duration(seconds: 3), _hide);
+      return;
+    }
     final url = _payload['media_url'] as String?;
     final type = (_payload['media_type'] as String? ?? '').toLowerCase();
     if (url != null && url.isNotEmpty && type == 'svga') {
@@ -3070,9 +3095,58 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     super.dispose();
   }
 
+  Widget _buildCompactGift(BuildContext context) {
+    final payload = _payload;
+    final thumbnail = payload['thumbnail_url'] as String?;
+    final media = payload['media_url'] as String?;
+    final url = thumbnail?.startsWith('http') == true
+        ? thumbnail
+        : media?.startsWith('http') == true
+        ? media
+        : null;
+    final screen = MediaQuery.sizeOf(context);
+    final targetBox =
+        widget.seatKey?.currentContext?.findRenderObject() as RenderBox?;
+    final target = targetBox == null
+        ? Offset(screen.width / 2, screen.height * .58)
+        : targetBox.localToGlobal(
+            Offset(targetBox.size.width / 2, targetBox.size.height / 2),
+          );
+    final delta = Offset(
+      (target.dx - screen.width / 2) / screen.width,
+      (target.dy - screen.height / 2) / screen.height,
+    );
+    final image = url != null && url.isNotEmpty
+        ? Image.network(
+            url,
+            width: 72,
+            height: 72,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Text(
+              payload['icon'] as String? ?? '🎁',
+              style: const TextStyle(fontSize: 48),
+            ),
+          )
+        : Text(
+            payload['icon'] as String? ?? '🎁',
+            style: const TextStyle(fontSize: 48),
+          );
+    return IgnorePointer(
+      child: TweenAnimationBuilder<Offset>(
+        tween: Tween(begin: Offset.zero, end: delta),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeInOutCubic,
+        builder: (_, offset, child) =>
+            FractionalTranslation(translation: offset, child: child),
+        child: Center(child: image),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_visible) return const SizedBox.shrink();
+    if (_compactGift) return _buildCompactGift(context);
     final url = _payload['media_url'] as String?;
     final type = (_payload['media_type'] as String? ?? '').toLowerCase();
     final senderId = widget.message['sender_id'] as String?;

@@ -47,7 +47,6 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   int _gold = 0;
   bool _loading = true;
   bool _sending = false;
-  bool _flyingBanner = true;
 
   @override
   void initState() {
@@ -132,7 +131,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
     setState(() => _sending = true);
     try {
       for (final recipientId in _selectedIds.toList()) {
-        await widget.onSent(recipientId, gift, _flyingBanner);
+        await widget.onSent(recipientId, gift, true);
       }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
@@ -194,32 +193,12 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
             child: Row(
               children: [
-                Image.asset(
-                  'assets/saki_gift_box_icon.png',
-                  width: 48,
-                  height: 48,
-                ),
-                const SizedBox(width: 10),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'صندوق الهدايا',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'اختر هدية وأرسلها لمن على المقعد',
-                        style: TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
-                    ],
+                    children: [SizedBox(height: 4)],
                   ),
                 ),
-                _BalanceBadge(gold: _gold),
               ],
             ),
           ),
@@ -446,36 +425,6 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: _sending
-                      ? null
-                      : () => setState(() => _flyingBanner = !_flyingBanner),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: _flyingBanner ? _giftCyan : Colors.white12,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: _flyingBanner
-                            ? const Icon(
-                                Icons.check,
-                                size: 14,
-                                color: Colors.black,
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 7),
-                      const Text(
-                        'إظهار للجميع',
-                        style: TextStyle(color: Colors.white70, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                GestureDetector(
                   onTap: _sending ? null : _send,
                   child: Container(
                     height: 44,
@@ -503,6 +452,8 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                     ),
                   ),
                 ),
+                const Spacer(),
+                _BalanceBadge(gold: _gold),
               ],
             ),
           ),

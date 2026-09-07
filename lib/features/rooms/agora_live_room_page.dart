@@ -211,6 +211,7 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
               'name': gift['name'],
               'media_url': gift['media_url'],
               'media_type': gift['media_type'],
+              'category': gift['category'],
               'recipient_id': recipientId,
               'flying_banner': flyingBanner,
             },
