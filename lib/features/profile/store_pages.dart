@@ -95,11 +95,15 @@ class StorePage extends StatefulWidget {
 
 class _StorePageState extends State<StorePage> {
   String _category = 'frame';
+  bool _isAdmin = false;
   late Future<List<Map<String, dynamic>>> _future;
   @override
   void initState() {
     super.initState();
     _reload();
+    SakiService.instance.isCurrentUserSuperAdmin().then((value) {
+      if (mounted) setState(() => _isAdmin = value);
+    });
   }
 
   void _reload() =>
@@ -126,6 +130,15 @@ class _StorePageState extends State<StorePage> {
         ],
       ),
       actions: [
+        if (_isAdmin)
+          IconButton(
+            tooltip: 'إضافة منتج',
+            icon: const Icon(Icons.add_business_rounded, color: _storeInk),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminStorePage()),
+            ),
+          ),
         Container(
           margin: const EdgeInsetsDirectional.only(end: 12),
           decoration: BoxDecoration(
@@ -167,6 +180,14 @@ class _StorePageState extends State<StorePage> {
                   'entrance',
                   Icons.auto_awesome_rounded,
                   'الدخوليات',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _categoryTab(
+                  'bubble',
+                  Icons.chat_bubble_rounded,
+                  'فقاعات',
                 ),
               ),
             ],
@@ -320,7 +341,11 @@ class ProductCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Text(
-                    product['category'] == 'frame' ? 'إطار' : 'دخولية',
+                    product['category'] == 'frame'
+                        ? 'إطار'
+                        : product['category'] == 'bubble'
+                        ? 'فقاعة دردشة'
+                        : 'دخولية',
                     style: const TextStyle(
                       color: _storeInk,
                       fontSize: 10,
@@ -347,7 +372,24 @@ class ProductCard extends StatelessWidget {
             children: [
               const Icon(Icons.monetization_on, color: _storeOrange, size: 17),
               const SizedBox(width: 4),
-              Text('${product['price']}'),
+              Text(
+                '${product['discounted_price'] ?? product['price']}',
+                style: const TextStyle(
+                  color: _storeInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              if ((product['discount_percent'] as num? ?? 0) > 0) ...[
+                const SizedBox(width: 4),
+                Text(
+                  '${product['price']}',
+                  style: const TextStyle(
+                    color: Colors.black38,
+                    fontSize: 10,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              ],
               const Spacer(),
               FilledButton(
                 onPressed: () async {
@@ -389,6 +431,30 @@ class ProductCard extends StatelessWidget {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 9),
+          child: Row(
+            children: [
+              const Icon(Icons.schedule_rounded, color: _storeCyan, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                '${product['duration_days'] ?? 7} أيام',
+                style: const TextStyle(color: Colors.black54, fontSize: 11),
+              ),
+              if ((product['discount_percent'] as num? ?? 0) > 0) ...[
+                const Spacer(),
+                Text(
+                  'خصم ${product['discount_percent']}%',
+                  style: const TextStyle(
+                    color: _storeOrange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     ),
   );
@@ -420,7 +486,7 @@ class _BagPageState extends State<BagPage> {
         final all = snap.data!;
         return ListView(
           padding: const EdgeInsets.all(14),
-          children: ['frame', 'entrance'].map((category) {
+          children: ['frame', 'entrance', 'bubble'].map((category) {
             final rows = all
                 .where((r) => (r['product'] as Map)['category'] == category)
                 .toList();
@@ -428,7 +494,11 @@ class _BagPageState extends State<BagPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  category == 'frame' ? 'الإطارات' : 'الدخوليات',
+                  category == 'frame'
+                      ? 'الإطارات'
+                      : category == 'bubble'
+                      ? 'فقاعات الدردشة'
+                      : 'الدخوليات',
                   style: const TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.w900,
@@ -473,7 +543,8 @@ class BagRow extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          'الكمية: ${row['quantity']} • ${equipped ? 'مفعّل' : 'غير مفعّل'}',
+          'الكمية: ${row['quantity']} • ${equipped ? 'مفعّل' : 'غير مفعّل'}\n'
+          'ينتهي: ${row['expires_at'] ?? 'بعد 7 أيام'}',
         ),
         trailing: FilledButton(
           onPressed: () async {
@@ -520,14 +591,19 @@ class _AdminStorePageState extends State<AdminStorePage> {
   Future<void> _add() async {
     final name = TextEditingController();
     final price = TextEditingController();
+    final duration = TextEditingController(text: '7');
+    final discount = TextEditingController(text: '0');
     String category = 'frame';
     String mediaType = 'mp4';
     XFile? media;
     XFile? thumbnail;
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
       builder: (_) => StatefulBuilder(
         builder: (dialogContext, setDialog) => AlertDialog(
+          insetPadding: EdgeInsets.zero,
           title: const Text('إضافة منتج إلى المتجر'),
           content: SingleChildScrollView(
             child: Column(
@@ -542,12 +618,30 @@ class _AdminStorePageState extends State<AdminStorePage> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'السعر بالذهب'),
                 ),
+                TextField(
+                  controller: duration,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'المدة بالأيام (7 أيام)',
+                  ),
+                ),
+                TextField(
+                  controller: discount,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(labelText: 'الخصم %'),
+                ),
                 DropdownButtonFormField<String>(
                   value: category,
                   decoration: const InputDecoration(labelText: 'الفئة'),
                   items: const [
                     DropdownMenuItem(value: 'frame', child: Text('إطارات')),
                     DropdownMenuItem(value: 'entrance', child: Text('دخوليات')),
+                    DropdownMenuItem(
+                      value: 'bubble',
+                      child: Text('فقاعة دردشة'),
+                    ),
                   ],
                   onChanged: (v) => setDialog(() => category = v!),
                 ),
@@ -603,6 +697,8 @@ class _AdminStorePageState extends State<AdminStorePage> {
                         category: category,
                         name: name.text,
                         price: int.tryParse(price.text) ?? 0,
+                        durationDays: int.tryParse(duration.text) ?? 7,
+                        discountPercent: double.tryParse(discount.text) ?? 0,
                         mediaType: mediaType,
                         mediaUrl: mediaUrl,
                         thumbnailUrl: thumbUrl,
@@ -644,7 +740,9 @@ class _AdminStorePageState extends State<AdminStorePage> {
                 ),
                 title: Text(p['name'] as String),
                 subtitle: Text(
-                  '${p['category']} • ${p['price']} ذهب • ${p['media_type']}',
+                  '${p['category']} • ${p['discounted_price'] ?? p['price']} ذهب '
+                  '• ${p['duration_days'] ?? 7} أيام • خصم ${p['discount_percent'] ?? 0}% '
+                  '• ${p['media_type']}',
                 ),
               );
             },

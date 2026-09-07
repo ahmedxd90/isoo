@@ -363,6 +363,8 @@ class SakiService {
     required String category,
     required String name,
     required int price,
+    int durationDays = 7,
+    double discountPercent = 0,
     required String mediaType,
     required String mediaUrl,
     required String thumbnailUrl,
@@ -371,6 +373,8 @@ class SakiService {
       'category': category,
       'name': name.trim(),
       'price': price,
+      'duration_days': durationDays,
+      'discount_percent': discountPercent,
       'media_type': mediaType,
       'media_url': mediaUrl,
       'thumbnail_url': thumbnailUrl,
@@ -380,7 +384,9 @@ class SakiService {
   Future<List<Map<String, dynamic>>> storeInventory() async {
     final rows = await client
         .from('saki_store_inventory')
-        .select('quantity,equipped,purchased_at,product:saki_store_products(*)')
+        .select(
+          'quantity,equipped,purchased_at,expires_at,product:saki_store_products(*)',
+        )
         .eq('user_id', uid)
         .order('purchased_at', ascending: false)
         .limit(300);
@@ -834,6 +840,15 @@ class SakiService {
         .eq('id', userId)
         .maybeSingle();
     return data == null ? null : Map<String, dynamic>.from(data);
+  }
+
+  Future<bool> isCurrentUserSuperAdmin() async {
+    final row = await client
+        .from('profiles')
+        .select('is_super_admin')
+        .eq('id', uid)
+        .maybeSingle();
+    return row?['is_super_admin'] == true;
   }
 
   Future<Map<String, int>> userProfileStats(String userId) async {
