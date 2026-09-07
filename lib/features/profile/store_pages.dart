@@ -201,6 +201,44 @@ class _EntranceFlyingBanner extends StatelessWidget {
   );
 }
 
+class _HeaderPill extends StatelessWidget {
+  const _HeaderPill({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _storeGold, size: 15),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class StorePage extends StatefulWidget {
   const StorePage({super.key});
   @override
@@ -210,6 +248,8 @@ class StorePage extends StatefulWidget {
 class _StorePageState extends State<StorePage> {
   String _category = 'frame';
   bool _isAdmin = false;
+  Map<String, dynamic>? _selectedProduct;
+  bool _buying = false;
   late Future<List<Map<String, dynamic>>> _future;
   @override
   void initState() {
@@ -222,57 +262,113 @@ class _StorePageState extends State<StorePage> {
 
   void _reload() =>
       _future = SakiService.instance.storeProducts(category: _category);
+
+  Future<void> _buySelected() async {
+    final product = _selectedProduct;
+    if (product == null || _buying) return;
+    setState(() => _buying = true);
+    try {
+      await SakiService.instance.storeBuy(product['id'] as String);
+      if (!mounted) return;
+      setState(() => _selectedProduct = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم الشراء وإضافة المنتج إلى الحقيبة')),
+      );
+      setState(_reload);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _buying = false);
+    }
+  }
+
+  void _sendSelected() {
+    if (_selectedProduct == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('حدد غرفة أو مستخدماً لإرسال المنتج')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: _storeSurface,
-    appBar: AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      elevation: 0,
-      centerTitle: false,
-      title: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'متجر SAKI',
-            style: TextStyle(color: _storeInk, fontWeight: FontWeight.w900),
+    appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(116),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [Color(0xFFA823DA), Color(0xFF8E1DBA), Color(0xFF600C88)],
           ),
-          Text(
-            'اختَر إطلالتك داخل الغرفة',
-            style: TextStyle(color: Colors.black54, fontSize: 11),
-          ),
-        ],
-      ),
-      actions: [
-        if (_isAdmin)
-          IconButton(
-            tooltip: 'إضافة منتج',
-            icon: const Icon(Icons.add_business_rounded, color: _storeInk),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminStorePage()),
-            ),
-          ),
-        Container(
-          margin: const EdgeInsetsDirectional.only(end: 12),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [_storeOrange, _storeCyan]),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(color: Color(0x3322A6C8), blurRadius: 8),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'متجر',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_isAdmin)
+                    _HeaderPill(
+                      icon: Icons.add,
+                      label: 'إضافة',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminStorePage(),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  _HeaderPill(
+                    icon: Icons.shopping_bag_outlined,
+                    label: 'خاص بي',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const BagPage()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Text(
+                    'إطلالتك داخل الغرفة',
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'SAKI',
+                    style: TextStyle(
+                      color: _storeGold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          child: IconButton(
-            tooltip: 'حقيبتي',
-            color: Colors.white,
-            icon: const Icon(Icons.shopping_bag_rounded),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BagPage()),
-            ),
-          ),
         ),
-      ],
+      ),
     ),
     body: Column(
       children: [
@@ -353,8 +449,12 @@ class _StorePageState extends State<StorePage> {
                     childAspectRatio: .66,
                   ),
                   itemCount: items.length,
-                  itemBuilder: (_, i) =>
-                      ProductCard(product: items[i], onBought: _reload),
+                  itemBuilder: (_, i) => ProductCard(
+                    product: items[i],
+                    selected: _selectedProduct?['id'] == items[i]['id'],
+                    onSelected: () =>
+                        setState(() => _selectedProduct = items[i]),
+                  ),
                 ),
               );
             },
@@ -362,6 +462,14 @@ class _StorePageState extends State<StorePage> {
         ),
       ],
     ),
+    bottomNavigationBar: _selectedProduct == null
+        ? null
+        : _StoreBottomBar(
+            product: _selectedProduct!,
+            buying: _buying,
+            onSend: _sendSelected,
+            onBuy: _buySelected,
+          ),
   );
 
   Widget _categoryTab(String value, IconData icon, String label) {
@@ -404,16 +512,148 @@ class _StorePageState extends State<StorePage> {
   }
 }
 
-class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, required this.onBought});
+class _StoreBottomBar extends StatelessWidget {
+  const _StoreBottomBar({
+    required this.product,
+    required this.buying,
+    required this.onSend,
+    required this.onBuy,
+  });
   final Map<String, dynamic> product;
-  final VoidCallback onBought;
+  final bool buying;
+  final VoidCallback onSend;
+  final VoidCallback onBuy;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x18000000),
+          blurRadius: 18,
+          offset: Offset(0, -5),
+        ),
+      ],
+    ),
+    child: SafeArea(
+      top: false,
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${product['discounted_price'] ?? product['price']}',
+                style: const TextStyle(
+                  color: _storeOrange,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Text(
+                'عملات ذهبية',
+                style: TextStyle(color: Colors.black54, fontSize: 10),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+            decoration: BoxDecoration(
+              color: _storeSurface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black12),
+            ),
+            child: Text(
+              '${product['duration_days'] ?? 7} أيام',
+              style: const TextStyle(
+                color: _storeInk,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: onSend,
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: _storeGold, width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'إرسال',
+                  style: TextStyle(
+                    color: Color(0xFFD99B00),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: buying ? null : onBuy,
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_storeGold, Color(0xFFFF8F00)],
+                  ),
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+                child: buying
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'شراء',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class ProductCard extends StatelessWidget {
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.selected,
+    required this.onSelected,
+  });
+  final Map<String, dynamic> product;
+  final bool selected;
+  final VoidCallback onSelected;
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.black.withValues(alpha: .06)),
+      border: Border.all(
+        color: selected ? _storeGold : Colors.black.withValues(alpha: .06),
+        width: selected ? 2 : 1,
+      ),
       boxShadow: const [
         BoxShadow(
           color: Color(0x12000000),
@@ -505,41 +745,26 @@ class ProductCard extends StatelessWidget {
                 ),
               ],
               const Spacer(),
-              FilledButton(
-                onPressed: () async {
-                  try {
-                    await SakiService.instance.storeBuy(
-                      product['id'] as String,
-                    );
-                    onBought();
-                    if (context.mounted)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('تم الشراء وإضافة المنتج إلى الحقيبة'),
-                        ),
-                      );
-                  } catch (e) {
-                    if (context.mounted)
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            e.toString().replaceFirst('Exception: ', ''),
-                          ),
-                        ),
-                      );
-                  }
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: _storeGold,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
+              GestureDetector(
+                onTap: onSelected,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_storeGold, Color(0xFFFF8F00)],
+                    ),
                     borderRadius: BorderRadius.circular(11),
                   ),
-                ),
-                child: const Text(
-                  'شراء',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                  child: const Text(
+                    'اختيار',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -591,7 +816,38 @@ class _BagPageState extends State<BagPage> {
   void _reload() => _future = SakiService.instance.storeInventory();
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('حقيبتي')),
+    backgroundColor: _storeSurface,
+    appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(76),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFA823DA), Color(0xFF600C88)],
+          ),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
+        ),
+        child: const SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              Icon(Icons.arrow_back_rounded, color: Colors.white),
+              SizedBox(width: 10),
+              Text(
+                'خاص بي',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Spacer(),
+              Icon(Icons.shopping_bag_rounded, color: _storeGold),
+            ],
+          ),
+        ),
+      ),
+    ),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (_, snap) {
@@ -644,35 +900,216 @@ class BagRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final product = Map<String, dynamic>.from(row['product'] as Map);
     final equipped = row['equipped'] == true;
-    return Card(
-      child: ListTile(
-        leading: Image.network(
-          product['thumbnail_url'] as String,
-          width: 54,
-          height: 54,
-          fit: BoxFit.cover,
-        ),
-        title: Text(
-          product['name'] as String,
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          'الكمية: ${row['quantity']} • ${equipped ? 'مفعّل' : 'غير مفعّل'}\n'
-          'ينتهي: ${row['expires_at'] ?? 'بعد 7 أيام'}',
-        ),
-        trailing: FilledButton(
-          onPressed: () async {
-            await SakiService.instance.storeEquip(
-              product['id'] as String,
-              !equipped,
-            );
-            onChanged();
-          },
-          child: Text(equipped ? 'إلغاء' : 'تفعيل'),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: equipped ? _storeGold : Colors.black12),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.network(
+              product['thumbnail_url'] as String,
+              width: 62,
+              height: 62,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product['name'] as String,
+                  style: const TextStyle(
+                    color: _storeInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '7 أيام • ${equipped ? 'مفعّل الآن' : 'غير مفعّل'}',
+                  style: const TextStyle(color: Colors.black54, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              await SakiService.instance.storeEquip(
+                product['id'] as String,
+                !equipped,
+              );
+              onChanged();
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                gradient: equipped
+                    ? null
+                    : const LinearGradient(
+                        colors: [_storeGold, Color(0xFFFF8F00)],
+                      ),
+                color: equipped ? Colors.white : null,
+                border: Border.all(color: _storeGold),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                equipped ? 'إلغاء' : 'تفعيل',
+                style: TextStyle(
+                  color: equipped ? _storeInk : Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _AdminLabel extends StatelessWidget {
+  const _AdminLabel({required this.text});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      color: _storeInk,
+      fontSize: 12,
+      fontWeight: FontWeight.w900,
+    ),
+  );
+}
+
+class _AdminInput extends StatelessWidget {
+  const _AdminInput({
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.numeric = false,
+  });
+  final String label;
+  final TextEditingController controller;
+  final String hint;
+  final bool numeric;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _AdminLabel(text: label),
+      const SizedBox(height: 6),
+      TextField(
+        controller: controller,
+        keyboardType: numeric ? TextInputType.number : TextInputType.text,
+        decoration: InputDecoration(
+          hintText: hint,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 13,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _AdminChoice extends StatelessWidget {
+  const _AdminChoice({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: selected
+            ? const LinearGradient(colors: [_storeOrange, _storeCyan])
+            : null,
+        color: selected ? null : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: selected ? Colors.transparent : Colors.black12,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? Colors.white : _storeInk,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ),
+  );
+}
+
+class _AdminFileTile extends StatelessWidget {
+  const _AdminFileTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.gold = false,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool gold;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: gold ? const Color(0xFFFFF8E1) : const Color(0xFFF3E5F5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: gold ? _storeGold : _storeOrange),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: gold ? _storeGold : _storeOrange),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _storeInk,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const Icon(Icons.chevron_left_rounded, color: _storeInk),
+        ],
+      ),
+    ),
+  );
 }
 
 class AdminStorePage extends StatefulWidget {
@@ -737,143 +1174,222 @@ class _AdminStorePageState extends State<AdminStorePage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       builder: (_) => StatefulBuilder(
-        builder: (dialogContext, setDialog) => AlertDialog(
-          insetPadding: EdgeInsets.zero,
-          title: const Text('إضافة منتج إلى المتجر'),
-          content: SingleChildScrollView(
+        builder: (dialogContext, setDialog) => Container(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            14,
+            18,
+            MediaQuery.of(context).viewInsets.bottom + 18,
+          ),
+          decoration: const BoxDecoration(
+            color: _storeSurface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(labelText: 'اسم المنتج'),
-                ),
-                TextField(
-                  controller: price,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'السعر بالذهب'),
-                ),
-                const InputDecorator(
-                  decoration: InputDecoration(labelText: 'مدة المنتج'),
-                  child: Text(
-                    '7 أيام فقط',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
                   ),
                 ),
-                DropdownButtonFormField<String>(
-                  value: category,
-                  decoration: const InputDecoration(labelText: 'الفئة'),
-                  items: const [
-                    DropdownMenuItem(value: 'frame', child: Text('إطارات')),
-                    DropdownMenuItem(value: 'entrance', child: Text('دخوليات')),
-                    DropdownMenuItem(
-                      value: 'bubble',
-                      child: Text('فقاعة دردشة'),
+                const SizedBox(height: 15),
+                const Text(
+                  'رفع منتج جديد',
+                  style: TextStyle(
+                    color: _storeInk,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Text(
+                  'سيظهر المنتج مباشرة في متجر SAKI',
+                  style: TextStyle(color: Colors.black54, fontSize: 11),
+                ),
+                const SizedBox(height: 16),
+                _AdminInput(
+                  label: 'اسم المنتج',
+                  controller: name,
+                  hint: 'مثال: سيارة الحب',
+                ),
+                const SizedBox(height: 10),
+                _AdminInput(
+                  label: 'السعر بالعملات الذهبية',
+                  controller: price,
+                  hint: '99999',
+                  numeric: true,
+                ),
+                const SizedBox(height: 12),
+                const _AdminLabel(text: 'فئة المنتج'),
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    _AdminChoice(
+                      label: 'إطارات',
+                      selected: category == 'frame',
+                      onTap: () => setDialog(() => category = 'frame'),
+                    ),
+                    _AdminChoice(
+                      label: 'دخوليات',
+                      selected: category == 'entrance',
+                      onTap: () => setDialog(() => category = 'entrance'),
+                    ),
+                    _AdminChoice(
+                      label: 'فقاعة دردشة',
+                      selected: category == 'bubble',
+                      onTap: () => setDialog(() => category = 'bubble'),
                     ),
                   ],
-                  onChanged: (v) => setDialog(() => category = v!),
                 ),
-                DropdownButtonFormField<String>(
-                  value: mediaType,
-                  decoration: const InputDecoration(labelText: 'نوع الملف'),
-                  items: const [
-                    DropdownMenuItem(value: 'mp4', child: Text('MP4')),
-                    DropdownMenuItem(value: 'svga', child: Text('SVGA')),
-                    DropdownMenuItem(value: 'gif', child: Text('GIF')),
+                const SizedBox(height: 12),
+                const _AdminLabel(text: 'مدة المنتج'),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _storeGold),
+                  ),
+                  child: const Text(
+                    '7 أيام فقط (محددة تلقائياً)',
+                    style: TextStyle(
+                      color: _storeOrange,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const _AdminLabel(text: 'نوع ملف المنتج'),
+                Wrap(
+                  spacing: 7,
+                  children: [
+                    for (final type in ['mp4', 'svga', 'gif'])
+                      _AdminChoice(
+                        label: type.toUpperCase(),
+                        selected: mediaType == type,
+                        onTap: () => setDialog(() {
+                          mediaType = type;
+                          media = null;
+                        }),
+                      ),
                   ],
-                  onChanged: (v) => setDialog(() => mediaType = v!),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () async {
+                const SizedBox(height: 12),
+                _AdminFileTile(
+                  icon: Icons.movie_creation_outlined,
+                  label: media == null
+                      ? 'اختيار ملف الحركة .$mediaType'
+                      : 'تم اختيار ${media!.name}',
+                  onTap: () async {
                     final f = await _pick(mediaType);
                     if (f != null) setDialog(() => media = f);
                   },
-                  icon: const Icon(Icons.upload_file),
-                  label: Text(
-                    media == null ? 'اختيار ملف المنتج' : 'تم اختيار الملف',
-                  ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () async {
+                const SizedBox(height: 8),
+                _AdminFileTile(
+                  icon: Icons.image_outlined,
+                  label: thumbnail == null
+                      ? 'اختيار الصورة المصغرة PNG'
+                      : 'تم اختيار ${thumbnail!.name}',
+                  gold: true,
+                  onTap: () async {
                     final f = await _pick('png');
                     if (f != null) setDialog(() => thumbnail = f);
                   },
-                  icon: const Icon(Icons.image),
-                  label: Text(
-                    thumbnail == null
-                        ? 'اختيار صورة مصغرة PNG'
-                        : 'تم اختيار الصورة',
+                ),
+                const SizedBox(height: 18),
+                GestureDetector(
+                  onTap: media == null || thumbnail == null
+                      ? null
+                      : () async {
+                          final parsedPrice = int.tryParse(price.text.trim());
+                          if (name.text.trim().isEmpty ||
+                              parsedPrice == null ||
+                              parsedPrice <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('أدخل اسم المنتج وسعراً صحيحاً'),
+                              ),
+                            );
+                            return;
+                          }
+                          setDialog(() => _saving = true);
+                          try {
+                            final mediaUrl = await SakiService.instance
+                                .adminUploadStoreFile(media!);
+                            final thumbUrl = await SakiService.instance
+                                .adminUploadStoreFile(thumbnail!);
+                            await SakiService.instance.adminCreateStoreProduct(
+                              category: category,
+                              name: name.text,
+                              price: parsedPrice,
+                              durationDays: 7,
+                              discountPercent: 0,
+                              mediaType: mediaType,
+                              mediaUrl: mediaUrl,
+                              thumbnailUrl: thumbUrl,
+                            );
+                            if (dialogContext.mounted)
+                              Navigator.pop(dialogContext);
+                            if (mounted)
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تم رفع المنتج ونشره بنجاح'),
+                                ),
+                              );
+                          } catch (e) {
+                            if (mounted)
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('فشل رفع المنتج: $e')),
+                              );
+                            setDialog(() => _saving = false);
+                          }
+                        },
+                  child: Container(
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    decoration: BoxDecoration(
+                      gradient: (media == null || thumbnail == null)
+                          ? null
+                          : const LinearGradient(
+                              colors: [_storeOrange, _storeCyan],
+                            ),
+                      color: (media == null || thumbnail == null)
+                          ? Colors.black12
+                          : null,
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'حفظ ونشر المنتج',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                   ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: media == null || thumbnail == null
-                  ? null
-                  : () async {
-                      final parsedPrice = int.tryParse(price.text.trim());
-                      if (name.text.trim().isEmpty ||
-                          parsedPrice == null ||
-                          parsedPrice <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('أدخل اسم المنتج وسعراً صحيحاً'),
-                          ),
-                        );
-                        return;
-                      }
-                      setDialog(() => _saving = true);
-                      try {
-                        final mediaUrl = await SakiService.instance
-                            .adminUploadStoreFile(media!);
-                        final thumbUrl = await SakiService.instance
-                            .adminUploadStoreFile(thumbnail!);
-                        await SakiService.instance.adminCreateStoreProduct(
-                          category: category,
-                          name: name.text,
-                          price: parsedPrice,
-                          durationDays: 7,
-                          discountPercent: 0,
-                          mediaType: mediaType,
-                          mediaUrl: mediaUrl,
-                          thumbnailUrl: thumbUrl,
-                        );
-                        if (dialogContext.mounted) Navigator.pop(dialogContext);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'تم رفع المنتج ونشره في المتجر بنجاح',
-                              ),
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('فشل رفع المنتج: $e')),
-                          );
-                        }
-                        setDialog(() => _saving = false);
-                      }
-                    },
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('حفظ ونشر'),
-            ),
-          ],
         ),
       ),
     );
@@ -882,16 +1398,63 @@ class _AdminStorePageState extends State<AdminStorePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('إدارة متجر SAKI'),
-      actions: _authorized
-          ? [
-              IconButton(
-                onPressed: _add,
-                icon: const Icon(Icons.add_business_rounded),
+    backgroundColor: _storeSurface,
+    appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(76),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFA823DA), Color(0xFF600C88)],
+          ),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              const SizedBox(width: 10),
+              const Text(
+                'رفع منتج جديد',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ]
-          : null,
+              const Spacer(),
+              if (_authorized)
+                GestureDetector(
+                  onTap: _add,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _storeGold,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.add, color: _storeInk, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          'إضافة',
+                          style: TextStyle(
+                            color: _storeInk,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     ),
     body: !_authorized
         ? const Center(
