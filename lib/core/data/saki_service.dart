@@ -965,6 +965,117 @@ class SakiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> followers() async {
+    final rows = await client
+        .from('follows')
+        .select(
+          'follower_id,created_at,profiles:follower_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at)',
+        )
+        .eq('following_id', uid)
+        .order('created_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> socialNotifications() async {
+    final rows = await client
+        .from('notifications')
+        .select(
+          'id,type,entity_id,is_read,created_at,profiles:actor_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at)',
+        )
+        .eq('user_id', uid)
+        .inFilter('type', ['follow', 'like', 'comment'])
+        .order('created_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> markNotificationsRead({String? type}) async {
+    var query = client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('user_id', uid);
+    if (type != null) query = query.eq('type', type);
+    await query;
+  }
+
+  Future<bool> isUserBlocked(String userId) async {
+    final row = await client
+        .from('user_blocks')
+        .select('blocker_id')
+        .eq('blocker_id', uid)
+        .eq('blocked_id', userId)
+        .maybeSingle();
+    return row != null;
+  }
+
+  Future<bool> isBlockedByUser(String userId) async {
+    final row = await client
+        .from('user_blocks')
+        .select('blocker_id')
+        .eq('blocker_id', userId)
+        .eq('blocked_id', uid)
+        .maybeSingle();
+    return row != null;
+  }
+
+  Future<void> blockUser(String userId) async {
+    await client.from('user_blocks').upsert({
+      'blocker_id': uid,
+      'blocked_id': userId,
+    });
+  }
+
+  Future<void> unblockUser(String userId) async {
+    await client
+        .from('user_blocks')
+        .delete()
+        .eq('blocker_id', uid)
+        .eq('blocked_id', userId);
+  }
+
+  Future<void> reportUser(
+    String userId,
+    String category, {
+    String? details,
+  }) async {
+    await client.from('user_reports').insert({
+      'reporter_id': uid,
+      'reported_id': userId,
+      'category': category,
+      'details': details?.trim(),
+    });
+  }
+
+  Future<String?> conversationPeerId(String conversationId) async {
+    final rows = await client
+        .from('conversation_members')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+        .neq('user_id', uid)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    return rows.first['user_id'] as String?;
+  }
+
+  Future<String> uploadChatImage(XFile image) async {
+    final bytes = await File(image.path).readAsBytes();
+    final extension = image.path.split('.').last.toLowerCase();
+    final path =
+        'chat/$uid/${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: 'image/$extension',
+          ),
+        );
+    return client.storage.from('avatars').getPublicUrl(path);
+  }
+
   Stream<List<Map<String, dynamic>>> messagesStream(String conversationId) {
     return client
         .from('messages')
@@ -980,39 +1091,25 @@ class SakiService {
         .order('created_at');
   }
 
-  Future<void> sendMessage(String conversationId, String body) async {
+  Future<void> sendMessage(
+    String conversationId,
+    String body, {
+    String messageType = 'text',
+    String? mediaUrl,
+    String? mediaName,
+  }) async {
     await client.from('messages').insert({
       'conversation_id': conversationId,
       'sender_id': uid,
       'body': body.trim(),
+      'message_type': messageType,
+      'media_url': mediaUrl,
+      'media_name': mediaName,
     });
     await client
         .from('conversations')
         .update({'updated_at': DateTime.now().toIso8601String()})
         .eq('id', conversationId);
-    try {
-      final members = await client
-          .from('conversation_members')
-          .select('user_id')
-          .eq('conversation_id', conversationId)
-          .neq('user_id', uid);
-      final rows = List<Map<String, dynamic>>.from(members)
-          .map(
-            (member) => {
-              'user_id': member['user_id'],
-              'actor_id': uid,
-              'type': 'message',
-              'entity_id': conversationId,
-              'is_read': false,
-            },
-          )
-          .toList();
-      if (rows.isNotEmpty) {
-        await client.from('notifications').insert(rows);
-      }
-    } catch (_) {
-      // The message is already saved; notification policies may be disabled.
-    }
   }
 
   Future<List<Map<String, dynamic>>> rooms() async {
