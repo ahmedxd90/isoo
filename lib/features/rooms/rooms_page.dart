@@ -26,6 +26,7 @@ const _roomPrimary = Color(0xFF656BF9);
 const _roomSecondary = Color(0xFF8E91FF);
 const _roomAccent = Color(0xFFF59E0B);
 const _roomTrophyGold = Color(0xFFF3B83F);
+const _roomTrendOrange = Color(0xFFFF6B35);
 const _roomBg = Color(0xFFF7F7F7);
 const _roomMuted = Color(0xFF9CA3AF);
 
@@ -42,7 +43,7 @@ class _RoomsPageState extends State<RoomsPage> {
   List<Map<String, dynamic>> _banners = [];
   bool _loading = true;
   bool _followingOnly = false;
-  String _country = 'الكل';
+  String _country = 'الترند';
 
   @override
   void initState() {
@@ -81,7 +82,7 @@ class _RoomsPageState extends State<RoomsPage> {
     return _rooms.where((room) {
       final country = (room['country'] as String? ?? '').toLowerCase();
       final matchesCountry =
-          _country == 'الكل' || country.contains(_country.toLowerCase());
+          _country == 'الترند' || country.contains(_country.toLowerCase());
       final created = DateTime.tryParse(room['created_at'] as String? ?? '');
       final members = List<Map<String, dynamic>>.from(
         room['room_members'] ?? const [],
@@ -93,6 +94,17 @@ class _RoomsPageState extends State<RoomsPage> {
           matchesFollowing &&
           (!_followingOnly || (created != null && created.isAfter(cutoff)));
     }).toList();
+  }
+
+  List<String> get _availableCountries {
+    final values = <String>{};
+    for (final room in _rooms) {
+      final value = (room['country'] as String? ?? '').trim();
+      if (value.isNotEmpty && value != 'الكل' && value != 'ترند') {
+        values.add(value);
+      }
+    }
+    return values.toList()..sort();
   }
 
   Future<void> _search() async =>
@@ -120,7 +132,6 @@ class _RoomsPageState extends State<RoomsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final countries = ['الكل', 'السعودية', 'المغرب', 'مصر', 'الإمارات'];
     return Scaffold(
       backgroundColor: _roomBg,
       appBar: AppBar(
@@ -196,36 +207,10 @@ class _RoomsPageState extends State<RoomsPage> {
                     child: RoomBannerCarousel(banners: _banners),
                   ),
                   SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 54,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 5, 16, 6),
-                        scrollDirection: Axis.horizontal,
-                        itemCount: countries.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
-                        itemBuilder: (_, index) {
-                          final selected = countries[index] == _country;
-                          return ChoiceChip(
-                            label: Text(countries[index]),
-                            selected: selected,
-                            selectedColor: _roomPrimary,
-                            labelStyle: TextStyle(
-                              color: selected
-                                  ? Colors.white
-                                  : const Color(0xFF4B5563),
-                              fontWeight: FontWeight.w800,
-                            ),
-                            backgroundColor: Colors.white,
-                            side: BorderSide(
-                              color: selected
-                                  ? _roomPrimary
-                                  : const Color(0xFFE5E7EB),
-                            ),
-                            onSelected: (_) =>
-                                setState(() => _country = countries[index]),
-                          );
-                        },
-                      ),
+                    child: _TrendCountryBar(
+                      countries: _availableCountries,
+                      selected: _country,
+                      onSelected: (value) => setState(() => _country = value),
                     ),
                   ),
                   if (_visibleRooms.isEmpty)
@@ -301,6 +286,192 @@ class _RoomHeaderTab extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _TrendCountryBar extends StatelessWidget {
+  const _TrendCountryBar({
+    required this.countries,
+    required this.selected,
+    required this.onSelected,
+  });
+  final List<String> countries;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 66,
+    child: ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      scrollDirection: Axis.horizontal,
+      itemCount: countries.length + 1,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (_, index) {
+        if (index == 0) {
+          return _TrendPill(
+            selected: selected == 'الترند',
+            onTap: () => onSelected('الترند'),
+            child: const _TrendFlame(),
+            label: 'الترند',
+          );
+        }
+        final country = countries[index - 1];
+        return _TrendPill(
+          selected: selected == country,
+          onTap: () => onSelected(country),
+          child: Text(
+            _flagForCountry(country),
+            style: const TextStyle(fontSize: 22),
+          ),
+          label: country,
+        );
+      },
+    ),
+  );
+}
+
+class _TrendPill extends StatelessWidget {
+  const _TrendPill({
+    required this.selected,
+    required this.onTap,
+    required this.child,
+    required this.label,
+  });
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget child;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsetsDirectional.only(start: 9, end: 13),
+      decoration: BoxDecoration(
+        gradient: selected
+            ? const LinearGradient(
+                colors: [Color(0xFFFFF1EB), Color(0xFFFFD6C7)],
+              )
+            : null,
+        color: selected ? null : Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: selected ? _roomTrendOrange : const Color(0xFFE8EAF0),
+          width: selected ? 1.4 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: selected
+                ? _roomTrendOrange.withValues(alpha: .18)
+                : Colors.black.withValues(alpha: .05),
+            blurRadius: selected ? 12 : 7,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          child,
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: selected
+                  ? const Color(0xFFB83D18)
+                  : const Color(0xFF374151),
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (selected) ...[
+            const SizedBox(width: 5),
+            Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: _roomTrendOrange,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
+class _TrendFlame extends StatefulWidget {
+  const _TrendFlame();
+  @override
+  State<_TrendFlame> createState() => _TrendFlameState();
+}
+
+class _TrendFlameState extends State<_TrendFlame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (_, child) => Transform.translate(
+      offset: Offset(0, -1.5 * _controller.value),
+      child: Transform.rotate(
+        angle: (_controller.value - .5) * .08,
+        child: child,
+      ),
+    ),
+    child: Image.asset(
+      'assets/saki_trending_flame.png',
+      width: 27,
+      height: 27,
+      fit: BoxFit.contain,
+    ),
+  );
+}
+
+String _flagForCountry(String country) {
+  const flags = {
+    'السعودية': '🇸🇦',
+    'المغرب': '🇲🇦',
+    'مصر': '🇪🇬',
+    'الإمارات': '🇦🇪',
+    'العراق': '🇮🇶',
+    'الكويت': '🇰🇼',
+    'قطر': '🇶🇦',
+    'البحرين': '🇧🇭',
+    'عمان': '🇴🇲',
+    'الأردن': '🇯🇴',
+    'لبنان': '🇱🇧',
+    'سوريا': '🇸🇾',
+    'اليمن': '🇾🇪',
+    'الجزائر': '🇩🇿',
+    'تونس': '🇹🇳',
+    'ليبيا': '🇱🇾',
+    'السودان': '🇸🇩',
+    'فلسطين': '🇵🇸',
+    'موريتانيا': '🇲🇷',
+    'الصومال': '🇸🇴',
+    'جيبوتي': '🇩🇯',
+    'جزر القمر': '🇰🇲',
+  };
+  return flags[country] ?? '🌐';
 }
 
 class _AnimatedTrophyButton extends StatefulWidget {
