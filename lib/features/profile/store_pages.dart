@@ -5,8 +5,9 @@ import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
 
-const _storeOrange = Color(0xFFF97316);
-const _storeCyan = Color(0xFF06B6D4);
+const _storeOrange = Color(0xFF9B27B0);
+const _storeCyan = Color(0xFF6A1B9A);
+const _storeGold = Color(0xFFFFC107);
 const _storeInk = Color(0xFF111827);
 const _storeSurface = Color(0xFFF8FAFC);
 
@@ -370,7 +371,7 @@ class ProductCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: Row(
             children: [
-              const Icon(Icons.monetization_on, color: _storeOrange, size: 17),
+              const Icon(Icons.monetization_on, color: _storeGold, size: 17),
               const SizedBox(width: 4),
               Text(
                 '${product['discounted_price'] ?? product['price']}',
@@ -416,7 +417,7 @@ class ProductCard extends StatelessWidget {
                   }
                 },
                 style: FilledButton.styleFrom(
-                  backgroundColor: _storeOrange,
+                  backgroundColor: _storeGold,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   shape: RoundedRectangleBorder(
@@ -446,7 +447,7 @@ class ProductCard extends StatelessWidget {
                 Text(
                   'خصم ${product['discount_percent']}%',
                   style: const TextStyle(
-                    color: _storeOrange,
+                    color: _storeGold,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
