@@ -72,7 +72,10 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
   Future<void> _join(Map<String, dynamic> family) async {
     try {
       await _service.requestFamilyJoin(family['id'].toString());
-      if (mounted) _snack('تم إرسال طلب الانضمام إلى العائلة');
+      if (mounted) {
+        _snack('تم إرسال طلب الانضمام إلى العائلة');
+        await _load();
+      }
     } catch (error) {
       if (mounted) _snack(error);
     }
@@ -384,12 +387,14 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _tasks = [];
   List<Map<String, dynamic>> _senders = [];
-  String _notice = 'رمز تغير 4499';
+  List<Map<String, dynamic>> _joinRequests = [];
+  late String _notice;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _notice = widget.family['announcement']?.toString() ?? '';
     _load();
   }
 
@@ -403,16 +408,28 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
     final id = widget.family['id']?.toString();
     if (id == null) return;
     try {
+      if (widget.family['owner_id']?.toString() == _service.uid) {
+        try {
+          await _service.settleFamilyWeeklyRewards(id);
+        } catch (_) {
+          // Reward settlement must never block the family screen.
+        }
+      }
       final result = await Future.wait<dynamic>([
         _service.familyMembers(id),
         _service.familyTasks(id),
         _service.familyGiftLeaderboard(id, 'sender'),
+        if (widget.family['owner_id'] == _service.uid)
+          _service.familyJoinRequests(id)
+        else
+          Future.value(<Map<String, dynamic>>[]),
       ]);
       if (!mounted) return;
       setState(() {
         _members = List<Map<String, dynamic>>.from(result[0] as List);
         _tasks = List<Map<String, dynamic>>.from(result[1] as List);
         _senders = List<Map<String, dynamic>>.from(result[2] as List);
+        _joinRequests = List<Map<String, dynamic>>.from(result[3] as List);
         _loading = false;
       });
     } catch (error) {
@@ -446,6 +463,21 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
       builder: (_) => _FamilyTasksSheet(
         tasks: _tasks,
         familyName: _text(widget.family['name'], 'عائلتنا'),
+        onComplete: (taskKey) async {
+          try {
+            await _service.completeFamilyTask(
+              widget.family['id'].toString(),
+              taskKey,
+            );
+            if (mounted) {
+              Navigator.pop(context);
+              _load();
+              _snack('تم تسجيل المهمة وإضافة نقاط العائلة');
+            }
+          } catch (error) {
+            _snack(error);
+          }
+        },
       ),
     );
   }
@@ -500,16 +532,45 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
       ),
     );
     controller.dispose();
-    if (value != null && value.isNotEmpty && mounted)
-      setState(() => _notice = value);
+    if (value != null && mounted) {
+      try {
+        await _service.updateFamilySettings(
+          familyId: widget.family['id'].toString(),
+          name: widget.family['name']?.toString() ?? '',
+          alias: widget.family['family_alias']?.toString() ?? '',
+          avatarUrl: widget.family['avatar_url']?.toString() ?? '',
+          announcement: value,
+        );
+        setState(() => _notice = value);
+      } catch (error) {
+        _snack(error);
+      }
+    }
+  }
+
+  void _snack(Object error) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+  );
+
+  Future<void> _openOwnerTools() async {
+    if (widget.family['owner_id']?.toString() != _service.uid) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FamilySettingsPage(
+          family: widget.family,
+          pendingRequests: _joinRequests,
+        ),
+      ),
+    );
+    if (mounted) _load();
   }
 
   @override
   Widget build(BuildContext context) {
     final f = widget.family;
-    final current =
-        (_senders.isNotEmpty ? _senders.first['total'] : null) as num? ?? 0;
-    final max = 6000000000.0;
+    final current = (f['points'] as num?)?.toDouble() ?? 0;
+    final max = 500000000.0;
     final progress = (current / max).clamp(0.0, 1.0).toDouble();
     final visibleMembers = _members.take(8).toList();
     return Scaffold(
@@ -526,6 +587,10 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                   family: f,
                   onBack: () => Navigator.pop(context),
                   onCopy: _copyId,
+                  isOwner:
+                      widget.family['owner_id']?.toString() == _service.uid,
+                  pendingRequests: _joinRequests.length,
+                  onSettings: _openOwnerTools,
                 ),
               ),
               SliverPadding(
@@ -696,10 +761,16 @@ class _FamilyRoyalHeader extends StatelessWidget {
     required this.family,
     required this.onBack,
     required this.onCopy,
+    required this.isOwner,
+    required this.pendingRequests,
+    required this.onSettings,
   });
   final Map<String, dynamic> family;
   final VoidCallback onBack;
   final VoidCallback onCopy;
+  final bool isOwner;
+  final int pendingRequests;
+  final VoidCallback onSettings;
   @override
   Widget build(BuildContext context) {
     final avatar = family['avatar_url']?.toString();
@@ -717,18 +788,41 @@ class _FamilyRoyalHeader extends StatelessWidget {
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: () => showModalBottomSheet(
-                  context: context,
-                  builder: (_) => const SafeArea(
-                    child: ListTile(title: Text('خيارات العائلة')),
-                  ),
-                ),
-                icon: const Icon(
-                  Icons.more_vert_rounded,
-                  color: Colors.white70,
-                ),
-              ),
+              if (isOwner)
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      onPressed: onSettings,
+                      icon: const Icon(
+                        Icons.settings_rounded,
+                        color: Colors.white70,
+                      ),
+                    ),
+                    if (pendingRequests > 0)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '$pendingRequests',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                )
+              else
+                const SizedBox(width: 48),
               const Expanded(
                 child: Text(
                   'عائلة',
@@ -1396,9 +1490,14 @@ class _MiniStat extends StatelessWidget {
 }
 
 class _FamilyTasksSheet extends StatelessWidget {
-  const _FamilyTasksSheet({required this.tasks, required this.familyName});
+  const _FamilyTasksSheet({
+    required this.tasks,
+    required this.familyName,
+    required this.onComplete,
+  });
   final List<Map<String, dynamic>> tasks;
   final String familyName;
+  final Future<void> Function(String taskKey) onComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -1476,11 +1575,26 @@ class _FamilyTasksSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  FilledButton(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم تسجيل إنجاز المهمة')),
+                  GestureDetector(
+                    onTap: () => onComplete(task['task_key']?.toString() ?? ''),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _familyGold,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text(
+                        'إنجاز',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
                     ),
-                    child: const Text('إنجاز', style: TextStyle(fontSize: 10)),
                   ),
                 ],
               ),
@@ -2023,4 +2137,398 @@ class _FamilyEmptyState extends StatelessWidget {
       ],
     ),
   );
+}
+
+class FamilySettingsPage extends StatefulWidget {
+  const FamilySettingsPage({
+    super.key,
+    required this.family,
+    required this.pendingRequests,
+  });
+  final Map<String, dynamic> family;
+  final List<Map<String, dynamic>> pendingRequests;
+  @override
+  State<FamilySettingsPage> createState() => _FamilySettingsPageState();
+}
+
+class _FamilySettingsPageState extends State<FamilySettingsPage> {
+  final _service = SakiService.instance;
+  late final TextEditingController _name;
+  late final TextEditingController _alias;
+  late final TextEditingController _notice;
+  XFile? _image;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(
+      text: widget.family['name']?.toString() ?? '',
+    );
+    _alias = TextEditingController(
+      text: widget.family['family_alias']?.toString() ?? '',
+    );
+    _notice = TextEditingController(
+      text: widget.family['announcement']?.toString() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _alias.dispose();
+    _notice.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pick() async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 82,
+    );
+    if (image != null && mounted) setState(() => _image = image);
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      var avatar = widget.family['avatar_url']?.toString() ?? '';
+      if (_image != null) {
+        avatar =
+            (await _service.uploadFamilyImage(_image!))?['url']?.toString() ??
+            avatar;
+      }
+      await _service.updateFamilySettings(
+        familyId: widget.family['id'].toString(),
+        name: _name.text.trim(),
+        alias: _alias.text.trim(),
+        avatarUrl: avatar,
+        announcement: _notice.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم حفظ إعدادات العائلة')));
+      Navigator.pop(context);
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final remoteAvatar = widget.family['avatar_url']?.toString();
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FB),
+      appBar: AppBar(
+        title: const Text('إعدادات العائلة'),
+        backgroundColor: Colors.white,
+        foregroundColor: _familyInk,
+        elevation: 0,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          GestureDetector(
+            onTap: _pick,
+            child: Container(
+              height: 150,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFFBFC),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFF8EDFE6)),
+              ),
+              child: _image != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: Image.file(File(_image!.path), fit: BoxFit.cover),
+                    )
+                  : remoteAvatar != null && remoteAvatar.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: Image.network(remoteAvatar, fit: BoxFit.cover),
+                    )
+                  : const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_a_photo_rounded,
+                          color: Color(0xFF13A8B5),
+                          size: 34,
+                        ),
+                        SizedBox(height: 7),
+                        Text(
+                          'تغيير صورة العائلة',
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _Field(
+            controller: _name,
+            label: 'اسم العائلة',
+            hint: 'اسم واضح للعائلة',
+          ),
+          _Field(controller: _alias, label: 'لقب العائلة', hint: 'H-NAME'),
+          _Field(
+            controller: _notice,
+            label: 'الإشعار العام',
+            hint: 'رسالة تظهر للأعضاء',
+            maxLines: 3,
+          ),
+          const SizedBox(height: 12),
+          _SettingsAction(
+            icon: Icons.people_alt_rounded,
+            title: 'طلبات الانضمام',
+            subtitle: 'مراجعة وقبول أو رفض الأعضاء',
+            badge: widget.pendingRequests.length,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => FamilyJoinRequestsPage(family: widget.family),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          GestureDetector(
+            onTap: _saving ? null : _save,
+            child: Container(
+              height: 54,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF8A3D), Color(0xFFF97316)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                _saving ? 'جارٍ الحفظ...' : 'حفظ إعدادات العائلة',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsAction extends StatelessWidget {
+  const _SettingsAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.badge,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final int badge;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFE6EAF0)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF13A8B5), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _familyInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.black54, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          if (badge > 0)
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$badge',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          const Icon(Icons.chevron_left_rounded, color: Colors.black38),
+        ],
+      ),
+    ),
+  );
+}
+
+class FamilyJoinRequestsPage extends StatefulWidget {
+  const FamilyJoinRequestsPage({super.key, required this.family});
+  final Map<String, dynamic> family;
+  @override
+  State<FamilyJoinRequestsPage> createState() => _FamilyJoinRequestsPageState();
+}
+
+class _FamilyJoinRequestsPageState extends State<FamilyJoinRequestsPage> {
+  final _service = SakiService.instance;
+  List<Map<String, dynamic>> _requests = [];
+  bool _loading = true;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await _service.familyJoinRequests(
+        widget.family['id'].toString(),
+      );
+      if (mounted) setState(() => _requests = rows);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _decide(Map<String, dynamic> row, bool approve) async {
+    try {
+      if (approve) {
+        await _service.approveFamilyJoin(row['id'].toString());
+      } else {
+        await _service.rejectFamilyJoin(row['id'].toString());
+      }
+      await _load();
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              approve ? 'تم قبول العضو في العائلة' : 'تم رفض الطلب',
+            ),
+          ),
+        );
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FB),
+      appBar: AppBar(
+        title: const Text('طلبات الانضمام'),
+        backgroundColor: Colors.white,
+        foregroundColor: _familyInk,
+        elevation: 0,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: _familyGold))
+          : _requests.isEmpty
+          ? const Center(child: Text('لا توجد طلبات معلقة'))
+          : ListView.separated(
+              padding: const EdgeInsets.all(14),
+              itemCount: _requests.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 9),
+              itemBuilder: (_, i) {
+                final row = _requests[i];
+                final p = row['profiles'] is Map
+                    ? Map<String, dynamic>.from(row['profiles'])
+                    : row;
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundImage: p['avatar_url'] == null
+                            ? null
+                            : NetworkImage(p['avatar_url'].toString()),
+                        child: p['avatar_url'] == null
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p['username']?.toString() ?? 'مستخدم',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              'SAKI ID: ${p['saki_id'] ?? '—'}',
+                              style: const TextStyle(
+                                color: Colors.black45,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _decide(row, false),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      GestureDetector(
+                        onTap: () => _decide(row, true),
+                        child: const Icon(
+                          Icons.check_circle_rounded,
+                          color: Color(0xFF16A34A),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
 }

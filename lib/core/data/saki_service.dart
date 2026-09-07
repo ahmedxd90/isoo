@@ -2124,6 +2124,76 @@ class SakiService {
     await client.rpc('request_family_join', params: {'p_family_id': familyId});
   }
 
+  Future<List<Map<String, dynamic>>> familyJoinRequests(String familyId) async {
+    final rows = await client
+        .from('family_join_requests')
+        .select(
+          'id,family_id,user_id,status,created_at,profiles:user_id(id,username,avatar_url,saki_id)',
+        )
+        .eq('family_id', familyId)
+        .eq('status', 'pending')
+        .order('created_at')
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>> updateFamilySettings({
+    required String familyId,
+    required String name,
+    required String alias,
+    required String avatarUrl,
+    required String announcement,
+  }) async {
+    final row = await client.rpc(
+      'update_family_settings',
+      params: {
+        'p_family_id': familyId,
+        'p_name': name,
+        'p_alias': alias,
+        'p_avatar_url': avatarUrl,
+        'p_announcement': announcement,
+      },
+    );
+    return Map<String, dynamic>.from(row is List ? row.first : row);
+  }
+
+  Future<void> approveFamilyJoin(String requestId) async {
+    await client.rpc(
+      'approve_family_join',
+      params: {'p_request_id': requestId},
+    );
+  }
+
+  Future<void> rejectFamilyJoin(String requestId) async {
+    await client.rpc('reject_family_join', params: {'p_request_id': requestId});
+  }
+
+  Future<Map<String, dynamic>> completeFamilyTask(
+    String familyId,
+    String taskKey, {
+    int increment = 1,
+  }) async {
+    final rows = await client.rpc(
+      'complete_family_task',
+      params: {
+        'p_family_id': familyId,
+        'p_task_key': taskKey,
+        'p_increment': increment,
+      },
+    );
+    return Map<String, dynamic>.from((rows as List).first);
+  }
+
+  Future<List<Map<String, dynamic>>> familyWeeklyLeaderboard(
+    String familyId,
+  ) async {
+    final rows = await client.rpc(
+      'family_weekly_leaderboard',
+      params: {'p_family_id': familyId},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<List<Map<String, dynamic>>> familyMembers(String familyId) async {
     final rows = await client
         .from('family_members')
@@ -2156,6 +2226,13 @@ class SakiService {
       params: {'p_family_id': familyId, 'p_mode': mode},
     );
     return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<void> settleFamilyWeeklyRewards(String familyId) async {
+    await client.rpc(
+      'settle_family_weekly_rewards',
+      params: {'p_family_id': familyId},
+    );
   }
 
   Future<Map<String, dynamic>?> uploadFamilyImage(XFile image) async {
