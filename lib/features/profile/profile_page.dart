@@ -224,12 +224,6 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
               child: Column(
                 children: [
-                  _ProfileQuickActions(
-                    onWallet: () => _openModule('wallet'),
-                    onVip: () => _openModule('vip'),
-                    onStore: () => _openModule('store'),
-                  ),
-                  const SizedBox(height: 16),
                   _CustomProfileTabs(
                     selected: _tab,
                     onChanged: (value) => setState(() => _tab = value),
