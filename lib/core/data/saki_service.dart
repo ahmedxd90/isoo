@@ -946,30 +946,15 @@ class SakiService {
   }
 
   Future<String> createConversation(String otherUserId) async {
-    final existing = await client
-        .from('conversation_members')
-        .select('conversation_id')
-        .eq('user_id', uid);
-    for (final row in List<Map<String, dynamic>>.from(existing)) {
-      final members = await client
-          .from('conversation_members')
-          .select('user_id')
-          .eq('conversation_id', row['conversation_id'] as String);
-      if (List<Map<String, dynamic>>.from(members)
-          .any((m) => m['user_id'] == otherUserId))
-        return row['conversation_id'] as String;
+    final result = await client.rpc(
+      'create_private_conversation',
+      params: {'p_other_user_id': otherUserId},
+    );
+    if (result is String && result.isNotEmpty) return result;
+    if (result is Map && result['id'] is String) {
+      return result['id'] as String;
     }
-    final conversation = await client
-        .from('conversations')
-        .insert({'created_by': uid})
-        .select('id')
-        .single();
-    final conversationId = conversation['id'] as String;
-    await client.from('conversation_members').insert([
-      {'conversation_id': conversationId, 'user_id': uid},
-      {'conversation_id': conversationId, 'user_id': otherUserId},
-    ]);
-    return conversationId;
+    throw Exception('invalid_conversation_response');
   }
 
   Stream<List<Map<String, dynamic>>> messagesStream(String conversationId) {

@@ -105,10 +105,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح المحادثة الخاصة')),
+          SnackBar(
+            content: Text(
+              'تعذر فتح المحادثة الخاصة: ${error.toString().replaceFirst('Exception: ', '')}',
+            ),
+          ),
         );
       }
     } finally {
