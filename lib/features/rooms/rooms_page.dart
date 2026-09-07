@@ -1447,6 +1447,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _setSeatAudio(bool seated) async {
     _isOnSeat = seated;
     RoomSessionController.instance.updateVoiceState(isOnSeat: seated);
+    await _syncMusicSeatAccess(seated);
     if (!seated) {
       _micMuted = true;
       await _engine?.muteLocalAudioStream(true);
@@ -2469,14 +2470,25 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _musicPlaying = _activeMusic?['is_playing'] == true;
       });
       final nested = _activeMusic?['room_music'];
-      if (_musicPlaying && nested is Map) {
+      if (_musicPlaying && _isOnSeat && nested is Map) {
         await _musicPlayer.setUrl(nested['audio_url'] as String);
+        await _musicPlayer.setVolume(_musicVolume);
         await _musicPlayer.play();
       }
     } catch (_) {}
   }
 
+  Future<void> _syncMusicSeatAccess(bool seated) async {
+    if (seated || !_musicPlaying) return;
+    await _musicPlayer.stop();
+    if (mounted) setState(() => _musicPlaying = false);
+  }
+
   Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
+    if (!_isOnSeat) {
+      await _syncMusicSeatAccess(false);
+      return;
+    }
     final action = event['action']?.toString();
     if (action == 'stop') {
       await _musicPlayer.stop();
@@ -2513,7 +2525,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     String action,
     Map<String, dynamic> music,
   ) async {
-    final position = _musicPlayer.position.inMilliseconds / 1000;
+    final changingTrack =
+        _activeMusic?['music_id']?.toString() != music['id']?.toString();
+    final position = changingTrack
+        ? 0.0
+        : _musicPlayer.position.inMilliseconds / 1000;
     final event = {
       'action': action,
       'music': music,
@@ -3103,8 +3119,28 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     StreamBuilder<List<Map<String, dynamic>>>(
                       stream: _seatStream,
                       builder: (_, snap) {
+                        final seatRows = snap.data ?? <Map<String, dynamic>>[];
+                        final ownSeat = seatRows.any(
+                          (row) => row['user_id'] == _service.uid,
+                        );
+                        if (ownSeat != _isOnSeat) {
+                          scheduleMicrotask(() async {
+                            if (!mounted) return;
+                            _isOnSeat = ownSeat;
+                            if (ownSeat && _activeMusic != null) {
+                              await _loadRoomMusic();
+                            }
+                            await _syncMusicSeatAccess(ownSeat);
+                            if (!ownSeat) {
+                              RoomSessionController.instance.updateVoiceState(
+                                isOnSeat: false,
+                                micMuted: true,
+                              );
+                            }
+                          });
+                        }
                         final seats = {
-                          for (final row in (snap.data ?? []))
+                          for (final row in seatRows)
                             row['seat_no'] as int: row,
                         };
                         return Padding(
@@ -4728,55 +4764,42 @@ class RoomMusicSheet extends StatelessWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.volume_down_rounded,
-                        color: Colors.white60,
-                        size: 19,
+                      IconButton(
+                        onPressed: () =>
+                            onVolume((volume - .1).clamp(0.0, 1.0)),
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(
+                          Icons.volume_down_rounded,
+                          color: Colors.white60,
+                          size: 19,
+                        ),
                       ),
                       Expanded(
-                        child: GestureDetector(
-                          onTapDown: (details) {
-                            final width =
-                                MediaQuery.sizeOf(context).width - 100;
-                            onVolume(
-                              (details.localPosition.dx / width).clamp(
-                                0.0,
-                                1.0,
-                              ),
-                            );
-                          },
-                          child: Container(
-                            height: 24,
-                            alignment: Alignment.centerLeft,
-                            child: Stack(
-                              alignment: Alignment.centerLeft,
-                              children: [
-                                Container(
-                                  height: 5,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white12,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                FractionallySizedBox(
-                                  widthFactor: volume,
-                                  child: Container(
-                                    height: 5,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFE9B949),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: const Color(0xFFE9B949),
+                            inactiveTrackColor: Colors.white12,
+                            thumbColor: Colors.white,
+                            overlayColor: const Color(0x33E9B949),
+                            trackHeight: 4,
+                          ),
+                          child: Slider(
+                            value: volume.clamp(0.0, 1.0),
+                            min: 0,
+                            max: 1,
+                            onChanged: onVolume,
                           ),
                         ),
                       ),
-                      const Icon(
-                        Icons.volume_up_rounded,
-                        color: Colors.white60,
-                        size: 19,
+                      IconButton(
+                        onPressed: () =>
+                            onVolume((volume + .1).clamp(0.0, 1.0)),
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(
+                          Icons.volume_up_rounded,
+                          color: Colors.white60,
+                          size: 19,
+                        ),
                       ),
                     ],
                   ),
