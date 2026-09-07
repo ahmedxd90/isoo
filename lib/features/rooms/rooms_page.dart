@@ -1536,7 +1536,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         },
       ),
     );
-    if (sent == true && _isLuckGift(_lastGift)) _startGiftCombo();
+    if (sent == true && _isLuckGift(_lastGift)) {
+      _startGiftCombo();
+    } else if (mounted) {
+      _comboTimer?.cancel();
+      setState(() => _comboSeconds = 0);
+    }
   }
 
   bool _isLuckGift(Map<String, dynamic>? gift) {
@@ -3420,16 +3425,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                             SizedBox(
-                              width: 58,
-                              height: _comboSeconds > 0 ? 84 : 44,
+                              width: 72,
+                              height: _comboSeconds > 0 ? 98 : 56,
                               child: Stack(
                                 alignment: AlignmentDirectional.bottomCenter,
                                 children: [
                                   GestureDetector(
                                     onTap: _showGiftPanel,
                                     child: Container(
-                                      width: 44,
-                                      height: 44,
+                                      width: 54,
+                                      height: 54,
                                       alignment: Alignment.center,
                                       decoration: BoxDecoration(
                                         color: Colors.black26,
@@ -3452,8 +3457,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       child: GestureDetector(
                                         onTap: _sendComboAgain,
                                         child: Container(
-                                          width: 42,
-                                          height: 42,
+                                          width: 56,
+                                          height: 56,
                                           decoration: const BoxDecoration(
                                             color: Colors.orangeAccent,
                                             shape: BoxShape.circle,
@@ -3463,7 +3468,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                             '$_comboSeconds',
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontSize: 16,
+                                              fontSize: 19,
                                               fontWeight: FontWeight.w900,
                                             ),
                                           ),
@@ -3546,11 +3551,15 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   VideoPlayerController? _video;
   late final SVGAAnimationController _svga;
   bool _visible = true;
+  bool _flyingToSeat = false;
 
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
-  bool get _compactGift => true;
+  bool get _compactGift {
+    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
+    return type != 'svga' && type != 'mp4' && type != 'gif';
+  }
 
   @override
   void initState() {
@@ -3560,7 +3569,10 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         if (status == AnimationStatus.completed) _hide();
       });
     if (_compactGift) {
-      Future<void>.delayed(const Duration(milliseconds: 900), _hide);
+      Future<void>.delayed(const Duration(milliseconds: 2100), () {
+        if (mounted) setState(() => _flyingToSeat = true);
+      });
+      Future<void>.delayed(const Duration(milliseconds: 3300), _hide);
       return;
     }
     final url = _payload['media_url'] as String?;
@@ -3590,6 +3602,8 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         if (!video.value.isInitialized || video.value.isPlaying) return;
         if (video.value.position >= video.value.duration) _hide();
       });
+    } else if (url != null && url.isNotEmpty && type == 'gif') {
+      Future<void>.delayed(const Duration(seconds: 5), _hide);
     } else {
       Future<void>.delayed(const Duration(milliseconds: 900), _hide);
     }
@@ -3646,12 +3660,22 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
           );
     return IgnorePointer(
       child: TweenAnimationBuilder<Offset>(
-        tween: Tween(begin: Offset.zero, end: delta),
+        tween: Tween(
+          begin: Offset.zero,
+          end: _flyingToSeat ? delta : Offset.zero,
+        ),
         duration: const Duration(milliseconds: 450),
         curve: Curves.easeInOutCubic,
         builder: (_, offset, child) =>
             FractionalTranslation(translation: offset, child: child),
-        child: Center(child: image),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: .22, end: _flyingToSeat ? .34 : 1),
+          duration: const Duration(milliseconds: 2000),
+          curve: Curves.easeOutBack,
+          builder: (_, scale, child) =>
+              Transform.scale(scale: scale, child: child),
+          child: Center(child: image),
+        ),
       ),
     );
   }
@@ -3679,7 +3703,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
           final recipient = snapshot.data != null && snapshot.data!.length > 1
               ? snapshot.data![1]
               : null;
-          final immersive = type == 'mp4' || type == 'svga';
+          final immersive = type == 'mp4' || type == 'svga' || type == 'gif';
           final mediaView = _svga.videoItem != null
               ? SVGAImage(_svga, fit: BoxFit.contain)
               : _video != null && _video!.value.isInitialized
@@ -3706,7 +3730,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             alignment: Alignment.center,
             children: [
               if (immersive) Positioned.fill(child: Center(child: mediaView)),
-              if (_payload['flying_banner'] != false)
+              if (!immersive && _payload['flying_banner'] != false)
                 Positioned(
                   top: 34,
                   left: 0,
