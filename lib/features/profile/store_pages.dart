@@ -5,7 +5,10 @@ import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
 
-const _storeGold = Color(0xFFF59E0B);
+const _storeOrange = Color(0xFFF97316);
+const _storeCyan = Color(0xFF06B6D4);
+const _storeInk = Color(0xFF111827);
+const _storeSurface = Color(0xFFF8FAFC);
 
 class StoreEntranceOverlay extends StatefulWidget {
   const StoreEntranceOverlay({
@@ -103,62 +106,121 @@ class _StorePageState extends State<StorePage> {
       _future = SakiService.instance.storeProducts(category: _category);
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: _storeSurface,
     appBar: AppBar(
-      title: const Text('متجر SAKI'),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      elevation: 0,
+      centerTitle: false,
+      title: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'متجر SAKI',
+            style: TextStyle(color: _storeInk, fontWeight: FontWeight.w900),
+          ),
+          Text(
+            'اختَر إطلالتك داخل الغرفة',
+            style: TextStyle(color: Colors.black54, fontSize: 11),
+          ),
+        ],
+      ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.shopping_bag_rounded),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BagPage()),
+        Container(
+          margin: const EdgeInsetsDirectional.only(end: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [_storeOrange, _storeCyan]),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(color: Color(0x3322A6C8), blurRadius: 8),
+            ],
+          ),
+          child: IconButton(
+            tooltip: 'حقيبتي',
+            color: Colors.white,
+            icon: const Icon(Icons.shopping_bag_rounded),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BagPage()),
+            ),
           ),
         ),
       ],
     ),
     body: Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(
-                value: 'frame',
-                label: Text('الإطارات'),
-                icon: Icon(Icons.crop_square_rounded),
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Row(
+            children: [
+              Expanded(
+                child: _categoryTab(
+                  'frame',
+                  Icons.crop_square_rounded,
+                  'الإطارات',
+                ),
               ),
-              ButtonSegment(
-                value: 'entrance',
-                label: Text('الدخوليات'),
-                icon: Icon(Icons.auto_awesome),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _categoryTab(
+                  'entrance',
+                  Icons.auto_awesome_rounded,
+                  'الدخوليات',
+                ),
               ),
             ],
-            selected: {_category},
-            onSelectionChanged: (v) => setState(() {
-              _category = v.first;
-              _reload();
-            }),
           ),
         ),
         Expanded(
           child: FutureBuilder<List<Map<String, dynamic>>>(
             future: _future,
             builder: (_, snap) {
-              if (!snap.hasData)
-                return const Center(child: CircularProgressIndicator());
-              final items = snap.data!;
-              if (items.isEmpty)
-                return const Center(child: Text('لا توجد منتجات متاحة حالياً'));
-              return GridView.builder(
-                padding: const EdgeInsets.all(12),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: .72,
+              if (snap.connectionState != ConnectionState.done) {
+                return const Center(
+                  child: CircularProgressIndicator(color: _storeOrange),
+                );
+              }
+              if (snap.hasError)
+                return Center(child: Text('تعذر تحميل المتجر: ${snap.error}'));
+              final items = snap.data ?? const <Map<String, dynamic>>[];
+              if (items.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(
+                        Icons.storefront_rounded,
+                        size: 58,
+                        color: _storeCyan,
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'لا توجد منتجات متاحة حاليًا',
+                        style: TextStyle(
+                          color: _storeInk,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return RefreshIndicator(
+                color: _storeOrange,
+                onRefresh: () async => setState(_reload),
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 28),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: .66,
+                  ),
+                  itemCount: items.length,
+                  itemBuilder: (_, i) =>
+                      ProductCard(product: items[i], onBought: _reload),
                 ),
-                itemCount: items.length,
-                itemBuilder: (_, i) =>
-                    ProductCard(product: items[i], onBought: _reload),
               );
             },
           ),
@@ -166,6 +228,45 @@ class _StorePageState extends State<StorePage> {
       ],
     ),
   );
+
+  Widget _categoryTab(String value, IconData icon, String label) {
+    final selected = _category == value;
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => setState(() {
+        _category = value;
+        _reload();
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(colors: [_storeOrange, _storeCyan])
+              : null,
+          color: selected ? null : _storeSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? Colors.transparent : Colors.black12,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: selected ? Colors.white : _storeInk, size: 20),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : _storeInk,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class ProductCard extends StatelessWidget {
@@ -173,17 +274,62 @@ class ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
   final VoidCallback onBought;
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.black.withValues(alpha: .06)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x12000000),
+          blurRadius: 14,
+          offset: Offset(0, 5),
+        ),
+      ],
+    ),
     clipBehavior: Clip.antiAlias,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: Image.network(
-            product['thumbnail_url'] as String,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                const Icon(Icons.image_not_supported, size: 50),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.network(
+                product['thumbnail_url'] as String,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const ColoredBox(
+                  color: Color(0xFFE0F2FE),
+                  child: Icon(
+                    Icons.image_not_supported,
+                    size: 50,
+                    color: _storeCyan,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 9,
+                right: 9,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .9),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(
+                    product['category'] == 'frame' ? 'إطار' : 'دخولية',
+                    style: const TextStyle(
+                      color: _storeInk,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
@@ -199,7 +345,7 @@ class ProductCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           child: Row(
             children: [
-              const Icon(Icons.monetization_on, color: _storeGold, size: 17),
+              const Icon(Icons.monetization_on, color: _storeOrange, size: 17),
               const SizedBox(width: 4),
               Text('${product['price']}'),
               const Spacer(),
@@ -227,7 +373,18 @@ class ProductCard extends StatelessWidget {
                       );
                   }
                 },
-                child: const Text('شراء'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _storeOrange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                ),
+                child: const Text(
+                  'شراء',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
               ),
             ],
           ),
