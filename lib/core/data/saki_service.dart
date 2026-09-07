@@ -180,6 +180,12 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> activeAppBan() async {
+    final profile = await client
+        .from('profiles')
+        .select('is_super_admin')
+        .eq('id', uid)
+        .maybeSingle();
+    if (profile?['is_super_admin'] == true) return null;
     return client
         .from('app_bans')
         .select('expires_at,reason')
@@ -1323,6 +1329,12 @@ class SakiService {
   }
 
   Future<void> roomBan(String roomId, String userId, Duration? duration) async {
+    final target = await client
+        .from('profiles')
+        .select('is_super_admin')
+        .eq('id', userId)
+        .maybeSingle();
+    if (target?['is_super_admin'] == true) return;
     await client.from('room_bans').upsert({
       'room_id': roomId,
       'user_id': userId,

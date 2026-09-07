@@ -1134,6 +1134,36 @@ class _RoomWaveState extends State<_RoomWave>
   }
 }
 
+class _ExitChoiceIcon extends StatelessWidget {
+  const _ExitChoiceIcon({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 72,
+      height: 72,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .18),
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: .75), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: .28), blurRadius: 24),
+        ],
+      ),
+      child: Icon(icon, color: color, size: 30),
+    ),
+  );
+}
+
 class RoomDetailPage extends StatefulWidget {
   const RoomDetailPage({super.key, required this.room});
   final Map<String, dynamic> room;
@@ -1243,7 +1273,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       )
       ..subscribe();
     final existingEngine = RoomSessionController.instance.engine;
-    if (existingEngine != null) {
+    final savedRoom = RoomSessionController.instance.room;
+    final restoredSession =
+        existingEngine != null && savedRoom?['id'] == _roomId;
+    if (restoredSession) {
       _engine = existingEngine;
       final session = RoomSessionController.instance;
       _isOnSeat = session.isOnSeat;
@@ -1287,7 +1320,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _service.roomMembers(_roomId).then((members) {
       if (mounted) setState(() => _roomMembers = members);
     });
-    if (existingEngine == null) _startRoomAudio();
+    if (!restoredSession) _startRoomAudio();
   }
 
   int _numericUid(String value) {
@@ -1584,34 +1617,30 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<bool> _confirmExit() async {
-    final result = await showDialog<bool>(
+    final result = await showGeneralDialog<bool>(
       context: context,
-      barrierColor: Colors.black54,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF291018),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text(
-          'مغادرة الغرفة؟',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-        ),
-        content: const Text(
-          'يمكنك الخروج من الغرفة أو الاحتفاظ بها مفتوحة أثناء استخدام التطبيق.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          OutlinedButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('احتفظ'),
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: .70),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (_, __, ___) => SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ExitChoiceIcon(
+                icon: Icons.logout_rounded,
+                color: const Color(0xFFFF496D),
+                onTap: () => Navigator.of(context).pop(true),
+              ),
+              const SizedBox(height: 18),
+              _ExitChoiceIcon(
+                icon: Icons.bookmark_rounded,
+                color: const Color(0xFF8B7CFF),
+                onTap: () => Navigator.of(context).pop(false),
+              ),
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('خروج'),
-          ),
-        ],
+        ),
       ),
     );
     if (result == true) {
