@@ -150,7 +150,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('خطأ فتح المحادثة - التشخيص'),
+        title: const Text('تشخيص الدردشة الخاصة - إصدار 39'),
         content: SizedBox(
           width: 520,
           child: SingleChildScrollView(
