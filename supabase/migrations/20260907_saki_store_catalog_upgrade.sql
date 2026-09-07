@@ -44,6 +44,7 @@ drop function if exists public.saki_store_buy(uuid);
 create or replace function public.saki_store_buy(p_product_id uuid)
 returns table(product_id uuid, gold_coins bigint, quantity integer, expires_at timestamptz)
 language plpgsql security definer set search_path=public as $$
+#variable_conflict use_column
 declare p saki_store_products%rowtype; v_product_id uuid; v_balance bigint; q integer; expiry timestamptz;
 begin
   select * into p from saki_store_products where id=p_product_id and is_active=true;
@@ -56,7 +57,7 @@ begin
   if not found then raise exception 'insufficient_gold'; end if;
   insert into saki_store_inventory as inventory(user_id,product_id,quantity,expires_at)
     values(auth.uid(),v_product_id,1,expiry)
-    on conflict(user_id,product_id) do update
+    on conflict on constraint saki_store_inventory_pkey do update
       set quantity=inventory.quantity+1, expires_at=excluded.expires_at;
   select i.quantity,i.expires_at into q,expiry
     from saki_store_inventory as i
