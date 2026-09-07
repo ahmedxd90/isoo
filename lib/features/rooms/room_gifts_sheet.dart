@@ -31,15 +31,15 @@ class RoomGiftsSheet extends StatefulWidget {
 
 class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   final _categories = const {
-    'الكل': null,
     'عامة': 'general',
+    'المشاهير': 'famous',
     'الحظ': 'luck',
     'CP': 'cp',
+    'الدول': 'countries',
     'VIP': 'vip',
-    'الحقيبة': 'bag',
   };
 
-  String _category = 'الكل';
+  String _category = 'عامة';
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _recipients = [];
   final Set<String> _selectedIds = <String>{};
@@ -66,7 +66,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
           .map((row) => Map<String, dynamic>.from(row['profiles'] ?? {}))
           .where((profile) => profile['id'] != null)
           .toList();
-      final gifts = await widget.service.roomGiftCatalog();
+      final gifts = await widget.service.roomGiftCatalog(category: 'general');
       if (!mounted) return;
       setState(() {
         _gold = (account['gold_coins'] as num?)?.toInt() ?? 0;
@@ -84,14 +84,8 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
       _category = label;
       _loading = true;
     });
-    final gifts = value == 'bag'
-        ? await widget.service.roomGiftInventory()
-        : await widget.service.roomGiftCatalog(category: value);
-    final normalized = value == 'bag'
-        ? gifts
-              .map((row) => Map<String, dynamic>.from(row['gift'] ?? {}))
-              .toList()
-        : gifts;
+    final gifts = await widget.service.roomGiftCatalog(category: value);
+    final normalized = gifts;
     if (mounted) {
       setState(() {
         _gifts = normalized;
@@ -172,20 +166,20 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   @override
   Widget build(BuildContext context) => SafeArea(
     child: Container(
-      height: MediaQuery.sizeOf(context).height * .86,
+      height: MediaQuery.sizeOf(context).height * .78,
       decoration: const BoxDecoration(
-        color: _giftPanel,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-        border: Border(top: BorderSide(color: Color(0x5532D7FF))),
+        color: Color(0xF20B1515),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        border: Border(top: BorderSide(color: Color(0x6648E0B0), width: 1.2)),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Container(
             width: 42,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.white38,
+              color: Colors.white30,
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -309,7 +303,6 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                     },
                   ),
           ),
-          _SectionLabel(title: 'الهدايا', count: _gifts.length),
           SizedBox(
             height: 40,
             child: ListView(

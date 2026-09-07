@@ -1273,9 +1273,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       )
       ..subscribe();
     final existingEngine = RoomSessionController.instance.engine;
-    final savedRoom = RoomSessionController.instance.room;
     final restoredSession =
-        existingEngine != null && savedRoom?['id'] == _roomId;
+        existingEngine != null &&
+        RoomSessionController.instance.isSameRoom(_roomId);
     if (restoredSession) {
       _engine = existingEngine;
       final session = RoomSessionController.instance;

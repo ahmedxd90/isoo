@@ -7,6 +7,7 @@ class RoomSessionController extends ChangeNotifier {
   static final RoomSessionController instance = RoomSessionController._();
 
   Map<String, dynamic>? room;
+  String? roomId;
   RtcEngine? engine;
   bool isOnSeat = false;
   bool micMuted = true;
@@ -22,6 +23,7 @@ class RoomSessionController extends ChangeNotifier {
     required int remoteUsers,
   }) {
     this.room = Map<String, dynamic>.from(room);
+    roomId = room['id']?.toString() ?? room['room_id']?.toString();
     this.engine = engine;
     this.isOnSeat = isOnSeat;
     this.micMuted = micMuted;
@@ -41,10 +43,13 @@ class RoomSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool isSameRoom(String id) => roomId == id;
+
   RtcEngine? takeEngine() {
     final value = engine;
     engine = null;
     room = null;
+    roomId = null;
     notifyListeners();
     return value;
   }
@@ -53,6 +58,7 @@ class RoomSessionController extends ChangeNotifier {
     final value = engine;
     engine = null;
     room = null;
+    roomId = null;
     if (value != null) {
       await value.leaveChannel();
       await value.release();
