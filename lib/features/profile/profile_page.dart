@@ -177,8 +177,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
-      return const Center(child: CircularProgressIndicator(color: _orange));
+    if (_loading) return const _ProfileLoading();
     final profile = _profile ?? {};
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
     final vipExpires = DateTime.tryParse(
@@ -194,118 +193,62 @@ class _ProfilePageState extends State<ProfilePage> {
     final wealthLevel = (_modules['wealth_level'] as num? ?? 0).toInt();
     final charmLevel = (_modules['charm_level'] as num? ?? 0).toInt();
     final followers = _stats['followers'] ?? 0;
+    final following = _stats['following'] ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.pop(context);
-          },
-          icon: const FaIcon(
-            FontAwesomeIcons.arrowRight,
-            size: 17,
-            color: _ink,
-          ),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'الملف الشخصي',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: _ink,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 14),
-            child: TextButton.icon(
-              onPressed: _edit,
-              style: TextButton.styleFrom(
-                backgroundColor: _orangeSoft,
-                foregroundColor: _orange,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const FaIcon(FontAwesomeIcons.penToSquare, size: 13),
-              label: const Text(
-                'تعديل',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: _orange,
-        onRefresh: _load,
+      backgroundColor: const Color(0xFFF3F5FA),
+      body: Directionality(
+        textDirection: TextDirection.rtl,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+          padding: EdgeInsets.zero,
           children: [
-            _ProfileCard(
+            _ProfileHero(
               profile: profile,
               username: username,
               vipLevel: vipLevel,
               wealthLevel: wealthLevel,
               charmLevel: charmLevel,
               followers: followers,
+              following: following,
+              onBack: () {
+                if (Navigator.canPop(context)) Navigator.pop(context);
+              },
+              onEdit: _edit,
+              onCopyId: () {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('تم نسخ SAKI ID')));
+              },
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.wallet,
-                    label: 'المحفظة',
-                    color: _orange,
-                    background: _orangeSoft,
-                    onTap: () => _openModule('wallet'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 120),
+              child: Column(
+                children: [
+                  _ProfileQuickActions(
+                    onWallet: () => _openModule('wallet'),
+                    onVip: () => _openModule('vip'),
+                    onStore: () => _openModule('store'),
                   ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.crown,
-                    label: 'VIP',
-                    color: const Color(0xFFD97706),
-                    background: const Color(0xFFFFFBEB),
-                    onTap: () => _openModule('vip'),
+                  const SizedBox(height: 16),
+                  _CustomProfileTabs(
+                    selected: _tab,
+                    onChanged: (value) => setState(() => _tab = value),
                   ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.store,
-                    label: 'المتجر',
-                    color: const Color(0xFF2563EB),
-                    background: const Color(0xFFEFF6FF),
-                    onTap: () => _openModule('store'),
+                  const SizedBox(height: 14),
+                  _CustomProfileContent(
+                    tab: _tab,
+                    posts: _posts,
+                    reels: _reels,
+                    profile: profile,
+                    modules: _modules,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _MenuCard(onTap: _openMenu, isSuperAdmin: _isSuperAdmin),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _logout,
-              icon: const FaIcon(FontAwesomeIcons.rightFromBracket, size: 14),
-              label: const Text('تسجيل الخروج'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Color(0xFFFECACA)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                  const SizedBox(height: 16),
+                  _ProfileMenuStrip(
+                    onTap: _openMenu,
+                    isSuperAdmin: _isSuperAdmin,
+                    onLogout: _logout,
+                  ),
+                ],
               ),
             ),
           ],
@@ -313,6 +256,774 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
+
+class _ProfileLoading extends StatelessWidget {
+  const _ProfileLoading();
+  @override
+  Widget build(BuildContext context) => const ColoredBox(
+    color: Color(0xFFF3F5FA),
+    child: Center(child: CircularProgressIndicator(color: _orange)),
+  );
+}
+
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.profile,
+    required this.username,
+    required this.vipLevel,
+    required this.wealthLevel,
+    required this.charmLevel,
+    required this.followers,
+    required this.following,
+    required this.onBack,
+    required this.onEdit,
+    required this.onCopyId,
+  });
+  final Map<String, dynamic> profile;
+  final String username;
+  final int vipLevel;
+  final int wealthLevel;
+  final int charmLevel;
+  final int followers;
+  final int following;
+  final VoidCallback onBack;
+  final VoidCallback onEdit;
+  final VoidCallback onCopyId;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      Container(
+        height: 285,
+        padding: const EdgeInsets.fromLTRB(16, 42, 16, 0),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [Color(0xFF0F172A), Color(0xFF312E81), Color(0xFFD97706)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(painter: _ProfilePatternPainter()),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _HeroIcon(icon: FontAwesomeIcons.arrowRight, onTap: onBack),
+                const Text(
+                  'SAKI PROFILE',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.4,
+                  ),
+                ),
+                _HeroIcon(icon: FontAwesomeIcons.penToSquare, onTap: onEdit),
+              ],
+            ),
+            Positioned(
+              right: 0,
+              left: 0,
+              bottom: 20,
+              child: Column(
+                children: [
+                  Container(
+                    width: 94,
+                    height: 94,
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFFC94A),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: .28),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: _AvatarImage(
+                        url: profile['avatar_url'] as String?,
+                        label: username,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    username,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  GestureDetector(
+                    onTap: onCopyId,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.copy_rounded,
+                            color: Color(0xFFFFD166),
+                            size: 13,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'SAKI ID  ${profile['saki_id'] ?? '—'}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      Positioned(
+        bottom: -45,
+        right: 14,
+        left: 14,
+        child: _ProfileStatsCard(
+          vipLevel: vipLevel,
+          wealthLevel: wealthLevel,
+          charmLevel: charmLevel,
+          followers: followers,
+          following: following,
+        ),
+      ),
+    ],
+  );
+}
+
+class _HeroIcon extends StatelessWidget {
+  const _HeroIcon({required this.icon, required this.onTap});
+  final FaIconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 36,
+      height: 36,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .13),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: FaIcon(icon, color: Colors.white, size: 14),
+    ),
+  );
+}
+
+class _ProfileStatsCard extends StatelessWidget {
+  const _ProfileStatsCard({
+    required this.vipLevel,
+    required this.wealthLevel,
+    required this.charmLevel,
+    required this.followers,
+    required this.following,
+  });
+  final int vipLevel;
+  final int wealthLevel;
+  final int charmLevel;
+  final int followers;
+  final int following;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x180F172A),
+          blurRadius: 22,
+          offset: Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        _StatCell(value: '$followers', label: 'متابعون'),
+        _StatDivider(),
+        _StatCell(value: '$following', label: 'متابعة'),
+        _StatDivider(),
+        _StatCell(value: 'VIP $vipLevel', label: 'العضوية', accent: _orange),
+        _StatDivider(),
+        _StatCell(
+          value: 'LV $wealthLevel',
+          label: 'الثروة',
+          accent: const Color(0xFF16A34A),
+        ),
+      ],
+    ),
+  );
+}
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.value, required this.label, this.accent});
+  final String value;
+  final String label;
+  final Color? accent;
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: accent ?? _ink,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: const TextStyle(
+            color: _muted,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _StatDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 28, color: _line);
+}
+
+class _ProfileQuickActions extends StatelessWidget {
+  const _ProfileQuickActions({
+    required this.onWallet,
+    required this.onVip,
+    required this.onStore,
+  });
+  final VoidCallback onWallet;
+  final VoidCallback onVip;
+  final VoidCallback onStore;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      _QuickAction(
+        icon: FontAwesomeIcons.wallet,
+        label: 'المحفظة',
+        color: _orange,
+        onTap: onWallet,
+      ),
+      const SizedBox(width: 8),
+      _QuickAction(
+        icon: FontAwesomeIcons.crown,
+        label: 'عضوية VIP',
+        color: const Color(0xFFD97706),
+        onTap: onVip,
+      ),
+      const SizedBox(width: 8),
+      _QuickAction(
+        icon: FontAwesomeIcons.store,
+        label: 'المتجر',
+        color: const Color(0xFF2563EB),
+        onTap: onStore,
+      ),
+    ],
+  );
+}
+
+class _QuickAction extends StatelessWidget {
+  const _QuickAction({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+  final FaIconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 3),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _line),
+        ),
+        child: Column(
+          children: [
+            FaIcon(icon, color: color, size: 16),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _CustomProfileTabs extends StatelessWidget {
+  const _CustomProfileTabs({required this.selected, required this.onChanged});
+  final int selected;
+  final ValueChanged<int> onChanged;
+  static const labels = ['اللحظات', 'الأوسمة', 'الملف الشخصي', 'الهدايا'];
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 49,
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: const Color(0xFFE8EBF3),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Row(
+      children: [
+        for (var i = 0; i < labels.length; i++)
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected == i ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: selected == i
+                      ? const [
+                          BoxShadow(color: Color(0x120F172A), blurRadius: 8),
+                        ]
+                      : null,
+                ),
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    color: selected == i ? _orange : _muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+class _CustomProfileContent extends StatelessWidget {
+  const _CustomProfileContent({
+    required this.tab,
+    required this.posts,
+    required this.reels,
+    required this.profile,
+    required this.modules,
+  });
+  final int tab;
+  final List<Map<String, dynamic>> posts;
+  final List<Map<String, dynamic>> reels;
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic> modules;
+  @override
+  Widget build(BuildContext context) {
+    if (tab == 0) return _ProfileGrid(posts: posts, reels: reels, tab: 2);
+    if (tab == 1)
+      return _BadgesPanel(
+        vipLevel: (profile['vip_level'] as num? ?? 0).toInt(),
+      );
+    if (tab == 2) return _IdentityPanel(profile: profile, modules: modules);
+    return const _EmptyProfilePanel(
+      icon: FontAwesomeIcons.gift,
+      title: 'لا توجد هدايا بعد',
+      caption: 'ستظهر الهدايا المرسلة إلى هذا الحساب هنا.',
+    );
+  }
+}
+
+class _BadgesPanel extends StatelessWidget {
+  const _BadgesPanel({required this.vipLevel});
+  final int vipLevel;
+  @override
+  Widget build(BuildContext context) => _ProfilePanel(
+    title: 'الأوسمة والإنجازات',
+    icon: FontAwesomeIcons.medal,
+    child: Wrap(
+      spacing: 9,
+      runSpacing: 9,
+      children: [
+        _BadgeTile(
+          icon: FontAwesomeIcons.crown,
+          title: 'VIP $vipLevel',
+          color: const Color(0xFFD97706),
+        ),
+        _BadgeTile(
+          icon: FontAwesomeIcons.gem,
+          title: 'مميز',
+          color: const Color(0xFF2563EB),
+        ),
+        _BadgeTile(icon: FontAwesomeIcons.bolt, title: 'نشط', color: _orange),
+      ],
+    ),
+  );
+}
+
+class _BadgeTile extends StatelessWidget {
+  const _BadgeTile({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
+  final FaIconData icon;
+  final String title;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 92,
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: color.withValues(alpha: .22)),
+    ),
+    child: Column(
+      children: [
+        FaIcon(icon, color: color, size: 22),
+        const SizedBox(height: 7),
+        Text(
+          title,
+          style: TextStyle(
+            color: color,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _IdentityPanel extends StatelessWidget {
+  const _IdentityPanel({required this.profile, required this.modules});
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic> modules;
+  @override
+  Widget build(BuildContext context) => _ProfilePanel(
+    title: 'بيانات الحساب',
+    icon: FontAwesomeIcons.idCard,
+    child: Column(
+      children: [
+        _IdentityRow(
+          icon: FontAwesomeIcons.locationDot,
+          label: 'الدولة',
+          value: profile['country']?.toString() ?? 'غير محدد',
+        ),
+        _IdentityRow(
+          icon: FontAwesomeIcons.signature,
+          label: 'النبذة',
+          value: profile['bio']?.toString().isNotEmpty == true
+              ? profile['bio'].toString()
+              : 'لم تتم إضافة نبذة بعد',
+        ),
+        _IdentityRow(
+          icon: FontAwesomeIcons.coins,
+          label: 'العملات',
+          value:
+              '${modules['gold_coins'] ?? 0} ذهب  •  ${modules['diamonds'] ?? 0} ألماس',
+        ),
+      ],
+    ),
+  );
+}
+
+class _IdentityRow extends StatelessWidget {
+  const _IdentityRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+  final FaIconData icon;
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(13),
+    ),
+    child: Row(
+      children: [
+        FaIcon(icon, color: _orange, size: 14),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(
+            color: _muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const Spacer(),
+        Flexible(
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _ink,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfilePanel extends StatelessWidget {
+  const _ProfilePanel({
+    required this.title,
+    required this.icon,
+    required this.child,
+  });
+  final String title;
+  final FaIconData icon;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _line),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x080F172A),
+          blurRadius: 14,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            FaIcon(icon, color: _orange, size: 15),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                color: _ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 13),
+        child,
+      ],
+    ),
+  );
+}
+
+class _EmptyProfilePanel extends StatelessWidget {
+  const _EmptyProfilePanel({
+    required this.icon,
+    required this.title,
+    required this.caption,
+  });
+  final FaIconData icon;
+  final String title;
+  final String caption;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 34, horizontal: 20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _line),
+    ),
+    child: Column(
+      children: [
+        FaIcon(icon, color: _muted, size: 28),
+        const SizedBox(height: 11),
+        Text(
+          title,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          caption,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: _muted, fontSize: 10, height: 1.5),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProfileMenuStrip extends StatelessWidget {
+  const _ProfileMenuStrip({
+    required this.onTap,
+    required this.isSuperAdmin,
+    required this.onLogout,
+  });
+  final Future<void> Function(String) onTap;
+  final bool isSuperAdmin;
+  final Future<void> Function() onLogout;
+  @override
+  Widget build(BuildContext context) {
+    final items = <(String, FaIconData)>[
+      ('المستوى', FontAwesomeIcons.chartLine),
+      ('المهام', FontAwesomeIcons.listCheck),
+      ('العائلة', FontAwesomeIcons.peopleGroup),
+      ('الإعدادات', FontAwesomeIcons.gear),
+    ];
+    if (isSuperAdmin)
+      items.add(('لوحة تحكم سوبر أدمن', FontAwesomeIcons.userGear));
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _line),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                GestureDetector(
+                  onTap: () => onTap(items[i].$1),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 13,
+                    ),
+                    child: Row(
+                      children: [
+                        FaIcon(items[i].$2, color: _orange, size: 14),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Text(
+                            items[i].$1,
+                            style: const TextStyle(
+                              color: _ink,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const FaIcon(
+                          FontAwesomeIcons.chevronLeft,
+                          color: _muted,
+                          size: 10,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: onLogout,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F2),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FaIcon(
+                  FontAwesomeIcons.rightFromBracket,
+                  color: Color(0xFFE11D48),
+                  size: 13,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'تسجيل الخروج',
+                  style: TextStyle(
+                    color: Color(0xFFE11D48),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfilePatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: .07)
+      ..strokeWidth = 1;
+    for (var x = -size.height; x < size.width + size.height; x += 22) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ProfileCard extends StatelessWidget {
