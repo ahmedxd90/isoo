@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
+import '../profile/user_profile_page.dart';
 import 'pk_battle_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
@@ -148,8 +149,18 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
     } catch (_) {}
   }
 
-  void _showRanking() =>
-      showRoomGiftRanking(context, SakiService.instance, widget.roomId);
+  void _showRanking() => showRoomGiftRanking(
+    context,
+    SakiService.instance,
+    widget.roomId,
+    (profile) async {
+      final userId = profile['id'] as String?;
+      if (userId == null || !mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => UserProfilePage(userId: userId)),
+      );
+    },
+  );
 
   Future<void> _renewToken() async {
     final response = await SakiService.instance.client.functions.invoke(
