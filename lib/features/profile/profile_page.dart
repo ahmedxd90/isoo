@@ -37,6 +37,7 @@ class _ProfilePageState extends State<ProfilePage> {
   List<Map<String, dynamic>> _reels = [];
   int _tab = 0;
   bool _loading = true;
+  bool _isSuperAdmin = false;
 
   @override
   void initState() {
@@ -62,6 +63,8 @@ class _ProfilePageState extends State<ProfilePage> {
         _reels = List<Map<String, dynamic>>.from(results[3] as List);
         _modules = Map<String, dynamic>.from(results[4] as Map);
       });
+      final isSuperAdmin = await SakiService.instance.isSuperAdmin();
+      if (mounted) setState(() => _isSuperAdmin = isSuperAdmin);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -288,7 +291,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
             const SizedBox(height: 14),
-            _MenuCard(onTap: _openMenu),
+            _MenuCard(onTap: _openMenu, isSuperAdmin: _isSuperAdmin),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _logout,
@@ -608,8 +611,9 @@ class _ActionTile extends StatelessWidget {
 }
 
 class _MenuCard extends StatelessWidget {
-  const _MenuCard({required this.onTap});
+  const _MenuCard({required this.onTap, required this.isSuperAdmin});
   final Future<void> Function(String) onTap;
+  final bool isSuperAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -652,9 +656,12 @@ class _MenuCard extends StatelessWidget {
         Color(0xFFF3F4F6),
       ),
     ];
+    final visibleRows = rows
+        .where((row) => row.$1 != 'لوحة تحكم سوبر أدمن' || isSuperAdmin)
+        .toList();
     final children = <Widget>[];
-    for (var i = 0; i < rows.length; i++) {
-      final row = rows[i];
+    for (var i = 0; i < visibleRows.length; i++) {
+      final row = visibleRows[i];
       children.add(
         InkWell(
           onTap: () => onTap(row.$1),

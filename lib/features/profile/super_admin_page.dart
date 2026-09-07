@@ -18,31 +18,69 @@ class SuperAdminPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFFF7FAFC),
-    appBar: AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      elevation: 0,
-      iconTheme: const IconThemeData(color: _adminInk),
-      title: const Text(
-        'لوحة تحكم سوبر أدمن',
-        style: TextStyle(color: _adminInk, fontWeight: FontWeight.w900),
-      ),
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(Icons.menu_rounded),
-          onPressed: () => Scaffold.of(context).openDrawer(),
+    appBar: PreferredSize(
+      preferredSize: const Size.fromHeight(78),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(colors: [_blue, _cyan]),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
         ),
-      ),
-      actions: [
-        IconButton(
-          tooltip: 'الحقيبة',
-          icon: const Icon(Icons.shopping_bag_rounded),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const BagPage()),
+        child: SafeArea(
+          bottom: false,
+          child: Builder(
+            builder: (context) => Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Scaffold.of(context).openDrawer(),
+                  child: const Icon(
+                    Icons.menu_rounded,
+                    color: Colors.white,
+                    size: 27,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SAKI CONTROL',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      'لوحة السوبر أدمن',
+                      style: TextStyle(color: Colors.white70, fontSize: 10),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BagPage()),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: .16),
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ],
+      ),
     ),
     drawer: Drawer(
       child: SafeArea(
@@ -292,36 +330,54 @@ class _MetricCard extends StatelessWidget {
   final Object? value;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => Card(
-    elevation: 0,
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Icon(icon, color: _blue, size: 25),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${value ?? 0}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                  ),
-                ),
-                Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ],
-            ),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: _cyan.withValues(alpha: .12)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x10000000),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [_blue, _cyan]),
+            borderRadius: BorderRadius.circular(12),
           ),
-        ],
-      ),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${value ?? 0}',
+                style: const TextStyle(
+                  color: _adminInk,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                ),
+              ),
+              Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.black54, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ],
     ),
   );
 }
@@ -338,17 +394,61 @@ class _AdminCard extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(14),
-      leading: CircleAvatar(
-        backgroundColor: _cyan.withValues(alpha: .15),
-        child: Icon(icon, color: _blue),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black.withValues(alpha: .05)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: _cyan.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, color: _blue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _adminInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.black54, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 14,
+            color: Colors.black38,
+          ),
+        ],
+      ),
     ),
   );
 }
