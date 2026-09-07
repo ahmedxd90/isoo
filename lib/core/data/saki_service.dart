@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1387,6 +1388,75 @@ class SakiService {
 
   Future<void> clearRoomMessages(String roomId) async {
     await client.rpc('clear_room_messages', params: {'p_room_id': roomId});
+  }
+
+  Future<List<Map<String, dynamic>>> roomMusic(String roomId) async {
+    final rows = await client
+        .from('room_music')
+        .select('id,room_id,owner_id,title,storage_path,audio_url,created_at')
+        .eq('room_id', roomId)
+        .order('created_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>> uploadRoomMusic(
+    String roomId,
+    String title,
+    List<int> bytes,
+    String extension,
+    String contentType,
+  ) async {
+    final safeExtension = extension.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final path =
+        '$uid/$roomId/${DateTime.now().microsecondsSinceEpoch}.$safeExtension';
+    await client.storage
+        .from('room_music')
+        .uploadBinary(
+          path,
+          Uint8List.fromList(bytes),
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    final url = client.storage.from('room_music').getPublicUrl(path);
+    final row = await client
+        .from('room_music')
+        .insert({
+          'room_id': roomId,
+          'owner_id': uid,
+          'title': title,
+          'storage_path': path,
+          'audio_url': url,
+        })
+        .select('id,room_id,owner_id,title,storage_path,audio_url,created_at')
+        .single();
+    return Map<String, dynamic>.from(row);
+  }
+
+  Future<Map<String, dynamic>?> activeRoomMusic(String roomId) async {
+    final row = await client
+        .from('room_music_state')
+        .select(
+          'room_id,music_id,is_playing,position_seconds,updated_at,room_music(*)',
+        )
+        .eq('room_id', roomId)
+        .maybeSingle();
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  Future<void> setActiveRoomMusic(
+    String roomId, {
+    String? musicId,
+    required bool isPlaying,
+    double positionSeconds = 0,
+  }) async {
+    await client.from('room_music_state').upsert({
+      'room_id': roomId,
+      'music_id': musicId,
+      'is_playing': isPlaying,
+      'position_seconds': positionSeconds,
+      'updated_by': uid,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
 
   Future<bool> isRoomModerator(String roomId) async {

@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
@@ -1219,6 +1221,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _entranceProduct;
   Timer? _entranceTimer;
   bool _membersInitialized = false;
+  final AudioPlayer _musicPlayer = AudioPlayer();
+  List<Map<String, dynamic>> _roomMusic = [];
+  Map<String, dynamic>? _activeMusic;
+  bool _musicPlaying = false;
+  double _musicVolume = 1;
 
   @override
   void initState() {
@@ -1275,6 +1282,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _applyChatClear(clearedAt ?? DateTime.now().toUtc());
         },
       )
+      ..onBroadcast(
+        event: 'music',
+        callback: (payload) =>
+            _handleMusicEvent(Map<String, dynamic>.from(payload as Map)),
+      )
       ..subscribe();
     final existingEngine = RoomSessionController.instance.engine;
     final restoredSession =
@@ -1289,6 +1301,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _join();
     _loadRoomState();
+    _loadRoomMusic();
     _roomMembersSubscription = _service.roomMembersStream(_roomId).listen((
       members,
     ) {
@@ -2440,6 +2453,147 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(value)));
 
+  bool get _canControlMusic =>
+      widget.room['owner_id'] == _service.uid || _isModerator;
+
+  Future<void> _loadRoomMusic() async {
+    try {
+      final results = await Future.wait<dynamic>([
+        _service.roomMusic(_roomId),
+        _service.activeRoomMusic(_roomId),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _roomMusic = List<Map<String, dynamic>>.from(results[0] as List);
+        _activeMusic = results[1] as Map<String, dynamic>?;
+        _musicPlaying = _activeMusic?['is_playing'] == true;
+      });
+      final nested = _activeMusic?['room_music'];
+      if (_musicPlaying && nested is Map) {
+        await _musicPlayer.setUrl(nested['audio_url'] as String);
+        await _musicPlayer.play();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
+    final action = event['action']?.toString();
+    if (action == 'stop') {
+      await _musicPlayer.stop();
+      if (mounted) setState(() => _musicPlaying = false);
+      return;
+    }
+    final music = Map<String, dynamic>.from(event['music'] ?? const {});
+    final url = music['audio_url']?.toString();
+    if (url == null || url.isEmpty) return;
+    if (_activeMusic?['music_id']?.toString() != music['id']?.toString()) {
+      await _musicPlayer.setUrl(url);
+    }
+    if (event['position_seconds'] is num) {
+      await _musicPlayer.seek(
+        Duration(
+          milliseconds: ((event['position_seconds'] as num) * 1000).round(),
+        ),
+      );
+    }
+    if (action == 'pause') {
+      await _musicPlayer.pause();
+    } else {
+      await _musicPlayer.play();
+    }
+    if (mounted) {
+      setState(() {
+        _activeMusic = {'music_id': music['id'], 'room_music': music};
+        _musicPlaying = action != 'pause';
+      });
+    }
+  }
+
+  Future<void> _broadcastMusic(
+    String action,
+    Map<String, dynamic> music,
+  ) async {
+    final position = _musicPlayer.position.inMilliseconds / 1000;
+    final event = {
+      'action': action,
+      'music': music,
+      'position_seconds': position,
+    };
+    await _service.setActiveRoomMusic(
+      _roomId,
+      musicId: music['id'] as String?,
+      isPlaying: action == 'play',
+      positionSeconds: position,
+    );
+    await _roomChatChannel.sendBroadcastMessage(event: 'music', payload: event);
+    await _handleMusicEvent(event);
+  }
+
+  Future<void> _stopRoomMusic() async {
+    await _service.setActiveRoomMusic(_roomId, isPlaying: false);
+    await _roomChatChannel.sendBroadcastMessage(
+      event: 'music',
+      payload: {'action': 'stop'},
+    );
+    await _musicPlayer.stop();
+    if (mounted) setState(() => _musicPlaying = false);
+  }
+
+  Future<void> _uploadRoomMusic() async {
+    final permissions = await [Permission.audio, Permission.storage].request();
+    if (!permissions.values.any((status) => status.isGranted)) {
+      _messageSnack('نحتاج إذن الوصول إلى ملفات الصوت لاختيار الموسيقى.');
+      return;
+    }
+    final result = await FilePicker.pickFiles(
+      type: FileType.audio,
+      allowMultiple: true,
+    );
+    if (result == null) return;
+    for (final file in result) {
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) continue;
+      try {
+        final uploaded = await _service.uploadRoomMusic(
+          _roomId,
+          file.name,
+          bytes,
+          file.extension ?? 'mp3',
+          'audio/${file.extension ?? 'mpeg'}',
+        );
+        if (mounted) setState(() => _roomMusic.insert(0, uploaded));
+      } catch (error) {
+        if (mounted) _messageSnack('تعذر رفع ${file.name}: $error');
+      }
+    }
+  }
+
+  Future<void> _showMusicSheet() async {
+    if (!_canControlMusic) {
+      _messageSnack('الموسيقى متاحة لمالك الغرفة والمشرفين فقط.');
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RoomMusicSheet(
+        music: _roomMusic,
+        activeMusic: _activeMusic,
+        playing: _musicPlaying,
+        volume: _musicVolume,
+        onUpload: _uploadRoomMusic,
+        onPlay: (music) => _broadcastMusic('play', music),
+        onPause: (music) => _broadcastMusic('pause', music),
+        onStop: _stopRoomMusic,
+        onVolume: (value) {
+          setState(() => _musicVolume = value);
+          _musicPlayer.setVolume(value);
+        },
+      ),
+    );
+  }
+
   Future<void> _showRoomTools() async {
     final owner = widget.room['owner_id'] == _service.uid;
     final moderator = owner || await _service.isRoomModerator(_roomId);
@@ -2452,11 +2606,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _toolButton(
-                Icons.music_note,
-                'موسيقى',
-                () => Navigator.pop(context),
-              ),
+              if (moderator)
+                _toolButton(Icons.music_note, 'موسيقى', () {
+                  Navigator.pop(context);
+                  _showMusicSheet();
+                }),
               if (moderator)
                 _toolButton(Icons.delete_sweep, 'مسح الدردشة', () {
                   Navigator.pop(context);
@@ -2778,6 +2932,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     for (final timer in _roomEmojiTimers.values) timer.cancel();
     _roomSettingsSubscription?.cancel();
     _service.client.removeChannel(_roomChatChannel);
+    _musicPlayer.dispose();
     if (_joined) _service.leaveRoom(_roomId);
     _engine?.leaveChannel();
     _engine?.release();
@@ -4337,6 +4492,300 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
           ),
         );
       },
+    );
+  }
+}
+
+class RoomMusicSheet extends StatelessWidget {
+  const RoomMusicSheet({
+    super.key,
+    required this.music,
+    required this.activeMusic,
+    required this.playing,
+    required this.volume,
+    required this.onUpload,
+    required this.onPlay,
+    required this.onPause,
+    required this.onStop,
+    required this.onVolume,
+  });
+
+  final List<Map<String, dynamic>> music;
+  final Map<String, dynamic>? activeMusic;
+  final bool playing;
+  final double volume;
+  final Future<void> Function() onUpload;
+  final Future<void> Function(Map<String, dynamic>) onPlay;
+  final Future<void> Function(Map<String, dynamic>) onPause;
+  final Future<void> Function() onStop;
+  final ValueChanged<double> onVolume;
+
+  Map<String, dynamic>? get _active {
+    final nested = activeMusic?['room_music'];
+    return nested is Map ? Map<String, dynamic>.from(nested) : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = _active;
+    return SafeArea(
+      child: Container(
+        height: MediaQuery.sizeOf(context).height * .72,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF24144D), Color(0xFF0D1029)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white38,
+                borderRadius: BorderRadius.circular(9),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 15, 18, 12),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'موسيقى الغرفة',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: onUpload,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE9B949), Color(0xFFB87916)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.file_upload_rounded,
+                            color: Colors.white,
+                            size: 17,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'رفع موسيقى',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: music.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'لم تتم إضافة موسيقى بعد\nارفع ملفات صوتية لتشغيلها للجميع',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white54, height: 1.7),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+                      itemCount: music.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 9),
+                      itemBuilder: (_, index) {
+                        final item = music[index];
+                        final selected =
+                            active?['id']?.toString() == item['id']?.toString();
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? const Color(0xFF6D4AFF).withValues(alpha: .3)
+                                : Colors.white.withValues(alpha: .07),
+                            borderRadius: BorderRadius.circular(17),
+                            border: Border.all(
+                              color: selected
+                                  ? const Color(0xFFE9B949)
+                                  : Colors.white12,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? const Color(0xFFE9B949)
+                                      : Colors.white10,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  selected && playing
+                                      ? Icons.equalizer_rounded
+                                      : Icons.music_note_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Text(
+                                  item['title']?.toString() ?? 'موسيقى',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => selected && playing
+                                    ? onPause(item)
+                                    : onPlay(item),
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF7658FF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    selected && playing
+                                        ? Icons.pause_rounded
+                                        : Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
+              decoration: const BoxDecoration(
+                color: Color(0xCC11142E),
+                border: Border(top: BorderSide(color: Colors.white12)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.graphic_eq_rounded,
+                        color: Color(0xFFE9B949),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          active?['title']?.toString() ??
+                              'لا توجد موسيقى تعمل الآن',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: onStop,
+                        child: const Text(
+                          'إيقاف',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.volume_down_rounded,
+                        color: Colors.white60,
+                        size: 19,
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTapDown: (details) {
+                            final width =
+                                MediaQuery.sizeOf(context).width - 100;
+                            onVolume(
+                              (details.localPosition.dx / width).clamp(
+                                0.0,
+                                1.0,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            height: 24,
+                            alignment: Alignment.centerLeft,
+                            child: Stack(
+                              alignment: Alignment.centerLeft,
+                              children: [
+                                Container(
+                                  height: 5,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white12,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                FractionallySizedBox(
+                                  widthFactor: volume,
+                                  child: Container(
+                                    height: 5,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFE9B949),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.volume_up_rounded,
+                        color: Colors.white60,
+                        size: 19,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
