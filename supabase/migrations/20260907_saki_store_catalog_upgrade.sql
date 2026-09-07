@@ -20,6 +20,17 @@ alter table public.saki_store_products
 alter table public.saki_store_products
   add constraint saki_store_products_duration_days_check check (duration_days = 7);
 
+drop policy if exists store_products_admin_insert on public.saki_store_products;
+create policy store_products_admin_insert on public.saki_store_products
+  for insert to authenticated
+  with check (public.is_saki_super_admin());
+
+drop policy if exists store_products_admin_update on public.saki_store_products;
+create policy store_products_admin_update on public.saki_store_products
+  for update to authenticated
+  using (public.is_saki_super_admin())
+  with check (public.is_saki_super_admin());
+
 alter table public.saki_store_inventory
   add column if not exists expires_at timestamptz;
 
