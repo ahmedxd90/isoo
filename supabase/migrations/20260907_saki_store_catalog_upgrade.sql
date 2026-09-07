@@ -14,6 +14,12 @@ alter table public.saki_store_products
     greatest(0::bigint, (price * (100::numeric - discount_percent) / 100)::bigint)
   ) stored;
 
+update public.saki_store_products set duration_days = 7 where duration_days <> 7;
+alter table public.saki_store_products
+  drop constraint if exists saki_store_products_duration_days_check;
+alter table public.saki_store_products
+  add constraint saki_store_products_duration_days_check check (duration_days = 7);
+
 alter table public.saki_store_inventory
   add column if not exists expires_at timestamptz;
 

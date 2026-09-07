@@ -571,29 +571,53 @@ class AdminStorePage extends StatefulWidget {
 class _AdminStorePageState extends State<AdminStorePage> {
   List<Map<String, dynamic>> _products = [];
   bool _loading = true;
+  bool _authorized = false;
+  bool _saving = false;
   @override
   void initState() {
     super.initState();
-    _load();
+    _authorizeAndLoad();
+  }
+
+  Future<void> _authorizeAndLoad() async {
+    final allowed = await SakiService.instance.isCurrentUserSuperAdmin();
+    if (!mounted) return;
+    if (!allowed) {
+      setState(() {
+        _authorized = false;
+        _loading = false;
+      });
+      return;
+    }
+    setState(() => _authorized = true);
+    await _load();
   }
 
   Future<void> _load() async {
-    _products = await SakiService.instance.adminStoreProducts();
-    if (mounted) setState(() => _loading = false);
+    try {
+      _products = await SakiService.instance.adminStoreProducts();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  Future<XFile?> _pick(String ext) async {
+  Future<XFile?> _pick(String extension) async {
     final result = await FilePicker.pickFile(type: FileType.any);
     final path = result?.path;
-    if (path == null || result?.extension?.toLowerCase() != ext) return null;
+    if (path == null || result?.extension?.toLowerCase() != extension) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('اختر ملف .$extension فقط')),
+        );
+      }
+      return null;
+    }
     return XFile(path);
   }
 
   Future<void> _add() async {
     final name = TextEditingController();
     final price = TextEditingController();
-    final duration = TextEditingController(text: '7');
-    final discount = TextEditingController(text: '0');
     String category = 'frame';
     String mediaType = 'mp4';
     XFile? media;
@@ -619,19 +643,9 @@ class _AdminStorePageState extends State<AdminStorePage> {
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(labelText: 'السعر بالذهب'),
                 ),
-                TextField(
-                  controller: duration,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'المدة بالأيام (7 أيام)',
-                  ),
-                ),
-                TextField(
-                  controller: discount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(labelText: 'الخصم %'),
+                const InputDecorator(
+                  decoration: InputDecoration(labelText: 'مدة المنتج'),
+                  child: Text('7 أيام فقط', style: TextStyle(fontWeight: FontWeight.w800)),
                 ),
                 DropdownButtonFormField<String>(
                   value: category,
@@ -690,23 +704,51 @@ class _AdminStorePageState extends State<AdminStorePage> {
               onPressed: media == null || thumbnail == null
                   ? null
                   : () async {
-                      final mediaUrl = await SakiService.instance
-                          .adminUploadStoreFile(media!);
-                      final thumbUrl = await SakiService.instance
-                          .adminUploadStoreFile(thumbnail!);
-                      await SakiService.instance.adminCreateStoreProduct(
-                        category: category,
-                        name: name.text,
-                        price: int.tryParse(price.text) ?? 0,
-                        durationDays: int.tryParse(duration.text) ?? 7,
-                        discountPercent: double.tryParse(discount.text) ?? 0,
-                        mediaType: mediaType,
-                        mediaUrl: mediaUrl,
-                        thumbnailUrl: thumbUrl,
-                      );
-                      if (dialogContext.mounted) Navigator.pop(dialogContext);
+                      final parsedPrice = int.tryParse(price.text.trim());
+                      if (name.text.trim().isEmpty || parsedPrice == null || parsedPrice <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('أدخل اسم المنتج وسعراً صحيحاً')),
+                        );
+                        return;
+                      }
+                      setDialog(() => _saving = true);
+                      try {
+                        final mediaUrl = await SakiService.instance
+                            .adminUploadStoreFile(media!);
+                        final thumbUrl = await SakiService.instance
+                            .adminUploadStoreFile(thumbnail!);
+                        await SakiService.instance.adminCreateStoreProduct(
+                          category: category,
+                          name: name.text,
+                          price: parsedPrice,
+                          durationDays: 7,
+                          discountPercent: 0,
+                          mediaType: mediaType,
+                          mediaUrl: mediaUrl,
+                          thumbnailUrl: thumbUrl,
+                        );
+                        if (dialogContext.mounted) Navigator.pop(dialogContext);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم رفع المنتج ونشره في المتجر بنجاح')),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('فشل رفع المنتج: $e')),
+                          );
+                        }
+                        setDialog(() => _saving = false);
+                      }
                     },
-              child: const Text('حفظ ونشر'),
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('حفظ ونشر'),
             ),
           ],
         ),
@@ -719,14 +761,23 @@ class _AdminStorePageState extends State<AdminStorePage> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: const Text('إدارة متجر SAKI'),
-      actions: [
+      actions: _authorized
+          ? [
         IconButton(
           onPressed: _add,
           icon: const Icon(Icons.add_business_rounded),
         ),
-      ],
+      ]
+          : null,
     ),
-    body: _loading
+    body: !_authorized
+        ? const Center(
+            child: Text(
+              'هذه الصفحة متاحة للسوبر أدمن فقط',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+          )
+        : _loading
         ? const Center(child: CircularProgressIndicator())
         : ListView.builder(
             itemCount: _products.length,

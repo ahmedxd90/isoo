@@ -373,7 +373,7 @@ class SakiService {
       'category': category,
       'name': name.trim(),
       'price': price,
-      'duration_days': durationDays,
+      'duration_days': 7,
       'discount_percent': discountPercent,
       'media_type': mediaType,
       'media_url': mediaUrl,
