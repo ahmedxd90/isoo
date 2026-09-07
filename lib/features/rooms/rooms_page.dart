@@ -842,11 +842,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         if (item['id']?.toString() == emojiId) emoji = item;
       }
       if (emoji == null) return;
-      _roomEmojiTimers[userId]?.cancel();
-      if (mounted) setState(() => _activeSeatEmojis[userId] = emoji!);
-      _roomEmojiTimers[userId] = Timer(const Duration(seconds: 5), () {
-        if (mounted) setState(() => _activeSeatEmojis.remove(userId));
-      });
+      _activateSeatEmoji(userId, emoji!);
     });
     _roomChatChannel = _service.client.channel('room-chat:$_roomId')
       ..onBroadcast(
@@ -1817,6 +1813,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     ),
   );
 
+  void _activateSeatEmoji(String userId, Map<String, dynamic> emoji) {
+    _roomEmojiTimers[userId]?.cancel();
+    if (mounted) {
+      setState(() => _activeSeatEmojis[userId] = emoji);
+    }
+    _roomEmojiTimers[userId] = Timer(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() => _activeSeatEmojis.remove(userId));
+      }
+    });
+  }
+
   Future<void> _showEmojiPanel() async {
     final seats = await _service.roomSeats(_roomId);
     if (!mounted) return;
@@ -1878,6 +1886,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   final emoji = _roomEmojis[index];
                   return GestureDetector(
                     onTap: () {
+                      final userId = _service.uid;
+                      // Activate locally first so the sender sees the GIF immediately;
+                      // the Realtime event then synchronizes the same seat for everyone else.
+                      _activateSeatEmoji(userId, emoji);
                       Navigator.pop(context);
                       _service.sendRoomEmoji(_roomId, emoji['id'] as String);
                     },
