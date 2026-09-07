@@ -841,8 +841,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       for (final item in _roomEmojis) {
         if (item['id']?.toString() == emojiId) emoji = item;
       }
-      if (emoji == null) return;
-      _activateSeatEmoji(userId, emoji!);
+      if (emoji != null) {
+        _activateSeatEmoji(userId, emoji);
+        return;
+      }
+      _service.roomEmojis().then((items) {
+        if (!mounted) return;
+        final match = items.where((item) => item['id']?.toString() == emojiId);
+        if (match.isNotEmpty) _activateSeatEmoji(userId, match.first);
+      });
     });
     _roomChatChannel = _service.client.channel('room-chat:$_roomId')
       ..onBroadcast(
@@ -2918,11 +2925,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                     : Colors.white38,
                               ),
                             ),
-                            IconButton(
-                              onPressed: _showGiftPanel,
-                              icon: const Icon(
-                                Icons.card_giftcard_rounded,
-                                color: Colors.pinkAccent,
+                            GestureDetector(
+                              onTap: _showGiftPanel,
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.white12),
+                                ),
+                                child: Image.asset(
+                                  'assets/saki_gift_box_icon.png',
+                                  width: 31,
+                                  height: 31,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
                             IconButton(
