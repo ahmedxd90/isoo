@@ -1,5 +1,7 @@
+drop function if exists public.create_private_conversation(uuid);
+
 create or replace function public.create_private_conversation(p_other_user_id uuid)
-returns uuid
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
@@ -28,20 +30,18 @@ begin
   order by c.updated_at desc
   limit 1;
 
-  if v_conversation_id is not null then
-    return v_conversation_id;
+  if v_conversation_id is null then
+    insert into conversations (created_by)
+    values (v_user_id)
+    returning id into v_conversation_id;
+
+    insert into conversation_members (conversation_id, user_id)
+    values
+      (v_conversation_id, v_user_id),
+      (v_conversation_id, p_other_user_id);
   end if;
 
-  insert into conversations (created_by)
-  values (v_user_id)
-  returning id into v_conversation_id;
-
-  insert into conversation_members (conversation_id, user_id)
-  values
-    (v_conversation_id, v_user_id),
-    (v_conversation_id, p_other_user_id);
-
-  return v_conversation_id;
+  return jsonb_build_object('id', v_conversation_id);
 end;
 $$;
 

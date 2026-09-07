@@ -946,15 +946,23 @@ class SakiService {
   }
 
   Future<String> createConversation(String otherUserId) async {
-    final result = await client.rpc(
-      'create_private_conversation',
-      params: {'p_other_user_id': otherUserId},
-    );
-    if (result is String && result.isNotEmpty) return result;
-    if (result is Map && result['id'] is String) {
-      return result['id'] as String;
+    try {
+      final result = await client.rpc(
+        'create_private_conversation',
+        params: {'p_other_user_id': otherUserId},
+      );
+      if (result is String && result.isNotEmpty) return result;
+      if (result is Map && result['id'] is String) {
+        return result['id'] as String;
+      }
+      if (result is List && result.isNotEmpty && result.first is Map) {
+        final row = Map<String, dynamic>.from(result.first as Map);
+        if (row['id'] is String) return row['id'] as String;
+      }
+      throw Exception('invalid_conversation_response:${result.runtimeType}');
+    } on PostgrestException catch (error) {
+      throw Exception('${error.code ?? 'rpc_error'}:${error.message}');
     }
-    throw Exception('invalid_conversation_response');
   }
 
   Stream<List<Map<String, dynamic>>> messagesStream(String conversationId) {
