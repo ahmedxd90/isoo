@@ -3752,7 +3752,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
           final recipient = snapshot.data != null && snapshot.data!.length > 1
               ? snapshot.data![1]
               : null;
-          final immersive = type == 'mp4' || type == 'svga' || type == 'gif';
+          final immersive = type == 'mp4' || type == 'svga';
           final mediaView = _svga.videoItem != null
               ? SVGAImage(_svga, fit: BoxFit.contain)
               : _video != null && _video!.value.isInitialized
@@ -3779,7 +3779,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             alignment: Alignment.center,
             children: [
               if (immersive) Positioned.fill(child: Center(child: mediaView)),
-              if (_payload['flying_banner'] != false)
+              if (immersive && _payload['flying_banner'] != false)
                 Positioned(
                   top: 34,
                   left: 0,
@@ -3839,6 +3839,21 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                                     Icons.card_giftcard,
                                     color: Colors.amberAccent,
                                   ),
+                            const SizedBox(width: 5),
+                            _recipientAvatar != null &&
+                                    _recipientAvatar!.startsWith('http')
+                                ? ClipOval(
+                                    child: Image.network(
+                                      _recipientAvatar!,
+                                      width: 32,
+                                      height: 32,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.person_pin,
+                                    color: Colors.amberAccent,
+                                  ),
                             const SizedBox(width: 7),
                             Text(
                               '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
@@ -3854,49 +3869,8 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                     ),
                   ),
                 ),
-              if (!_compactGift && _flightVisible)
+              if (_flightVisible)
                 Positioned.fill(child: _buildGiftFlight(context)),
-              if (_compactGift)
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.all(28),
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF32105C), Color(0xFF130F24)],
-                      ),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.purpleAccent, width: 2),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.purple, blurRadius: 28),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${sender?['username'] ?? 'مستخدم'} أرسل هدية إلى ${recipient?['username'] ?? 'مستخدم'}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(width: 230, height: 230, child: mediaView),
-                        const SizedBox(height: 10),
-                        Text(
-                          _payload['name'] as String? ?? 'هدية',
-                          style: const TextStyle(
-                            color: Colors.amberAccent,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           );
         },
