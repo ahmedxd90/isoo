@@ -766,6 +766,7 @@ class RoomDetailPage extends StatefulWidget {
 class _RoomDetailPageState extends State<RoomDetailPage> {
   final _service = SakiService.instance;
   final _message = TextEditingController();
+  final _messageFocus = FocusNode();
   late final String _roomId = widget.room['id'] as String;
   late final Stream<List<Map<String, dynamic>>> _seatStream;
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
@@ -1329,25 +1330,37 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (userId == null) return;
     final isOwner = widget.room['owner_id'] == _service.uid;
     final canModerate = isOwner && userId != _service.uid;
+    var following = await _service.isFollowing(userId);
+    final targetModerator = canModerate
+        ? await _service.isUserRoomModerator(_roomId, userId)
+        : false;
+    final countryFlag = await _service.countryFlag(
+      profile['country'] as String?,
+    );
+    final modules = await _service.accountModulesForUser(userId);
     final moderation = canModerate
         ? await _service.roomModerationStatus(_roomId, userId)
         : const <String, dynamic>{};
     final voiceMuted = moderation['mute_voice'] == true;
     final chatMuted = moderation['mute_chat'] == true;
     final banned = moderation['banned'] == true;
-    final vip = (profile['vip_level'] as num?)?.toInt() ?? 0;
+    final vip =
+        (modules['vip_level'] as num?)?.toInt() ??
+        (profile['vip_level'] as num?)?.toInt() ??
+        0;
     final followers = profile['followers_count'] ?? profile['followers'] ?? 0;
     final gender =
         (profile['gender']?.toString().toLowerCase() == 'male' ||
             profile['gender']?.toString() == 'ذكر')
         ? '♂'
         : '♀';
-    await showDialog<void>(
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 30, vertical: 24),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (dialogContext) => SafeArea(
         child: Container(
+          margin: const EdgeInsets.only(top: 36),
           constraints: const BoxConstraints(maxWidth: 360),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -1390,26 +1403,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _profileRing(profile, const Color(0xFFD4AF37)),
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFF4C7),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.favorite_rounded,
-                            color: Color(0xFFD4AF37),
-                            size: 17,
-                          ),
-                        ),
-                        _profileRing(
-                          profile['cp_profile'] is Map
-                              ? Map<String, dynamic>.from(profile['cp_profile'])
-                              : null,
-                          const Color(0xFFEC4899),
-                          cp: true,
-                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -1443,27 +1436,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       spacing: 5,
                       runSpacing: 5,
                       children: [
-                        _pill('VIP $vip', const [
-                          Color(0xFFF59E0B),
-                          Color(0xFFD4AF37),
-                        ]),
-                        _pill('اللورد', const [
-                          Color(0xFF7C3AED),
-                          Color(0xFF4C1D95),
-                        ]),
-                        _pill('★ Lv.${profile['level'] ?? 21}', const [
-                          Color(0xFF22C55E),
-                          Color(0xFF15803D),
-                        ]),
-                        _pill('🔥 ${profile['charisma'] ?? '99k'}', const [
-                          Color(0xFFF472B6),
-                          Color(0xFFDB2777),
-                        ]),
-                        Text(
-                          profile['country_flag'] as String? ??
-                              profile['country'] as String? ??
-                              '🌍',
-                          style: const TextStyle(fontSize: 20),
+                        _pill(
+                          modules['vip_label']?.toString() ?? 'VIP $vip',
+                          const [Color(0xFFF59E0B), Color(0xFFD4AF37)],
+                        ),
+                        Text(countryFlag, style: const TextStyle(fontSize: 20)),
+                        _pill(
+                          'LV${modules['wealth_level'] ?? profile['wealth_level'] ?? 0}',
+                          const [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+                        ),
+                        _pill(
+                          'LV${modules['charm_level'] ?? profile['charm_level'] ?? 0}',
+                          const [Color(0xFF14B8A6), Color(0xFF0F766E)],
                         ),
                       ],
                     ),
@@ -1489,7 +1473,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         _roundAction(
                           Icons.alternate_email,
                           Colors.lightBlue,
-                          () {},
+                          () {
+                            Navigator.pop(dialogContext);
+                            _message.text =
+                                '@${profile['username'] ?? 'مستخدم'} ';
+                            _message.selection = TextSelection.collapsed(
+                              offset: _message.text.length,
+                            );
+                            if (mounted) {
+                              setState(() => _isComposing = true);
+                              _messageFocus.requestFocus();
+                            }
+                          },
                         ),
                         _roundAction(
                           Icons.chat_bubble_rounded,
@@ -1522,12 +1517,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _messageSnack('تم إرسال طلب المتابعة.');
+                            onPressed: () async {
+                              await _service.toggleFollow(userId, following);
+                              following = !following;
+                              if (mounted) {
+                                _messageSnack(
+                                  following
+                                      ? 'تمت متابعة المستخدم.'
+                                      : 'تم إلغاء متابعة المستخدم.',
+                                );
+                              }
                             },
-                            icon: const Icon(Icons.add),
-                            label: const Text('متابعة'),
+                            icon: Icon(following ? Icons.check : Icons.add),
+                            label: Text(following ? 'متابَع' : 'متابعة'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.green.shade700,
                               side: BorderSide(color: Colors.green.shade600),
@@ -1572,10 +1574,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         spacing: 12,
                         runSpacing: 10,
                         children: [
-                          _adminIcon(Icons.shield_rounded, 'مشرف', () async {
-                            await _service.addRoomModerator(_roomId, userId);
-                            if (mounted) Navigator.pop(context);
-                          }),
+                          _adminIcon(
+                            targetModerator
+                                ? Icons.shield_outlined
+                                : Icons.shield_rounded,
+                            targetModerator ? 'إلغاء مشرف' : 'مشرف',
+                            () async {
+                              if (targetModerator) {
+                                await _service.removeRoomModerator(
+                                  _roomId,
+                                  userId,
+                                );
+                              } else {
+                                await _service.addRoomModerator(
+                                  _roomId,
+                                  userId,
+                                );
+                              }
+                              if (mounted) Navigator.pop(context);
+                            },
+                          ),
                           _adminIcon(
                             voiceMuted
                                 ? Icons.mic_rounded
@@ -2142,7 +2160,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               final profile = Map<String, dynamic>.from(
                 row['profiles'] ?? const {},
               );
+              profile['id'] = row['user_id'];
               return ListTile(
+                onTap: () {
+                  Navigator.pop(context);
+                  _showUserCard(profile);
+                },
                 leading: SakiAvatar(
                   url: profile['avatar_url'] as String?,
                   label: profile['username'] as String?,
@@ -2172,6 +2195,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   void dispose() {
     _message.dispose();
+    _messageFocus.dispose();
     _comboTimer?.cancel();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
@@ -2377,6 +2401,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                   context,
                                   _service,
                                   _roomId,
+                                  (profile) => _showUserCard(profile),
                                 ),
                               ),
                             ),
@@ -2743,6 +2768,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             Expanded(
                               child: TextField(
                                 controller: _message,
+                                focusNode: _messageFocus,
                                 autofocus: true,
                                 style: const TextStyle(color: Colors.white),
                                 decoration: InputDecoration(

@@ -1197,6 +1197,16 @@ class SakiService {
     return row != null;
   }
 
+  Future<bool> isUserRoomModerator(String roomId, String userId) async {
+    final row = await client
+        .from('room_moderators')
+        .select('user_id')
+        .eq('room_id', roomId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    return row != null;
+  }
+
   Future<bool> isFollowingRoom(String roomId) async {
     final row = await client
         .from('room_follows')
@@ -1598,6 +1608,16 @@ class SakiService {
     return row != null;
   }
 
+  Future<String> countryFlag(String? country) async {
+    if (country == null || country.trim().isEmpty) return '🌍';
+    final row = await client
+        .from('countries')
+        .select('flag')
+        .eq('name_ar', country)
+        .maybeSingle();
+    return row?['flag'] as String? ?? '🌍';
+  }
+
   Future<List<Map<String, dynamic>>> searchAll(String query) async {
     final term = query.trim();
     if (term.isEmpty) return [];
@@ -1774,6 +1794,15 @@ class SakiService {
         .select()
         .single();
     return Map<String, dynamic>.from(created);
+  }
+
+  Future<Map<String, dynamic>> accountModulesForUser(String userId) async {
+    final row = await client
+        .from('saki_account_modules')
+        .select('vip_level,vip_label,wealth_level,charm_level')
+        .eq('user_id', userId)
+        .maybeSingle();
+    return row == null ? <String, dynamic>{} : Map<String, dynamic>.from(row);
   }
 
   Future<Map<String, dynamic>> purchaseVip(int level) async {

@@ -11,9 +11,11 @@ class RoomGiftRankingSheet extends StatefulWidget {
     super.key,
     required this.service,
     required this.roomId,
+    required this.onProfileTap,
   });
   final SakiService service;
   final String roomId;
+  final Future<void> Function(Map<String, dynamic> profile) onProfileTap;
   @override
   State<RoomGiftRankingSheet> createState() => _RoomGiftRankingSheetState();
 }
@@ -164,103 +166,113 @@ class _RoomGiftRankingSheetState extends State<RoomGiftRankingSheet> {
         : index == 2
         ? const Color(0xFFA855F7)
         : Colors.blueGrey;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 9),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: color.withValues(alpha: index < 3 ? .35 : .1),
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        widget.onProfileTap(profile);
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: color.withValues(alpha: index < 3 ? .35 : .1),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .04),
+              blurRadius: 10,
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: .04), blurRadius: 10),
-        ],
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 30,
-            child: index < 3
-                ? Icon(Icons.emoji_events_rounded, color: color, size: 25)
-                : Text(
-                    '${index + 1}',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w900,
-                      color: Colors.black54,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 30,
+              child: index < 3
+                  ? Icon(Icons.emoji_events_rounded, color: color, size: 25)
+                  : Text(
+                      '${index + 1}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black54,
+                      ),
                     ),
+            ),
+            SakiAvatar(
+              url: profile['avatar_url'] as String?,
+              label: profile['username'] as String?,
+              radius: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile['username'] as String? ?? 'مستخدم',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-          ),
-          SakiAvatar(
-            url: profile['avatar_url'] as String?,
-            label: profile['username'] as String?,
-            radius: 22,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile['username'] as String? ?? 'مستخدم',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                Row(
-                  children: [
-                    if (vip > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _orange.withValues(alpha: .13),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'VIP $vip',
-                          style: const TextStyle(
-                            color: _orange,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
+                  Row(
+                    children: [
+                      if (vip > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _orange.withValues(alpha: .13),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'VIP $vip',
+                            style: const TextStyle(
+                              color: _orange,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
+                      const SizedBox(width: 5),
+                      Text(
+                        index < 3 ? 'TOP ${index + 1}' : 'مرسل نشط',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    const SizedBox(width: 5),
-                    Text(
-                      index < 3 ? 'TOP ${index + 1}' : 'مرسل نشط',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Icon(
+                  Icons.monetization_on_rounded,
+                  color: _orange,
+                  size: 18,
+                ),
+                Text(
+                  _short((row['gold'] as num?)?.toInt() ?? 0),
+                  style: const TextStyle(
+                    color: _orange,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Icon(
-                Icons.monetization_on_rounded,
-                color: _orange,
-                size: 18,
-              ),
-              Text(
-                _short((row['gold'] as num?)?.toInt() ?? 0),
-                style: const TextStyle(
-                  color: _orange,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -440,9 +452,14 @@ Future<void> showRoomGiftRanking(
   BuildContext context,
   SakiService service,
   String roomId,
+  Future<void> Function(Map<String, dynamic> profile) onProfileTap,
 ) => showModalBottomSheet<void>(
   context: context,
   isScrollControlled: true,
   backgroundColor: Colors.transparent,
-  builder: (_) => RoomGiftRankingSheet(service: service, roomId: roomId),
+  builder: (_) => RoomGiftRankingSheet(
+    service: service,
+    roomId: roomId,
+    onProfileTap: onProfileTap,
+  ),
 );
