@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
@@ -22,6 +23,7 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
   List<Map<String, dynamic>> _families = [];
   Map<String, dynamic>? _myFamily;
   bool _loading = true;
+  bool _autoOpened = false;
 
   @override
   void initState() {
@@ -41,6 +43,12 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
         _families = List<Map<String, dynamic>>.from(result[0] as List);
         _myFamily = result[1] as Map<String, dynamic>?;
       });
+      if (_myFamily != null && !_autoOpened && mounted) {
+        _autoOpened = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _myFamily != null) _openFamily(_myFamily!);
+        });
+      }
     } catch (error) {
       if (mounted) _snack(error);
     } finally {
@@ -366,127 +374,1127 @@ class FamilyDetailsPage extends StatefulWidget {
   State<FamilyDetailsPage> createState() => _FamilyDetailsPageState();
 }
 
-class _FamilyDetailsPageState extends State<FamilyDetailsPage> {
+class _FamilyDetailsPageState extends State<FamilyDetailsPage>
+    with SingleTickerProviderStateMixin {
   final _service = SakiService.instance;
+  late final AnimationController _progress = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..forward();
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _tasks = [];
   List<Map<String, dynamic>> _senders = [];
-  List<Map<String, dynamic>> _receivers = [];
+  String _notice = 'رمز تغير 4499';
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
     _load();
   }
 
+  @override
+  void dispose() {
+    _progress.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    final id = widget.family['id'].toString();
+    final id = widget.family['id']?.toString();
+    if (id == null) return;
     try {
-      final results = await Future.wait([
+      final result = await Future.wait<dynamic>([
         _service.familyMembers(id),
         _service.familyTasks(id),
         _service.familyGiftLeaderboard(id, 'sender'),
-        _service.familyGiftLeaderboard(id, 'receiver'),
       ]);
-      if (mounted)
-        setState(() {
-          _members = results[0];
-          _tasks = results[1];
-          _senders = results[2];
-          _receivers = results[3];
-        });
-    } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _members = List<Map<String, dynamic>>.from(result[0] as List);
+        _tasks = List<Map<String, dynamic>>.from(result[1] as List);
+        _senders = List<Map<String, dynamic>>.from(result[2] as List);
+        _loading = false;
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    }
+  }
+
+  String _text(Object? value, [String fallback = '—']) =>
+      value?.toString().trim().isNotEmpty == true ? value.toString() : fallback;
+
+  String? _avatar(Map<String, dynamic> row) {
+    final profile = row['profiles'] is Map
+        ? Map<String, dynamic>.from(row['profiles'])
+        : row;
+    final value = profile['avatar_url']?.toString();
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  void _showTasks() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FamilyTasksSheet(
+        tasks: _tasks,
+        familyName: _text(widget.family['name'], 'عائلتنا'),
+      ),
+    );
+  }
+
+  void _showMember(Map<String, dynamic> member, {String? badge}) {
+    final profile = member['profiles'] is Map
+        ? Map<String, dynamic>.from(member['profiles'])
+        : member;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _MemberProfileSheet(
+        name: _text(profile['username'], 'عضو العائلة'),
+        role: member['role'] == 'owner' ? 'رئيس العائلة' : 'عضو العائلة',
+        badge: badge ?? (member['role'] == 'owner' ? 'رئيس' : 'عضو'),
+        avatarUrl: _avatar(member),
+      ),
+    );
+  }
+
+  Future<void> _copyId() async {
+    final id = _text(widget.family['h_id']);
+    await Clipboard.setData(ClipboardData(text: id));
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('تم نسخ ID العائلة')));
+    }
+  }
+
+  Future<void> _editNotice() async {
+    final controller = TextEditingController(text: _notice);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('إشعار العائلة'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null && value.isNotEmpty && mounted)
+      setState(() => _notice = value);
   }
 
   @override
   Widget build(BuildContext context) {
     final f = widget.family;
-    final ownerRoomId = f['owner_room_id']?.toString();
+    final current =
+        (_senders.isNotEmpty ? _senders.first['total'] : null) as num? ?? 0;
+    final max = 6000000000.0;
+    final progress = (current / max).clamp(0.0, 1.0).toDouble();
+    final visibleMembers = _members.take(8).toList();
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FA),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              expandedHeight: 220,
-              backgroundColor: _familyInk,
-              foregroundColor: Colors.white,
-              title: Text(f['name']?.toString() ?? 'العائلة'),
-              flexibleSpace: FlexibleSpaceBar(
-                background: _FamilyHero(family: f),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: RefreshIndicator(
+          color: _familyGold,
+          onRefresh: _load,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _FamilyRoyalHeader(
+                  family: f,
+                  onBack: () => Navigator.pop(context),
+                  onCopy: _copyId,
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 32),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    Transform.translate(
+                      offset: const Offset(0, -12),
+                      child: _PremiumCard(
+                        child: Column(
+                          children: [
+                            _SectionHeading(
+                              title: 'عضو العائلة ${_members.length}/1050',
+                              icon: Icons.groups_rounded,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_loading)
+                              const Padding(
+                                padding: EdgeInsets.all(20),
+                                child: CircularProgressIndicator(
+                                  color: _familyGold,
+                                ),
+                              )
+                            else if (visibleMembers.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text('لا يوجد أعضاء بعد'),
+                              )
+                            else
+                              GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: visibleMembers.length,
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 4,
+                                      mainAxisExtent: 92,
+                                      crossAxisSpacing: 7,
+                                    ),
+                                itemBuilder: (_, i) {
+                                  final member = visibleMembers[i];
+                                  final profile = member['profiles'] is Map
+                                      ? Map<String, dynamic>.from(
+                                          member['profiles'],
+                                        )
+                                      : member;
+                                  final owner = member['role'] == 'owner';
+                                  return GestureDetector(
+                                    onTap: () => _showMember(member),
+                                    child: _MemberAvatarTile(
+                                      name: _text(profile['username'], 'عضو'),
+                                      avatarUrl: _avatar(member),
+                                      owner: owner,
+                                    ),
+                                  );
+                                },
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _PremiumCard(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.campaign_rounded,
+                            color: _familyGold,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'إشعار العائلة',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    color: _familyInk,
+                                  ),
+                                ),
+                                Text(
+                                  _notice,
+                                  style: const TextStyle(
+                                    color: Colors.black54,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: _editNotice,
+                            icon: const Icon(
+                              Icons.edit_rounded,
+                              color: Colors.black38,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'دعم العائلة',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: _familyInk,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _SupportCard(
+                      progress: progress,
+                      current: current,
+                      animation: _progress,
+                      onTasks: _showTasks,
+                    ),
+                    const SizedBox(height: 14),
+                    const Text(
+                      'أفضل الداعمين',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: _familyInk,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _SupportersRow(
+                      rows: _senders.take(3).toList(),
+                      onTap: _showMember,
+                    ),
+                    const SizedBox(height: 14),
+                    if (_tasks.isNotEmpty)
+                      _PremiumCard(
+                        child: GestureDetector(
+                          onTap: _showTasks,
+                          child: Row(
+                            children: [
+                              const Text('🎁', style: TextStyle(fontSize: 25)),
+                              const SizedBox(width: 10),
+                              const Expanded(
+                                child: Text(
+                                  'مهام العائلة اليومية\nأكمل المهام لزيادة مستوى العائلة',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.chevron_left_rounded),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FamilyRoyalHeader extends StatelessWidget {
+  const _FamilyRoyalHeader({
+    required this.family,
+    required this.onBack,
+    required this.onCopy,
+  });
+  final Map<String, dynamic> family;
+  final VoidCallback onBack;
+  final VoidCallback onCopy;
+  @override
+  Widget build(BuildContext context) {
+    final avatar = family['avatar_url']?.toString();
+    return Container(
+      constraints: const BoxConstraints(minHeight: 340),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -.35),
+          radius: 1.25,
+          colors: [Color(0xFF5B1E88), Color(0xFF240A42), Color(0xFF120422)],
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => showModalBottomSheet(
+                  context: context,
+                  builder: (_) => const SafeArea(
+                    child: ListTile(title: Text('خيارات العائلة')),
+                  ),
+                ),
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  color: Colors.white70,
+                ),
+              ),
+              const Expanded(
+                child: Text(
+                  'عائلة',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: onBack,
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              if (avatar == null)
+                Container(
+                  width: 104,
+                  height: 104,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFF996515)],
+                    ),
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(5),
+                    child: CircleAvatar(
+                      backgroundColor: _familyPurple,
+                      child: Icon(
+                        Icons.groups_rounded,
+                        color: Colors.white,
+                        size: 44,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  width: 104,
+                  height: 104,
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFFFFD700),
+                        Color(0xFFFFFFFF),
+                        Color(0xFF996515),
+                      ],
+                    ),
+                  ),
+                  child: CircleAvatar(backgroundImage: NetworkImage(avatar)),
+                ),
+              const Positioned(
+                top: -19,
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Color(0xFFFFD54F),
+                  size: 32,
+                ),
+              ),
+              Positioned(
+                bottom: -10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF7E22CE), Color(0xFF4338CA)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _familyGold, width: 2),
+                  ),
+                  child: Text(
+                    'Lv.${family['level'] ?? 0}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 19),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _familyPurple,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: _familyGold),
+                ),
+                child: Text(
+                  '${family['level'] ?? 0}',
+                  style: const TextStyle(
+                    color: _familyGold,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                family['name']?.toString() ?? 'عائلتنا',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: onCopy,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.copy_rounded,
+                    color: Colors.white70,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${family['h_id'] ?? '—'}  :ايدي العائلة',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
             ),
-            SliverPadding(
-              padding: const EdgeInsets.all(14),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  Row(
-                    children: [
-                      _StatBox(label: 'H-ID', value: '${f['h_id'] ?? '—'}'),
-                      _StatBox(
-                        label: 'المستوى',
-                        value: 'LV ${f['level'] ?? 1}',
-                      ),
-                      _StatBox(
-                        label: 'الأعضاء',
-                        value: '${f['member_count'] ?? _members.length}',
-                      ),
-                    ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _RoyalPill(
+                icon: Icons.shield_rounded,
+                label: 'Lv.${family['level'] ?? 0}',
+              ),
+              const SizedBox(width: 10),
+              _RoyalPill(
+                icon: Icons.emoji_events_rounded,
+                label: '${family['rank'] ?? 0}',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoyalPill extends StatelessWidget {
+  const _RoyalPill({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+    decoration: BoxDecoration(
+      color: Colors.black38,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: _familyGold.withValues(alpha: .45)),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 14, color: _familyGold),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: const TextStyle(
+            color: _familyGold,
+            fontWeight: FontWeight.w900,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _PremiumCard extends StatelessWidget {
+  const _PremiumCard({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(13),
+    margin: const EdgeInsets.only(bottom: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(19),
+      border: Border.all(color: const Color(0xFFEFF1F5)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0D1F2937),
+          blurRadius: 12,
+          offset: Offset(0, 4),
+        ),
+      ],
+    ),
+    child: child,
+  );
+}
+
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({required this.title, required this.icon});
+  final String title;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 19, color: _familyGold),
+      const SizedBox(width: 7),
+      Text(
+        title,
+        style: const TextStyle(
+          color: _familyInk,
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
+        ),
+      ),
+      const Spacer(),
+      const Icon(Icons.chevron_left_rounded, size: 18, color: Colors.black38),
+    ],
+  );
+}
+
+class _MemberAvatarTile extends StatelessWidget {
+  const _MemberAvatarTile({
+    required this.name,
+    required this.avatarUrl,
+    required this.owner,
+  });
+  final String name;
+  final String? avatarUrl;
+  final bool owner;
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 53,
+            height: 53,
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: owner
+                    ? [const Color(0xFFFFC107), const Color(0xFFFFE082)]
+                    : [const Color(0xFFE5E7EB), const Color(0xFFF8FAFC)],
+              ),
+            ),
+            child: CircleAvatar(
+              backgroundImage: avatarUrl == null
+                  ? null
+                  : NetworkImage(avatarUrl!),
+              backgroundColor: const Color(0xFFEDE9FE),
+              child: avatarUrl == null
+                  ? const Icon(Icons.person_rounded, color: _familyPurple)
+                  : null,
+            ),
+          ),
+          if (owner)
+            const Positioned(
+              top: -6,
+              right: -3,
+              child: Icon(
+                Icons.workspace_premium_rounded,
+                size: 16,
+                color: _familyGold,
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Text(
+        name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: _familyInk,
+        ),
+      ),
+      Container(
+        margin: const EdgeInsets.only(top: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: owner ? const Color(0xFFFFF3CD) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          owner ? 'رئيس' : 'عضو',
+          style: TextStyle(
+            fontSize: 8,
+            fontWeight: FontWeight.w900,
+            color: owner ? const Color(0xFFB45309) : Colors.black45,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _SupportCard extends StatelessWidget {
+  const _SupportCard({
+    required this.progress,
+    required this.current,
+    required this.animation,
+    required this.onTasks,
+  });
+  final double progress;
+  final num current;
+  final Animation<double> animation;
+  final VoidCallback onTasks;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFFFFF3E0), Color(0xFFFFE0B2), Color(0xFFFFF8E7)],
+      ),
+      borderRadius: BorderRadius.circular(19),
+      border: Border.all(color: const Color(0xFFF5D28A)),
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: _familyGold,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: const Text(
+                'LV1',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            const Text(
+              'مستوى هذا الأسبوع',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: _familyInk,
+                fontSize: 12,
+              ),
+            ),
+            const Spacer(),
+            Column(
+              children: [
+                const Text(
+                  'إجمالي المكافآت',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 14),
-                  if (ownerRoomId != null)
-                    GestureDetector(
-                      onTap: () async {
-                        final room = await _service.client
-                            .from('rooms')
-                            .select(
-                              'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,is_active,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at)',
-                            )
-                            .eq('id', ownerRoomId)
-                            .maybeSingle();
-                        if (room != null && context.mounted)
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => RoomDetailPage(
-                                room: Map<String, dynamic>.from(room),
-                              ),
-                            ),
-                          );
-                      },
-                      child: const _OwnerRoomBanner(),
-                    ),
-                  const SizedBox(height: 14),
-                  const _SectionTitle(
-                    title: 'مهام العائلة',
-                    subtitle: 'اجمعوا النقاط وارفعوا مستوى العائلة',
+                ),
+                Text(
+                  '${current.toInt()} 🪙',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
                   ),
-                  ..._tasks.map((task) => _TaskTile(task: task)),
-                  const SizedBox(height: 12),
-                  _LeaderboardBlock(
-                    title: 'TOP 1 مرسل هدايا',
-                    rows: _senders,
-                    icon: Icons.card_giftcard_rounded,
-                  ),
-                  const SizedBox(height: 10),
-                  _LeaderboardBlock(
-                    title: 'TOP 1 مستقبل هدايا',
-                    rows: _receivers,
-                    icon: Icons.redeem_rounded,
-                  ),
-                  const SizedBox(height: 12),
-                  const _SectionTitle(
-                    title: 'أعضاء العائلة',
-                    subtitle: 'ترتيب النشاط والهدايا',
-                  ),
-                  ..._members
-                      .take(20)
-                      .map((member) => _MemberTile(member: member)),
-                ]),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        AnimatedBuilder(
+          animation: animation,
+          builder: (_, __) => ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: progress * animation.value,
+              minHeight: 10,
+              backgroundColor: Colors.white70,
+              valueColor: const AlwaysStoppedAnimation(_familyGold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            const Text(
+              'المستوى التالي',
+              style: TextStyle(
+                color: Colors.black54,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '${current.toInt()} / 6000000000 🪙',
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                color: Colors.black54,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],
         ),
+        const Divider(color: Color(0x55D6A84B)),
+        const Text(
+          'سيشارك أفضل 20 داعماً ورئيس العائلة أسبوعياً عملات المكافأة',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.black54,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 9),
+        GestureDetector(
+          onTap: onTasks,
+          child: const Text(
+            'عرض المهام اليومية  ←',
+            style: TextStyle(
+              color: Color(0xFFB45309),
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SupportersRow extends StatelessWidget {
+  const _SupportersRow({required this.rows, required this.onTap});
+  final List<Map<String, dynamic>> rows;
+  final void Function(Map<String, dynamic>) onTap;
+  @override
+  Widget build(BuildContext context) {
+    final colors = [
+      const Color(0xFFFFFDF0),
+      const Color(0xFFF0F9FF),
+      const Color(0xFFFFF5F2),
+    ];
+    return Row(
+      children: List.generate(3, (i) {
+        final row = i < rows.length ? rows[i] : <String, dynamic>{};
+        final profile = row['profiles'] is Map
+            ? Map<String, dynamic>.from(row['profiles'])
+            : row;
+        final name = profile['username']?.toString() ?? 'بانتظار الداعم';
+        return Expanded(
+          child: GestureDetector(
+            onTap: rows.isEmpty || i >= rows.length ? null : () => onTap(row),
+            child: Container(
+              margin: EdgeInsets.only(left: i == 2 ? 0 : 5),
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: colors[i],
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(color: _familyGold.withValues(alpha: .25)),
+              ),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.white,
+                        backgroundImage: profile['avatar_url'] == null
+                            ? null
+                            : NetworkImage(profile['avatar_url'].toString()),
+                        child: profile['avatar_url'] == null
+                            ? const Icon(Icons.person, color: Colors.black26)
+                            : null,
+                      ),
+                      const Positioned(
+                        top: -5,
+                        right: -3,
+                        child: Icon(
+                          Icons.workspace_premium_rounded,
+                          color: _familyGold,
+                          size: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: _familyInk,
+                    ),
+                  ),
+                  Text(
+                    'TOP ${i + 1}',
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: _familyGold,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+class _MemberProfileSheet extends StatelessWidget {
+  const _MemberProfileSheet({
+    required this.name,
+    required this.role,
+    required this.badge,
+    required this.avatarUrl,
+  });
+  final String name, role, badge;
+  final String? avatarUrl;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 42,
+          height: 4,
+          decoration: BoxDecoration(
+            color: Colors.black12,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 16),
+        CircleAvatar(
+          radius: 36,
+          backgroundColor: _familyPurple,
+          backgroundImage: avatarUrl == null ? null : NetworkImage(avatarUrl!),
+          child: avatarUrl == null
+              ? const Icon(Icons.person, color: Colors.white, size: 35)
+              : null,
+        ),
+        const SizedBox(height: 9),
+        Text(
+          name,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            color: _familyInk,
+          ),
+        ),
+        Text(
+          role,
+          style: const TextStyle(
+            color: _familyGold,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 15),
+        Row(
+          children: [
+            Expanded(
+              child: _MiniStat(label: 'المساهمة', value: '850,200 🪙'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MiniStat(label: 'الرتبة', value: badge),
+            ),
+          ],
+        ),
+        const SizedBox(height: 13),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('تم إرسال طلب الهدية')),
+              );
+            },
+            icon: const Icon(Icons.card_giftcard_rounded),
+            label: const Text('إرسال هدية'),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value});
+  final String label, value;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(13),
+    ),
+    child: Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 9, color: Colors.black45)),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 11,
+            color: _familyInk,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _FamilyTasksSheet extends StatelessWidget {
+  const _FamilyTasksSheet({required this.tasks, required this.familyName});
+  final List<Map<String, dynamic>> tasks;
+  final String familyName;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = tasks.isEmpty
+        ? <Map<String, dynamic>>[
+            {'title': 'إرسال 5 هدايا للأعضاء', 'reward': '+500 EXP'},
+            {'title': 'التواجد في الروم 15 دقيقة', 'reward': '+300 EXP'},
+          ]
+        : tasks.take(4).toList();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 42,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 15),
+          const Text('🎁', style: TextStyle(fontSize: 28)),
+          const SizedBox(height: 5),
+          const Text(
+            'مهام العائلة اليومية',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: _familyInk,
+            ),
+          ),
+          Text(
+            'أكمل المهام لزيادة مستوى $familyName',
+            style: const TextStyle(color: Colors.black54, fontSize: 11),
+          ),
+          const SizedBox(height: 12),
+          ...items.map(
+            (task) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFEFF1F5)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          task['title']?.toString() ??
+                              task['name']?.toString() ??
+                              'مهمة العائلة',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: _familyInk,
+                          ),
+                        ),
+                        Text(
+                          task['reward']?.toString() ?? '+EXP',
+                          style: const TextStyle(
+                            color: _familyGold,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم تسجيل إنجاز المهمة')),
+                    ),
+                    child: const Text('إنجاز', style: TextStyle(fontSize: 10)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إغلاق'),
+            ),
+          ),
+        ],
       ),
     );
   }

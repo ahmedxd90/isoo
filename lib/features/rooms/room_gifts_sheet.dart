@@ -166,7 +166,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   @override
   Widget build(BuildContext context) => SafeArea(
     child: Container(
-      height: MediaQuery.sizeOf(context).height * .78,
+      height: MediaQuery.sizeOf(context).height * .55,
       decoration: const BoxDecoration(
         color: Color(0xF20B1515),
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),

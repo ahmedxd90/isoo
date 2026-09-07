@@ -41,6 +41,7 @@ class _RoomsPageState extends State<RoomsPage> {
   final _service = SakiService.instance;
   List<Map<String, dynamic>> _rooms = [];
   List<Map<String, dynamic>> _banners = [];
+  Set<String> _followedRoomIds = <String>{};
   bool _loading = true;
   bool _followingOnly = false;
   String _country = 'الترند';
@@ -54,7 +55,11 @@ class _RoomsPageState extends State<RoomsPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final rooms = await _service.rooms();
+      final results = await Future.wait<dynamic>([
+        _service.rooms(),
+        _service.followedRoomIds(),
+      ]);
+      final rooms = List<Map<String, dynamic>>.from(results[0] as List);
       List<Map<String, dynamic>> banners = [];
       try {
         banners = await _service.roomBanners();
@@ -64,6 +69,7 @@ class _RoomsPageState extends State<RoomsPage> {
       if (mounted) {
         setState(() {
           _rooms = rooms;
+          _followedRoomIds = Set<String>.from(results[1] as Set<String>);
           _banners = banners;
         });
       }
@@ -78,21 +84,13 @@ class _RoomsPageState extends State<RoomsPage> {
   }
 
   List<Map<String, dynamic>> get _visibleRooms {
-    final cutoff = DateTime.now().subtract(const Duration(days: 2));
     return _rooms.where((room) {
       final country = (room['country'] as String? ?? '').toLowerCase();
       final matchesCountry =
           _country == 'الترند' || country.contains(_country.toLowerCase());
-      final created = DateTime.tryParse(room['created_at'] as String? ?? '');
-      final members = List<Map<String, dynamic>>.from(
-        room['room_members'] ?? const [],
-      );
       final matchesFollowing =
-          !_followingOnly ||
-          members.any((member) => member['user_id'] == _service.uid);
-      return matchesCountry &&
-          matchesFollowing &&
-          (!_followingOnly || (created != null && created.isAfter(cutoff)));
+          !_followingOnly || _followedRoomIds.contains(room['id']?.toString());
+      return matchesCountry && matchesFollowing;
     }).toList();
   }
 
@@ -145,7 +143,10 @@ class _RoomsPageState extends State<RoomsPage> {
             _RoomHeaderTab(
               label: 'الكل',
               selected: !_followingOnly,
-              onTap: () => setState(() => _followingOnly = false),
+              onTap: () => setState(() {
+                _followingOnly = false;
+                _country = 'الترند';
+              }),
             ),
             const SizedBox(width: 24),
             _RoomHeaderTab(
@@ -203,16 +204,18 @@ class _RoomsPageState extends State<RoomsPage> {
               onRefresh: _load,
               child: CustomScrollView(
                 slivers: [
-                  SliverToBoxAdapter(
-                    child: RoomBannerCarousel(banners: _banners),
-                  ),
-                  SliverToBoxAdapter(
-                    child: _TrendCountryBar(
-                      countries: _availableCountries,
-                      selected: _country,
-                      onSelected: (value) => setState(() => _country = value),
+                  if (!_followingOnly && _banners.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: RoomBannerCarousel(banners: _banners),
                     ),
-                  ),
+                  if (!_followingOnly)
+                    SliverToBoxAdapter(
+                      child: _TrendCountryBar(
+                        countries: _availableCountries,
+                        selected: _country,
+                        onSelected: (value) => setState(() => _country = value),
+                      ),
+                    ),
                   if (_visibleRooms.isEmpty)
                     const SliverFillRemaining(
                       hasScrollBody: false,
@@ -1204,6 +1207,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
   List<Map<String, dynamic>> _roomMembers = [];
+  final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
   final Map<String, Timer> _roomEmojiTimers = {};
@@ -1487,6 +1491,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final sent = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (_) => RoomGiftsSheet(
         service: _service,
@@ -1494,31 +1500,48 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         onSent: (recipientId, gift, flyingBanner) async {
           _lastGiftRecipient = recipientId;
           _lastGift = gift;
-          await _service.sendRoomGift(
+          final payload = <String, dynamic>{
+            'gift_id': gift['id'],
+            'icon': gift['icon'],
+            'thumbnail_url': gift['icon'],
+            'name': gift['name'],
+            'media_url': gift['media_url'],
+            'media_type': gift['media_type'],
+            'category': gift['category'],
+            'recipient_id': recipientId,
+            'flying_banner': flyingBanner,
+          };
+          final optimistic = _queueOptimisticMessage(
+            body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
+            type: 'gift',
+            payload: payload,
+          );
+          final giftRequest = _service.sendRoomGift(
             roomId: _roomId,
             recipientId: recipientId,
             giftId: gift['id'] as String,
           );
-          await _service.sendRoomMessage(
+          final messageRequest = _service.sendRoomMessage(
             _roomId,
             'أرسل هدية ${gift['name'] ?? 'هدية'}',
             type: 'gift',
-            payload: {
-              'gift_id': gift['id'],
-              'icon': gift['icon'],
-              'thumbnail_url': gift['icon'],
-              'name': gift['name'],
-              'media_url': gift['media_url'],
-              'media_type': gift['media_type'],
-              'category': gift['category'],
-              'recipient_id': recipientId,
-              'flying_banner': flyingBanner,
-            },
+            payload: payload,
           );
+          try {
+            await Future.wait([giftRequest, messageRequest]);
+          } catch (_) {
+            _removeOptimisticMessage(optimistic);
+            rethrow;
+          }
         },
       ),
     );
-    if (sent == true) _startGiftCombo();
+    if (sent == true && _isLuckGift(_lastGift)) _startGiftCombo();
+  }
+
+  bool _isLuckGift(Map<String, dynamic>? gift) {
+    final category = gift?['category']?.toString().toLowerCase();
+    return category == 'luck' || category == 'الحظ';
   }
 
   void _startGiftCombo() {
@@ -1539,28 +1562,41 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final recipient = _lastGiftRecipient;
     final gift = _lastGift;
     if (recipient == null || gift == null) return;
+    if (!_isLuckGift(gift)) return;
     try {
-      await _service.sendRoomGift(
+      final payload = <String, dynamic>{
+        'gift_id': gift['id'],
+        'icon': gift['icon'],
+        'thumbnail_url': gift['icon'],
+        'name': gift['name'],
+        'media_url': gift['media_url'],
+        'media_type': gift['media_type'],
+        'category': gift['category'],
+        'recipient_id': recipient,
+        'flying_banner': true,
+      };
+      final optimistic = _queueOptimisticMessage(
+        body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
+        type: 'gift',
+        payload: payload,
+      );
+      final giftRequest = _service.sendRoomGift(
         roomId: _roomId,
         recipientId: recipient,
         giftId: gift['id'] as String,
       );
-      await _service.sendRoomMessage(
+      final messageRequest = _service.sendRoomMessage(
         _roomId,
         'أرسل هدية ${gift['name'] ?? 'هدية'}',
         type: 'gift',
-        payload: {
-          'gift_id': gift['id'],
-          'icon': gift['icon'],
-          'thumbnail_url': gift['icon'],
-          'name': gift['name'],
-          'media_url': gift['media_url'],
-          'media_type': gift['media_type'],
-          'category': gift['category'],
-          'recipient_id': recipient,
-          'flying_banner': true,
-        },
+        payload: payload,
       );
+      try {
+        await Future.wait([giftRequest, messageRequest]);
+      } catch (_) {
+        _removeOptimisticMessage(optimistic);
+        rethrow;
+      }
       _startGiftCombo();
     } catch (e) {
       _messageSnack(e.toString().replaceFirst('Exception: ', ''));
@@ -1612,8 +1648,46 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final body = _message.text.trim();
     if (body.isEmpty) return;
     _message.clear();
-    await _service.sendRoomMessage(_roomId, body);
+    final optimistic = _queueOptimisticMessage(
+      body: body,
+      type: 'chat',
+      payload: const <String, dynamic>{},
+    );
     if (mounted) setState(() => _isComposing = false);
+    try {
+      await _service.sendRoomMessage(_roomId, body);
+    } catch (error) {
+      _removeOptimisticMessage(optimistic);
+      if (mounted)
+        _messageSnack(error.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Map<String, dynamic> _queueOptimisticMessage({
+    required String body,
+    required String type,
+    required Map<String, dynamic> payload,
+  }) {
+    final message = <String, dynamic>{
+      'id': 'local-${DateTime.now().microsecondsSinceEpoch}',
+      'sender_id': _service.uid,
+      'body': body,
+      'message_type': type,
+      'payload': payload,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    if (mounted) setState(() => _optimisticMessages.add(message));
+    return message;
+  }
+
+  void _removeOptimisticMessage(Map<String, dynamic> message) {
+    if (mounted) {
+      setState(
+        () => _optimisticMessages.removeWhere(
+          (item) => item['id'] == message['id'],
+        ),
+      );
+    }
   }
 
   Future<bool> _confirmExit() async {
@@ -3012,33 +3086,70 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       child: StreamBuilder<List<Map<String, dynamic>>>(
                         stream: _messageStream,
                         builder: (_, snap) {
-                          final messages = [...(snap.data ?? [])]
-                            ..removeWhere((message) {
-                              final clearedAt = _chatClearedAt;
-                              if (clearedAt == null) return false;
-                              final createdAt = DateTime.tryParse(
-                                message['created_at']?.toString() ?? '',
-                              );
-                              return createdAt != null &&
-                                  !createdAt.toUtc().isAfter(clearedAt);
-                            })
-                            ..sort(
-                              (a, b) =>
-                                  (DateTime.tryParse(
-                                            a['created_at']?.toString() ?? '',
-                                          ) ??
-                                          DateTime.fromMillisecondsSinceEpoch(
-                                            0,
-                                          ))
-                                      .compareTo(
-                                        DateTime.tryParse(
-                                              b['created_at']?.toString() ?? '',
-                                            ) ??
-                                            DateTime.fromMillisecondsSinceEpoch(
-                                              0,
-                                            ),
-                                      ),
-                            );
+                          final serverMessages = [...(snap.data ?? [])];
+                          final messages =
+                              [
+                                  ...serverMessages,
+                                  ..._optimisticMessages.where(
+                                    (local) => !serverMessages.any(
+                                      (remote) =>
+                                          remote['sender_id'] ==
+                                              local['sender_id'] &&
+                                          remote['message_type'] ==
+                                              local['message_type'] &&
+                                          remote['body'] == local['body'] &&
+                                          (DateTime.tryParse(
+                                                        remote['created_at']
+                                                                ?.toString() ??
+                                                            '',
+                                                      ) ??
+                                                      DateTime.fromMillisecondsSinceEpoch(
+                                                        0,
+                                                      ))
+                                                  .difference(
+                                                    DateTime.tryParse(
+                                                          local['created_at']
+                                                                  ?.toString() ??
+                                                              '',
+                                                        ) ??
+                                                        DateTime.fromMillisecondsSinceEpoch(
+                                                          0,
+                                                        ),
+                                                  )
+                                                  .inSeconds
+                                                  .abs() <
+                                              10,
+                                    ),
+                                  ),
+                                ]
+                                ..removeWhere((message) {
+                                  final clearedAt = _chatClearedAt;
+                                  if (clearedAt == null) return false;
+                                  final createdAt = DateTime.tryParse(
+                                    message['created_at']?.toString() ?? '',
+                                  );
+                                  return createdAt != null &&
+                                      !createdAt.toUtc().isAfter(clearedAt);
+                                })
+                                ..sort(
+                                  (a, b) =>
+                                      (DateTime.tryParse(
+                                                a['created_at']?.toString() ??
+                                                    '',
+                                              ) ??
+                                              DateTime.fromMillisecondsSinceEpoch(
+                                                0,
+                                              ))
+                                          .compareTo(
+                                            DateTime.tryParse(
+                                                  b['created_at']?.toString() ??
+                                                      '',
+                                                ) ??
+                                                DateTime.fromMillisecondsSinceEpoch(
+                                                  0,
+                                                ),
+                                          ),
+                                );
                           final latestMessage = messages.isEmpty
                               ? const <String, dynamic>{}
                               : messages.last;
@@ -3309,8 +3420,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                             SizedBox(
-                              width: 48,
-                              height: _comboSeconds > 0 ? 76 : 44,
+                              width: 58,
+                              height: _comboSeconds > 0 ? 84 : 44,
                               child: Stack(
                                 alignment: AlignmentDirectional.bottomCenter,
                                 children: [
@@ -3341,8 +3452,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       child: GestureDetector(
                                         onTap: _sendComboAgain,
                                         child: Container(
-                                          width: 34,
-                                          height: 34,
+                                          width: 42,
+                                          height: 42,
                                           decoration: const BoxDecoration(
                                             color: Colors.orangeAccent,
                                             shape: BoxShape.circle,
@@ -3352,7 +3463,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                             '$_comboSeconds',
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontSize: 14,
+                                              fontSize: 16,
                                               fontWeight: FontWeight.w900,
                                             ),
                                           ),
@@ -3439,12 +3550,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
-  bool get _compactGift {
-    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    final category = (_payload['category'] as String? ?? '').toLowerCase();
-    final url = (_payload['media_url'] as String? ?? '').toLowerCase();
-    return category == 'luck' || type == 'png' || url.endsWith('.png');
-  }
+  bool get _compactGift => true;
 
   @override
   void initState() {
@@ -3454,7 +3560,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         if (status == AnimationStatus.completed) _hide();
       });
     if (_compactGift) {
-      Future<void>.delayed(const Duration(seconds: 3), _hide);
+      Future<void>.delayed(const Duration(milliseconds: 900), _hide);
       return;
     }
     final url = _payload['media_url'] as String?;
@@ -3485,7 +3591,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         if (video.value.position >= video.value.duration) _hide();
       });
     } else {
-      Future<void>.delayed(const Duration(seconds: 6), _hide);
+      Future<void>.delayed(const Duration(milliseconds: 900), _hide);
     }
   }
 
@@ -3541,7 +3647,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     return IgnorePointer(
       child: TweenAnimationBuilder<Offset>(
         tween: Tween(begin: Offset.zero, end: delta),
-        duration: const Duration(milliseconds: 900),
+        duration: const Duration(milliseconds: 450),
         curve: Curves.easeInOutCubic,
         builder: (_, offset, child) =>
             FractionalTranslation(translation: offset, child: child),

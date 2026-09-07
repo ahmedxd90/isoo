@@ -1013,6 +1013,18 @@ class SakiService {
         .toList();
   }
 
+  Future<Set<String>> followedRoomIds() async {
+    final rows = await client
+        .from('room_follows')
+        .select('room_id')
+        .eq('user_id', uid)
+        .limit(500);
+    return rows
+        .map<String>((row) => (row['room_id'] ?? '').toString())
+        .where((id) => id.isNotEmpty)
+        .toSet();
+  }
+
   Future<void> joinRoom(String roomId) async {
     final ban = await client
         .from('room_bans')

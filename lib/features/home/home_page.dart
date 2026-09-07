@@ -86,10 +86,12 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble> {
       child: GestureDetector(
         onTap: () async {
           final current = _session.room;
-          final savedId = _session.roomId;
-          if (current == null || savedId == null || savedId.isEmpty) return;
+          if (current == null) return;
           await Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(builder: (_) => RoomDetailPage(room: current)),
+            MaterialPageRoute(
+              builder: (_) =>
+                  RoomDetailPage(room: Map<String, dynamic>.from(current)),
+            ),
           );
         },
         onLongPress: () {
