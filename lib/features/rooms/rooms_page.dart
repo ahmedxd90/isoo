@@ -844,7 +844,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (emoji == null) return;
       _roomEmojiTimers[userId]?.cancel();
       if (mounted) setState(() => _activeSeatEmojis[userId] = emoji!);
-      _roomEmojiTimers[userId] = Timer(const Duration(seconds: 4), () {
+      _roomEmojiTimers[userId] = Timer(const Duration(seconds: 5), () {
         if (mounted) setState(() => _activeSeatEmojis.remove(userId));
       });
     });
@@ -888,9 +888,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
       if (entrant != null) {
         _entranceTimer?.cancel();
-        _service
-            .equippedEntranceInRoom(_roomId, entrant['id'] as String)
-            .then((product) {
+        _service.equippedEntranceInRoom(_roomId, entrant['id'] as String).then((
+          product,
+        ) {
           if (!mounted) return;
           setState(() => _entranceProduct = product);
           if (product == null) {
@@ -1831,41 +1831,91 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: .5),
       builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Wrap(
-            spacing: 18,
-            runSpacing: 16,
-            children: _roomEmojis
-                .map(
-                  (emoji) => InkWell(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: .5),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white54,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  'إيموجي المقعد',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _roomEmojis.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: .82,
+                ),
+                itemBuilder: (_, index) {
+                  final emoji = _roomEmojis[index];
+                  return GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
                       _service.sendRoomEmoji(_roomId, emoji['id'] as String);
                     },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.network(
-                          emoji['gif_url'] as String,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.contain,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: .16),
                         ),
-                        Text(
-                          emoji['name'] as String,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontSize: 11,
+                      ),
+                      child: Column(
+                        children: [
+                          Expanded(
+                            child: Image.network(
+                              emoji['gif_url'] as String,
+                              fit: BoxFit.contain,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 3),
+                          Text(
+                            emoji['name'] as String,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
