@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
@@ -15,27 +18,51 @@ class StoreEntranceOverlay extends StatefulWidget {
   const StoreEntranceOverlay({
     super.key,
     required this.product,
+    required this.profile,
     required this.onDone,
   });
   final Map<String, dynamic> product;
+  final Map<String, dynamic> profile;
   final VoidCallback onDone;
   @override
   State<StoreEntranceOverlay> createState() => _StoreEntranceOverlayState();
 }
 
-class _StoreEntranceOverlayState extends State<StoreEntranceOverlay> {
+class _StoreEntranceOverlayState extends State<StoreEntranceOverlay>
+    with SingleTickerProviderStateMixin {
   VideoPlayerController? _video;
+  late final SVGAAnimationController _svga;
+  bool _visible = true;
+  Timer? _fallbackTimer;
+
   @override
   void initState() {
     super.initState();
+    _svga = SVGAAnimationController(vsync: this)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed) _finish();
+      });
     _start();
   }
 
   Future<void> _start() async {
-    if (widget.product['media_type'] != 'mp4') return;
-    final c = VideoPlayerController.networkUrl(
-      Uri.parse(widget.product['media_url'] as String),
-    );
+    final type = (widget.product['media_type'] as String? ?? '').toLowerCase();
+    final url = widget.product['media_url'] as String?;
+    if (url == null || url.isEmpty) return _finishAfterFallback();
+    if (type == 'svga') {
+      try {
+        final movie = await SVGAParser.shared.decodeFromURL(url);
+        if (!mounted) return;
+        _svga.videoItem = movie;
+        setState(() {});
+        _svga.forward(from: 0);
+      } catch (_) {
+        _finishAfterFallback();
+      }
+      return;
+    }
+    if (type != 'mp4') return _finishAfterFallback();
+    final c = VideoPlayerController.networkUrl(Uri.parse(url));
     try {
       await c.initialize();
       await c.setLooping(false);
@@ -47,45 +74,131 @@ class _StoreEntranceOverlayState extends State<StoreEntranceOverlay> {
       setState(() => _video = c);
       c.addListener(() {
         if (c.value.isInitialized && c.value.position >= c.value.duration)
-          widget.onDone();
+          _finish();
       });
     } catch (_) {
       await c.dispose();
+      _finishAfterFallback();
     }
+  }
+
+  void _finishAfterFallback() {
+    _fallbackTimer?.cancel();
+    _fallbackTimer = Timer(const Duration(seconds: 6), _finish);
+  }
+
+  void _finish() {
+    if (!mounted || !_visible) return;
+    setState(() => _visible = false);
+    widget.onDone();
   }
 
   @override
   void dispose() {
+    _fallbackTimer?.cancel();
     _video?.dispose();
+    _svga.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.shrink();
     final type = widget.product['media_type'];
-    Widget media;
-    if (type == 'mp4' && _video?.value.isInitialized == true) {
-      media = FittedBox(
-        fit: BoxFit.cover,
-        child: SizedBox(
-          width: _video!.value.size.width,
-          height: _video!.value.size.height,
-          child: VideoPlayer(_video!),
-        ),
-      );
-    } else {
-      media = Image.network(
-        widget.product['media_url'] as String,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-      );
-    }
+    final media = _svga.videoItem != null
+        ? SVGAImage(_svga, fit: BoxFit.contain)
+        : type == 'mp4' && _video?.value.isInitialized == true
+        ? FittedBox(
+            fit: BoxFit.contain,
+            child: SizedBox(
+              width: _video!.value.size.width,
+              height: _video!.value.size.height,
+              child: VideoPlayer(_video!),
+            ),
+          )
+        : Image.network(
+            widget.product['media_url'] as String,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+          );
+    final avatar = widget.profile['avatar_url'] as String?;
+    final username = widget.profile['username'] ?? 'مستخدم';
     return Positioned.fill(
       child: IgnorePointer(
-        child: Material(color: Colors.transparent, child: media),
+        child: Material(
+          color: Colors.transparent,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(child: media),
+              Positioned(
+                top: 34,
+                left: 0,
+                right: 0,
+                child: _EntranceFlyingBanner(
+                  avatarUrl: avatar,
+                  username: username.toString(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
+
+class _EntranceFlyingBanner extends StatelessWidget {
+  const _EntranceFlyingBanner({
+    required this.avatarUrl,
+    required this.username,
+  });
+  final String? avatarUrl;
+  final String username;
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<Offset>(
+    tween: Tween(begin: const Offset(-1.2, 0), end: Offset.zero),
+    duration: const Duration(milliseconds: 1100),
+    builder: (_, offset, child) =>
+        FractionalTranslation(translation: offset, child: child),
+    child: Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xCC6A1B9A), Color(0xCCF97316)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white70, width: 1.4),
+          boxShadow: const [BoxShadow(color: Colors.white54, blurRadius: 18)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (avatarUrl != null && avatarUrl!.startsWith('http'))
+              ClipOval(
+                child: Image.network(
+                  avatarUrl!,
+                  width: 38,
+                  height: 38,
+                  fit: BoxFit.cover,
+                ),
+              )
+            else
+              const CircleAvatar(child: Icon(Icons.person)),
+            const SizedBox(width: 9),
+            Text(
+              '$username انضم إلى الغرفة',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class StorePage extends StatefulWidget {
@@ -606,9 +719,8 @@ class _AdminStorePageState extends State<AdminStorePage> {
     final path = result?.path;
     if (path == null || result?.extension?.toLowerCase() != extension) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('اختر ملف .$extension فقط')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('اختر ملف .$extension فقط')));
       }
       return null;
     }
@@ -645,7 +757,10 @@ class _AdminStorePageState extends State<AdminStorePage> {
                 ),
                 const InputDecorator(
                   decoration: InputDecoration(labelText: 'مدة المنتج'),
-                  child: Text('7 أيام فقط', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: Text(
+                    '7 أيام فقط',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
                 DropdownButtonFormField<String>(
                   value: category,
@@ -705,9 +820,13 @@ class _AdminStorePageState extends State<AdminStorePage> {
                   ? null
                   : () async {
                       final parsedPrice = int.tryParse(price.text.trim());
-                      if (name.text.trim().isEmpty || parsedPrice == null || parsedPrice <= 0) {
+                      if (name.text.trim().isEmpty ||
+                          parsedPrice == null ||
+                          parsedPrice <= 0) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('أدخل اسم المنتج وسعراً صحيحاً')),
+                          const SnackBar(
+                            content: Text('أدخل اسم المنتج وسعراً صحيحاً'),
+                          ),
                         );
                         return;
                       }
@@ -730,7 +849,11 @@ class _AdminStorePageState extends State<AdminStorePage> {
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تم رفع المنتج ونشره في المتجر بنجاح')),
+                            const SnackBar(
+                              content: Text(
+                                'تم رفع المنتج ونشره في المتجر بنجاح',
+                              ),
+                            ),
                           );
                         }
                       } catch (e) {
@@ -763,11 +886,11 @@ class _AdminStorePageState extends State<AdminStorePage> {
       title: const Text('إدارة متجر SAKI'),
       actions: _authorized
           ? [
-        IconButton(
-          onPressed: _add,
-          icon: const Icon(Icons.add_business_rounded),
-        ),
-      ]
+              IconButton(
+                onPressed: _add,
+                icon: const Icon(Icons.add_business_rounded),
+              ),
+            ]
           : null,
     ),
     body: !_authorized

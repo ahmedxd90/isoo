@@ -805,6 +805,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _entranceProfile;
   Map<String, dynamic>? _entranceProduct;
   Timer? _entranceTimer;
+  bool _membersInitialized = false;
 
   @override
   void initState() {
@@ -875,24 +876,29 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (!mounted) return;
       final previousIds = _roomMembers.map((m) => m['id']).toSet();
       final entrant = members
-          .where((m) => !previousIds.contains(m['id']))
+          .where((m) => _membersInitialized && !previousIds.contains(m['id']))
           .firstOrNull;
       setState(() {
         _roomMembers = members;
-        if (entrant != null) _entranceProfile = entrant;
+        _membersInitialized = true;
+        if (entrant != null) {
+          _entranceProfile = entrant;
+          _entranceProduct = null;
+        }
       });
       if (entrant != null) {
         _entranceTimer?.cancel();
-        _service.equippedEntrance(entrant['id'] as String).then((product) {
+        _service
+            .equippedEntranceInRoom(_roomId, entrant['id'] as String)
+            .then((product) {
           if (!mounted) return;
           setState(() => _entranceProduct = product);
-        });
-        _entranceTimer = Timer(const Duration(seconds: 5), () {
-          if (mounted)
-            setState(() {
-              _entranceProfile = null;
-              _entranceProduct = null;
+          if (product == null) {
+            _entranceTimer?.cancel();
+            _entranceTimer = Timer(const Duration(seconds: 5), () {
+              if (mounted) setState(() => _entranceProfile = null);
             });
+          }
         });
       }
     });
@@ -1164,6 +1170,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _join() async {
     try {
       await _service.joinRoom(_roomId);
+      try {
+        await _service.claimEquippedEntranceOnJoin(_roomId);
+      } catch (_) {
+        // لا يمنع فشل تسجيل الدخولية دخول المستخدم إلى الغرفة.
+      }
       await _service.sendRoomMessage(_roomId, 'انضم إلى الغرفة', type: 'join');
       if (mounted) setState(() => _joined = true);
     } catch (error) {
@@ -2870,8 +2881,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             if (_entranceProduct != null)
               StoreEntranceOverlay(
                 product: _entranceProduct!,
+                profile: _entranceProfile ?? const <String, dynamic>{},
                 onDone: () {
-                  if (mounted) setState(() => _entranceProduct = null);
+                  if (mounted) {
+                    setState(() {
+                      _entranceProduct = null;
+                      _entranceProfile = null;
+                    });
+                  }
                 },
               )
             else if (_entranceProfile != null)

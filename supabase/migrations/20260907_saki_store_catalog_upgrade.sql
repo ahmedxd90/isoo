@@ -70,3 +70,39 @@ end; $$;
 
 revoke all on function public.saki_store_buy(uuid) from public;
 grant execute on function public.saki_store_buy(uuid) to authenticated;
+
+create or replace function public.saki_get_equipped_entrance(
+  p_room_id uuid,
+  p_user_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path=public as $$
+declare result jsonb;
+begin
+  if not exists (
+    select 1 from public.room_members
+    where room_id = p_room_id and user_id = auth.uid()
+  ) then
+    return null;
+  end if;
+  if not exists (
+    select 1 from public.room_members
+    where room_id = p_room_id and user_id = p_user_id
+  ) then
+    return null;
+  end if;
+  select to_jsonb(product) into result
+  from public.saki_store_inventory as inventory
+  join public.saki_store_products as product on product.id = inventory.product_id
+  where inventory.user_id = p_user_id
+    and inventory.equipped = true
+    and product.category = 'entrance'
+    and (inventory.expires_at is null or inventory.expires_at > now())
+  limit 1;
+  return result;
+end; $$;
+
+revoke all on function public.saki_get_equipped_entrance(uuid, uuid) from public;
+grant execute on function public.saki_get_equipped_entrance(uuid, uuid) to authenticated;

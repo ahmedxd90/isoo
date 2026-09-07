@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -422,6 +423,18 @@ class SakiService {
     return null;
   }
 
+  Future<Map<String, dynamic>?> equippedEntranceInRoom(
+    String roomId,
+    String userId,
+  ) async {
+    final result = await client.rpc(
+      'saki_get_equipped_entrance',
+      params: {'p_room_id': roomId, 'p_user_id': userId},
+    );
+    if (result == null) return null;
+    return Map<String, dynamic>.from(result as Map);
+  }
+
   Future<void> claimEntrance(
     String roomId,
     String productId,
@@ -435,6 +448,18 @@ class SakiService {
         'p_play_token': playToken,
       },
     );
+  }
+
+  Future<void> claimEquippedEntranceOnJoin(String roomId) async {
+    final product = await equippedEntrance(uid);
+    if (product == null) return;
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    final hex = bytes.map((v) => v.toRadixString(16).padLeft(2, '0')).join();
+    final playToken =
+        '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+    await claimEntrance(roomId, product['id'] as String, playToken);
   }
 
   Future<void> adminCreateGift({
