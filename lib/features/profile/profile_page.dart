@@ -17,6 +17,7 @@ import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 
 const _orange = Color(0xFFF97316);
 const _orangeSoft = Color(0xFFFFF7ED);
@@ -438,19 +439,9 @@ class _ProfileCard extends StatelessWidget {
                   runSpacing: 4,
                   children: [
                     if (vipLevel > 0)
-                      Container(
-                        height: 26,
-                        padding: const EdgeInsets.symmetric(horizontal: 7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7ED),
-                          borderRadius: BorderRadius.circular(9),
-                          border: Border.all(color: const Color(0xFFF59E0B)),
-                        ),
-                        child: Image.asset(
-                          'assets/trace_vip/images/ic_vip_$vipLevel.png',
-                          width: 66,
-                          fit: BoxFit.contain,
-                        ),
+                      VipTitleBadge(
+                        profile: {...profile, 'vip_level': vipLevel},
+                        compact: true,
                       ),
                     _LevelChip(
                       label: 'ثروة LV $wealthLevel',

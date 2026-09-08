@@ -23,6 +23,7 @@ import 'room_gift_ranking_sheet.dart';
 import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 
 const _roomPrimary = Color(0xFF656BF9);
 const _roomSecondary = Color(0xFF8E91FF);
@@ -4753,16 +4754,13 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                   child: _RoomProfileAvatar(profile: profile),
                 ),
                 const SizedBox(height: 10),
-                Text(
-                  username,
+                VipNameText(
+                  profile: {...profile, 'vip_level': vip},
+                  fontSize: 21,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w800,
-                  ),
                 ),
+                const SizedBox(height: 6),
+                VipTitleBadge(profile: {...profile, 'vip_level': vip}),
                 const SizedBox(height: 5),
                 Wrap(
                   alignment: WrapAlignment.center,

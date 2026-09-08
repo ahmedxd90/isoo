@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 import '../notifications/notifications_page.dart';
 import '../profile/user_profile_page.dart';
 import '../search/search_page.dart';
@@ -574,39 +575,7 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                                 color: _slate,
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 7,
-                                vertical: 3,
-                              ),
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Color(0xFFF59E0B), _brandDark],
-                                ),
-                                borderRadius: BorderRadius.all(
-                                  Radius.circular(6),
-                                ),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  FaIcon(
-                                    FontAwesomeIcons.star,
-                                    color: Colors.white,
-                                    size: 9,
-                                  ),
-                                  SizedBox(width: 3),
-                                  Text(
-                                    'VIP',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            VipTitleBadge(profile: profile, compact: true),
                             const SizedBox(width: 5),
                             TextButton.icon(
                               onPressed: _toggleFollow,

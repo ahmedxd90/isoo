@@ -3,6 +3,7 @@ import 'package:flutter_svga/flutter_svga.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 
 const _orange = Color(0xFFF97316);
 const _cyan = Color(0xFF06B6D4);
@@ -442,14 +443,10 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        widget.profile['username'] as String? ?? 'مستخدم',
+                      VipNameText(
+                        profile: widget.profile,
+                        fontSize: 13,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                        ),
                       ),
                       Text(
                         _vip > 0

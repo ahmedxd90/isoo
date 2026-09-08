@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 import '../profile/user_profile_page.dart';
 
 const _reelTeal = Color(0xFF2DD4BF);
@@ -367,7 +368,7 @@ class _ReelCardState extends State<ReelCard> {
                           url: profile['avatar_url'] as String?,
                           label: profile['username'] as String?,
                         ),
-                        title: Text(profile['username'] as String? ?? 'عضو'),
+                        title: VipNameText(profile: profile, fontSize: 13),
                         subtitle: Text(row['content'] as String? ?? ''),
                       );
                     },

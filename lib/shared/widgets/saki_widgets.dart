@@ -229,7 +229,10 @@ class _VipUsernameState extends State<VipUsername>
     );
     final active =
         level > 0 && (expires == null || expires.isAfter(DateTime.now()));
-    final text = widget.profile['username'] as String? ?? 'مستخدم';
+    final text =
+        widget.profile['display_name']?.toString().trim().isNotEmpty == true
+        ? widget.profile['display_name'].toString()
+        : widget.profile['username'] as String? ?? 'مستخدم';
     final base =
         widget.style ??
         const TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
@@ -241,9 +244,25 @@ class _VipUsernameState extends State<VipUsername>
         overflow: TextOverflow.ellipsis,
       );
     }
-    final colors = level >= 6
-        ? const [Colors.red, Colors.amber, Colors.blue, Colors.red]
-        : const [Color(0xFFFFE082), Color(0xFFD4AF37)];
+    final colors =
+        <int, List<Color>>{
+          1: const [Color(0xFFFFC4B9), Color(0xFFFF806D), Color(0xFFFFE1D8)],
+          2: const [Color(0xFFE8F0FF), Color(0xFF9DB7E7), Colors.white],
+          3: const [Color(0xFFB7FFE9), Color(0xFF4CC9A4), Color(0xFFE2FFF7)],
+          4: const [Color(0xFFB9FFD0), Color(0xFF35D878), Colors.white],
+          5: const [Color(0xFFB8E7FF), Color(0xFF248BFF), Color(0xFFE4F6FF)],
+          6: const [Color(0xFFFFC5A2), Color(0xFFFF6A2A), Color(0xFFFFE8D9)],
+          7: const [Color(0xFFE9B8FF), Color(0xFFB145E9), Color(0xFFFFE7FF)],
+          8: const [Color(0xFFA8FBFF), Color(0xFF26C6DA), Colors.white],
+          9: const [Color(0xFFFFF0A3), Color(0xFFFFB300), Colors.white],
+          10: const [
+            Color(0xFFFFB4A6),
+            Color(0xFFFF4500),
+            Color(0xFFFFF1D0),
+            Color(0xFFB145E9),
+          ],
+        }[level] ??
+        const [Color(0xFFFFE082), Color(0xFFD4AF37)];
     return AnimatedBuilder(
       animation: _controller,
       builder: (_, _) => Row(

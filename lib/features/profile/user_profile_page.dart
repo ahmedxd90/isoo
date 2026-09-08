@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 import '../messages/messages_page.dart';
 import '../posts/posts_page.dart';
 import '../rooms/rooms_page.dart';
@@ -740,10 +741,6 @@ class _TraceProfileSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final username =
-        profile['display_name'] as String? ??
-        profile['username'] as String? ??
-        'مستخدم SAKI';
     final country = profile['country'] as String? ?? '—';
     final gender = profile['gender'] as String? ?? '';
     final female = gender == 'female' || gender == 'أنثى';
@@ -753,14 +750,9 @@ class _TraceProfileSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            username,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: _profileInk,
-            ),
-          ),
+          VipNameText(profile: profile, fontSize: 20, maxLines: 1),
+          const SizedBox(height: 6),
+          VipTitleBadge(profile: profile),
           const SizedBox(height: 8),
           Row(
             children: [
