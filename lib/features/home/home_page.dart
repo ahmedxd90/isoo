@@ -64,6 +64,7 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
   )..repeat();
   bool _opening = false;
   bool _checkingPending = false;
+  bool _overlayStarted = false;
 
   @override
   void initState() {
@@ -91,7 +92,10 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     if (room == null || _session.engine == null || !_session.overlayEligible) {
       return;
     }
-    if (state == AppLifecycleState.paused) {
+    if ((state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.paused) &&
+        !_overlayStarted) {
+      _overlayStarted = true;
       unawaited(
         RoomBackgroundBridge.start(
           roomId: _session.roomId ?? room['id']?.toString() ?? '',
@@ -100,6 +104,7 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
         ),
       );
     } else if (state == AppLifecycleState.resumed) {
+      _overlayStarted = false;
       unawaited(RoomBackgroundBridge.stop());
       unawaited(_openPendingRoom());
     }
@@ -117,8 +122,6 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
       if (roomId == null || roomId.isEmpty || !mounted) return;
       final current = _session.room;
       if (current != null && _session.isSameRoom(roomId)) {
-        _session.hideBubble();
-        await RoomBackgroundBridge.stop();
         if (!mounted) return;
         await Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute(
@@ -164,8 +167,6 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
             final current = _session.room;
             if (current == null) return;
             setState(() => _opening = true);
-            _session.hideBubble();
-            await RoomBackgroundBridge.stop();
             if (!context.mounted) return;
             try {
               await Navigator.of(context, rootNavigator: true).push(

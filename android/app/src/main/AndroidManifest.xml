@@ -53,6 +53,7 @@
             android:name=".RoomOverlayService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="microphone" />
     </application>
     <!-- Required to query activities that can process text, see:

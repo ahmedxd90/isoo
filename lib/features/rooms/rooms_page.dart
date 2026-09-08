@@ -1151,6 +1151,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   void initState() {
     super.initState();
+    // Stop the external bubble only after this room page has actually started.
+    RoomBackgroundBridge.stop();
     final session = RoomSessionController.instance;
     _musicPlayer = session.isSameRoom(_roomId)
         ? (session.musicPlayer ?? AudioPlayer())
@@ -1223,7 +1225,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _isOnSeat = session.isOnSeat;
       _micMuted = session.micMuted;
       RoomSessionController.instance.hideBubble();
-      RoomBackgroundBridge.stop();
     }
     _join();
     _loadRoomState();

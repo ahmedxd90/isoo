@@ -45,7 +45,7 @@ class RoomOverlayService : Service() {
         imageUrl = intent?.getStringExtra(EXTRA_IMAGE_URL).orEmpty()
         if (Settings.canDrawOverlays(this)) showBubble()
         if (imageUrl.isNotBlank()) loadBubbleImage()
-        return START_STICKY
+        return START_REDELIVER_INTENT
     }
 
     private fun showBubble() {
@@ -147,7 +147,6 @@ class RoomOverlayService : Service() {
             putExtra(EXTRA_ROOM_NAME, roomName)
             putExtra(EXTRA_IMAGE_URL, imageUrl)
         } ?: return
-        stopSelf()
         startActivity(intent)
     }
 
