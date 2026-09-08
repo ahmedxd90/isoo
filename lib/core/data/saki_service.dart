@@ -2575,6 +2575,38 @@ class SakiService {
         .limit(200);
     return List<Map<String, dynamic>>.from(rows);
   }
+
+  Future<Map<String, dynamic>> createRoomLuckBag(
+    String roomId,
+    int totalGold,
+    int recipientLimit,
+  ) async {
+    final row = await client.rpc(
+      'create_room_luck_bag',
+      params: {
+        'p_room_id': roomId,
+        'p_total_gold': totalGold,
+        'p_recipient_limit': recipientLimit,
+      },
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
+  Future<Map<String, dynamic>> claimRoomLuckBag(String bagId) async {
+    final rows = await client.rpc(
+      'claim_room_luck_bag',
+      params: {'p_bag_id': bagId},
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    return list.isEmpty ? const {} : list.first;
+  }
+
+  Stream<List<Map<String, dynamic>>> roomLuckBagsStream(String roomId) => client
+      .from('room_luck_bags')
+      .stream(primaryKey: ['id'])
+      .eq('room_id', roomId)
+      .order('created_at', ascending: false)
+      .limit(10);
 }
 
 class RoomGiftRankingResult {

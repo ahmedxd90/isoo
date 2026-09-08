@@ -20,6 +20,7 @@ import 'ranking_page.dart';
 import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
+import 'luck_bag_widgets.dart';
 import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
 import '../profile/vip_widgets.dart';
@@ -1100,6 +1101,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _luckBagSubscription;
   final Map<String, Timer> _roomEmojiTimers = {};
   final Map<String, Map<String, dynamic>> _activeSeatEmojis = {};
   final Map<String, GlobalKey> _seatKeys = {};
@@ -1119,6 +1121,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Set<String> _previousSeatUserIds = <String>{};
   bool _seatStopPending = false;
   Timer? _seatTaskTimer;
+  List<Map<String, dynamic>> _luckBags = [];
+  Map<String, dynamic>? _newLuckBag;
 
   @override
   void initState() {
@@ -1235,6 +1239,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     });
     _service.roomMembers(_roomId).then((members) {
       if (mounted) setState(() => _roomMembers = members);
+    });
+    _luckBagSubscription = _service.roomLuckBagsStream(_roomId).listen((bags) {
+      if (!mounted) return;
+      setState(() => _luckBags = bags);
     });
     if (!restoredSession) _startRoomAudio();
   }
@@ -2421,6 +2429,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 'هدايا',
                 () => Navigator.pop(context),
               ),
+              _toolButton(Icons.card_giftcard_rounded, 'حقيبة حظ', () {
+                Navigator.pop(context);
+                LuckBagComposer.show(context, _roomId, (bag) {
+                  if (mounted) setState(() => _newLuckBag = bag);
+                });
+              }),
             ],
           ),
         ),
@@ -2446,6 +2460,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           ],
         ),
       );
+
+  Future<void> _claimLuckBag(String bagId) async {
+    try {
+      final result = await _service.claimRoomLuckBag(bagId);
+      if (!mounted) return;
+      _messageSnack('استلمت ${result['amount_gold'] ?? 0} عملة ذهبية بنجاح.');
+    } catch (e) {
+      if (mounted) _messageSnack(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
 
   Future<bool> _confirmLeaveSeat() async {
     final result = await showDialog<bool>(
@@ -2683,6 +2707,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
+    _luckBagSubscription?.cancel();
     for (final timer in _roomEmojiTimers.values) {
       timer.cancel();
     }
@@ -3477,6 +3502,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 left: 18,
                 right: 18,
                 child: RoomEntranceBanner(profile: _entranceProfile!),
+              ),
+            if (_luckBags.isNotEmpty)
+              LuckBagCard(bag: _luckBags.first, onClaim: _claimLuckBag),
+            if (_newLuckBag != null)
+              LuckBagFlyBanner(
+                bag: _newLuckBag!,
+                onGo: () => setState(() => _newLuckBag = null),
               ),
             if (_activeGiftMessage != null)
               Positioned.fill(
