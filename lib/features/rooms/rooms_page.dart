@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
@@ -2621,6 +2620,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _showMusicSheet() async {
     if (!_canOpenMusic) {
       _messageSnack('يجب الجلوس على مقعد لفتح موسيقى الغرفة.');
@@ -2648,74 +2648,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  Future<void> _showRoomTools() async {
-    final owner = widget.room['owner_id'] == _service.uid;
-    final moderator = owner || await _service.isRoomModerator(_roomId);
-    if (!mounted) return;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF3D0B12),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              if (_isOnSeat)
-                _toolButton(Icons.music_note, 'موسيقى', () {
-                  Navigator.pop(context);
-                  _showMusicSheet();
-                }),
-              if (moderator)
-                _toolButton(Icons.delete_sweep, 'مسح الدردشة', () {
-                  Navigator.pop(context);
-                  _confirmClearChat();
-                }),
-              _toolButton(Icons.casino, 'نرد', () {
-                Navigator.pop(context);
-                final value = Random().nextInt(6) + 1;
-                _service.sendRoomMessage(
-                  _roomId,
-                  '🎲 النرد: $value',
-                  type: 'dice',
-                  payload: {'value': value},
-                );
-              }),
-              _toolButton(
-                Icons.card_giftcard,
-                'هدايا',
-                () => Navigator.pop(context),
-              ),
-              _toolButton(Icons.casino_outlined, 'عجلة ساكي', () {
-                Navigator.pop(context);
-                showSakiWheel(context, _service, _roomId);
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _toolButton(IconData icon, String label, VoidCallback onTap) =>
-      InkWell(
-        onTap: onTap,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(
-              backgroundColor: Colors.white12,
-              child: Icon(icon, color: Colors.amberAccent),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
-            ),
-          ],
-        ),
-      );
-
+  // ignore: unused_element
   Future<void> _confirmClearChat() async {
     final yes = await showDialog<bool>(
       context: context,
@@ -3739,11 +3672,35 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                 ],
                               ),
                             ),
-                            IconButton(
-                              onPressed: _showRoomTools,
-                              icon: const Icon(
-                                Icons.grid_view_rounded,
-                                color: Colors.white,
+                            Tooltip(
+                              message: 'ألعاب',
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () =>
+                                    showSakiGames(context, _service, _roomId),
+                                child: Container(
+                                  width: 52,
+                                  height: 52,
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF20284E),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFF8297FF),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Color(0x663F66FF),
+                                        blurRadius: 10,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Image.asset(
+                                    'assets/saki_games/saki_game_controller.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
