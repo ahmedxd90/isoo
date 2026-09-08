@@ -8,6 +8,7 @@ import '../../shared/widgets/saki_widgets.dart';
 import 'admin_trace_modules_page.dart';
 import 'admin_room_emojis_page.dart';
 import 'admin_banners_page.dart';
+import 'admin_redeem_codes_page.dart';
 import 'store_pages.dart';
 
 const _blue = Color(0xFFF97316);
@@ -180,6 +181,20 @@ class SuperAdminPage extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.confirmation_number_rounded),
+              title: const Text('استرداد كود'),
+              subtitle: const Text('إضافة رموز ومكافآت حقيقية للمستخدمين'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminRedeemCodesPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.gif_box_rounded),
               title: const Text('إدارة إيموجي الغرفة'),
               subtitle: const Text('GIF فوق مقعد المستخدم لمدة 4 ثوانٍ'),
@@ -339,6 +354,15 @@ class SuperAdminPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AdminBannersPage()),
+          ),
+        ),
+        _AdminCard(
+          icon: Icons.confirmation_number_rounded,
+          title: 'استرداد كود',
+          subtitle: 'إنشاء أكواد ومكافآت ذهبية ومتجر وVIP وثروة',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminRedeemCodesPage()),
           ),
         ),
       ],

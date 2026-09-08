@@ -2579,6 +2579,56 @@ class SakiService {
     if (list.isEmpty) throw Exception('تعذر إرسال الهدية');
     return list.first;
   }
+
+  Future<Map<String, dynamic>> redeemSakiCode(String code) async {
+    try {
+      final result = await client.rpc(
+        'redeem_saki_code',
+        params: {'p_code': code.trim().toUpperCase()},
+      );
+      return Map<String, dynamic>.from(result as Map);
+    } on PostgrestException catch (error) {
+      throw Exception('${error.code ?? 'rpc_error'}:${error.message}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> adminRedeemCodes() async {
+    final rows = await client.rpc('admin_redeem_codes');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<String> adminCreateRedeemCode({
+    required String code,
+    required DateTime expiresAt,
+    required int maxUses,
+    required List<Map<String, dynamic>> rewards,
+  }) async {
+    try {
+      final result = await client.rpc(
+        'admin_create_redeem_code',
+        params: {
+          'p_code': code.trim().toUpperCase(),
+          'p_expires_at': expiresAt.toUtc().toIso8601String(),
+          'p_max_uses': maxUses,
+          'p_rewards': rewards,
+        },
+      );
+      return result.toString();
+    } on PostgrestException catch (error) {
+      throw Exception('${error.code ?? 'rpc_error'}:${error.message}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> adminTraceStoreCatalog() async {
+    final rows = await client
+        .from('trace_store_catalog')
+        .select('id,category,name,asset_key,duration_days,is_active')
+        .eq('is_active', true)
+        .order('category')
+        .order('sort_order')
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
 }
 
 class RoomGiftRankingResult {

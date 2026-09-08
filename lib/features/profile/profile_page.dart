@@ -15,6 +15,7 @@ import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import 'family_square_page.dart';
 import 'tasks_page.dart';
+import 'redeem_code_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _orange = Color(0xFFF97316);
@@ -136,6 +137,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openMenu(String title) async {
+    if (title == 'كود الاسترداد') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const RedeemCodePage()));
+      return;
+    }
     if (title == 'المهام') {
       await Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const TasksPage()));
