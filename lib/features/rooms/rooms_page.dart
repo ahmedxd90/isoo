@@ -20,7 +20,6 @@ import 'ranking_page.dart';
 import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
-import 'saki_wheel_game_sheet.dart';
 import '../profile/store_pages.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
@@ -2620,7 +2619,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
   }
 
-  // ignore: unused_element
   Future<void> _showMusicSheet() async {
     if (!_canOpenMusic) {
       _messageSnack('يجب الجلوس على مقعد لفتح موسيقى الغرفة.');
@@ -2648,7 +2646,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  // ignore: unused_element
   Future<void> _confirmClearChat() async {
     final yes = await showDialog<bool>(
       context: context,
@@ -2676,6 +2673,60 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       }
     }
   }
+
+  Future<void> _showRoomTools() async {
+    final owner = widget.room['owner_id'] == _service.uid;
+    final moderator = owner || await _service.isRoomModerator(_roomId);
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF3D0B12),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              if (_isOnSeat)
+                _toolButton(Icons.music_note, 'موسيقى', () {
+                  Navigator.pop(context);
+                  _showMusicSheet();
+                }),
+              if (moderator)
+                _toolButton(Icons.delete_sweep, 'مسح الدردشة', () {
+                  Navigator.pop(context);
+                  _confirmClearChat();
+                }),
+              _toolButton(
+                Icons.card_giftcard,
+                'هدايا',
+                () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _toolButton(IconData icon, String label, VoidCallback onTap) =>
+      InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.white12,
+              child: Icon(icon, color: Colors.amberAccent),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ],
+        ),
+      );
 
   Future<bool> _confirmLeaveSeat() async {
     final result = await showDialog<bool>(
@@ -3672,35 +3723,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                 ],
                               ),
                             ),
-                            Tooltip(
-                              message: 'ألعاب',
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () =>
-                                    showSakiGames(context, _service, _roomId),
-                                child: Container(
-                                  width: 52,
-                                  height: 52,
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF20284E),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: const Color(0xFF8297FF),
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Color(0x663F66FF),
-                                        blurRadius: 10,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Image.asset(
-                                    'assets/saki_games/saki_game_controller.png',
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
+                            IconButton(
+                              onPressed: _showRoomTools,
+                              icon: const Icon(
+                                Icons.grid_view_rounded,
+                                color: Colors.white,
                               ),
                             ),
                           ],

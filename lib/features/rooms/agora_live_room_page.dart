@@ -9,7 +9,6 @@ import '../profile/user_profile_page.dart';
 import 'pk_battle_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
-import 'saki_wheel_game_sheet.dart';
 
 class AgoraLiveRoomPage extends StatefulWidget {
   const AgoraLiveRoomPage({
@@ -318,17 +317,6 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                     color: Colors.pinkAccent,
                   ),
                 ),
-                IconButton(
-                  onPressed: () => showSakiGames(
-                    context,
-                    SakiService.instance,
-                    widget.roomId,
-                  ),
-                  icon: const Icon(
-                    Icons.grid_view_rounded,
-                    color: Colors.white,
-                  ),
-                ),
                 const Chip(
                   label: Text(
                     'LIVE',
@@ -496,14 +484,6 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                   icon: Icon(_cameraOff ? Icons.videocam_off : Icons.videocam),
                 ),
                 const SizedBox(width: 18),
-                IconButton.filled(
-                  onPressed: () => showSakiGames(
-                    context,
-                    SakiService.instance,
-                    widget.roomId,
-                  ),
-                  icon: const Icon(Icons.sports_esports_rounded),
-                ),
                 const SizedBox(width: 18),
                 IconButton.filled(
                   style: IconButton.styleFrom(

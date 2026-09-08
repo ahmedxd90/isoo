@@ -246,17 +246,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 22),
                   SizedBox(width: 320, height: 56, child: _googleButton()),
-                  const SizedBox(height: 14),
-                  TextButton(
-                    onPressed: _loading ? null : () => context.go('/register'),
-                    child: const Text(
-                      'إنشاء حساب جديد',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 12),
                   Text.rich(
                     TextSpan(
