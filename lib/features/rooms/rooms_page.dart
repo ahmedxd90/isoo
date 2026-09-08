@@ -22,6 +22,7 @@ import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
 import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
+import '../profile/vip_widgets.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
 
@@ -4747,6 +4748,19 @@ class _RoomMiniProfileSheet extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
+            if (isVip)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Opacity(
+                    opacity: .16,
+                    child: VipSvgaAsset(
+                      assetPath: 'assets/vip/user_center_svip$vip.svga',
+                      fallbackAsset: 'assets/vip/title_vip$vip.png',
+                      size: 420,
+                    ),
+                  ),
+                ),
+              ),
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -5032,7 +5046,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
             url: widget.profile['avatar_url'] as String?,
             label: widget.profile['username'] as String?,
             radius: 42,
-            profile: widget.profile,
+            profile: {...widget.profile, 'vip_frame_enabled': false},
           ),
         ),
         if (_svga.videoItem != null)

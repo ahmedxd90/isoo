@@ -304,9 +304,12 @@ class _StorePageState extends State<StorePage> {
       setState(_reload);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        final raw = e.toString();
+        final message = raw.contains('vip_frame_granted_with_vip_purchase')
+            ? 'إطار VIP يُمنح تلقائيًا عند شراء مستوى VIP ولا يُشترى منفصلًا.'
+            : raw.replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _buying = false);
@@ -581,7 +584,12 @@ class _StorePageState extends State<StorePage> {
               if (snap.hasError) {
                 return Center(child: Text('تعذر تحميل المتجر: ${snap.error}'));
               }
-              final items = snap.data ?? const <Map<String, dynamic>>[];
+              final items = (snap.data ?? const <Map<String, dynamic>>[]).where(
+                (product) {
+                  final name = product['name']?.toString() ?? '';
+                  return !name.startsWith('إطار VIP ');
+                },
+              ).toList();
               if (items.isEmpty) {
                 return Center(
                   child: Column(
@@ -966,13 +974,32 @@ class BagPage extends StatefulWidget {
 
 class _BagPageState extends State<BagPage> {
   late Future<List<Map<String, dynamic>>> _future;
+  int _vipLevel = 0;
+  DateTime? _vipExpiresAt;
   @override
   void initState() {
     super.initState();
     _reload();
   }
 
-  void _reload() => _future = SakiService.instance.storeInventory();
+  void _reload() {
+    _future = SakiService.instance.storeInventory();
+    _loadVipProfile();
+  }
+
+  Future<void> _loadVipProfile() async {
+    try {
+      final profile = await SakiService.instance.myProfile();
+      if (!mounted || profile == null) return;
+      setState(() {
+        _vipLevel = ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+        _vipExpiresAt = DateTime.tryParse(
+          profile['vip_expires_at']?.toString() ?? '',
+        );
+      });
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: _storeSurface,
@@ -1017,9 +1044,13 @@ class _BagPageState extends State<BagPage> {
         return ListView(
           padding: const EdgeInsets.all(14),
           children: ['frame', 'entrance', 'bubble'].map((category) {
-            final rows = all
-                .where((r) => (r['product'] as Map)['category'] == category)
-                .toList();
+            final rows = all.where((r) {
+              final product = r['product'] as Map;
+              if (product['category'] != category) return false;
+              if (category != 'frame') return true;
+              return _vipLevel > 0 &&
+                  product['name']?.toString() == 'إطار VIP $_vipLevel';
+            }).toList();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1041,7 +1072,11 @@ class _BagPageState extends State<BagPage> {
                     child: Text('لا توجد منتجات'),
                   ),
                 ...rows.map(
-                  (row) => BagRow(row: row, onChanged: () => setState(_reload)),
+                  (row) => BagRow(
+                    row: row,
+                    vipExpiresAt: _vipExpiresAt,
+                    onChanged: () => setState(_reload),
+                  ),
                 ),
               ],
             );
@@ -1053,13 +1088,26 @@ class _BagPageState extends State<BagPage> {
 }
 
 class BagRow extends StatelessWidget {
-  const BagRow({super.key, required this.row, required this.onChanged});
+  const BagRow({
+    super.key,
+    required this.row,
+    required this.onChanged,
+    this.vipExpiresAt,
+  });
   final Map<String, dynamic> row;
   final VoidCallback onChanged;
+  final DateTime? vipExpiresAt;
   @override
   Widget build(BuildContext context) {
     final product = Map<String, dynamic>.from(row['product'] as Map);
     final equipped = row['equipped'] == true;
+    final productExpiry = DateTime.tryParse(
+      row['expires_at']?.toString() ?? '',
+    );
+    final expiry = productExpiry ?? vipExpiresAt;
+    final expiryText = expiry == null
+        ? 'المدة مرتبطة بمدة VIP'
+        : 'ينتهي ${expiry.toLocal().toString().split('.').first}';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(10),
@@ -1100,7 +1148,7 @@ class BagRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '7 أيام • ${equipped ? 'مفعّل الآن' : 'غير مفعّل'}',
+                  '$expiryText • ${equipped ? 'مفعّل الآن' : 'غير مفعّل'}',
                   style: const TextStyle(color: Colors.black54, fontSize: 11),
                 ),
               ],
