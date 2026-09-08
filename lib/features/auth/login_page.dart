@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
@@ -19,10 +20,12 @@ class _LoginPageState extends State<LoginPage> {
   VideoPlayerController? _video;
   bool _loading = false;
   bool _routing = false;
+  late final Future<void> _googleInitialization;
 
   @override
   void initState() {
     super.initState();
+    _googleInitialization = GoogleSignIn.instance.initialize();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       event,
     ) {
@@ -60,22 +63,23 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _googleLogin() async {
     setState(() => _loading = true);
     try {
-      final launched = await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.saki://login-callback/',
-      );
-      if (!launched) {
+      await _googleInitialization;
+      final account = await GoogleSignIn.instance.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
         throw const AuthException(
-          'تعذر فتح نافذة تسجيل الدخول الآمنة من Google.',
+          'لم يرجع Google رمز التحقق المطلوب. تأكد من إعداد OAuth Client.',
         );
       }
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+      );
     } on AuthException catch (e) {
       if (mounted) _showError(_friendlyAuthError(e.message));
     } catch (error) {
       if (mounted) {
-        _showError(
-          'تعذر بدء تسجيل الدخول عبر Google. تحقق من الاتصال وحاول مرة أخرى.\n$error',
-        );
+        _showError(_friendlyGoogleError(error));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -120,6 +124,20 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   String _friendlyOAuthError(String error) => _friendlyAuthError(error);
+
+  String _friendlyGoogleError(Object error) {
+    final text = error.toString().toLowerCase();
+    if (text.contains('canceled') || text.contains('cancelled')) {
+      return 'تم إلغاء اختيار حساب Google.';
+    }
+    if (text.contains('network') || text.contains('socket')) {
+      return 'لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى.';
+    }
+    if (text.contains('developer_error') || text.contains('sign_in_failed')) {
+      return 'إعداد Google OAuth غير مكتمل لهذا التطبيق. تحقق من OAuth Client وبصمة SHA-1.';
+    }
+    return 'تعذر تسجيل الدخول بحساب Google داخل التطبيق. حاول مرة أخرى.\n$error';
+  }
 
   Future<void> _showError(String text) async {
     if (!mounted) return;
