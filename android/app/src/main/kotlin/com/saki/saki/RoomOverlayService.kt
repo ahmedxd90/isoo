@@ -22,12 +22,14 @@ import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.graphics.drawable.GradientDrawable
 import androidx.core.app.NotificationCompat
 
 class RoomOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var bubble: View? = null
     private var bubbleImage: ImageView? = null
+    private var roomId = ""
     private var roomName = "غرفة SAKI"
     private var imageUrl = ""
 
@@ -38,6 +40,7 @@ class RoomOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        roomId = intent?.getStringExtra(EXTRA_ROOM_ID).orEmpty()
         roomName = intent?.getStringExtra(EXTRA_ROOM_NAME).orEmpty().ifBlank { "غرفة SAKI" }
         imageUrl = intent?.getStringExtra(EXTRA_IMAGE_URL).orEmpty()
         if (Settings.canDrawOverlays(this)) showBubble()
@@ -54,22 +57,30 @@ class RoomOverlayService : Service() {
             scaleType = ImageView.ScaleType.CENTER_CROP
         }
         val view = FrameLayout(this).apply {
-            setBackgroundColor(Color.rgb(29, 36, 66))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(29, 36, 66))
+                cornerRadius = 18f * resources.displayMetrics.density
+                setStroke(
+                    (1.2f * resources.displayMetrics.density).toInt(),
+                    Color.rgb(124, 131, 255),
+                )
+            }
             elevation = 12f
             contentDescription = roomName
             addView(image, FrameLayout.LayoutParams(-1, -1))
             addView(WaveOverlayView(this@RoomOverlayService), FrameLayout.LayoutParams(-1, -1))
         }
         bubbleImage = image
-        val size = (58 * resources.displayMetrics.density).toInt()
+        val width = (94 * resources.displayMetrics.density).toInt()
+        val height = (68 * resources.displayMetrics.density).toInt()
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
             WindowManager.LayoutParams.TYPE_PHONE
         }
         val params = WindowManager.LayoutParams(
-            size,
-            size,
+            width,
+            height,
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT,
@@ -132,7 +143,11 @@ class RoomOverlayService : Service() {
     private fun openApp() {
         val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(EXTRA_ROOM_ID, roomId)
+            putExtra(EXTRA_ROOM_NAME, roomName)
+            putExtra(EXTRA_IMAGE_URL, imageUrl)
         } ?: return
+        stopSelf()
         startActivity(intent)
     }
 

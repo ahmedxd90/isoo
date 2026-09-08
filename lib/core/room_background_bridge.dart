@@ -41,4 +41,16 @@ class RoomBackgroundBridge {
       // The user can continue using the in-app bubble.
     }
   }
+
+  static Future<Map<String, dynamic>?> consumePendingRoom() async {
+    try {
+      final value = await _channel.invokeMethod<dynamic>('consumePendingRoom');
+      if (value is Map) return Map<String, dynamic>.from(value);
+    } on MissingPluginException {
+      // No-op on unsupported platforms.
+    } on PlatformException {
+      // A pending overlay room is optional; the home screen remains usable.
+    }
+    return null;
+  }
 }

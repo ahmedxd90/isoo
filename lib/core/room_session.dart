@@ -16,6 +16,7 @@ class RoomSessionController extends ChangeNotifier {
   bool micMuted = true;
   int remoteUsers = 0;
   AudioPlayer? musicPlayer;
+  bool bubbleVisible = false;
 
   bool get isActive => room != null && engine != null;
 
@@ -34,6 +35,7 @@ class RoomSessionController extends ChangeNotifier {
     this.micMuted = micMuted;
     this.remoteUsers = remoteUsers;
     this.musicPlayer = musicPlayer;
+    bubbleVisible = true;
     notifyListeners();
   }
 
@@ -44,10 +46,13 @@ class RoomSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearBubble() {
-    room = null;
+  void hideBubble() {
+    bubbleVisible = false;
     notifyListeners();
   }
+
+  // Kept for callers from older builds; hiding must not destroy the session.
+  void clearBubble() => hideBubble();
 
   bool isSameRoom(String id) => roomId == id;
 
@@ -56,6 +61,7 @@ class RoomSessionController extends ChangeNotifier {
     engine = null;
     room = null;
     roomId = null;
+    bubbleVisible = false;
     notifyListeners();
     return value;
   }
@@ -68,6 +74,7 @@ class RoomSessionController extends ChangeNotifier {
     musicPlayer = null;
     room = null;
     roomId = null;
+    bubbleVisible = false;
     if (value != null) {
       await value.leaveChannel();
       await value.release();

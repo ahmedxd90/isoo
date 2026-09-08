@@ -55,7 +55,7 @@ class RoomMiniBubble extends StatefulWidget {
 }
 
 class _RoomMiniBubbleState extends State<RoomMiniBubble>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _session = RoomSessionController.instance;
   Offset _dragOffset = Offset.zero;
   late final AnimationController _waveController = AnimationController(
@@ -63,15 +63,19 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     duration: const Duration(milliseconds: 900),
   )..repeat();
   bool _opening = false;
+  bool _checkingPending = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _session.addListener(_changed);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openPendingRoom());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _waveController.dispose();
     _session.removeListener(_changed);
     super.dispose();
@@ -82,9 +86,69 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final room = _session.room;
+    if (room == null || _session.engine == null || !_session.bubbleVisible) {
+      return;
+    }
+    if (state == AppLifecycleState.paused) {
+      unawaited(
+        RoomBackgroundBridge.start(
+          roomId: _session.roomId ?? room['id']?.toString() ?? '',
+          roomName: room['name']?.toString() ?? 'غرفة SAKI',
+          imageUrl: room['image_url']?.toString(),
+        ),
+      );
+    } else if (state == AppLifecycleState.resumed) {
+      unawaited(RoomBackgroundBridge.stop());
+      unawaited(_openPendingRoom());
+    }
+  }
+
+  Future<void> _openPendingRoom() async {
+    if (_checkingPending) return;
+    _checkingPending = true;
+    await Future<void>.delayed(const Duration(milliseconds: 1800));
+    try {
+      if (!mounted || _opening) return;
+      final pending = await RoomBackgroundBridge.consumePendingRoom();
+      if (pending == null) return;
+      final roomId = pending['roomId']?.toString();
+      if (roomId == null || roomId.isEmpty || !mounted) return;
+      final current = _session.room;
+      if (current != null && _session.isSameRoom(roomId)) {
+        _session.hideBubble();
+        await RoomBackgroundBridge.stop();
+        if (!mounted) return;
+        await Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute(
+            builder: (_) =>
+                RoomDetailPage(room: Map<String, dynamic>.from(current)),
+          ),
+        );
+        return;
+      }
+      final room = <String, dynamic>{
+        'id': roomId,
+        'room_id': pending['roomNumber']?.toString() ?? '',
+        'name': pending['roomName']?.toString() ?? 'غرفة SAKI',
+        'image_url': pending['imageUrl']?.toString() ?? '',
+      };
+      await Navigator.of(
+        context,
+        rootNavigator: true,
+      ).push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
+    } finally {
+      _checkingPending = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final room = _session.room;
-    if (room == null || _session.engine == null) return const SizedBox.shrink();
+    if (!_session.bubbleVisible || room == null || _session.engine == null) {
+      return const SizedBox.shrink();
+    }
     final image = room['image_url'] as String?;
     return Positioned(
       right: 16,
@@ -100,15 +164,19 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
             final current = _session.room;
             if (current == null) return;
             setState(() => _opening = true);
+            _session.hideBubble();
             await RoomBackgroundBridge.stop();
             if (!context.mounted) return;
-            await Navigator.of(context, rootNavigator: true).push(
-              MaterialPageRoute(
-                builder: (_) =>
-                    RoomDetailPage(room: Map<String, dynamic>.from(current)),
-              ),
-            );
-            if (mounted) setState(() => _opening = false);
+            try {
+              await Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      RoomDetailPage(room: Map<String, dynamic>.from(current)),
+                ),
+              );
+            } finally {
+              if (mounted) setState(() => _opening = false);
+            }
           },
           child: Container(
             width: 78,

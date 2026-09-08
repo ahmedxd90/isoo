@@ -1222,7 +1222,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       final session = RoomSessionController.instance;
       _isOnSeat = session.isOnSeat;
       _micMuted = session.micMuted;
-      RoomSessionController.instance.clearBubble();
+      RoomSessionController.instance.hideBubble();
       RoomBackgroundBridge.stop();
     }
     _join();
@@ -1364,11 +1364,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       remoteUsers: _remoteUsers.length,
       musicPlayer: _musicPlayer,
     );
-    RoomBackgroundBridge.start(
-      roomId: _roomId,
-      roomName: widget.room['name'] as String? ?? 'غرفة SAKI',
-      imageUrl: widget.room['image_url'] as String?,
-    );
+    // The in-app card is the only bubble while the app is visible. The
+    // Android overlay is started by RoomMiniBubble only after the app pauses.
     _joined = false;
     Navigator.of(context).pop();
   }

@@ -10,6 +10,28 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "saki/room_background"
+    private var pendingRoom: HashMap<String, String>? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        rememberPendingRoom(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        rememberPendingRoom(intent)
+    }
+
+    private fun rememberPendingRoom(intent: Intent?) {
+        val roomId = intent?.getStringExtra(RoomOverlayService.EXTRA_ROOM_ID).orEmpty()
+        if (roomId.isBlank()) return
+        pendingRoom = hashMapOf(
+            "roomId" to roomId,
+            "roomName" to intent?.getStringExtra(RoomOverlayService.EXTRA_ROOM_NAME).orEmpty(),
+            "imageUrl" to intent?.getStringExtra(RoomOverlayService.EXTRA_IMAGE_URL).orEmpty(),
+        )
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -49,6 +71,11 @@ class MainActivity : FlutterActivity() {
                             )
                         }
                         result.success(null)
+                    }
+                    "consumePendingRoom" -> {
+                        val value = pendingRoom
+                        pendingRoom = null
+                        result.success(value)
                     }
                     else -> result.notImplemented()
                 }
