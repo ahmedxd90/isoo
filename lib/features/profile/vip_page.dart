@@ -64,12 +64,16 @@ class _VipPageState extends State<VipPage> {
 
   Future<void> _load() async {
     try {
-      final result = await Future.wait<dynamic>([
-        _service.myProfile(),
-        _service.accountModules(),
-      ]);
+      final profile = await _service.myProfile() ?? <String, dynamic>{};
+      Map<String, dynamic> account = {};
+      // بيانات الملف هي الأساس لعرض VIP. تعطل وحدة الحساب لا يجب أن يمنع
+      // فتح الصفحة، خصوصًا للمستخدمين الذين لم يُنشأ لهم سجل الحساب بعد.
+      try {
+        account = await _service.accountModules();
+      } catch (_) {
+        account = {};
+      }
       if (!mounted) return;
-      final profile = result[0] as Map<String, dynamic>? ?? {};
       final expiry = DateTime.tryParse(
         profile['vip_expires_at']?.toString() ?? '',
       );
@@ -78,7 +82,7 @@ class _VipPageState extends State<VipPage> {
           : 0;
       setState(() {
         _profile = profile;
-        _account = Map<String, dynamic>.from(result[1] as Map);
+        _account = account;
         _selected = active.clamp(1, 7);
         _loading = false;
       });

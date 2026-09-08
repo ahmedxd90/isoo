@@ -9,7 +9,6 @@ import '../../shared/widgets/saki_widgets.dart';
 import '../profile/user_profile_page.dart';
 
 const _reelTeal = Color(0xFF2DD4BF);
-const _reelBg = Color(0xFF0D1117);
 
 class ReelsPage extends StatefulWidget {
   const ReelsPage({super.key, this.visible = true});

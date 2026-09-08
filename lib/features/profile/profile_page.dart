@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/saki_service.dart';
 import 'wallet_page.dart';
 import 'vip_page.dart';
+import 'user_settings_page.dart';
 import 'super_admin_page.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
@@ -34,9 +35,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _profile;
   Map<String, int> _stats = {};
   Map<String, dynamic> _modules = {};
-  List<Map<String, dynamic>> _posts = [];
-  List<Map<String, dynamic>> _reels = [];
-  final int _tab = 0;
   bool _loading = true;
   bool _isSuperAdmin = false;
 
@@ -64,8 +62,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ? null
             : {...base, 'family_badge': results[5] as Map<String, dynamic>?};
         _stats = results[1] as Map<String, int>;
-        _posts = List<Map<String, dynamic>>.from(results[2] as List);
-        _reels = List<Map<String, dynamic>>.from(results[3] as List);
         _modules = Map<String, dynamic>.from(results[4] as Map);
       });
       final isSuperAdmin = await SakiService.instance.isSuperAdmin();
@@ -163,11 +159,10 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
     if (title == 'الإعدادات') {
-      final changed = await showModalBottomSheet<bool>(
-        context: context,
-        backgroundColor: Colors.transparent,
-        isScrollControlled: true,
-        builder: (_) => SettingsSheet(modules: _modules),
+      final changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => UserSettingsPage(profile: _profile ?? const {}),
+        ),
       );
       if (changed == true) _load();
       return;
@@ -532,44 +527,6 @@ class _AvatarImage extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.icon,
-    required this.text,
-    required this.color,
-    required this.background,
-  });
-  final FaIconData icon;
-  final String text;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: color.withValues(alpha: .18)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FaIcon(icon, size: 10, color: color),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class _ActionTile extends StatelessWidget {
   const _ActionTile({
     required this.icon,
@@ -736,137 +693,6 @@ class _MenuCard extends StatelessWidget {
   }
 }
 
-class _ProfileTab extends StatelessWidget {
-  const _ProfileTab({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsetsDirectional.only(end: 8),
-    child: ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      selectedColor: _orangeSoft,
-      labelStyle: TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: selected ? _orange : _muted,
-      ),
-      side: BorderSide(
-        color: selected ? _orange.withValues(alpha: .25) : _line,
-      ),
-    ),
-  );
-}
-
-class _ProfileGrid extends StatelessWidget {
-  const _ProfileGrid({
-    required this.posts,
-    required this.reels,
-    required this.tab,
-  });
-  final List<Map<String, dynamic>> posts;
-  final List<Map<String, dynamic>> reels;
-  final int tab;
-
-  @override
-  Widget build(BuildContext context) {
-    final tiles = <Widget>[];
-    if (tab == 0 || tab == 2) {
-      for (final post in posts) {
-        final media = List<Map<String, dynamic>>.from(
-          post['post_media'] ?? const [],
-        );
-        final path = media.isEmpty
-            ? null
-            : media.first['storage_path'] as String?;
-        final url = path == null
-            ? null
-            : SakiService.instance.client.storage
-                  .from('posts')
-                  .getPublicUrl(path);
-        tiles.add(_MediaTile(url: url, icon: FontAwesomeIcons.fileLines));
-      }
-    }
-    if (tab == 1 || tab == 2) {
-      for (final reel in reels) {
-        tiles.add(
-          _MediaTile(
-            url: reel['video_url'] as String?,
-            icon: FontAwesomeIcons.play,
-          ),
-        );
-      }
-    }
-    if (tiles.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _line),
-        ),
-        child: const Column(
-          children: [
-            FaIcon(FontAwesomeIcons.images, color: _muted, size: 24),
-            SizedBox(height: 8),
-            Text(
-              'لا توجد وسائط بعد',
-              style: TextStyle(fontWeight: FontWeight.w800, color: _ink),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'ستظهر منشوراتك وReels هنا.',
-              style: TextStyle(color: _muted, fontSize: 12),
-            ),
-          ],
-        ),
-      );
-    }
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 6,
-      mainAxisSpacing: 6,
-      childAspectRatio: .86,
-      children: tiles,
-    );
-  }
-}
-
-class _MediaTile extends StatelessWidget {
-  const _MediaTile({required this.url, required this.icon});
-  final String? url;
-  final FaIconData icon;
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(14),
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        if (url != null && url!.isNotEmpty)
-          Image.network(
-            url!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const ColoredBox(color: _orangeSoft),
-          )
-        else
-          const ColoredBox(color: _orangeSoft),
-        Center(child: FaIcon(icon, color: _orange, size: 22)),
-      ],
-    ),
-  );
-}
-
 class ModuleSheet extends StatelessWidget {
   const ModuleSheet({super.key, required this.type, required this.modules});
   final String type;
@@ -990,7 +816,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
         SwitchListTile.adaptive(
           value: _notifications,
           onChanged: (value) => setState(() => _notifications = value),
-          activeColor: _orange,
+          activeThumbColor: _orange,
           title: const Text(
             'الإشعارات',
             style: TextStyle(fontWeight: FontWeight.w800),
@@ -1003,7 +829,7 @@ class _SettingsSheetState extends State<SettingsSheet> {
         SwitchListTile.adaptive(
           value: _privacy,
           onChanged: (value) => setState(() => _privacy = value),
-          activeColor: _cyan,
+          activeThumbColor: _cyan,
           title: const Text(
             'حساب خاص',
             style: TextStyle(fontWeight: FontWeight.w800),

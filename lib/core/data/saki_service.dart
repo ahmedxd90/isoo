@@ -1052,6 +1052,19 @@ class SakiService {
         .eq('blocked_id', userId);
   }
 
+  Future<List<Map<String, dynamic>>> blockedUsers() async {
+    final rows = await client
+        .from('user_blocks')
+        .select('blocked_id,profiles:blocked_id(id,username,avatar_url)')
+        .eq('blocker_id', uid)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> deleteOwnChatMessages() async {
+    await client.from('messages').delete().eq('sender_id', uid);
+  }
+
   Future<void> reportUser(
     String userId,
     String category, {

@@ -6,7 +6,6 @@ import '../../shared/widgets/saki_widgets.dart';
 const _giftOrange = Color(0xFFFF8A3D);
 const _giftCyan = Color(0xFF32D7FF);
 const _giftViolet = Color(0xFF9B6CFF);
-const _giftPanel = Color(0xE6141422);
 
 class RoomGiftsSheet extends StatefulWidget {
   const RoomGiftsSheet({
@@ -474,32 +473,6 @@ class _BalanceBadge extends StatelessWidget {
         fontSize: 11,
         fontWeight: FontWeight.w900,
       ),
-    ),
-  );
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.title, required this.count});
-  final String title;
-  final int count;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(18, 4, 18, 7),
-    child: Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          '$count',
-          style: const TextStyle(color: Colors.white38, fontSize: 11),
-        ),
-      ],
     ),
   );
 }

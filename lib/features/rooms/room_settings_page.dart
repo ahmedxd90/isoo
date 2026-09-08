@@ -384,36 +384,6 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   }
 }
 
-class _SettingTile extends StatelessWidget {
-  const _SettingTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    elevation: 0,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(12),
-      leading: CircleAvatar(
-        backgroundColor: _cyan.withValues(alpha: .13),
-        child: Icon(icon, color: _cyan),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: onTap,
-    ),
-  );
-}
-
 class SeatCountPage extends StatelessWidget {
   const SeatCountPage({super.key, required this.selected});
   final int selected;
@@ -553,6 +523,7 @@ class _RoomBackgroundPageState extends State<RoomBackgroundPage> {
 
   Future<void> _upload() async {
     final p = await widget.service.myProfile();
+    if (!mounted) return;
     final vip = (p?['vip_level'] as num?)?.toInt() ?? 0;
     if (vip < 5) {
       ScaffoldMessenger.of(context).showSnackBar(

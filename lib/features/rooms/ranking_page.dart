@@ -4,7 +4,6 @@ import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _ink = Color(0xFF171426);
-const _violet = Color(0xFF6D4AFF);
 const _gold = Color(0xFFF3B83F);
 const _pink = Color(0xFFE9578F);
 const _cyan = Color(0xFF22C7D7);

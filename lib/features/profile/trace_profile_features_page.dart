@@ -293,11 +293,10 @@ class _AgencyFeatureState extends State<AgencyFeature> {
                   'agency_agent_id': controller.text.trim(),
                   'agency_status': 'pending',
                 });
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم حفظ طلب الوكالة')),
-                  );
-                }
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم حفظ طلب الوكالة')),
+                );
               },
               child: const Text('إرسال'),
             ),
@@ -373,11 +372,10 @@ class _FamilyFeatureState extends State<FamilyFeature> {
                     'family_name': controller.text.trim(),
                     'family_status': 'active',
                   });
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم حفظ بيانات العائلة')),
-                    );
-                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم حفظ بيانات العائلة')),
+                  );
                 },
                 child: const Text('حفظ'),
               ),

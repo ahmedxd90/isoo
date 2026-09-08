@@ -26,7 +26,6 @@ import '../../shared/widgets/saki_widgets.dart';
 
 const _roomPrimary = Color(0xFF656BF9);
 const _roomSecondary = Color(0xFF8E91FF);
-const _roomAccent = Color(0xFFF59E0B);
 const _roomTrophyGold = Color(0xFFF3B83F);
 const _roomTrendOrange = Color(0xFFFF6B35);
 const _roomBg = Color(0xFFF7F7F7);
@@ -531,90 +530,6 @@ class _AnimatedTrophyButtonState extends State<_AnimatedTrophyButton>
           fit: BoxFit.contain,
         ),
       ),
-    ),
-  );
-}
-
-class _RoomRankings extends StatelessWidget {
-  const _RoomRankings({required this.onTap});
-  final void Function(String, FaIconData) onTap;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _RankingItem(
-          icon: FontAwesomeIcons.layerGroup,
-          title: 'ترتيب الثروة',
-          colors: const [Color(0xFFFFF7CD), Color(0xFFFCD34D)],
-          onTap: () => onTap('ترتيب الثروة', FontAwesomeIcons.layerGroup),
-        ),
-        _RankingItem(
-          icon: FontAwesomeIcons.heart,
-          title: 'ترتيب السحر',
-          colors: const [Color(0xFFFCE7F3), Color(0xFFF9A8D4)],
-          onTap: () => onTap('ترتيب السحر', FontAwesomeIcons.heart),
-        ),
-        _RankingItem(
-          icon: FontAwesomeIcons.crown,
-          title: 'ترتيب الغرف',
-          colors: const [Color(0xFFEDE9FE), Color(0xFFC4B5FD)],
-          onTap: () => onTap('ترتيب الغرف', FontAwesomeIcons.crown),
-        ),
-      ],
-    ),
-  );
-}
-
-class _RankingItem extends StatelessWidget {
-  const _RankingItem({
-    required this.icon,
-    required this.title,
-    required this.colors,
-    required this.onTap,
-  });
-  final FaIconData icon;
-  final String title;
-  final List<Color> colors;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Column(
-      children: [
-        Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: colors,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(17),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(child: FaIcon(icon, color: Colors.white, size: 26)),
-        ),
-        const SizedBox(height: 7),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF374151),
-          ),
-        ),
-      ],
     ),
   );
 }
@@ -1193,7 +1108,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _busy = false;
   bool _followed = false;
   RtcEngine? _engine;
-  bool _audioJoined = false;
   bool _isOnSeat = false;
   bool _micMuted = true;
   bool _listenMuted = false;
@@ -1207,7 +1121,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final Set<int> _remoteUsers = <int>{};
   late int _liveSeatCount;
   String? _liveBackgroundUrl;
-  bool _minimized = false;
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
   List<Map<String, dynamic>> _roomMembers = [];
@@ -1391,9 +1304,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
       engine.registerEventHandler(
         RtcEngineEventHandler(
-          onJoinChannelSuccess: (_, _) {
-            if (mounted) setState(() => _audioJoined = true);
-          },
+          onJoinChannelSuccess: (_, _) {},
           onUserJoined: (_, remoteUid, _) {
             if (mounted) setState(() => _remoteUsers.add(remoteUid));
             RoomSessionController.instance.updateVoiceState(
@@ -1439,7 +1350,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   void _minimizeRoom() {
     final engine = _engine;
     if (engine == null) return;
-    _minimized = true;
     RoomSessionController.instance.minimize(
       room: widget.room,
       engine: engine,
@@ -1817,7 +1727,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     child: FilledButton.icon(
                       onPressed: () async {
                         await _service.toggleRoomFollow(_roomId, _followed);
-                        if (mounted) setState(() => _followed = !_followed);
+                        if (!mounted) return;
+                        setState(() => _followed = !_followed);
                         Navigator.pop(context);
                       },
                       icon: Icon(_followed ? Icons.check : Icons.add),
@@ -1891,6 +1802,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             profile['gender']?.toString() == 'ذكر')
         ? '♂'
         : '♀';
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -2312,19 +2224,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     ),
   );
 
-  Widget _userAction(String label, IconData icon, VoidCallback action) =>
-      ListTile(
-        leading: Icon(icon, color: Colors.amberAccent),
-        title: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        onTap: action,
-      );
-
   Future<Duration?> _banDuration() => showModalBottomSheet<Duration?>(
     context: context,
     backgroundColor: const Color(0xFF24131A),
@@ -2676,10 +2575,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _messageSnack('نحتاج إذن الوصول إلى ملفات الصوت لاختيار الموسيقى.');
       return;
     }
-    final result = await FilePicker.pickFiles(
-      type: FileType.audio,
-      allowMultiple: true,
-    );
+    final result = await FilePicker.pickFiles(type: FileType.audio);
     for (final file in result) {
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) continue;
@@ -2728,6 +2624,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _showRoomTools() async {
     final owner = widget.room['owner_id'] == _service.uid;
     final moderator = owner || await _service.isRoomModerator(_roomId);
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF3D0B12),
@@ -3085,8 +2982,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         : backgroundUrl == 'free://sunset'
         ? const [Color(0xFFF97316), Color(0xFFDB2777), Color(0xFF4A0E17)]
         : const [Color(0xFF4A0E17), Color(0xFF8A1C30), Color(0xFF2A080C)];
-    return WillPopScope(
-      onWillPop: () async => await _confirmExit(),
+    final navigator = Navigator.of(context);
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmExit() && mounted) navigator.pop();
+      },
       child: Scaffold(
         backgroundColor: const Color(0xFF4A0E17),
         body: Stack(
@@ -3191,7 +3093,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           IconButton(
                             onPressed: () async {
                               if (await _confirmExit() && mounted) {
-                                Navigator.pop(context);
+                                navigator.pop();
                               }
                             },
                             icon: const Icon(

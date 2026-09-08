@@ -12,8 +12,6 @@ import '../../core/data/saki_service.dart';
 import '../../core/room_session.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
-const _navTeal = Color(0xFF2DD4BF);
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -79,7 +77,6 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble> {
     final room = _session.room;
     if (room == null || _session.engine == null) return const SizedBox.shrink();
     final image = room['image_url'] as String?;
-    final title = room['name'] as String? ?? 'غرفة SAKI';
     return Positioned(
       right: 16,
       bottom: 92,

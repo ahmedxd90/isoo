@@ -506,9 +506,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     try {
       if (action == 'gold') {
         final c = TextEditingController();
+        if (!mounted) return;
         await showDialog(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text('إضافة ذهب'),
             content: TextField(
               controller: c,
@@ -521,7 +522,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     saki,
                     int.parse(c.text),
                   );
-                  if (context.mounted) Navigator.pop(context);
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('حفظ'),
               ),
@@ -538,9 +540,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         );
       } else if (action == 'id') {
         final c = TextEditingController();
+        if (!mounted) return;
         await showDialog(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dialogContext) => AlertDialog(
             title: const Text('Saki ID الجديد'),
             content: TextField(
               controller: c,
@@ -553,7 +556,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     user['id'] as String,
                     int.parse(c.text),
                   );
-                  if (context.mounted) Navigator.pop(context);
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text('حفظ'),
               ),
@@ -628,14 +632,6 @@ class AdminGiftsPage extends StatefulWidget {
 
 class _AdminGiftsPageState extends State<AdminGiftsPage> {
   List<Map<String, dynamic>> _gifts = [];
-  static const _categories = {
-    'عامة': 'general',
-    'هدايا الحظ': 'luck',
-    'المشاهير': 'famous',
-    'والدول': 'countries',
-    'CP': 'cp',
-    'VIP فقط': 'vip',
-  };
 
   @override
   void initState() {
@@ -655,20 +651,6 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
   void _snack(String value) => ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(value.replaceFirst('Exception: ', ''))),
   );
-
-  Future<PlatformFile?> _pickFile(List<String> extensions) async {
-    await [Permission.photos, Permission.videos, Permission.storage].request();
-    // FileType.custom can hide unknown MIME types such as SVGA on Android.
-    // Open the native all-files picker and validate the extension ourselves.
-    final file = await FilePicker.pickFile(type: FileType.any);
-    if (file == null) return null;
-    final extension = file.extension?.toLowerCase();
-    if (extension == null || !extensions.contains(extension)) {
-      _snack('نوع الملف غير مدعوم. المسموح: ${extensions.join('، ')}');
-      return null;
-    }
-    return file;
-  }
 
   Future<void> _add() async {
     final saved = await Navigator.of(context).push<bool>(
@@ -735,6 +717,7 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
               ),
               IconButton(
                 onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (_) => AlertDialog(
@@ -760,21 +743,17 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
                       g['id'] as String,
                     );
                     await _load();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'تم حذف الهدية من قاعدة البيانات بنجاح',
-                          ),
-                        ),
-                      );
-                    }
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('تم حذف الهدية من قاعدة البيانات بنجاح'),
+                      ),
+                    );
                   } catch (error) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تعذر حذف الهدية: $error')),
-                      );
-                    }
+                    if (!mounted) return;
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('تعذر حذف الهدية: $error')),
+                    );
                   }
                 },
                 icon: const Icon(
