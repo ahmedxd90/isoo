@@ -192,11 +192,12 @@ class _SakiWheelGameSheetState extends State<SakiWheelGameSheet>
       });
       _startClock();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _message = e.toString().replaceFirst('Exception: ', '');
         });
+      }
     }
   }
 
@@ -216,11 +217,12 @@ class _SakiWheelGameSheetState extends State<SakiWheelGameSheet>
           final r = await widget.service.sakiWheelResolve(
             (_round!['id'] as num).toInt(),
           );
-          if (mounted)
+          if (mounted) {
             setState(() {
               _round = r;
               _winner = r['winning_food'] as String?;
             });
+          }
         } catch (_) {}
       } else if (_round!['status'] == 'settled' ||
           (_round!['status'] == 'result' && left <= 0)) {
@@ -251,14 +253,16 @@ class _SakiWheelGameSheetState extends State<SakiWheelGameSheet>
         foodKey: key,
         amount: _coin,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _bets[key] = (_bets[key] ?? 0) + _coin;
           _message = 'تم تسجيل رهان $_coin ذهب';
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _message = e.toString().replaceFirst('Exception: ', ''));
+      }
     }
   }
 

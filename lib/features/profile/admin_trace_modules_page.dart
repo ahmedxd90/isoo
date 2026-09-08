@@ -145,21 +145,23 @@ class _AdminRecordsScaffold extends StatelessWidget {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: future,
       builder: (_, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting)
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
-        if (snapshot.hasError)
+        }
+        if (snapshot.hasError) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Text('تعذر تحميل البيانات: ${snapshot.error}'),
             ),
           );
+        }
         final rows = snapshot.data ?? const <Map<String, dynamic>>[];
         if (rows.isEmpty) return Center(child: Text(empty));
         return ListView.separated(
           padding: const EdgeInsets.all(14),
           itemCount: rows.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (_, i) => itemBuilder(rows[i]),
         );
       },

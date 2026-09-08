@@ -246,7 +246,7 @@ class _VipUsernameState extends State<VipUsername>
         : const [Color(0xFFFFE082), Color(0xFFD4AF37)];
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) => Row(
+      builder: (_, _) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(

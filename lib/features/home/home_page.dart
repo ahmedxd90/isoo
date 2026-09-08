@@ -343,7 +343,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
                             active ? item.$2 : item.$1,
                             width: active ? 25 : 22,
                             height: active ? 25 : 22,
-                            errorBuilder: (_, __, ___) => FaIcon(
+                            errorBuilder: (_, _, _) => FaIcon(
                               FontAwesomeIcons.circle,
                               color: active
                                   ? const Color(0xFF656BF9)

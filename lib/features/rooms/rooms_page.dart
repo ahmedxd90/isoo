@@ -76,10 +76,11 @@ class _RoomsPageState extends State<RoomsPage> {
         });
       }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تعذر تحميل الغرف من Supabase')),
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -306,25 +307,25 @@ class _TrendCountryBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       scrollDirection: Axis.horizontal,
       itemCount: countries.length + 1,
-      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      separatorBuilder: (_, _) => const SizedBox(width: 8),
       itemBuilder: (_, index) {
         if (index == 0) {
           return _TrendPill(
             selected: selected == 'الترند',
             onTap: () => onSelected('الترند'),
-            child: const _TrendFlame(),
             label: 'الترند',
+            child: const _TrendFlame(),
           );
         }
         final country = countries[index - 1];
         return _TrendPill(
           selected: selected == country,
           onTap: () => onSelected(country),
+          label: country,
           child: Text(
             _flagForCountry(country),
             style: const TextStyle(fontSize: 22),
           ),
-          label: country,
         );
       },
     ),
@@ -696,7 +697,7 @@ class _RoomBannerCarouselState extends State<RoomBannerCarousel> {
                   Image.network(
                     image,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const DecoratedBox(
+                    errorBuilder: (_, _, _) => const DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [_roomPrimary, _roomSecondary],
@@ -830,7 +831,7 @@ class _ReferenceRoomCard extends StatelessWidget {
                         : Image.network(
                             image,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const DecoratedBox(
+                            errorBuilder: (_, _, _) => const DecoratedBox(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [_roomPrimary, _roomSecondary],
@@ -1060,7 +1061,7 @@ class _ReferenceWaveState extends State<_ReferenceWave>
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _controller,
-    builder: (_, __) => Row(
+    builder: (_, _) => Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: List.generate(4, (index) {
         final height = 3 + (index.isEven ? 7 : 12) * (0.35 + _controller.value);
@@ -1117,7 +1118,7 @@ class _RoomWaveState extends State<_RoomWave>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) {
+      builder: (_, _) {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: List.generate(3, (index) {
@@ -1377,8 +1378,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       final data = Map<String, dynamic>.from(response.data as Map);
       final appId = data['appId'] as String?;
       final token = data['token'] as String?;
-      if (appId == null || token == null || appId.isEmpty || token.isEmpty)
+      if (appId == null || token == null || appId.isEmpty || token.isEmpty) {
         return;
+      }
       final engine = createAgoraRtcEngine();
       _engine = engine;
       await engine.initialize(
@@ -1389,22 +1391,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
       engine.registerEventHandler(
         RtcEngineEventHandler(
-          onJoinChannelSuccess: (_, __) {
+          onJoinChannelSuccess: (_, _) {
             if (mounted) setState(() => _audioJoined = true);
           },
-          onUserJoined: (_, remoteUid, __) {
+          onUserJoined: (_, remoteUid, _) {
             if (mounted) setState(() => _remoteUsers.add(remoteUid));
             RoomSessionController.instance.updateVoiceState(
               remoteUsers: _remoteUsers.length,
             );
           },
-          onUserOffline: (_, remoteUid, __) {
+          onUserOffline: (_, remoteUid, _) {
             if (mounted) setState(() => _remoteUsers.remove(remoteUid));
             RoomSessionController.instance.updateVoiceState(
               remoteUsers: _remoteUsers.length,
             );
           },
-          onTokenPrivilegeWillExpire: (_, __) => _refreshRoomToken(),
+          onTokenPrivilegeWillExpire: (_, _) => _refreshRoomToken(),
         ),
       );
       await engine.setClientRole(role: ClientRoleType.clientRoleAudience);
@@ -1642,8 +1644,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ]);
       if (mounted) {
         setState(() {
-          _followed = results[0] as bool;
-          _isModerator = results[1] as bool;
+          _followed = results[0];
+          _isModerator = results[1];
         });
       }
       final ranking = await _service.roomGiftRanking(_roomId, 'يومي');
@@ -1687,8 +1689,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _service.sendRoomMessage(_roomId, body);
     } catch (error) {
       _removeOptimisticMessage(optimistic);
-      if (mounted)
+      if (mounted) {
         _messageSnack(error.toString().replaceFirst('Exception: ', ''));
+      }
     }
   }
 
@@ -1725,7 +1728,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: .70),
       transitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (_, __, ___) => SafeArea(
+      pageBuilder: (_, _, _) => SafeArea(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -2206,8 +2209,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           ),
                           _adminIcon(Icons.block_rounded, 'حظر', () async {
                             final d = await _banDuration();
-                            if (d != null)
+                            if (d != null) {
                               await _service.roomBan(_roomId, userId, d);
+                            }
                             if (mounted) Navigator.pop(context);
                           }),
                         ],
@@ -2658,11 +2662,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       payload: {'action': 'stop'},
     );
     await _musicPlayer.stop();
-    if (mounted)
+    if (mounted) {
       setState(() {
         _musicPlaying = false;
         _musicOwnerId = null;
       });
+    }
   }
 
   Future<void> _uploadRoomMusic() async {
@@ -2675,7 +2680,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       type: FileType.audio,
       allowMultiple: true,
     );
-    if (result == null) return;
     for (final file in result) {
       final bytes = await file.readAsBytes();
       if (bytes.isEmpty) continue;
@@ -3048,7 +3052,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
-    for (final timer in _roomEmojiTimers.values) timer.cancel();
+    for (final timer in _roomEmojiTimers.values) {
+      timer.cancel();
+    }
     _roomSettingsSubscription?.cancel();
     _presenceTimer?.cancel();
     if (_musicPlaying) {
@@ -3184,8 +3190,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           ),
                           IconButton(
                             onPressed: () async {
-                              if (await _confirmExit() && mounted)
+                              if (await _confirmExit() && mounted) {
                                 Navigator.pop(context);
+                              }
                             },
                             icon: const Icon(
                               Icons.close_rounded,
@@ -3483,8 +3490,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               latestGift['id'] != _shownGiftMessageId) {
                             final gift = Map<String, dynamic>.from(latestGift);
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted || gift['id'] == _shownGiftMessageId)
+                              if (!mounted ||
+                                  gift['id'] == _shownGiftMessageId) {
                                 return;
+                              }
                               setState(() {
                                 _shownGiftMessageId = gift['id']?.toString();
                                 _activeGiftMessage = gift;
@@ -3993,7 +4002,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             width: 72,
             height: 72,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Text(
+            errorBuilder: (_, _, _) => Text(
               payload['icon'] as String? ?? '🎁',
               style: const TextStyle(fontSize: 48),
             ),
@@ -4300,10 +4309,11 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       );
       if (mounted) Navigator.of(context).pop(room);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = error.toString().replaceFirst('Exception: ', ''),
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -4334,7 +4344,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
           Image.network(
             'https://images.unsplash.com/photo-1534880606858-29b0e8a24e8d?q=80&w=1000&auto=format&fit=crop',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
           ),
           Container(color: const Color.fromRGBO(15, 10, 5, .78)),
           SafeArea(
@@ -4615,7 +4625,7 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
         : const [Color(0xFF38BDF8), Color(0xFF2563EB), Color(0xFF38BDF8)];
     return AnimatedBuilder(
       animation: _controller,
-      builder: (_, __) {
+      builder: (_, _) {
         final size = 56 + (_controller.value * 5);
         return Container(
           width: size,
@@ -4783,7 +4793,7 @@ class RoomMusicSheet extends StatelessWidget {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
                       itemCount: music.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 9),
+                      separatorBuilder: (_, _) => const SizedBox(height: 9),
                       itemBuilder: (_, index) {
                         final item = music[index];
                         final selected =

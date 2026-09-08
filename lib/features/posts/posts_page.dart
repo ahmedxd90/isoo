@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -171,7 +170,7 @@ class _PostsPageState extends State<PostsPage> {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
                       itemCount: _posts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 20),
+                      separatorBuilder: (_, _) => const SizedBox(height: 20),
                       itemBuilder: (_, index) =>
                           HtmlPostCard(post: _posts[index], onChanged: _load),
                     ),
@@ -284,11 +283,12 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
     try {
       await _service.togglePostLike(widget.post['id'] as String, old);
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _liked = old;
           _likes += old ? 1 : -1;
         });
+      }
     } finally {
       if (mounted) setState(() => _likeLoading = false);
     }
@@ -298,14 +298,16 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
     try {
       await _service.sharePost(widget.post['id'] as String);
       if (mounted) setState(() => _shares += 1);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم تسجيل المشاركة في Supabase')),
         );
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('تعذر تسجيل المشاركة')));
+      }
     }
   }
 
@@ -358,16 +360,19 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                       future: _service.comments(postId),
                       builder: (_, snapshot) {
                         final comments = snapshot.data ?? [];
-                        if (snapshot.connectionState == ConnectionState.waiting)
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
                           return const Center(
                             child: CircularProgressIndicator(color: _brand),
                           );
-                        if (comments.isEmpty)
+                        }
+                        if (comments.isEmpty) {
                           return const EmptyState(
                             icon: Icons.chat_bubble_outline,
                             title: 'لا توجد تعليقات',
                             subtitle: 'ابدأ الحوار الآن.',
                           );
+                        }
                         return ListView.builder(
                           itemCount: comments.length,
                           itemBuilder: (_, index) {
@@ -710,10 +715,10 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                             imageUrl: mediaUrls[index],
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            placeholder: (_, __) => const Center(
+                            placeholder: (_, _) => const Center(
                               child: CircularProgressIndicator(color: _brand),
                             ),
-                            errorWidget: (_, __, ___) => ColoredBox(
+                            errorWidget: (_, _, _) => ColoredBox(
                               color: _brandSoft,
                               child: Center(
                                 child: Image.asset(
@@ -973,7 +978,7 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _images.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (_, index) => Stack(
                       children: [
                         ClipRRect(

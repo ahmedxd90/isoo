@@ -36,16 +36,18 @@ class _ReelsPageState extends State<ReelsPage> {
       final data = await SakiService.instance.reels(
         followingOnly: _followingOnly,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _reels = data;
           _activeIndex = 0;
         });
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تعذر تحميل الريلز من Supabase')),
         );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -320,11 +322,12 @@ class _ReelCardState extends State<ReelCard> {
         old,
       );
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _liked = old;
           _likes += old ? 1 : -1;
         });
+      }
     }
   }
 
@@ -413,14 +416,16 @@ class _ReelCardState extends State<ReelCard> {
   Future<void> _share() async {
     try {
       await SakiService.instance.shareReel(widget.reel['id'] as String);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('تم تسجيل مشاركة الريلز')));
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('تعذر تسجيل المشاركة')));
+      }
     }
   }
 
@@ -698,7 +703,7 @@ class _DiscState extends State<_Disc> with SingleTickerProviderStateMixin {
           child: Image.network(
             widget.image ?? '',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const ColoredBox(
+            errorBuilder: (_, _, _) => const ColoredBox(
               color: _reelTeal,
               child: Icon(Icons.music_note, color: Colors.white, size: 20),
             ),

@@ -73,8 +73,9 @@ class _StoreEntranceOverlayState extends State<StoreEntranceOverlay>
       }
       setState(() => _video = c);
       c.addListener(() {
-        if (c.value.isInitialized && c.value.position >= c.value.duration)
+        if (c.value.isInitialized && c.value.position >= c.value.duration) {
           _finish();
+        }
       });
     } catch (_) {
       await c.dispose();
@@ -119,7 +120,7 @@ class _StoreEntranceOverlayState extends State<StoreEntranceOverlay>
         : Image.network(
             widget.product['media_url'] as String,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            errorBuilder: (_, _, _) => const SizedBox.shrink(),
           );
     final avatar = widget.profile['avatar_url'] as String?;
     final username = widget.profile['username'] ?? 'مستخدم';
@@ -295,7 +296,7 @@ class _StorePageState extends State<StorePage> {
       barrierLabel: 'تأكيد الشراء',
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 220),
-      pageBuilder: (_, __, ___) => Center(
+      pageBuilder: (_, _, _) => Center(
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -417,7 +418,7 @@ class _StorePageState extends State<StorePage> {
           ),
         ),
       ),
-      transitionBuilder: (_, animation, __, child) => ScaleTransition(
+      transitionBuilder: (_, animation, _, child) => ScaleTransition(
         scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
         child: child,
       ),
@@ -551,8 +552,9 @@ class _StorePageState extends State<StorePage> {
                   child: CircularProgressIndicator(color: _storeOrange),
                 );
               }
-              if (snap.hasError)
+              if (snap.hasError) {
                 return Center(child: Text('تعذر تحميل المتجر: ${snap.error}'));
+              }
               final items = snap.data ?? const <Map<String, dynamic>>[];
               if (items.isEmpty) {
                 return Center(
@@ -812,7 +814,7 @@ class ProductCard extends StatelessWidget {
               Image.network(
                 product['thumbnail_url'] as String,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const ColoredBox(
+                errorBuilder: (_, _, _) => const ColoredBox(
                   color: Color(0xFFE0F2FE),
                   child: Icon(
                     Icons.image_not_supported,
@@ -990,8 +992,9 @@ class _BagPageState extends State<BagPage> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (_, snap) {
-        if (!snap.hasData)
+        if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         final all = snap.data!;
         return ListView(
           padding: const EdgeInsets.all(14),
@@ -1478,19 +1481,22 @@ class _AdminStorePageState extends State<AdminStorePage> {
                               mediaUrl: mediaUrl,
                               thumbnailUrl: thumbUrl,
                             );
-                            if (dialogContext.mounted)
+                            if (dialogContext.mounted) {
                               Navigator.pop(dialogContext);
-                            if (mounted)
+                            }
+                            if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('تم رفع المنتج ونشره بنجاح'),
                                 ),
                               );
+                            }
                           } catch (e) {
-                            if (mounted)
+                            if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('فشل رفع المنتج: $e')),
                               );
+                            }
                             setDialog(() => _saving = false);
                           }
                         },

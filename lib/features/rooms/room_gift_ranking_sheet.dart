@@ -39,20 +39,22 @@ class _RoomGiftRankingSheetState extends State<RoomGiftRankingSheet> {
         widget.roomId,
         _period,
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _rows = result.rows;
           _total = result.total;
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   String _short(int value) {
-    if (value >= 1000000000000)
+    if (value >= 1000000000000) {
       return '${(value / 1000000000000).toStringAsFixed(1)}T';
+    }
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
     return '$value';

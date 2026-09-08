@@ -60,25 +60,28 @@ class _SearchPageState extends State<SearchPage> {
                 : FutureBuilder<List<Map<String, dynamic>>>(
                     future: _future,
                     builder: (_, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting)
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const SakiLoading(label: 'جاري البحث...');
-                      if (snapshot.hasError)
+                      }
+                      if (snapshot.hasError) {
                         return const EmptyState(
                           icon: Icons.cloud_off_rounded,
                           title: 'تعذر تنفيذ البحث',
                           subtitle: 'حاول مرة أخرى.',
                         );
+                      }
                       final results = snapshot.data ?? [];
-                      if (results.isEmpty)
+                      if (results.isEmpty) {
                         return const EmptyState(
                           icon: Icons.search_off_rounded,
                           title: 'لا توجد نتائج',
                           subtitle: 'جرّب كلمة بحث مختلفة.',
                         );
+                      }
                       return ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                         itemCount: results.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (_, index) =>
                             _ResultTile(result: results[index]),
                       );

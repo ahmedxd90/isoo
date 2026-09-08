@@ -563,9 +563,10 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       }
       if (mounted) _find();
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -1037,7 +1038,7 @@ class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       dropdownColor: const Color(0xFF21163B),
                       style: const TextStyle(color: Colors.white),
                       decoration: _decoration(
@@ -1101,12 +1102,14 @@ class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
                           'gif',
                           'png',
                         ]);
-                        if (mounted)
+                        if (mounted) {
                           setState(() {
                             media = picked;
-                            if (picked?.extension != null)
+                            if (picked?.extension != null) {
                               mediaType = picked!.extension!.toLowerCase();
+                            }
                           });
+                        }
                       },
                     ),
                     const SizedBox(height: 22),

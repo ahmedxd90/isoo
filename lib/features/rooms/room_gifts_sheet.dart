@@ -105,7 +105,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
         width: size,
         height: size,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) =>
+        errorBuilder: (_, _, _) =>
             Text(icon, style: TextStyle(fontSize: size * .75)),
       );
     }
@@ -246,7 +246,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                     ),
                     scrollDirection: Axis.horizontal,
                     itemCount: _recipients.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (_, index) {
                       final profile = _recipients[index];
                       final id = profile['id'].toString();

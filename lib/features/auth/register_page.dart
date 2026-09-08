@@ -47,11 +47,13 @@ class _RegisterPageState extends State<RegisterPage> {
           .from('countries')
           .select('code,name_ar,flag')
           .order('name_ar');
-      if (mounted)
+      if (mounted) {
         setState(() => _countries = List<Map<String, dynamic>>.from(data));
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'تعذر تحميل قائمة الدول من Supabase.');
+      }
     } finally {
       if (mounted) setState(() => _loadingCountries = false);
     }
@@ -213,7 +215,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _countryCode,
+                    initialValue: _countryCode,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'الدولة',
@@ -238,7 +240,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _gender,
+                    initialValue: _gender,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'الجنس',

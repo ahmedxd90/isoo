@@ -45,8 +45,9 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading)
+    if (loading) {
       return const Center(child: CircularProgressIndicator(color: _blue));
+    }
     final title =
         {
           'store': 'المتجر',
@@ -292,10 +293,11 @@ class _AgencyFeatureState extends State<AgencyFeature> {
                   'agency_agent_id': controller.text.trim(),
                   'agency_status': 'pending',
                 });
-                if (mounted)
+                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('تم حفظ طلب الوكالة')),
                   );
+                }
               },
               child: const Text('إرسال'),
             ),
@@ -342,7 +344,7 @@ class _FamilyFeatureState extends State<FamilyFeature> {
       children: [
         TraceBanner(
           image: '${_asset}my_icon_member.png',
-          title: family == null ? 'العائلة' : family,
+          title: family ?? 'العائلة',
           subtitle: 'أنشئ عائلتك أو انضم إلى عائلة',
         ),
         const SizedBox(height: 14),
@@ -371,10 +373,11 @@ class _FamilyFeatureState extends State<FamilyFeature> {
                     'family_name': controller.text.trim(),
                     'family_status': 'active',
                   });
-                  if (mounted)
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('تم حفظ بيانات العائلة')),
                     );
+                  }
                 },
                 child: const Text('حفظ'),
               ),
@@ -425,16 +428,18 @@ class _LevelFeatureState extends State<LevelFeature> {
   }
 
   String _compact(int value) {
-    if (value >= 1000000000)
+    if (value >= 1000000000) {
       return '${(value / 1000000000).toStringAsFixed(1)}B';
+    }
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
     return '$value';
   }
 
   Color _bandColor(int level, bool wealth) {
-    if (level < 10)
+    if (level < 10) {
       return wealth ? const Color(0xFFFF2E74) : const Color(0xFF9B30FF);
+    }
     const colors = [
       Color(0xFF22C55E),
       Color(0xFF3B82F6),
@@ -739,7 +744,7 @@ class TraceBanner extends StatelessWidget {
           width: 78,
           height: 78,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, _, _) =>
               const Icon(Icons.auto_awesome, color: Colors.white, size: 50),
         ),
         const SizedBox(width: 14),
@@ -799,8 +804,7 @@ class FeatureCard extends StatelessWidget {
               icon,
               width: 32,
               height: 32,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.star, color: _blue),
+              errorBuilder: (_, _, _) => const Icon(Icons.star, color: _blue),
             ),
             const SizedBox(width: 10),
             Expanded(

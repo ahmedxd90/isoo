@@ -87,8 +87,9 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
       final data = Map<String, dynamic>.from(response.data as Map);
       final appId = data['appId'] as String?;
       final token = data['token'] as String?;
-      if (appId == null || token == null || appId.isEmpty || token.isEmpty)
+      if (appId == null || token == null || appId.isEmpty || token.isEmpty) {
         throw Exception('تعذر الحصول على رمز البث من الخادم.');
+      }
       final engine = createAgoraRtcEngine();
       _engine = engine;
       await engine.initialize(
@@ -99,16 +100,16 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
       );
       engine.registerEventHandler(
         RtcEngineEventHandler(
-          onJoinChannelSuccess: (_, __) {
+          onJoinChannelSuccess: (_, _) {
             if (mounted) setState(() => _joined = true);
           },
-          onUserJoined: (_, uid, __) {
+          onUserJoined: (_, uid, _) {
             if (mounted) setState(() => _remoteUid = uid);
           },
-          onUserOffline: (_, uid, __) {
+          onUserOffline: (_, uid, _) {
             if (mounted && _remoteUid == uid) setState(() => _remoteUid = null);
           },
-          onTokenPrivilegeWillExpire: (_, __) => _renewToken(),
+          onTokenPrivilegeWillExpire: (_, _) => _renewToken(),
           onError: (code, message) {
             if (mounted) setState(() => _error = 'Agora: $code $message');
           },
@@ -129,8 +130,9 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
         ),
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      }
     }
   }
 
@@ -141,11 +143,12 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
         widget.roomId,
         'يومي',
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _members = members;
           _goldTotal = ranking.total;
         });
+      }
     } catch (_) {}
   }
 

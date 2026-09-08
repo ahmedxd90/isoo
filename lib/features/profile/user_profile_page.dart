@@ -327,14 +327,14 @@ class _ProfileHero extends StatelessWidget {
             Image.network(
               avatar!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
+              errorBuilder: (_, _, _) =>
                   const ColoredBox(color: Color(0xFF374151)),
             )
           else
             Image.asset(
               _traceLiveBackground,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const DecoratedBox(
+              errorBuilder: (_, _, _) => const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Color(0xFF334155), Color(0xFF111827)],
@@ -447,7 +447,7 @@ class _ProfileHero extends StatelessWidget {
                         : Image.network(
                             avatar!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const ColoredBox(
+                            errorBuilder: (_, _, _) => const ColoredBox(
                               color: Color(0xFF64748B),
                               child: Center(
                                 child: FaIcon(

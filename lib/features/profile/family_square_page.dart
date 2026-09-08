@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
-import '../rooms/rooms_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _familyGold = Color(0xFFFFB800);
@@ -139,7 +138,7 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: top.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     const SizedBox(width: 10),
                                 itemBuilder: (_, i) => _TopFamilyCard(
                                   family: top[i],
@@ -254,9 +253,10 @@ class _CreateFamilyPageState extends State<CreateFamilyPage> {
     setState(() => _saving = true);
     try {
       String? imageUrl;
-      if (_image != null)
+      if (_image != null) {
         imageUrl =
             (await _service.uploadFamilyImage(_image!))?['url'] as String?;
+      }
       await _service.createFamily(
         name: name,
         alias: alias,
@@ -1315,7 +1315,7 @@ class _SupportCard extends StatelessWidget {
         const SizedBox(height: 15),
         AnimatedBuilder(
           animation: animation,
-          builder: (_, __) => ClipRRect(
+          builder: (_, _) => ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: LinearProgressIndicator(
               value: progress * animation.value,
@@ -2303,12 +2303,13 @@ class _FamilySettingsPageState extends State<FamilySettingsPage> {
       ).showSnackBar(const SnackBar(content: Text('تم حفظ إعدادات العائلة')));
       Navigator.pop(context);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString().replaceFirst('Exception: ', '')),
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -2522,7 +2523,7 @@ class _FamilyJoinRequestsPageState extends State<FamilyJoinRequestsPage> {
         await _service.rejectFamilyJoin(row['id'].toString());
       }
       await _load();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -2530,13 +2531,15 @@ class _FamilyJoinRequestsPageState extends State<FamilyJoinRequestsPage> {
             ),
           ),
         );
+      }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString().replaceFirst('Exception: ', '')),
           ),
         );
+      }
     }
   }
 
@@ -2557,7 +2560,7 @@ class _FamilyJoinRequestsPageState extends State<FamilyJoinRequestsPage> {
           : ListView.separated(
               padding: const EdgeInsets.all(14),
               itemCount: _requests.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 9),
+              separatorBuilder: (_, _) => const SizedBox(height: 9),
               itemBuilder: (_, i) {
                 final row = _requests[i];
                 final p = row['profiles'] is Map

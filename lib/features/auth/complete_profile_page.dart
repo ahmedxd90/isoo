@@ -73,10 +73,11 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       );
       if (mounted) context.go('/home');
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تعذر حفظ معلوماتك. حاول مرة أخرى.')),
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -195,7 +196,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
                 ),
                 const SizedBox(height: 15),
                 DropdownButtonFormField<Map<String, dynamic>>(
-                  value: _country,
+                  initialValue: _country,
                   isExpanded: true,
                   decoration: _decoration('الدولة', Icons.public_rounded),
                   items: _countries
@@ -210,7 +211,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
                 ),
                 const SizedBox(height: 15),
                 DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   decoration: _decoration('الجنس', Icons.wc_rounded),
                   items: const [
                     DropdownMenuItem(value: 'ذكر', child: Text('ذكر')),

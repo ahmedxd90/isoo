@@ -108,7 +108,7 @@ class VipBadgeHero extends StatelessWidget {
                 width: 210,
                 height: 210,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.workspace_premium_rounded,
                   size: 150,
                   color: VipDesign.gold,

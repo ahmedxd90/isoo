@@ -100,8 +100,9 @@ class _VipPageState extends State<VipPage> {
     final active = _active,
         price = prices[_selected]!,
         balance = (_account['gold_coins'] as num?)?.toInt() ?? 0;
-    if (active > _selected)
+    if (active > _selected) {
       return _toast('لا يمكنك شراء مستوى أقل من VIP $active');
+    }
     if (balance < price) return _toast('رصيد العملات الذهبية غير كافٍ');
     final ok =
         await showDialog<bool>(
@@ -144,11 +145,12 @@ class _VipPageState extends State<VipPage> {
   Widget build(BuildContext context) {
     final active = _active,
         coins = (_account['gold_coins'] as num?)?.toInt() ?? 0;
-    if (_loading)
+    if (_loading) {
       return const Scaffold(
         backgroundColor: VipDesign.bg,
         body: Center(child: CircularProgressIndicator(color: VipDesign.gold)),
       );
+    }
     return Scaffold(
       backgroundColor: VipDesign.bg,
       body: SafeArea(

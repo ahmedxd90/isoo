@@ -77,10 +77,12 @@ class _RankingPageState extends State<RankingPage> {
               itemBuilder: (_, index) => FutureBuilder<Object>(
                 future: _load(),
                 builder: (_, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const _RankLoading();
-                  if (snapshot.hasError)
+                  }
+                  if (snapshot.hasError) {
                     return _RankEmpty(onRetry: () => setState(() {}));
+                  }
                   final rows = snapshot.data is List
                       ? List<Map<String, dynamic>>.from(snapshot.data as List)
                       : const <Map<String, dynamic>>[];

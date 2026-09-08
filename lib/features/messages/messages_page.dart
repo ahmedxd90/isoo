@@ -97,8 +97,9 @@ class _MessagesPageState extends State<MessagesPage> {
 
   Widget _body() {
     if (_loading) return const Center(child: SakiLoading());
-    if (_section == 1)
+    if (_section == 1) {
       return _FollowersView(rows: _followers, onRefresh: _load);
+    }
     if (_section == 2) return _SocialView(rows: _social, onRefresh: _load);
     return _ConversationsView(rows: _conversations, onRefresh: _load);
   }
@@ -479,11 +480,12 @@ class _FollowBackButtonState extends State<_FollowBackButton> {
   void initState() {
     super.initState();
     SakiService.instance.isFollowing(widget.userId).then((v) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _following = v;
           _loading = false;
         });
+      }
     });
   }
 
@@ -494,11 +496,12 @@ class _FollowBackButtonState extends State<_FollowBackButton> {
         : () async {
             setState(() => _loading = true);
             await SakiService.instance.toggleFollow(widget.userId, _following);
-            if (mounted)
+            if (mounted) {
               setState(() {
                 _following = !_following;
                 _loading = false;
               });
+            }
           },
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
@@ -634,11 +637,12 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _loadBlockState() async {
     final blocked = await SakiService.instance.isUserBlocked(_peerId);
     final blockedBy = await SakiService.instance.isBlockedByUser(_peerId);
-    if (mounted)
+    if (mounted) {
       setState(() {
         _blocked = blocked;
         _blockedBy = blockedBy;
       });
+    }
   }
 
   Future<void> _send() async {
@@ -659,15 +663,17 @@ class _ChatPageState extends State<ChatPage> {
     try {
       await SakiService.instance.sendMessage(widget.conversationId, body);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('$error')));
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _sending = false;
           _pending.removeWhere((x) => x['id'] == local['id']);
         });
+      }
     }
   }
 
@@ -696,9 +702,10 @@ class _ChatPageState extends State<ChatPage> {
               mediaName: image.name,
             );
           } catch (error) {
-            if (mounted)
+            if (mounted) {
               ScaffoldMessenger.of(context)
                   .showSnackBar(SnackBar(content: Text('$error')));
+            }
           }
         },
       ),
@@ -865,14 +872,16 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                   ];
                   if (rows.isEmpty &&
-                      snapshot.connectionState == ConnectionState.waiting)
+                      snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: SakiLoading());
-                  if (rows.isEmpty)
+                  }
+                  if (rows.isEmpty) {
                     return const _PremiumEmpty(
                       icon: Icons.forum_outlined,
                       title: 'ابدأ المحادثة',
                       subtitle: 'أرسل أول رسالة خاصة الآن.',
                     );
+                  }
                   return ListView.builder(
                     padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
                     itemCount: rows.length,
@@ -1012,7 +1021,7 @@ class _Bubble extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'image',
-      pageBuilder: (_, __, ___) => Scaffold(
+      pageBuilder: (_, _, _) => Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
           child: Stack(

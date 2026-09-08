@@ -56,8 +56,9 @@ class _AdminRoomEmojisState extends State<AdminRoomEmojisPage> {
           Future<void> save() async {
             setDialog(() => saving = true);
             try {
-              if (file != null)
+              if (file != null) {
                 url = await SakiService.instance.adminUploadRoomEmoji(file!);
+              }
               if (item == null) {
                 await SakiService.instance.adminCreateRoomEmoji(
                   name: name.text.trim(),
@@ -229,7 +230,7 @@ class _AdminRoomEmojisState extends State<AdminRoomEmojisPage> {
       barrierDismissible: true,
       barrierLabel: 'حذف',
       barrierColor: Colors.black54,
-      pageBuilder: (_, __, ___) => Center(
+      pageBuilder: (_, _, _) => Center(
         child: Container(
           width: MediaQuery.sizeOf(context).width * .82,
           padding: const EdgeInsets.all(18),

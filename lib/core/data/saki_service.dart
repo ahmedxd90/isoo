@@ -1273,8 +1273,9 @@ class SakiService {
       'saki_wheel_place_bet',
       params: {'p_room_id': roomId, 'p_food_key': foodKey, 'p_amount': amount},
     );
-    if (row is List && row.isNotEmpty)
+    if (row is List && row.isNotEmpty) {
       return Map<String, dynamic>.from(row.first);
+    }
     return Map<String, dynamic>.from(row as Map);
   }
 
@@ -1402,8 +1403,9 @@ class SakiService {
       final expires = mute['expires_at'] == null
           ? null
           : DateTime.tryParse(mute['expires_at'].toString());
-      if (expires == null || expires.isAfter(DateTime.now()))
+      if (expires == null || expires.isAfter(DateTime.now())) {
         throw Exception('تم كتمك في هذه الغرفة');
+      }
     }
     await client.from('room_messages').insert({
       'room_id': roomId,
@@ -2342,8 +2344,9 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> roomGiftCatalog({String? category}) async {
     var query = client.from('room_gift_catalog').select().eq('is_active', true);
-    if (category != null && category != 'bag')
+    if (category != null && category != 'bag') {
       query = query.eq('category', category);
+    }
     final rows = await query.order('sort_order').limit(100);
     return List<Map<String, dynamic>>.from(rows);
   }

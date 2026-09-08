@@ -63,10 +63,11 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
         widget.room['id'] as String,
         'settings_updated',
       );
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم حفظ إعدادات الغرفة حقيقيًا')),
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -467,11 +468,13 @@ class _BannedUsersPageState extends State<BannedUsersPage> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (_, snap) {
-        if (!snap.hasData)
+        if (!snap.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         final rows = snap.data!;
-        if (rows.isEmpty)
+        if (rows.isEmpty) {
           return const Center(child: Text('لا يوجد مستخدمون محظورون'));
+        }
         return ListView.builder(
           itemCount: rows.length,
           itemBuilder: (_, i) {
@@ -1042,11 +1045,12 @@ class _RoomModeratorsPageState extends State<RoomModeratorsPage> {
               final users = await widget.service.searchProfiles(
                 controller.text,
               );
-              if (users.isNotEmpty)
+              if (users.isNotEmpty) {
                 await widget.service.addRoomModerator(
                   widget.roomId,
                   users.first['id'] as String,
                 );
+              }
               if (dialog.mounted) Navigator.pop(dialog);
               if (mounted) setState(_reload);
             },
@@ -1071,12 +1075,13 @@ class _RoomModeratorsPageState extends State<RoomModeratorsPage> {
       builder: (_, snapshot) {
         if (!snapshot.hasData) return const SakiLoading();
         final rows = snapshot.data!;
-        if (rows.isEmpty)
+        if (rows.isEmpty) {
           return const EmptyState(
             icon: Icons.shield_outlined,
             title: 'لا يوجد مشرفون',
             subtitle: 'أضف مشرفين لإدارة الغرفة.',
           );
+        }
         return ListView.builder(
           itemCount: rows.length,
           itemBuilder: (_, index) {
@@ -1136,16 +1141,17 @@ class _RoomLogsPageState extends State<RoomLogsPage> {
       builder: (_, snapshot) {
         if (!snapshot.hasData) return const SakiLoading();
         final rows = snapshot.data!;
-        if (rows.isEmpty)
+        if (rows.isEmpty) {
           return const EmptyState(
             icon: Icons.receipt_long_outlined,
             title: 'لا توجد سجلات',
             subtitle: 'تظهر هنا تغييرات إعدادات وإدارة الغرفة.',
           );
+        }
         return ListView.separated(
           padding: const EdgeInsets.all(12),
           itemCount: rows.length,
-          separatorBuilder: (_, __) => const Divider(),
+          separatorBuilder: (_, _) => const Divider(),
           itemBuilder: (_, index) {
             final row = rows[index];
             final profile = Map<String, dynamic>.from(

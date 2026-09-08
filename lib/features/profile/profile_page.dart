@@ -36,7 +36,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic> _modules = {};
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _reels = [];
-  int _tab = 0;
+  final int _tab = 0;
   bool _loading = true;
   bool _isSuperAdmin = false;
 
@@ -181,8 +181,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading)
+    if (_loading) {
       return const Center(child: CircularProgressIndicator(color: _orange));
+    }
     final profile = _profile ?? {};
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
     final vipExpires = DateTime.tryParse(
@@ -498,7 +499,7 @@ class _AvatarImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (url == null || url!.isEmpty)
+    if (url == null || url!.isEmpty) {
       return Container(
         color: _orangeSoft,
         alignment: Alignment.center,
@@ -511,10 +512,11 @@ class _AvatarImage extends StatelessWidget {
           ),
         ),
       );
+    }
     return Image.network(
       url!,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
+      errorBuilder: (_, _, _) => Container(
         color: _orangeSoft,
         alignment: Alignment.center,
         child: Text(
@@ -709,8 +711,9 @@ class _MenuCard extends StatelessWidget {
           ),
         ),
       );
-      if (i != rows.length - 1)
+      if (i != rows.length - 1) {
         children.add(const Divider(height: 1, color: _line));
+      }
     }
     return Container(
       decoration: BoxDecoration(
@@ -793,15 +796,16 @@ class _ProfileGrid extends StatelessWidget {
       }
     }
     if (tab == 1 || tab == 2) {
-      for (final reel in reels)
+      for (final reel in reels) {
         tiles.add(
           _MediaTile(
             url: reel['video_url'] as String?,
             icon: FontAwesomeIcons.play,
           ),
         );
+      }
     }
-    if (tiles.isEmpty)
+    if (tiles.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
@@ -825,6 +829,7 @@ class _ProfileGrid extends StatelessWidget {
           ],
         ),
       );
+    }
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,
@@ -852,7 +857,7 @@ class _MediaTile extends StatelessWidget {
           Image.network(
             url!,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const ColoredBox(color: _orangeSoft),
+            errorBuilder: (_, _, _) => const ColoredBox(color: _orangeSoft),
           )
         else
           const ColoredBox(color: _orangeSoft),

@@ -27,11 +27,12 @@ class _PkBattlePageState extends State<PkBattlePage> {
   void initState() {
     super.initState();
     _sub = _service.pkBattlesStream(widget.roomId).listen((rows) {
-      if (mounted && rows.isNotEmpty)
+      if (mounted && rows.isNotEmpty) {
         setState(() {
           _battle = rows.first;
           _syncTimer();
         });
+      }
     });
   }
 
@@ -58,15 +59,17 @@ class _PkBattlePageState extends State<PkBattlePage> {
   Future<void> _run(Future<Map<String, dynamic>> Function() action) async {
     try {
       final row = await action();
-      if (mounted)
+      if (mounted) {
         setState(() {
           _battle = row;
           _error = null;
           _syncTimer();
         });
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      }
     }
   }
 

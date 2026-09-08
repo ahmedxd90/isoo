@@ -34,15 +34,15 @@ class SakiApp extends StatelessWidget {
         return null;
       },
       routes: [
-        GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
-        GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
-        GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
+        GoRoute(path: '/splash', builder: (_, _) => const SplashPage()),
+        GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+        GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
         GoRoute(
           path: '/complete-profile',
-          builder: (_, __) => const CompleteProfilePage(),
+          builder: (_, _) => const CompleteProfilePage(),
         ),
-        GoRoute(path: '/home', builder: (_, __) => const HomePage()),
-        GoRoute(path: '/banned', builder: (_, __) => const AppBannedPage()),
+        GoRoute(path: '/home', builder: (_, _) => const HomePage()),
+        GoRoute(path: '/banned', builder: (_, _) => const AppBannedPage()),
       ],
     );
     return MaterialApp.router(

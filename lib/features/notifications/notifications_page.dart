@@ -29,21 +29,23 @@ class NotificationsPage extends StatelessWidget {
       stream: SakiService.instance.notificationsStream(),
       builder: (_, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData)
+            !snapshot.hasData) {
           return const SakiLoading(label: 'جاري تحميل الإشعارات...');
+        }
         final rows = (snapshot.data ?? <Map<String, dynamic>>[])
             .where(_matches)
             .toList();
-        if (rows.isEmpty)
+        if (rows.isEmpty) {
           return const EmptyState(
             icon: Icons.notifications_none_rounded,
             title: 'لا توجد إشعارات',
             subtitle: 'ستظهر تفاعلاتك الجديدة هنا من Supabase.',
           );
+        }
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           itemCount: rows.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
           itemBuilder: (_, index) =>
               _NotificationTile(notification: rows[index]),
         );
