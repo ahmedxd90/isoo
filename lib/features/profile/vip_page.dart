@@ -18,24 +18,27 @@ class _VipPageState extends State<VipPage> {
     5: 2000000,
     6: 4000000,
     7: 8000000,
+    8: 10000000,
+    9: 12000000,
+    10: 20000000,
   };
-  static const badges = <String>[
-    'https://i.top4top.io/p_39027a3a40.png',
-    'https://g.top4top.io/p_39020jo2e1.png',
-    'https://f.top4top.io/p_39028t7ba0.png',
-    'https://h.top4top.io/p_3902xn2xq0.png',
-    'https://k.top4top.io/p_3902ysy8o0.png',
-    'https://c.top4top.io/p_3902j4t7t0.png',
-    'https://e.top4top.io/p_390251hsl0.png',
-  ];
   static const benefits = <VipBenefit>[
-    VipBenefit(Icons.verified_rounded, 'شارة VIP', 1),
-    VipBenefit(Icons.card_giftcard_rounded, 'هدية VIP', 1),
-    VipBenefit(Icons.auto_awesome_rounded, 'مقعد VIP', 2),
-    VipBenefit(Icons.directions_walk_rounded, 'مكافحة ركلة', 3),
-    VipBenefit(Icons.shield_rounded, 'مكافحة الأسود', 4),
-    VipBenefit(Icons.badge_rounded, 'اسم التدرج اللوني', 5),
+    VipBenefit(Icons.directions_walk_rounded, 'مؤثر دخول', 1),
+    VipBenefit(Icons.crop_rounded, 'إطار خاص', 1),
+    VipBenefit(Icons.card_giftcard_rounded, 'صندوق أسبوعي', 1),
+    VipBenefit(Icons.comment_rounded, 'فقاعة دردشة', 2),
+    VipBenefit(Icons.auto_delete_rounded, 'مسح الدردشة', 2),
+    VipBenefit(Icons.send_rounded, 'رسائل طائرة', 3),
+    VipBenefit(Icons.person_rounded, 'صورة متحركة', 4),
+    VipBenefit(Icons.do_not_disturb_on_rounded, 'منع الإزعاج', 5),
+    VipBenefit(Icons.public_rounded, 'إعلان عالمي', 6),
+    VipBenefit(Icons.block_rounded, 'حظر الغرباء', 7),
+    VipBenefit(Icons.admin_panel_settings_rounded, 'منع الطرد', 8),
+    VipBenefit(Icons.push_pin_rounded, 'تثبيت الغرفة', 9),
+    VipBenefit(Icons.note_alt_rounded, 'بطاقة منشور', 10),
+    VipBenefit(Icons.workspace_premium_rounded, 'إشراف خارق', 10),
   ];
+
   final _service = SakiService.instance;
   final _pages = PageController();
   Map<String, dynamic> _profile = {}, _account = {};
@@ -47,8 +50,13 @@ class _VipPageState extends State<VipPage> {
     final expiry = DateTime.tryParse(
       _profile['vip_expires_at']?.toString() ?? '',
     );
-    return expiry != null && expiry.isAfter(DateTime.now()) ? level : 0;
+    return expiry != null && expiry.isAfter(DateTime.now())
+        ? level.clamp(0, 10)
+        : 0;
   }
+
+  DateTime? get _expiry =>
+      DateTime.tryParse(_profile['vip_expires_at']?.toString() ?? '');
 
   @override
   void initState() {
@@ -66,27 +74,18 @@ class _VipPageState extends State<VipPage> {
     try {
       final profile = await _service.myProfile() ?? <String, dynamic>{};
       Map<String, dynamic> account = {};
-      // بيانات الملف هي الأساس لعرض VIP. تعطل وحدة الحساب لا يجب أن يمنع
-      // فتح الصفحة، خصوصًا للمستخدمين الذين لم يُنشأ لهم سجل الحساب بعد.
       try {
         account = await _service.accountModules();
-      } catch (_) {
-        account = {};
-      }
+      } catch (_) {}
       if (!mounted) return;
-      final expiry = DateTime.tryParse(
-        profile['vip_expires_at']?.toString() ?? '',
-      );
-      final active = expiry != null && expiry.isAfter(DateTime.now())
-          ? (profile['vip_level'] as num?)?.toInt() ?? 0
-          : 0;
+      final level = (_activeFrom(profile));
       setState(() {
         _profile = profile;
         _account = account;
-        _selected = active.clamp(1, 7);
+        _selected = level > 0 ? level : 1;
         _loading = false;
       });
-      _pages.jumpToPage(_selected - 1);
+      if (_pages.hasClients) _pages.jumpToPage(_selected - 1);
     } catch (_) {
       if (mounted) {
         setState(() => _loading = false);
@@ -95,48 +94,101 @@ class _VipPageState extends State<VipPage> {
     }
   }
 
-  String _format(int value) => value >= 1000000
-      ? '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M'
-      : value >= 1000
-      ? '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K'
-      : '$value';
+  int _activeFrom(Map<String, dynamic> profile) {
+    final expiry = DateTime.tryParse(
+      profile['vip_expires_at']?.toString() ?? '',
+    );
+    return expiry != null && expiry.isAfter(DateTime.now())
+        ? ((_profile['vip_level'] as num?)?.toInt() ??
+                  (profile['vip_level'] as num?)?.toInt() ??
+                  0)
+              .clamp(1, 10)
+        : 0;
+  }
+
   Future<void> _buy() async {
-    final active = _active,
-        price = prices[_selected]!,
-        balance = (_account['gold_coins'] as num?)?.toInt() ?? 0;
+    final active = _active;
+    final price = prices[_selected]!;
+    final balance = (_account['gold_coins'] as num?)?.toInt() ?? 0;
     if (active > _selected) {
-      return _toast('لا يمكنك شراء مستوى أقل من VIP $active');
+      _toast('لا يمكنك شراء مستوى أقل من VIP $active');
+      return;
     }
-    if (balance < price) return _toast('رصيد العملات الذهبية غير كافٍ');
-    final ok =
-        await showDialog<bool>(
+    if (balance < price) {
+      _toast('رصيد العملات الذهبية غير كافٍ');
+      return;
+    }
+    final color = vipLevelColors[_selected]!;
+    final confirm =
+        await showModalBottomSheet<bool>(
           context: context,
-          builder: (_) => AlertDialog(
-            title: Text('تفعيل VIP $_selected'),
-            content: Text(
-              'سيتم خصم ${_format(price)} عملة ذهبية لمدة 30 يومًا.',
+          backgroundColor: Colors.transparent,
+          builder: (sheet) => Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+            decoration: const BoxDecoration(
+              color: VipDesign.panel,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('تأكيد'),
-              ),
-            ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'تفعيل VIP $_selected',
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'سيتم خصم ${formatVipPrice(price)} عملة ذهبية لمدة 30 يومًا.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: VipDesign.muted),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _VipActionButton(
+                        label: 'إلغاء',
+                        color: Colors.white12,
+                        onTap: () => Navigator.pop(sheet, false),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _VipActionButton(
+                        label: 'تأكيد الشراء',
+                        color: color,
+                        dark: true,
+                        onTap: () => Navigator.pop(sheet, true),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ) ??
         false;
-    if (!ok || !mounted) return;
+    if (!confirm || !mounted) return;
     setState(() => _working = true);
     try {
       await _service.purchaseVip(_selected);
       await _load();
       if (mounted) _toast('تم تفعيل VIP $_selected لمدة 30 يومًا');
-    } catch (_) {
-      if (mounted) _toast('تعذر تنفيذ شراء VIP');
+    } catch (error) {
+      if (mounted) _toast('تعذر تنفيذ شراء VIP: $error');
     } finally {
       if (mounted) setState(() => _working = false);
     }
@@ -147,14 +199,13 @@ class _VipPageState extends State<VipPage> {
 
   @override
   Widget build(BuildContext context) {
-    final active = _active,
-        coins = (_account['gold_coins'] as num?)?.toInt() ?? 0;
-    if (_loading) {
+    final active = _active;
+    final coins = (_account['gold_coins'] as num?)?.toInt() ?? 0;
+    if (_loading)
       return const Scaffold(
         backgroundColor: VipDesign.bg,
         body: Center(child: CircularProgressIndicator(color: VipDesign.gold)),
       );
-    }
     return Scaffold(
       backgroundColor: VipDesign.bg,
       body: SafeArea(
@@ -175,38 +226,48 @@ class _VipPageState extends State<VipPage> {
             Expanded(
               child: PageView.builder(
                 controller: _pages,
-                itemCount: 7,
+                itemCount: 10,
                 onPageChanged: (i) => setState(() => _selected = i + 1),
-                itemBuilder: (_, index) => RefreshIndicator(
-                  color: VipDesign.gold,
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 110),
-                    children: [
-                      VipBadgeHero(level: index + 1, imageUrl: badges[index]),
-                      VipStatusBanner(level: index + 1, active: active),
-                      VipSectionTitle(title: 'تعريف'),
-                      const VipDefinitionGrid(),
-                      VipSectionTitle(title: 'امتيازات حصرية'),
-                      VipPrivilegesGrid(
-                        selectedLevel: index + 1,
-                        benefits: benefits,
-                      ),
-                      const VipOrnament(),
-                      VipPurchaseCard(
-                        level: index + 1,
-                        price: prices[index + 1]!,
-                        coins: coins,
-                        active: active,
-                        working: _working && _selected == index + 1,
-                        onBuy: () {
-                          setState(() => _selected = index + 1);
-                          _buy();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+                itemBuilder: (_, index) {
+                  final level = index + 1;
+                  final color = vipLevelColors[level]!;
+                  return RefreshIndicator(
+                    color: color,
+                    onRefresh: _load,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 110),
+                      children: [
+                        VipBadgeHero(level: level),
+                        VipStatusBanner(
+                          level: level,
+                          active: active,
+                          expiry: _expiry,
+                        ),
+                        VipSectionTitle(
+                          title: 'المزايا والخصائص',
+                          color: color,
+                        ),
+                        VipPrivilegesGrid(
+                          selectedLevel: level,
+                          benefits: benefits,
+                          color: color,
+                        ),
+                        const SizedBox(height: 22),
+                        VipPurchaseCard(
+                          level: level,
+                          price: prices[level]!,
+                          coins: coins,
+                          active: active,
+                          working: _working && _selected == level,
+                          onBuy: () {
+                            setState(() => _selected = level);
+                            _buy();
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -214,4 +275,36 @@ class _VipPageState extends State<VipPage> {
       ),
     );
   }
+}
+
+class _VipActionButton extends StatelessWidget {
+  const _VipActionButton({
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.dark = false,
+  });
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool dark;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 13),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(25),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: dark ? Colors.black : Colors.white,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ),
+  );
 }

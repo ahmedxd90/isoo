@@ -79,6 +79,8 @@ class _LoginPageState extends State<LoginPage> {
         provider: OAuthProvider.google,
         idToken: idToken,
       );
+    } on GoogleSignInException catch (e) {
+      if (mounted) _showError(_friendlyGoogleSignInException(e));
     } on AuthException catch (e) {
       if (mounted) _showError(_friendlyAuthError(e.message));
     } catch (error) {
@@ -128,6 +130,16 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   String _friendlyOAuthError(String error) => _friendlyAuthError(error);
+
+  String _friendlyGoogleSignInException(GoogleSignInException error) {
+    if (error.code == GoogleSignInExceptionCode.canceled) {
+      return 'تم إغلاق اختيار الحساب أو رفض Google الطلب. إذا ظهرت الرسالة بعد اختيار الحساب، فغالبًا إعداد OAuth غير مكتمل: أضف اسم الحزمة saki.chat.co وبصمة SHA-1 الخاصة بنسخة التطبيق، وتأكد من أن serverClientId هو Web OAuth Client ID نفسه الموجود في Supabase.';
+    }
+    if (error.code == GoogleSignInExceptionCode.clientConfigurationError) {
+      return 'إعداد Google OAuth غير صحيح لهذا التطبيق. راجع اسم الحزمة saki.chat.co، بصمة SHA-1، وWeb OAuth Client ID.';
+    }
+    return _friendlyGoogleError(error);
+  }
 
   String _friendlyGoogleError(Object error) {
     final text = error.toString().toLowerCase();

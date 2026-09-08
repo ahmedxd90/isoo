@@ -1,14 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 
 class VipDesign {
-  static const bg = Color(0xFF080606);
-  static const panel = Color(0xFF17110C);
-  static const border = Color(0xFF3D2C1C);
-  static const gold = Color(0xFFE5A11A);
-  static const goldLight = Color(0xFFFCE08B);
-  static const text = Color(0xFFF5E7C1);
-  static const muted = Color(0xFF9D9285);
+  static const bg = Color(0xFF0F0F1A);
+  static const panel = Color(0xFF181825);
+  static const text = Color(0xFFFFFFFF);
+  static const muted = Color(0xFFA0A0B0);
+  static const gold = Color(0xFFFFC107);
 }
+
+const vipLevelColors = <int, Color>{
+  1: Color(0xFFC47C73),
+  2: Color(0xFFA8B1C2),
+  3: Color(0xFF65B8A6),
+  4: Color(0xFF4CD964),
+  5: Color(0xFF0088FF),
+  6: Color(0xFFD95319),
+  7: Color(0xFFB145E9),
+  8: Color(0xFF26C6DA),
+  9: Color(0xFFFFC107),
+  10: Color(0xFFFF4500),
+};
 
 class VipBenefit {
   const VipBenefit(this.icon, this.title, this.requiredLevel);
@@ -29,101 +41,108 @@ class VipTabBar extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
-      decoration: const BoxDecoration(
-        color: Color(0xEE080606),
-        border: Border(bottom: BorderSide(color: Color(0xFF221810))),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        reverse: true,
-        child: Row(
-          children: List.generate(7, (index) {
-            final level = index + 1;
-            final selectedNow = selected == level;
-            return GestureDetector(
-              onTap: () => onSelected(level),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                margin: const EdgeInsets.symmetric(horizontal: 9),
-                padding: const EdgeInsets.only(bottom: 7),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: selectedNow ? VipDesign.gold : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+    decoration: const BoxDecoration(
+      color: Color(0xF20F0F1A),
+      border: Border(bottom: BorderSide(color: Color(0x22FFFFFF))),
+    ),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      reverse: true,
+      child: Row(
+        children: List.generate(10, (index) {
+          final level = index + 1;
+          final selectedNow = selected == level;
+          final color = vipLevelColors[level]!;
+          return GestureDetector(
+            onTap: () => onSelected(level),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+              decoration: BoxDecoration(
+                color: selectedNow
+                    ? color.withValues(alpha: .16)
+                    : Colors.white.withValues(alpha: .03),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selectedNow
+                      ? color
+                      : Colors.white.withValues(alpha: .10),
                 ),
-                child: Text(
-                  'VIP $level',
-                  style: TextStyle(
-                    color: selectedNow ? VipDesign.goldLight : VipDesign.muted,
-                    fontSize: selectedNow ? 15 : 13,
-                    fontWeight: selectedNow ? FontWeight.w900 : FontWeight.w700,
-                  ),
+                boxShadow: selectedNow
+                    ? [
+                        BoxShadow(
+                          color: color.withValues(alpha: .28),
+                          blurRadius: 14,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Text(
+                'VIP $level',
+                style: TextStyle(
+                  color: selectedNow ? color : VipDesign.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            );
-          }),
-        ),
+            ),
+          );
+        }),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class VipBadgeHero extends StatelessWidget {
-  const VipBadgeHero({super.key, required this.level, required this.imageUrl});
+  const VipBadgeHero({super.key, required this.level});
   final int level;
-  final String imageUrl;
 
   @override
   Widget build(BuildContext context) {
+    final color = vipLevelColors[level]!;
     return Column(
       children: [
         SizedBox(
-          height: 238,
+          height: 260,
           child: Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                width: 220,
-                height: 220,
+                width: 250,
+                height: 250,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: VipDesign.gold.withValues(alpha: .10),
+                  color: color.withValues(alpha: .10),
                   boxShadow: [
                     BoxShadow(
-                      color: VipDesign.gold.withValues(alpha: .18),
-                      blurRadius: 60,
-                      spreadRadius: 20,
+                      color: color.withValues(alpha: .28),
+                      blurRadius: 70,
+                      spreadRadius: 18,
                     ),
                   ],
                 ),
               ),
-              Image.network(
-                imageUrl,
-                width: 210,
-                height: 210,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Icon(
-                  Icons.workspace_premium_rounded,
-                  size: 150,
-                  color: VipDesign.gold,
-                ),
+              VipSvgaAsset(
+                assetPath: 'assets/vip/icon_svip${level}_medal.svga',
+                fallbackAsset: 'assets/vip/vip$level.webp',
+                size: 220,
               ),
             ],
           ),
         ),
         Text(
           'VIP $level',
-          style: const TextStyle(
-            color: VipDesign.goldLight,
-            fontSize: 24,
+          style: TextStyle(
+            color: color,
+            fontSize: 34,
             fontWeight: FontWeight.w900,
-            letterSpacing: 3,
+            letterSpacing: 2,
+            shadows: [
+              Shadow(color: color.withValues(alpha: .5), blurRadius: 18),
+            ],
           ),
         ),
       ],
@@ -131,40 +150,122 @@ class VipBadgeHero extends StatelessWidget {
   }
 }
 
-class VipStatusBanner extends StatelessWidget {
-  const VipStatusBanner({super.key, required this.level, required this.active});
-  final int level;
-  final int active;
+class VipSvgaAsset extends StatefulWidget {
+  const VipSvgaAsset({
+    super.key,
+    required this.assetPath,
+    required this.fallbackAsset,
+    required this.size,
+  });
+  final String assetPath;
+  final String fallbackAsset;
+  final double size;
+  @override
+  State<VipSvgaAsset> createState() => _VipSvgaAssetState();
+}
+
+class _VipSvgaAssetState extends State<VipSvgaAsset>
+    with SingleTickerProviderStateMixin {
+  late final SVGAAnimationController _controller = SVGAAnimationController(
+    vsync: this,
+  );
+  bool _failed = false;
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final movie = await SVGAParser.shared.decodeFromAssets(widget.assetPath);
+      if (!mounted) return;
+      _controller.videoItem = movie;
+      setState(() {});
+      _controller.forward(from: 0);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: widget.size,
+    height: widget.size,
+    child: _failed || _controller.videoItem == null
+        ? Image.asset(
+            widget.fallbackAsset,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => Icon(
+              Icons.workspace_premium_rounded,
+              color: vipLevelColors[1],
+              size: widget.size * .65,
+            ),
+          )
+        : SVGAImage(_controller, fit: BoxFit.contain),
+  );
+}
+
+class VipStatusBanner extends StatelessWidget {
+  const VipStatusBanner({
+    super.key,
+    required this.level,
+    required this.active,
+    required this.expiry,
+  });
+  final int level;
+  final int active;
+  final DateTime? expiry;
+  @override
   Widget build(BuildContext context) {
+    final color = vipLevelColors[level]!;
+    final enabled = active >= level;
+    final expiryText = expiry;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 14),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2C2016), Color(0xFF18110B)],
+        gradient: LinearGradient(
+          colors: [color.withValues(alpha: .18), VipDesign.panel],
         ),
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: const Color(0xFF4A3622)),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withValues(alpha: .55)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            active >= level ? 'مفعل حتى الآن' : 'لم يتم التفعيل بعد',
-            style: const TextStyle(
-              color: VipDesign.muted,
-              fontWeight: FontWeight.w700,
+          Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(
+              color: enabled ? Colors.greenAccent : color,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: color, blurRadius: 8)],
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              enabled
+                  ? 'مفعل حاليًا${expiryText == null ? '' : ' • حتى ${expiryText.day}/${expiryText.month}'}'
+                  : 'متاح للترقية',
+              style: const TextStyle(
+                color: VipDesign.muted,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           Text(
             'VIP $level',
-            style: const TextStyle(
-              color: VipDesign.goldLight,
-              fontSize: 21,
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
-              letterSpacing: 2,
             ),
           ),
         ],
@@ -174,74 +275,30 @@ class VipStatusBanner extends StatelessWidget {
 }
 
 class VipSectionTitle extends StatelessWidget {
-  const VipSectionTitle({super.key, required this.title});
+  const VipSectionTitle({super.key, required this.title, required this.color});
   final String title;
-
+  final Color color;
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 18, 0, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 1,
-              color: VipDesign.gold.withValues(alpha: .35),
-            ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(0, 18, 0, 12),
+    child: Row(
+      children: [
+        Expanded(
+          child: Container(height: 1, color: color.withValues(alpha: .35)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            title,
+            style: TextStyle(color: color, fontWeight: FontWeight.w800),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Color(0xFFE2B746),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 2,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              height: 1,
-              color: VipDesign.gold.withValues(alpha: .35),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class VipDefinitionGrid extends StatelessWidget {
-  const VipDefinitionGrid({super.key});
-  static const items = <(IconData, String)>[
-    (Icons.chat_bubble_outline_rounded, 'فقاعة حصرية'),
-    (Icons.workspace_premium_rounded, 'أغطية الرأس الحصرية'),
-    (Icons.label_rounded, 'تسمية VIP'),
-    (Icons.mic_rounded, 'موجة صوتية للميكروفون'),
-    (Icons.badge_rounded, 'بطاقة عرض الغرفة'),
-    (Icons.auto_awesome_rounded, 'تأثير حصري'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 9,
-        mainAxisSpacing: 9,
-        childAspectRatio: .83,
-      ),
-      itemBuilder: (_, index) => VipFeatureCard(
-        icon: items[index].$1,
-        title: items[index].$2,
-        enabled: true,
-      ),
-    );
-  }
+        ),
+        Expanded(
+          child: Container(height: 1, color: color.withValues(alpha: .35)),
+        ),
+      ],
+    ),
+  );
 }
 
 class VipPrivilegesGrid extends StatelessWidget {
@@ -249,109 +306,71 @@ class VipPrivilegesGrid extends StatelessWidget {
     super.key,
     required this.selectedLevel,
     required this.benefits,
+    required this.color,
   });
   final int selectedLevel;
   final List<VipBenefit> benefits;
-
+  final Color color;
   @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: benefits.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 9,
-        mainAxisSpacing: 9,
-        childAspectRatio: .83,
-      ),
-      itemBuilder: (_, index) {
-        final benefit = benefits[index];
-        return VipFeatureCard(
-          icon: benefit.icon,
-          title: benefit.title,
-          enabled: selectedLevel >= benefit.requiredLevel,
-        );
-      },
-    );
-  }
-}
-
-class VipFeatureCard extends StatelessWidget {
-  const VipFeatureCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.enabled,
-  });
-  final IconData icon;
-  final String title;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: enabled ? 1 : .35,
-      duration: const Duration(milliseconds: 250),
-      child: Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(
-          color: VipDesign.panel,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: enabled ? const Color(0xFF7A5A2E) : VipDesign.border,
-          ),
-          boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 8)],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2A1E14), Color(0xFF120D09)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF4A3824)),
-              ),
-              child: Icon(
-                enabled ? icon : Icons.lock_outline_rounded,
-                color: enabled ? VipDesign.goldLight : VipDesign.muted,
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: const TextStyle(
-                color: VipDesign.text,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class VipOrnament extends StatelessWidget {
-  const VipOrnament({super.key});
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24),
-    child: Center(
-      child: Container(
-        width: 130,
-        height: 1,
-        color: VipDesign.gold.withValues(alpha: .5),
-      ),
+  Widget build(BuildContext context) => GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: benefits.length,
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      crossAxisSpacing: 9,
+      mainAxisSpacing: 9,
+      childAspectRatio: .82,
     ),
+    itemBuilder: (_, index) {
+      final b = benefits[index];
+      final unlocked = selectedLevel >= b.requiredLevel;
+      return AnimatedOpacity(
+        opacity: unlocked ? 1 : .38,
+        duration: const Duration(milliseconds: 200),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: unlocked ? color.withValues(alpha: .12) : VipDesign.panel,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: unlocked
+                  ? color.withValues(alpha: .65)
+                  : Colors.white.withValues(alpha: .08),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  unlocked ? b.icon : Icons.lock_outline_rounded,
+                  color: unlocked ? color : VipDesign.muted,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                b.title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: TextStyle(
+                  color: unlocked ? Colors.white : VipDesign.muted,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
   );
 }
 
@@ -368,65 +387,65 @@ class VipPurchaseCard extends StatelessWidget {
   final int level, price, coins, active;
   final bool working;
   final VoidCallback onBuy;
-
   @override
   Widget build(BuildContext context) {
+    final color = vipLevelColors[level]!;
+    final disabled = working || active >= level;
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: VipDesign.panel,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: VipDesign.border),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: color.withValues(alpha: .35)),
       ),
       child: Column(
         children: [
           Row(
             children: [
-              const Icon(Icons.monetization_on_rounded, color: VipDesign.gold),
+              Icon(Icons.workspace_premium_rounded, color: color),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
                   'عضوية VIP لمدة 30 يومًا',
                   style: TextStyle(
-                    color: VipDesign.text,
+                    color: Colors.white,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
               Text(
-                '$price 🪙',
-                style: const TextStyle(
-                  color: VipDesign.goldLight,
-                  fontWeight: FontWeight.w900,
-                ),
+                '${formatVipPrice(price)} ذهب',
+                style: TextStyle(color: color, fontWeight: FontWeight.w900),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 9),
           Text(
-            'رصيدك الحالي: $coins عملة ذهبية',
+            'رصيدك الحالي: ${formatVipPrice(coins)} عملة ذهبية',
             style: const TextStyle(color: VipDesign.muted, fontSize: 11),
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: working || active > level ? null : onBuy,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: VipDesign.gold,
-                foregroundColor: const Color(0xFF1A1005),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(11),
-                ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: disabled ? null : onBuy,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: disabled ? Colors.white12 : color,
+                borderRadius: BorderRadius.circular(28),
               ),
+              alignment: Alignment.center,
               child: Text(
                 working
                     ? 'جارٍ التفعيل...'
                     : active >= level
                     ? 'VIP $level مفعل'
                     : 'تفعيل VIP $level',
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: disabled ? VipDesign.muted : Colors.black,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -435,3 +454,9 @@ class VipPurchaseCard extends StatelessWidget {
     );
   }
 }
+
+String formatVipPrice(int value) => value >= 1000000
+    ? '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M'
+    : value >= 1000
+    ? '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K'
+    : '$value';

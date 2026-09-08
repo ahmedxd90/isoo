@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -330,66 +331,176 @@ class GiftGoldBadge extends StatelessWidget {
   );
 }
 
-class RoomEntranceBanner extends StatelessWidget {
+class RoomEntranceBanner extends StatefulWidget {
   const RoomEntranceBanner({super.key, required this.profile});
   final Map<String, dynamic> profile;
   @override
+  State<RoomEntranceBanner> createState() => _RoomEntranceBannerState();
+}
+
+class _RoomEntranceBannerState extends State<RoomEntranceBanner>
+    with SingleTickerProviderStateMixin {
+  late final SVGAAnimationController _svga = SVGAAnimationController(
+    vsync: this,
+  );
+  int get _vip =>
+      ((widget.profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+  Color get _color => vipEntranceColors[_vip] ?? const Color(0xFF64748B);
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (_vip < 1) return;
+    try {
+      final movie = await SVGAParser.shared.decodeFromAssets(
+        'assets/vip/broadcast_gift_bg_svip_lv$_vip.svga',
+      );
+      if (!mounted) return;
+      _svga.videoItem = movie;
+      setState(() {});
+      _svga.repeat();
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _svga.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final vip = (profile['vip_level'] as num?)?.toInt() ?? 0;
-    final premium = vip >= 6;
+    final premium = _vip >= 6;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 22),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      height: 62,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: premium
-              ? [
-                  const Color(0xFFF97316),
-                  const Color(0xFFA855F7),
-                  const Color(0xFF06B6D4),
-                ]
-              : [const Color(0xFF334155), const Color(0xFF64748B)],
-        ),
-        borderRadius: BorderRadius.circular(28),
+        color: const Color(0xFF24232B),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: _color.withValues(alpha: .65)),
         boxShadow: [
           BoxShadow(
-            color: (premium ? _orange : Colors.black).withValues(alpha: .35),
-            blurRadius: 18,
+            color: _color.withValues(alpha: .30),
+            blurRadius: premium ? 20 : 12,
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          SakiAvatar(
-            url: profile['avatar_url'] as String?,
-            label: profile['username'] as String?,
-            radius: 22,
+          if (_svga.videoItem != null)
+            Positioned.fill(
+              child: Opacity(
+                opacity: .72,
+                child: SVGAImage(_svga, fit: BoxFit.cover),
+              ),
+            ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black.withValues(alpha: .55),
+                    _color.withValues(alpha: .28),
+                    Colors.black.withValues(alpha: .60),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+            child: Row(
               children: [
-                Text(
-                  profile['username'] as String? ?? 'مستخدم',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
+                Container(
+                  width: 44,
+                  height: 44,
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: _color, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _color.withValues(alpha: .65),
+                        blurRadius: 9,
+                      ),
+                    ],
+                  ),
+                  child: SakiAvatar(
+                    url: widget.profile['avatar_url'] as String?,
+                    label: widget.profile['username'] as String?,
+                    radius: 20,
                   ),
                 ),
-                Text(
-                  vip > 0 ? 'VIP $vip • انضم إلى الغرفة' : 'انضم إلى الغرفة',
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.profile['username'] as String? ?? 'مستخدم',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        _vip > 0
+                            ? 'VIP $_vip • دخل إلى الغرفة'
+                            : 'انضم إلى الغرفة',
+                        style: TextStyle(
+                          color: _vip > 0 ? _color : Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                if (_vip > 0)
+                  Text(
+                    'VIP $_vip',
+                    style: TextStyle(
+                      color: _color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.auto_awesome_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
               ],
             ),
           ),
-          const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22),
         ],
       ),
     );
   }
 }
+
+const vipEntranceColors = <int, Color>{
+  0: Color(0xFF64748B),
+  1: Color(0xFFC47C73),
+  2: Color(0xFFA8B1C2),
+  3: Color(0xFF65B8A6),
+  4: Color(0xFF4CD964),
+  5: Color(0xFF0088FF),
+  6: Color(0xFFD95319),
+  7: Color(0xFFB145E9),
+  8: Color(0xFF26C6DA),
+  9: Color(0xFFFFC107),
+  10: Color(0xFFFF4500),
+};
 
 class RoomConnectedStrip extends StatelessWidget {
   const RoomConnectedStrip({
