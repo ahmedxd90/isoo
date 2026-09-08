@@ -2041,10 +2041,80 @@ class SakiService {
   Future<List<Map<String, dynamic>>> roomBanners() async {
     final data = await client
         .from('room_banners')
-        .select('id,image_url,title,sort_order')
+        .select(
+          'id,image_url,title,sort_order,target_type,target_user_id,target_room_id',
+        )
         .eq('is_active', true)
+        .or(
+          'starts_at.is.null,starts_at.lte.${DateTime.now().toIso8601String()}',
+        )
+        .or('ends_at.is.null,ends_at.gt.${DateTime.now().toIso8601String()}')
         .order('sort_order');
     return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<List<Map<String, dynamic>>> adminBanners() async {
+    final data = await client
+        .from('room_banners')
+        .select(
+          'id,image_url,title,sort_order,is_active,target_type,target_user_id,target_room_id,starts_at,ends_at',
+        )
+        .order('sort_order');
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<String> uploadBannerImage(XFile image) async {
+    final bytes = await File(image.path).readAsBytes();
+    final extension = image.path.split('.').last.toLowerCase();
+    final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('banners')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: 'image/$extension',
+          ),
+        );
+    return client.storage.from('banners').getPublicUrl(path);
+  }
+
+  Future<Map<String, dynamic>?> bannerProfileBySakiId(String value) async {
+    final result = await client.rpc(
+      'resolve_banner_profile',
+      params: {'p_saki_id': int.parse(value.trim())},
+    );
+    if (result == null) return null;
+    return await userProfile(result.toString());
+  }
+
+  Future<Map<String, dynamic>?> bannerRoomByCode(String value) async {
+    final result = await client.rpc(
+      'resolve_banner_room',
+      params: {'p_room_code': value.trim()},
+    );
+    if (result == null) return null;
+    final row = await client
+        .from('rooms')
+        .select(
+          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,announcement,category,theme_key,membership_fee,reward_rate,mic_permission,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
+        )
+        .eq('id', result.toString())
+        .maybeSingle();
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  Future<void> createAdminBanner(Map<String, dynamic> values) async {
+    await client.from('room_banners').insert(values);
+  }
+
+  Future<void> updateAdminBanner(String id, Map<String, dynamic> values) async {
+    await client.from('room_banners').update(values).eq('id', id);
+  }
+
+  Future<void> deleteAdminBanner(String id) async {
+    await client.from('room_banners').delete().eq('id', id);
   }
 
   Future<List<Map<String, dynamic>>> notifications() async {

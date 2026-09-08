@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'dart:developer' as developer;
+import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,6 +11,7 @@ import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../messages/messages_page.dart';
 import '../posts/posts_page.dart';
+import '../rooms/rooms_page.dart';
 
 const _profileYellow = Color(0xFFFFC107);
 const _profileBg = Color(0xFFF3F4F6);
@@ -255,6 +257,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       onCopy: _copyId,
                     ),
                   ),
+                  const SliverToBoxAdapter(child: _ProfileBannerCarousel()),
                   SliverToBoxAdapter(
                     child: _TraceProfileSummary(
                       profile: profile,
@@ -294,6 +297,139 @@ class _UserProfilePageState extends State<UserProfilePage> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileBannerCarousel extends StatefulWidget {
+  const _ProfileBannerCarousel();
+  @override
+  State<_ProfileBannerCarousel> createState() => _ProfileBannerCarouselState();
+}
+
+class _ProfileBannerCarouselState extends State<_ProfileBannerCarousel> {
+  final _service = SakiService.instance;
+  final _controller = PageController();
+  List<Map<String, dynamic>> _banners = [];
+  Timer? _timer;
+  int _page = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final banners = await _service.roomBanners();
+      if (!mounted) return;
+      setState(() => _banners = banners);
+      if (banners.length > 1) {
+        _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+          if (!mounted || !_controller.hasClients) return;
+          _page = (_page + 1) % _banners.length;
+          _controller.animateToPage(
+            _page,
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOut,
+          );
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _open(Map<String, dynamic> banner) async {
+    final type = banner['target_type']?.toString();
+    if (type == 'profile' && banner['target_user_id'] != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              UserProfilePage(userId: banner['target_user_id'].toString()),
+        ),
+      );
+      return;
+    }
+    if (type == 'room' && banner['target_room_id'] != null) {
+      final room = await _service.bannerRoomByCode(
+        banner['target_room_id'].toString(),
+      );
+      if (!mounted) return;
+      if (room == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('الغرفة غير متاحة حاليًا')),
+        );
+        return;
+      }
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_banners.isEmpty) return const SizedBox.shrink();
+    return Container(
+      color: _profileBg,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 132,
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: _banners.length,
+              onPageChanged: (value) => setState(() => _page = value),
+              itemBuilder: (_, index) {
+                final banner = _banners[index];
+                return GestureDetector(
+                  onTap: () => _open(banner),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.network(
+                      banner['image_url']?.toString() ?? '',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const ColoredBox(
+                        color: Color(0xFFE5E7EB),
+                        child: Center(child: Icon(Icons.image_not_supported)),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (_banners.length > 1) ...[
+            const SizedBox(height: 7),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _banners.length,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: index == _page ? 18 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: index == _page ? _profileYellow : _profileMuted,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

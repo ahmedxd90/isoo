@@ -7,6 +7,7 @@ import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import 'admin_trace_modules_page.dart';
 import 'admin_room_emojis_page.dart';
+import 'admin_banners_page.dart';
 import 'store_pages.dart';
 
 const _blue = Color(0xFFF97316);
@@ -192,6 +193,18 @@ class SuperAdminPage extends StatelessWidget {
                 );
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.view_carousel_rounded),
+              title: const Text('إدارة البنرات'),
+              subtitle: const Text('صور ووجهات البروفايلات والغرف'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminBannersPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -317,6 +330,15 @@ class SuperAdminPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AdminLevelsPage()),
+          ),
+        ),
+        _AdminCard(
+          icon: Icons.view_carousel_rounded,
+          title: 'إدارة البنرات',
+          subtitle: 'رفع صور حقيقية وتحديد بروفايل أو غرفة كوجهة',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminBannersPage()),
           ),
         ),
       ],
