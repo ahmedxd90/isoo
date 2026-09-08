@@ -142,6 +142,66 @@ class SakiGamesSheet extends StatelessWidget {
             'راهن بالعملات الذهبية واربح حسب الطعام الفائز',
             style: TextStyle(color: Colors.black54),
           ),
+          const SizedBox(height: 14),
+          InkWell(
+            onTap: () {
+              Navigator.pop(context);
+              showSakiGoldReels(context, service, roomId);
+            },
+            borderRadius: BorderRadius.circular(22),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(
+                children: [
+                  Image.asset(
+                    'assets/saki_games/saki_gold_reels_thumbnail.png',
+                    height: 190,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: .82),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    bottom: 14,
+                    right: 16,
+                    left: 16,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'بكرات الذهب',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 23,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.casino_rounded, color: _gold, size: 34),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'طابق الرموز في شبكة 3×5 واربح مضاعفات ذهبية',
+            style: TextStyle(color: Colors.black54),
+          ),
           const SizedBox(height: 8),
         ],
       ),
@@ -556,4 +616,286 @@ class _SakiWheelGameSheetState extends State<SakiWheelGameSheet>
       ),
     );
   }
+}
+
+Future<void> showSakiGoldReels(
+  BuildContext context,
+  SakiService service,
+  String roomId,
+) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  backgroundColor: Colors.transparent,
+  builder: (_) => SakiGoldReelsSheet(service: service, roomId: roomId),
+);
+
+class SakiGoldReelsSheet extends StatefulWidget {
+  const SakiGoldReelsSheet({
+    super.key,
+    required this.service,
+    required this.roomId,
+  });
+  final SakiService service;
+  final String roomId;
+  @override
+  State<SakiGoldReelsSheet> createState() => _SakiGoldReelsSheetState();
+}
+
+class _SakiGoldReelsSheetState extends State<SakiGoldReelsSheet> {
+  static const _wagers = [10, 50, 100, 500, 1000, 5000, 10000];
+  static const _icons = {
+    'diamond': '💎',
+    'ruby': '🔴',
+    'sapphire': '🔵',
+    'crown': '👑',
+    'chest': '🎁',
+    'coin': '🪙',
+  };
+  final _random = math.Random();
+  final List<String> _grid = List.filled(15, 'diamond');
+  int _wager = 100;
+  int _balance = 0;
+  int _payout = 0;
+  bool _spinning = false;
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    _grid.setAll(
+      0,
+      List.generate(
+        15,
+        (_) => _icons.keys.elementAt(_random.nextInt(_icons.length)),
+      ),
+    );
+    _loadBalance();
+  }
+
+  Future<void> _loadBalance() async {
+    try {
+      final account = await widget.service.accountModules();
+      if (mounted) {
+        setState(
+          () => _balance = (account['gold_coins'] as num?)?.toInt() ?? 0,
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _spin() async {
+    if (_spinning) return;
+    if (_balance < _wager) {
+      setState(() => _message = 'رصيد العملات الذهبية غير كافٍ');
+      return;
+    }
+    setState(() {
+      _spinning = true;
+      _payout = 0;
+      _message = 'جاري تدوير البكرات...';
+    });
+    final animation = Timer.periodic(const Duration(milliseconds: 85), (_) {
+      if (!mounted) return;
+      setState(
+        () => _grid.setAll(
+          0,
+          List.generate(
+            15,
+            (_) => _icons.keys.elementAt(_random.nextInt(_icons.length)),
+          ),
+        ),
+      );
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 1050));
+    animation.cancel();
+    try {
+      final result = await widget.service.sakiGoldReelsSpin(
+        roomId: widget.roomId,
+        wager: _wager,
+      );
+      final symbols = result['symbols'];
+      final parsed = symbols is List
+          ? symbols.map((e) => e.toString()).toList()
+          : <String>[];
+      if (parsed.length == 15) _grid.setAll(0, parsed);
+      if (!mounted) return;
+      setState(() {
+        _payout = (result['payout'] as num?)?.toInt() ?? 0;
+        _balance = (result['gold_coins'] as num?)?.toInt() ?? _balance - _wager;
+        _message = _payout > 0
+            ? 'مبروك! ربحت $_payout ذهب'
+            : 'حظًا أوفر في الجولة القادمة';
+        _spinning = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _spinning = false;
+        _message = error.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Container(
+      height: MediaQuery.sizeOf(context).height * .94,
+      decoration: const BoxDecoration(
+        color: Color(0xFF160B42),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/saki_games/saki_gold_reels_background.png',
+              fit: BoxFit.cover,
+              opacity: const AlwaysStoppedAnimation(.55),
+            ),
+          ),
+          Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white38,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 13, 18, 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'بكرات الذهب',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.monetization_on_rounded, color: _gold),
+                    const SizedBox(width: 5),
+                    Text(
+                      '$_balance',
+                      style: const TextStyle(
+                        color: _gold,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Text(
+                'لعبة ترفيهية بعملات SAKI الافتراضية',
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xDD09052A),
+                  border: Border.all(color: _gold, width: 2),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: 15,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    mainAxisSpacing: 7,
+                    crossAxisSpacing: 7,
+                  ),
+                  itemBuilder: (_, index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 130),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF281260),
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: _payout > 0
+                          ? const [BoxShadow(color: _gold, blurRadius: 7)]
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        _icons[_grid[index]] ?? '💎',
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'اختر قيمة الجولة',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 7,
+                children: _wagers
+                    .map(
+                      (value) => ChoiceChip(
+                        label: Text('$value'),
+                        selected: value == _wager,
+                        selectedColor: _gold,
+                        onSelected: _spinning
+                            ? null
+                            : (_) => setState(() => _wager = value),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 17),
+              if (_message != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Text(
+                    _message!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _payout > 0 ? _gold : Colors.white70,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              SizedBox(
+                width: 210,
+                height: 55,
+                child: FilledButton.icon(
+                  onPressed: _spinning ? null : _spin,
+                  icon: _spinning
+                      ? const SizedBox.square(
+                          dimension: 19,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.play_arrow_rounded),
+                  label: Text(_spinning ? 'جاري اللعب' : 'ابدأ الجولة $_wager'),
+                ),
+              ),
+              const SizedBox(height: 17),
+              const Text(
+                'النتيجة والخصم يتمان بأمان عبر Supabase',
+                style: TextStyle(color: Colors.white54, fontSize: 10),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
 }

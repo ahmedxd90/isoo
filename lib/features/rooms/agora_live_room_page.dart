@@ -497,6 +497,15 @@ class _AgoraLiveRoomPageState extends State<AgoraLiveRoomPage> {
                 ),
                 const SizedBox(width: 18),
                 IconButton.filled(
+                  onPressed: () => showSakiGames(
+                    context,
+                    SakiService.instance,
+                    widget.roomId,
+                  ),
+                  icon: const Icon(Icons.sports_esports_rounded),
+                ),
+                const SizedBox(width: 18),
+                IconButton.filled(
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.redAccent,
                   ),

@@ -1323,6 +1323,20 @@ class SakiService {
     return Map<String, dynamic>.from(row as Map);
   }
 
+  Future<Map<String, dynamic>> sakiGoldReelsSpin({
+    required String roomId,
+    required int wager,
+  }) async {
+    final row = await client.rpc(
+      'saki_gold_reels_spin',
+      params: {'p_room_id': roomId, 'p_wager': wager},
+    );
+    if (row is List && row.isNotEmpty) {
+      return Map<String, dynamic>.from(row.first);
+    }
+    return Map<String, dynamic>.from(row as Map);
+  }
+
   Future<List<Map<String, dynamic>>> sakiWheelMyBets(int roundId) async {
     final rows = await client
         .from('saki_wheel_bets')
