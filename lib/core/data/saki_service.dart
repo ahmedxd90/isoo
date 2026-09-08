@@ -2621,11 +2621,12 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> adminTraceStoreCatalog() async {
     final rows = await client
-        .from('trace_store_catalog')
-        .select('id,category,name,asset_key,duration_days,is_active')
+        .from('saki_store_products')
+        .select(
+          'id,category,name,price,media_type,media_url,thumbnail_url,duration_days,discounted_price,is_active',
+        )
         .eq('is_active', true)
-        .order('category')
-        .order('sort_order')
+        .order('created_at', ascending: false)
         .limit(200);
     return List<Map<String, dynamic>>.from(rows);
   }

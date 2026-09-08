@@ -356,10 +356,11 @@ class _RewardTile extends StatelessWidget {
     final subtitle = reward['expires_at'] == null
         ? 'مكافأة دائمة'
         : 'ينتهي في ${_formatDate(reward['expires_at'].toString())}';
-    final asset = type == 'vip'
+    final String? asset = type == 'vip'
         ? 'assets/trace_vip/images/ic_vip_${reward['level'] ?? 1}.png'
-        : type == 'store_item'
-        ? 'assets/trace_profile/images/${reward['asset_key'] ?? 'ic_guard_avatar_frame.webp'}'
+        : null;
+    final thumbnail = type == 'store_item'
+        ? reward['thumbnail_url']?.toString()
         : null;
     return Container(
       margin: const EdgeInsets.only(bottom: 9),
@@ -387,6 +388,13 @@ class _RewardTile extends StatelessWidget {
                         ? FontAwesomeIcons.chartLine
                         : FontAwesomeIcons.gift,
                     color: type == 'gold' ? Colors.amber : _redeemCyan,
+                  )
+                : thumbnail != null && thumbnail.isNotEmpty
+                ? Image.network(
+                    thumbnail,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        const FaIcon(FontAwesomeIcons.gift, color: _redeemCyan),
                   )
                 : Image.asset(
                     asset,

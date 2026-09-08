@@ -293,7 +293,7 @@ class _AddRedeemCodePageState extends State<AddRedeemCodePage> {
     )) {
       rewards.add({
         'reward_type': 'store_item',
-        'item_id': item['id'],
+        'store_product_id': item['id'],
         'duration_days': int.tryParse(_itemDays.text) ?? item['duration_days'],
       });
     }
@@ -517,7 +517,7 @@ class _StorePickerState extends State<_StorePicker> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'حدد أكثر من صنف ليتم منحها للمستخدم عند الاسترداد',
+          'هذه هي نفس منتجات متجر صفحة «أنا» الحقيقية',
           style: TextStyle(color: Colors.black54),
         ),
         const SizedBox(height: 12),
@@ -528,8 +528,7 @@ class _StorePickerState extends State<_StorePicker> {
               final item = widget.items[index];
               final id = item['id'].toString();
               final checked = selected.contains(id);
-              final asset =
-                  'assets/trace_profile/images/${item['asset_key'] ?? 'ic_guard_avatar_frame.webp'}';
+              final thumbnail = item['thumbnail_url']?.toString() ?? '';
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: CheckboxListTile(
@@ -538,10 +537,11 @@ class _StorePickerState extends State<_StorePicker> {
                     () =>
                         value == true ? selected.add(id) : selected.remove(id),
                   ),
-                  secondary: Image.asset(
-                    asset,
+                  secondary: Image.network(
+                    thumbnail,
                     width: 44,
                     height: 44,
+                    fit: BoxFit.cover,
                     errorBuilder: (_, _, _) =>
                         const Icon(Icons.card_giftcard_rounded),
                   ),
@@ -549,7 +549,9 @@ class _StorePickerState extends State<_StorePicker> {
                     item['name']?.toString() ?? 'عنصر',
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  subtitle: Text(item['category']?.toString() ?? ''),
+                  subtitle: Text(
+                    '${_storeCategoryLabel(item['category'])} • ${item['duration_days'] ?? 7} يوم • ${item['price'] ?? 0} ذهب',
+                  ),
                   activeColor: _adminCyan,
                 ),
               );
@@ -638,3 +640,10 @@ class _Input extends StatelessWidget {
 
 String _date(DateTime date) =>
     '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+
+String _storeCategoryLabel(Object? category) => switch (category?.toString()) {
+  'frame' || 'avatar_frame' => 'إطار حقيقي',
+  'entrance' || 'entrance_effect' => 'دخولية حقيقية',
+  'bubble' || 'party_theme' => 'عنصر متجر',
+  _ => category?.toString() ?? 'منتج متجر',
+};
