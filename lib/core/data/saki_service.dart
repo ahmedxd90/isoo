@@ -2129,6 +2129,60 @@ class SakiService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  Future<List<Map<String, dynamic>>> userReceivedGifts(String userId) async {
+    final rows = await client
+        .from('room_gifts')
+        .select(
+          'gift_id,quantity,total_price,created_at,room_gift_catalog:gift_id(id,name,icon,media_url,price)',
+        )
+        .eq('recipient_id', userId)
+        .order('created_at', ascending: false)
+        .limit(300);
+    final grouped = <String, Map<String, dynamic>>{};
+    for (final row in List<Map<String, dynamic>>.from(rows)) {
+      final giftId = row['gift_id']?.toString();
+      if (giftId == null) continue;
+      final catalog = row['room_gift_catalog'] is Map
+          ? Map<String, dynamic>.from(row['room_gift_catalog'] as Map)
+          : <String, dynamic>{};
+      final current = grouped.putIfAbsent(
+        giftId,
+        () => {
+          ...catalog,
+          'id': giftId,
+          'received_count': 0,
+          'received_value': 0,
+          'last_received_at': row['created_at'],
+        },
+      );
+      current['received_count'] =
+          (current['received_count'] as int) +
+          ((row['quantity'] as num?)?.toInt() ?? 1);
+      current['received_value'] =
+          (current['received_value'] as int) +
+          ((row['total_price'] as num?)?.toInt() ?? 0);
+    }
+    return grouped.values.toList();
+  }
+
+  Future<List<Map<String, dynamic>>> userVehicles(String userId) async {
+    final rows = await client
+        .from('trace_store_inventory')
+        .select(
+          'item_id,purchased_at,expires_at,is_active,trace_store_catalog:item_id(id,name,asset_key,price_gold_coins,duration_days,category)',
+        )
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('purchased_at', ascending: false)
+        .limit(100);
+    return List<Map<String, dynamic>>.from(rows).map((row) {
+      final catalog = row['trace_store_catalog'] is Map
+          ? Map<String, dynamic>.from(row['trace_store_catalog'] as Map)
+          : <String, dynamic>{};
+      return {...catalog, ...row};
+    }).toList();
+  }
+
   Future<Map<String, dynamic>> accountModules() async {
     final existing = await client
         .from('saki_account_modules')

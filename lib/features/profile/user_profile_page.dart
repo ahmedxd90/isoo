@@ -32,6 +32,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Map<String, int> _stats = {};
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _reels = [];
+  List<Map<String, dynamic>> _gifts = [];
+  List<Map<String, dynamic>> _vehicles = [];
   bool _following = false;
   bool _loading = true;
   bool _actionLoading = false;
@@ -52,6 +54,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.userProfileStats(widget.userId),
         SakiService.instance.userPosts(widget.userId),
         SakiService.instance.userReels(widget.userId),
+        SakiService.instance.userReceivedGifts(widget.userId),
+        SakiService.instance.userVehicles(widget.userId),
         SakiService.instance.isFollowing(widget.userId),
       ]);
       if (!mounted) return;
@@ -62,7 +66,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _stats = Map<String, int>.from(results[2] as Map);
         _posts = List<Map<String, dynamic>>.from(results[3] as List);
         _reels = List<Map<String, dynamic>>.from(results[4] as List);
-        _following = results[5] as bool;
+        _gifts = List<Map<String, dynamic>>.from(results[5] as List);
+        _vehicles = List<Map<String, dynamic>>.from(results[6] as List);
+        _following = results[7] as bool;
       });
     } catch (_) {
       if (mounted) {
@@ -274,6 +280,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       profile: profile,
                       posts: _posts,
                       reels: _reels,
+                      gifts: _gifts,
+                      vehicles: _vehicles,
                     ),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -759,12 +767,12 @@ class _ProfileTabsDelegate extends SliverPersistentHeaderDelegate {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _ProfileTab(
-            label: 'البيانات',
+            label: 'المجموعات',
             selected: selected == 0,
             onTap: () => onSelect(0),
           ),
           _ProfileTab(
-            label: 'الهدايا',
+            label: 'الأوسمة',
             selected: selected == 1,
             onTap: () => onSelect(1),
           ),
@@ -772,6 +780,11 @@ class _ProfileTabsDelegate extends SliverPersistentHeaderDelegate {
             label: 'اللحظات',
             selected: selected == 2,
             onTap: () => onSelect(2),
+          ),
+          _ProfileTab(
+            label: 'الصفحة الشخصية',
+            selected: selected == 3,
+            onTap: () => onSelect(3),
           ),
         ],
       ),
@@ -826,15 +839,68 @@ class _ProfileTabContent extends StatelessWidget {
     required this.profile,
     required this.posts,
     required this.reels,
+    required this.gifts,
+    required this.vehicles,
   });
   final int tab;
   final Map<String, dynamic> profile;
   final List<Map<String, dynamic>> posts;
   final List<Map<String, dynamic>> reels;
+  final List<Map<String, dynamic>> gifts;
+  final List<Map<String, dynamic>> vehicles;
 
   @override
   Widget build(BuildContext context) {
     if (tab == 0) {
+      return Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            _CollectionCard(
+              title: 'مجموعة الهدايا',
+              subtitle: '${gifts.length} هدية مستلمة',
+              icon: FontAwesomeIcons.gift,
+              colors: const [Color(0xFF7C3AED), Color(0xFFEC4899)],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GiftCollectionPage(
+                    username: profile['username']?.toString() ?? 'المستخدم',
+                    gifts: gifts,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _CollectionCard(
+              title: 'مجموعة المركبات',
+              subtitle: '${vehicles.length} مركبة مملوكة',
+              icon: FontAwesomeIcons.carSide,
+              colors: const [Color(0xFF0284C7), Color(0xFF22D3EE)],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VehicleCollectionPage(
+                    username: profile['username']?.toString() ?? 'المستخدم',
+                    vehicles: vehicles,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _CollectionCard(
+              title: 'الخواتم والألقاب',
+              subtitle: 'الأوسمة والإنجازات الخاصة بالمستخدم',
+              icon: FontAwesomeIcons.ring,
+              colors: const [Color(0xFFDB2777), Color(0xFFF59E0B)],
+              onTap: () {},
+            ),
+          ],
+        ),
+      );
+    }
+    if (tab == 1) return _BadgeCollection(profile: profile);
+    if (tab == 3) {
       final bio = (profile['bio'] as String?)?.trim();
       return Padding(
         padding: const EdgeInsets.all(20),
@@ -842,7 +908,7 @@ class _ProfileTabContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'السيرة الذاتية',
+              'الصفحة الشخصية',
               style: TextStyle(
                 color: _profileInk,
                 fontSize: 14,
@@ -857,6 +923,18 @@ class _ProfileTabContent extends StatelessWidget {
                 fontSize: 12,
                 height: 1.7,
               ),
+            ),
+            const SizedBox(height: 12),
+            _InfoLine(
+              icon: FontAwesomeIcons.calendarDays,
+              title: 'تاريخ الانضمام',
+              value: _joinedDays(profile),
+            ),
+            const SizedBox(height: 8),
+            _InfoLine(
+              icon: FontAwesomeIcons.users,
+              title: 'المجموعات',
+              value: 'العائلة والمجموعات التي ينتمي إليها المستخدم',
             ),
             const SizedBox(height: 20),
             _TraceProfileBenefits(vipLevel: profile['vip_level'] as int? ?? 0),
@@ -892,17 +970,7 @@ class _ProfileTabContent extends StatelessWidget {
         ),
       );
     }
-    if (tab == 3) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: EmptyState(
-          icon: Icons.card_giftcard_outlined,
-          title: 'لا توجد هدايا بعد',
-          subtitle: 'ستظهر الهدايا هنا عند استلامها.',
-        ),
-      );
-    }
-    final items = tab == 1 ? posts : reels;
+    final items = [...posts, ...reels];
     if (items.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
@@ -926,7 +994,8 @@ class _ProfileTabContent extends StatelessWidget {
         ),
         itemBuilder: (_, index) {
           final item = items[index];
-          final url = tab == 2 ? item['video_url'] as String? : null;
+          final isReel = item['video_url'] != null;
+          final url = isReel ? item['video_url'] as String? : null;
           return ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Stack(
@@ -938,7 +1007,7 @@ class _ProfileTabContent extends StatelessWidget {
                   const ColoredBox(color: Color(0xFFFFF7ED)),
                 Center(
                   child: FaIcon(
-                    tab == 2 ? FontAwesomeIcons.play : FontAwesomeIcons.image,
+                    isReel ? FontAwesomeIcons.play : FontAwesomeIcons.image,
                     color: _profileYellow,
                     size: 20,
                   ),
@@ -947,6 +1016,405 @@ class _ProfileTabContent extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  String _joinedDays(Map<String, dynamic> profile) {
+    final raw = DateTime.tryParse(profile['created_at']?.toString() ?? '');
+    if (raw == null) return 'غير متاح';
+    return '${DateTime.now().difference(raw).inDays} يوم';
+  }
+}
+
+class _CollectionCard extends StatelessWidget {
+  const _CollectionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.colors,
+    required this.onTap,
+  });
+  final String title;
+  final String subtitle;
+  final FaIconData icon;
+  final List<Color> colors;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(20),
+    child: Ink(
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x16000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .22),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Center(child: FaIcon(icon, color: Colors.white, size: 21)),
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const FaIcon(
+            FontAwesomeIcons.chevronLeft,
+            color: Colors.white,
+            size: 13,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _BadgeCollection extends StatelessWidget {
+  const _BadgeCollection({required this.profile});
+  final Map<String, dynamic> profile;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          _Badge(asset: _traceFansBadge, title: 'شارة المعجبين'),
+          _Badge(asset: _traceSortPriority, title: 'أولوية الترتيب'),
+          _Badge(asset: _traceExclusiveGift, title: 'الهدايا الحصرية'),
+          _Badge(
+            asset: 'assets/trace_profile/images/ic_guard_avatar_frame.webp',
+            title: 'حارس الملف',
+          ),
+          _Badge(
+            asset: 'assets/trace_profile/images/ic_vip_badge.png',
+            title: 'VIP ${profile['vip_level'] ?? 0}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.asset, required this.title});
+  final String asset;
+  final String title;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 104,
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFF0F1F5)),
+    ),
+    child: Column(
+      children: [
+        Image.asset(
+          asset,
+          width: 48,
+          height: 48,
+          errorBuilder: (_, _, _) => const FaIcon(
+            FontAwesomeIcons.medal,
+            color: _profileYellow,
+            size: 34,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: _profileInk,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+  final FaIconData icon;
+  final String title;
+  final String value;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      FaIcon(icon, color: _profileYellow, size: 15),
+      const SizedBox(width: 8),
+      Text(
+        '$title: ',
+        style: const TextStyle(
+          color: _profileInk,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      Expanded(
+        child: Text(
+          value,
+          style: const TextStyle(color: _profileMuted, fontSize: 11),
+        ),
+      ),
+    ],
+  );
+}
+
+class GiftCollectionPage extends StatelessWidget {
+  const GiftCollectionPage({
+    super.key,
+    required this.username,
+    required this.gifts,
+  });
+  final String username;
+  final List<Map<String, dynamic>> gifts;
+  @override
+  Widget build(BuildContext context) => _CollectionPageShell(
+    title: 'هدايا $username',
+    child: gifts.isEmpty
+        ? const EmptyState(
+            icon: Icons.card_giftcard_outlined,
+            title: 'لا توجد هدايا بعد',
+            subtitle: 'ستظهر الهدايا عند استلامها.',
+          )
+        : ListView(
+            padding: const EdgeInsets.all(14),
+            children: gifts.map((gift) => _GiftRow(gift: gift)).toList(),
+          ),
+  );
+}
+
+class VehicleCollectionPage extends StatelessWidget {
+  const VehicleCollectionPage({
+    super.key,
+    required this.username,
+    required this.vehicles,
+  });
+  final String username;
+  final List<Map<String, dynamic>> vehicles;
+  @override
+  Widget build(BuildContext context) => _CollectionPageShell(
+    title: 'مركبات $username',
+    child: vehicles.isEmpty
+        ? const EmptyState(
+            icon: Icons.directions_car_outlined,
+            title: 'لا توجد مركبات',
+            subtitle: 'ستظهر المركبات المملوكة والمفعلة هنا.',
+          )
+        : ListView(
+            padding: const EdgeInsets.all(14),
+            children: vehicles
+                .map((vehicle) => _VehicleRow(vehicle: vehicle))
+                .toList(),
+          ),
+  );
+}
+
+class _CollectionPageShell extends StatelessWidget {
+  const _CollectionPageShell({required this.title, required this.child});
+  final String title;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: _profileBg,
+    appBar: AppBar(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      centerTitle: true,
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: _profileInk,
+          fontSize: 15,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      leading: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: const FaIcon(FontAwesomeIcons.arrowRight, size: 16),
+      ),
+    ),
+    body: child,
+  );
+}
+
+class _GiftRow extends StatelessWidget {
+  const _GiftRow({required this.gift});
+  final Map<String, dynamic> gift;
+  @override
+  Widget build(BuildContext context) {
+    final media = gift['media_url']?.toString();
+    final count = (gift['received_count'] as num?)?.toInt() ?? 0;
+    final price = (gift['price'] as num?)?.toInt() ?? 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F3FF),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: media == null || media.isEmpty
+                ? const FaIcon(
+                    FontAwesomeIcons.gift,
+                    color: Color(0xFF8B5CF6),
+                    size: 25,
+                  )
+                : Image.network(media, fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  gift['name']?.toString() ?? 'هدية',
+                  style: const TextStyle(
+                    color: _profileInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'السعر: $price • القيمة المستلمة: ${(gift['received_value'] as num?)?.toInt() ?? 0}',
+                  style: const TextStyle(color: _profileMuted, fontSize: 10),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'استلمها $count مرة',
+                  style: const TextStyle(
+                    color: Color(0xFF8B5CF6),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VehicleRow extends StatelessWidget {
+  const _VehicleRow({required this.vehicle});
+  final Map<String, dynamic> vehicle;
+  @override
+  Widget build(BuildContext context) {
+    final expires = DateTime.tryParse(vehicle['expires_at']?.toString() ?? '');
+    final days = expires?.difference(DateTime.now()).inDays.clamp(0, 9999);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0F2FE),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Image.asset(
+              vehicle['asset_key']?.toString() ?? '',
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const FaIcon(
+                FontAwesomeIcons.carSide,
+                color: Color(0xFF0284C7),
+                size: 25,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vehicle['name']?.toString() ?? 'مركبة',
+                  style: const TextStyle(
+                    color: _profileInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'السعر: ${(vehicle['price_gold_coins'] as num?)?.toInt() ?? 0} عملة ذهبية',
+                  style: const TextStyle(color: _profileMuted, fontSize: 10),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  days == null ? 'المدة غير محددة' : '$days يوم متبقٍ',
+                  style: const TextStyle(
+                    color: Color(0xFF0284C7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
