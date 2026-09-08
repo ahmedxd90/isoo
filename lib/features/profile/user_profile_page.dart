@@ -48,6 +48,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       final results = await Future.wait<dynamic>([
         SakiService.instance.userProfile(widget.userId),
+        SakiService.instance.familyBadgeForUser(widget.userId),
         SakiService.instance.userProfileStats(widget.userId),
         SakiService.instance.userPosts(widget.userId),
         SakiService.instance.userReels(widget.userId),
@@ -55,11 +56,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ]);
       if (!mounted) return;
       setState(() {
-        _profile = results[0] as Map<String, dynamic>?;
-        _stats = Map<String, int>.from(results[1] as Map);
-        _posts = List<Map<String, dynamic>>.from(results[2] as List);
-        _reels = List<Map<String, dynamic>>.from(results[3] as List);
-        _following = results[4] as bool;
+        final base = results[0] as Map<String, dynamic>?;
+        final family = results[1] as Map<String, dynamic>?;
+        _profile = base == null ? null : {...base, 'family_badge': family};
+        _stats = Map<String, int>.from(results[2] as Map);
+        _posts = List<Map<String, dynamic>>.from(results[3] as List);
+        _reels = List<Map<String, dynamic>>.from(results[4] as List);
+        _following = results[5] as bool;
       });
     } catch (_) {
       if (mounted) {
@@ -467,6 +470,12 @@ class _ProfileHero extends StatelessWidget {
                     shadows: [Shadow(color: Colors.black54, blurRadius: 6)],
                   ),
                 ),
+                if (profile['family_badge'] is Map) ...[
+                  const SizedBox(height: 6),
+                  FamilyTitleBadge(
+                    family: Map<String, dynamic>.from(profile['family_badge']),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 GestureDetector(
                   onTap: onCopy,

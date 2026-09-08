@@ -49,6 +49,67 @@ class GradientIconBadge extends StatelessWidget {
   }
 }
 
+class FamilyTitleBadge extends StatelessWidget {
+  const FamilyTitleBadge({
+    super.key,
+    required this.family,
+    this.compact = false,
+  });
+  final Map<String, dynamic>? family;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    if (family == null) return const SizedBox.shrink();
+    final name = family!['name']?.toString().trim();
+    if (name == null || name.isEmpty) return const SizedBox.shrink();
+    final owner = family!['role']?.toString() == 'owner';
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 10,
+        vertical: compact ? 3 : 5,
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFB938), Color(0xFFE87918)],
+        ),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFFE7A3), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x55E87918),
+            blurRadius: 7,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            owner ? Icons.workspace_premium_rounded : Icons.shield_rounded,
+            color: Colors.white,
+            size: compact ? 12 : 15,
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              'عائلة $name',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 10 : 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class SakiLoading extends StatelessWidget {
   const SakiLoading({super.key, this.label = 'جاري التحميل...'});
   final String label;

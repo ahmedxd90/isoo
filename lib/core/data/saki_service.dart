@@ -898,6 +898,23 @@ class SakiService {
     return data == null ? null : Map<String, dynamic>.from(data);
   }
 
+  Future<Map<String, dynamic>?> familyBadgeForUser(String userId) async {
+    final rows = await client
+        .from('family_members')
+        .select('role,families:family_id(id,name,family_alias,level)')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .limit(1);
+    if (rows.isEmpty) return null;
+    final row = Map<String, dynamic>.from(rows.first);
+    final family = row['families'];
+    if (family is! Map) return null;
+    return {
+      ...Map<String, dynamic>.from(family),
+      'role': row['role']?.toString() ?? 'member',
+    };
+  }
+
   Future<bool> isCurrentUserSuperAdmin() async {
     final row = await client
         .from('profiles')

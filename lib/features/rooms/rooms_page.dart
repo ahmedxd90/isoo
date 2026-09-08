@@ -1865,6 +1865,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       profile['country'] as String?,
     );
     final modules = await _service.accountModulesForUser(userId);
+    final familyBadge = await _service.familyBadgeForUser(userId);
     final moderation = canModerate
         ? await _service.roomModerationStatus(_roomId, userId)
         : const <String, dynamic>{};
@@ -1957,6 +1958,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         ),
                       ],
                     ),
+                    if (familyBadge != null) ...[
+                      const SizedBox(height: 7),
+                      FamilyTitleBadge(family: familyBadge),
+                    ],
                     const SizedBox(height: 6),
                     Wrap(
                       alignment: WrapAlignment.center,

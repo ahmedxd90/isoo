@@ -55,10 +55,14 @@ class _ProfilePageState extends State<ProfilePage> {
         SakiService.instance.userPosts(SakiService.instance.uid),
         SakiService.instance.userReels(SakiService.instance.uid),
         SakiService.instance.accountModules(),
+        SakiService.instance.familyBadgeForUser(SakiService.instance.uid),
       ]);
       if (!mounted) return;
       setState(() {
-        _profile = results[0] as Map<String, dynamic>?;
+        final base = results[0] as Map<String, dynamic>?;
+        _profile = base == null
+            ? null
+            : {...base, 'family_badge': results[5] as Map<String, dynamic>?};
         _stats = results[1] as Map<String, int>;
         _posts = List<Map<String, dynamic>>.from(results[2] as List);
         _reels = List<Map<String, dynamic>>.from(results[3] as List);
@@ -254,6 +258,9 @@ class _ProfilePageState extends State<ProfilePage> {
             _ProfileCard(
               profile: profile,
               username: username,
+              familyBadge: profile['family_badge'] is Map
+                  ? Map<String, dynamic>.from(profile['family_badge'])
+                  : null,
               vipLevel: vipLevel,
               wealthLevel: wealthLevel,
               charmLevel: charmLevel,
@@ -319,6 +326,7 @@ class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.profile,
     required this.username,
+    required this.familyBadge,
     required this.vipLevel,
     required this.wealthLevel,
     required this.charmLevel,
@@ -326,6 +334,7 @@ class _ProfileCard extends StatelessWidget {
   });
   final Map<String, dynamic> profile;
   final String username;
+  final Map<String, dynamic>? familyBadge;
   final int vipLevel;
   final int wealthLevel;
   final int charmLevel;
@@ -402,6 +411,10 @@ class _ProfileCard extends StatelessWidget {
                     color: _ink,
                   ),
                 ),
+                if (familyBadge != null) ...[
+                  const SizedBox(height: 6),
+                  FamilyTitleBadge(family: familyBadge, compact: true),
+                ],
                 const SizedBox(height: 2),
                 Text(
                   'ID: ${profile['saki_id'] ?? '—'}',
