@@ -17,8 +17,29 @@ class RoomSessionController extends ChangeNotifier {
   int remoteUsers = 0;
   AudioPlayer? musicPlayer;
   bool bubbleVisible = false;
+  bool overlayEligible = false;
 
   bool get isActive => room != null && engine != null;
+
+  void activate({
+    required Map<String, dynamic> room,
+    required RtcEngine engine,
+    required bool isOnSeat,
+    required bool micMuted,
+    required int remoteUsers,
+    AudioPlayer? musicPlayer,
+  }) {
+    this.room = Map<String, dynamic>.from(room);
+    roomId = room['id']?.toString() ?? room['room_id']?.toString();
+    this.engine = engine;
+    this.isOnSeat = isOnSeat;
+    this.micMuted = micMuted;
+    this.remoteUsers = remoteUsers;
+    this.musicPlayer = musicPlayer;
+    overlayEligible = true;
+    bubbleVisible = false;
+    notifyListeners();
+  }
 
   void minimize({
     required Map<String, dynamic> room,
@@ -35,6 +56,7 @@ class RoomSessionController extends ChangeNotifier {
     this.micMuted = micMuted;
     this.remoteUsers = remoteUsers;
     this.musicPlayer = musicPlayer;
+    overlayEligible = true;
     bubbleVisible = true;
     notifyListeners();
   }
@@ -51,7 +73,6 @@ class RoomSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Kept for callers from older builds; hiding must not destroy the session.
   void clearBubble() => hideBubble();
 
   bool isSameRoom(String id) => roomId == id;
@@ -61,6 +82,7 @@ class RoomSessionController extends ChangeNotifier {
     engine = null;
     room = null;
     roomId = null;
+    overlayEligible = false;
     bubbleVisible = false;
     notifyListeners();
     return value;
@@ -74,6 +96,7 @@ class RoomSessionController extends ChangeNotifier {
     musicPlayer = null;
     room = null;
     roomId = null;
+    overlayEligible = false;
     bubbleVisible = false;
     if (value != null) {
       await value.leaveChannel();

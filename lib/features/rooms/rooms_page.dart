@@ -1337,6 +1337,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           autoSubscribeAudio: true,
         ),
       );
+      RoomSessionController.instance.activate(
+        room: widget.room,
+        engine: engine,
+        isOnSeat: _isOnSeat,
+        micMuted: _micMuted,
+        remoteUsers: _remoteUsers.length,
+        musicPlayer: _musicPlayer,
+      );
     } catch (_) {
       // Audio errors must not prevent the text room from loading.
     }

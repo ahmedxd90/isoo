@@ -88,7 +88,7 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final room = _session.room;
-    if (room == null || _session.engine == null || !_session.bubbleVisible) {
+    if (room == null || _session.engine == null || !_session.overlayEligible) {
       return;
     }
     if (state == AppLifecycleState.paused) {
