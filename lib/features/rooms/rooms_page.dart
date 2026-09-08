@@ -2663,6 +2663,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 leading: SakiAvatar(
                   url: profile['avatar_url'] as String?,
                   label: profile['username'] as String?,
+                  profile: profile,
                 ),
                 title: Text(
                   profile['username'] as String? ?? 'عضو',
@@ -5031,6 +5032,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
             url: widget.profile['avatar_url'] as String?,
             label: widget.profile['username'] as String?,
             radius: 42,
+            profile: widget.profile,
           ),
         ),
         if (_svga.videoItem != null)

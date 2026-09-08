@@ -243,6 +243,7 @@ class VipIdentity extends StatelessWidget {
             url: profile['avatar_url'] as String?,
             label: profile['username'] as String?,
             radius: radius,
+            profile: profile,
           ),
         ),
         const SizedBox(width: 8),

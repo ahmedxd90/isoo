@@ -14,6 +14,32 @@ const _storeGold = Color(0xFFFFC107);
 const _storeInk = Color(0xFF111827);
 const _storeSurface = Color(0xFFF8FAFC);
 
+class _StoreMediaImage extends StatelessWidget {
+  const _StoreMediaImage({
+    required this.path,
+    this.width,
+    this.height,
+    this.fit = BoxFit.cover,
+  });
+  final String path;
+  final double? width;
+  final double? height;
+  final BoxFit fit;
+  @override
+  Widget build(BuildContext context) => path.startsWith('assets/')
+      ? Image.asset(path, width: width, height: height, fit: fit)
+      : Image.network(
+          path,
+          width: width,
+          height: height,
+          fit: fit,
+          errorBuilder: (_, _, _) => const ColoredBox(
+            color: Color(0xFFE0F2FE),
+            child: Icon(Icons.image_not_supported, color: _storeCyan),
+          ),
+        );
+}
+
 class StoreEntranceOverlay extends StatefulWidget {
   const StoreEntranceOverlay({
     super.key,
@@ -811,17 +837,9 @@ class ProductCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.network(
-                product['thumbnail_url'] as String,
+              _StoreMediaImage(
+                path: product['thumbnail_url'] as String,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(
-                  color: Color(0xFFE0F2FE),
-                  child: Icon(
-                    Icons.image_not_supported,
-                    size: 50,
-                    color: _storeCyan,
-                  ),
-                ),
               ),
               Positioned(
                 top: 9,
@@ -1061,8 +1079,8 @@ class BagRow extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Image.network(
-              product['thumbnail_url'] as String,
+            child: _StoreMediaImage(
+              path: product['thumbnail_url'] as String,
               width: 62,
               height: 62,
               fit: BoxFit.cover,

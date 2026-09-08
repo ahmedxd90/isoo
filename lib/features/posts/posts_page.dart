@@ -385,6 +385,7 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                               leading: SakiAvatar(
                                 url: p['avatar_url'] as String?,
                                 label: p['username'] as String?,
+                                profile: p,
                               ),
                               title: Text(
                                 p['username'] as String? ?? 'عضو',
@@ -539,6 +540,7 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                         child: SakiAvatar(
                           url: profile['avatar_url'] as String?,
                           label: author,
+                          profile: profile,
                           radius: 25,
                         ),
                       ),

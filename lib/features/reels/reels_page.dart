@@ -367,6 +367,7 @@ class _ReelCardState extends State<ReelCard> {
                         leading: SakiAvatar(
                           url: profile['avatar_url'] as String?,
                           label: profile['username'] as String?,
+                          profile: profile,
                         ),
                         title: VipNameText(profile: profile, fontSize: 13),
                         subtitle: Text(row['content'] as String? ?? ''),

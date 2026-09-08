@@ -4,14 +4,22 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 
 class SakiAvatar extends StatelessWidget {
-  const SakiAvatar({super.key, this.url, this.radius = 22, this.label});
+  const SakiAvatar({
+    super.key,
+    this.url,
+    this.radius = 22,
+    this.label,
+    this.profile,
+  });
   final String? url;
   final double radius;
   final String? label;
+  final Map<String, dynamic>? profile;
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
+    final level = _activeVipLevel(profile);
+    final avatar = CircleAvatar(
       radius: radius,
       backgroundColor: SakiColors.royalPurple.withValues(alpha: .25),
       backgroundImage: url == null || url!.isEmpty
@@ -27,7 +35,38 @@ class SakiAvatar extends StatelessWidget {
             )
           : null,
     );
+    if (level == 0 || profile?['vip_frame_enabled'] == false) return avatar;
+    return SizedBox(
+      width: radius * 2 + 14,
+      height: radius * 2 + 14,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          avatar,
+          IgnorePointer(
+            child: Image.asset(
+              'assets/vip/frame_vip$level.png',
+              width: radius * 2 + 14,
+              height: radius * 2 + 14,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+int _activeVipLevel(Map<String, dynamic>? profile) {
+  if (profile == null) return 0;
+  final level = ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+  final expires = DateTime.tryParse(
+    profile['vip_expires_at']?.toString() ?? '',
+  );
+  if (level < 1 || expires == null || !expires.isAfter(DateTime.now()))
+    return 0;
+  return level;
 }
 
 class GradientIconBadge extends StatelessWidget {

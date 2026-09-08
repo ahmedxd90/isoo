@@ -210,6 +210,7 @@ class _RoomGiftRankingSheetState extends State<RoomGiftRankingSheet> {
             SakiAvatar(
               url: profile['avatar_url'] as String?,
               label: profile['username'] as String?,
+              profile: profile,
               radius: 22,
             ),
             const SizedBox(width: 10),
@@ -434,6 +435,7 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
                   child: SakiAvatar(
                     url: widget.profile['avatar_url'] as String?,
                     label: widget.profile['username'] as String?,
+                    profile: widget.profile,
                     radius: 20,
                   ),
                 ),
