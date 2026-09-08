@@ -1,5 +1,6 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
 
 import 'room_background_bridge.dart';
 
@@ -14,6 +15,7 @@ class RoomSessionController extends ChangeNotifier {
   bool isOnSeat = false;
   bool micMuted = true;
   int remoteUsers = 0;
+  AudioPlayer? musicPlayer;
 
   bool get isActive => room != null && engine != null;
 
@@ -23,6 +25,7 @@ class RoomSessionController extends ChangeNotifier {
     required bool isOnSeat,
     required bool micMuted,
     required int remoteUsers,
+    AudioPlayer? musicPlayer,
   }) {
     this.room = Map<String, dynamic>.from(room);
     roomId = room['id']?.toString() ?? room['room_id']?.toString();
@@ -30,6 +33,7 @@ class RoomSessionController extends ChangeNotifier {
     this.isOnSeat = isOnSeat;
     this.micMuted = micMuted;
     this.remoteUsers = remoteUsers;
+    this.musicPlayer = musicPlayer;
     notifyListeners();
   }
 
@@ -59,13 +63,16 @@ class RoomSessionController extends ChangeNotifier {
   Future<void> close() async {
     await RoomBackgroundBridge.stop();
     final value = engine;
+    final player = musicPlayer;
     engine = null;
+    musicPlayer = null;
     room = null;
     roomId = null;
     if (value != null) {
       await value.leaveChannel();
       await value.release();
     }
+    await player?.dispose();
     notifyListeners();
   }
 }

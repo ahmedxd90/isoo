@@ -1138,7 +1138,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _entranceProduct;
   Timer? _entranceTimer;
   bool _membersInitialized = false;
-  final AudioPlayer _musicPlayer = AudioPlayer();
+  late AudioPlayer _musicPlayer;
   List<Map<String, dynamic>> _roomMusic = [];
   Map<String, dynamic>? _activeMusic;
   bool _musicPlaying = false;
@@ -1151,6 +1151,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   void initState() {
     super.initState();
+    final session = RoomSessionController.instance;
+    _musicPlayer = session.isSameRoom(_roomId)
+        ? (session.musicPlayer ?? AudioPlayer())
+        : AudioPlayer();
     _seatStream = _service.roomSeatsStream(_roomId);
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
@@ -1219,6 +1223,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _isOnSeat = session.isOnSeat;
       _micMuted = session.micMuted;
       RoomSessionController.instance.clearBubble();
+      RoomBackgroundBridge.stop();
     }
     _join();
     _loadRoomState();
@@ -1357,13 +1362,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       isOnSeat: _isOnSeat,
       micMuted: _micMuted,
       remoteUsers: _remoteUsers.length,
+      musicPlayer: _musicPlayer,
     );
     RoomBackgroundBridge.start(
       roomId: _roomId,
       roomName: widget.room['name'] as String? ?? 'غرفة SAKI',
       imageUrl: widget.room['image_url'] as String?,
     );
-    _engine = null;
     _joined = false;
     Navigator.of(context).pop();
   }
@@ -2950,6 +2955,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   @override
   void dispose() {
+    final preservedSession =
+        RoomSessionController.instance.isSameRoom(_roomId) &&
+        RoomSessionController.instance.engine == _engine;
     _message.dispose();
     _messageFocus.dispose();
     _comboTimer?.cancel();
@@ -2961,7 +2969,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _roomSettingsSubscription?.cancel();
     _presenceTimer?.cancel();
-    if (_musicPlaying) {
+    if (_musicPlaying && !preservedSession) {
       _roomChatChannel.sendBroadcastMessage(
         event: 'music',
         payload: {'action': 'stop', 'reason': 'room_exit'},
@@ -2969,10 +2977,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _musicPlayer.stop();
     }
     _service.client.removeChannel(_roomChatChannel);
-    _musicPlayer.dispose();
-    if (_joined) _service.leaveRoom(_roomId);
-    _engine?.leaveChannel();
-    _engine?.release();
+    if (!preservedSession) {
+      _musicPlayer.dispose();
+      if (_joined) _service.leaveRoom(_roomId);
+      _engine?.leaveChannel();
+      _engine?.release();
+    }
     super.dispose();
   }
 

@@ -9,6 +9,7 @@ import '../profile/profile_page.dart';
 import '../reels/reels_page.dart';
 import '../rooms/rooms_page.dart';
 import '../../core/data/saki_service.dart';
+import '../../core/room_background_bridge.dart';
 import '../../core/room_session.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
@@ -53,9 +54,15 @@ class RoomMiniBubble extends StatefulWidget {
   State<RoomMiniBubble> createState() => _RoomMiniBubbleState();
 }
 
-class _RoomMiniBubbleState extends State<RoomMiniBubble> {
+class _RoomMiniBubbleState extends State<RoomMiniBubble>
+    with SingleTickerProviderStateMixin {
   final _session = RoomSessionController.instance;
   Offset _dragOffset = Offset.zero;
+  late final AnimationController _waveController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+  bool _opening = false;
 
   @override
   void initState() {
@@ -65,6 +72,7 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble> {
 
   @override
   void dispose() {
+    _waveController.dispose();
     _session.removeListener(_changed);
     super.dispose();
   }
@@ -88,42 +96,91 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble> {
             setState(() => _dragOffset += details.delta);
           },
           onTap: () async {
+            if (_opening) return;
             final current = _session.room;
             if (current == null) return;
+            setState(() => _opening = true);
+            await RoomBackgroundBridge.stop();
+            if (!context.mounted) return;
             await Navigator.of(context, rootNavigator: true).push(
               MaterialPageRoute(
                 builder: (_) =>
                     RoomDetailPage(room: Map<String, dynamic>.from(current)),
               ),
             );
+            if (mounted) setState(() => _opening = false);
           },
           child: Container(
-            width: 68,
-            height: 68,
-            padding: const EdgeInsets.all(3),
+            width: 78,
+            height: 60,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF656BF9),
+              color: const Color(0xFF1D2442),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFF7C83FF), width: 1.2),
               boxShadow: const [
                 BoxShadow(color: Colors.black45, blurRadius: 12),
               ],
             ),
-            child: ClipOval(
-              child: image == null || image.isEmpty
-                  ? Container(
-                      color: const Color(0xFF312E81),
-                      child: const Icon(
-                        Icons.meeting_room,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Image.network(image, fit: BoxFit.cover),
+            child: Row(
+              children: [
+                const SizedBox(width: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: image == null || image.isEmpty
+                        ? const ColoredBox(
+                            color: Color(0xFF343B79),
+                            child: Icon(
+                              Icons.meeting_room,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          )
+                        : Image.network(image, fit: BoxFit.cover),
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Expanded(child: _SoundWaves(controller: _waveController)),
+                const SizedBox(width: 4),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _SoundWaves extends StatelessWidget {
+  const _SoundWaves({required this.controller});
+  final Animation<double> controller;
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: controller,
+    builder: (_, _) {
+      const heights = [10.0, 19.0, 14.0, 23.0, 12.0];
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: List.generate(heights.length, (index) {
+          final phase = (controller.value + index * .17) % 1;
+          final scale = .65 + (.35 * ((phase < .5 ? phase : 1 - phase) * 2));
+          return Container(
+            width: 2.5,
+            height: heights[index] * scale,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            decoration: BoxDecoration(
+              color: const Color(0xFF67E8F9),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          );
+        }),
+      );
+    },
+  );
 }
 
 class _GlobalGiftBanner extends StatefulWidget {

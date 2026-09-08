@@ -9,6 +9,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
@@ -17,12 +19,15 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.LinearInterpolator
+import android.widget.FrameLayout
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 
 class RoomOverlayService : Service() {
     private var windowManager: WindowManager? = null
-    private var bubble: ImageView? = null
+    private var bubble: View? = null
+    private var bubbleImage: ImageView? = null
     private var roomName = "غرفة SAKI"
     private var imageUrl = ""
 
@@ -43,13 +48,19 @@ class RoomOverlayService : Service() {
     private fun showBubble() {
         if (bubble != null) return
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val view = ImageView(this).apply {
+        val image = ImageView(this).apply {
             setImageResource(android.R.drawable.ic_media_play)
             setColorFilter(Color.WHITE)
-            setBackgroundColor(Color.rgb(101, 107, 249))
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }
+        val view = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(29, 36, 66))
             elevation = 12f
             contentDescription = roomName
+            addView(image, FrameLayout.LayoutParams(-1, -1))
+            addView(WaveOverlayView(this@RoomOverlayService), FrameLayout.LayoutParams(-1, -1))
         }
+        bubbleImage = image
         val size = (58 * resources.displayMetrics.density).toInt()
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -108,8 +119,8 @@ class RoomOverlayService : Service() {
                 val bitmap = java.net.URL(imageUrl).openStream().use { BitmapFactory.decodeStream(it) }
                 if (bitmap != null) {
                     bubble?.post {
-                        bubble?.clearColorFilter()
-                        bubble?.setImageBitmap(bitmap)
+                        bubbleImage?.clearColorFilter()
+                        bubbleImage?.setImageBitmap(bitmap)
                     }
                 }
             } catch (_: Exception) {
@@ -128,6 +139,7 @@ class RoomOverlayService : Service() {
     override fun onDestroy() {
         bubble?.let { windowManager?.removeView(it) }
         bubble = null
+        bubbleImage = null
         super.onDestroy()
     }
 
@@ -147,6 +159,54 @@ class RoomOverlayService : Service() {
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "جلسة الغرفة", NotificationManager.IMPORTANCE_LOW),
         )
+    }
+
+    private class WaveOverlayView(context: Context) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(103, 232, 249)
+        }
+        private var phase = 0f
+        private val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 900
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                phase = it.animatedValue as Float
+                invalidate()
+            }
+        }
+
+        init {
+            animator.start()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val heights = floatArrayOf(.25f, .52f, .38f, .64f, .30f)
+            val base = height * .5f
+            val start = width * .72f
+            val gap = width * .045f
+            for (i in heights.indices) {
+                val p = (phase + i * .17f) % 1f
+                val scale = .65f + .35f * ((if (p < .5f) p else 1f - p) * 2f)
+                val barHeight = height * heights[i] * scale
+                val x = start + i * gap
+                canvas.drawRoundRect(
+                    x,
+                    base - barHeight / 2,
+                    x + width * .035f,
+                    base + barHeight / 2,
+                    8f,
+                    8f,
+                    paint,
+                )
+            }
+        }
+
+        override fun onDetachedFromWindow() {
+            animator.cancel()
+            super.onDetachedFromWindow()
+        }
     }
 
     companion object {
