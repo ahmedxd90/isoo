@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
+import 'saki_vip_slot_sheet.dart';
 
 const _gold = Color(0xFFFFC107);
 const _blue = Color(0xFF1357B8);
@@ -200,6 +201,66 @@ class SakiGamesSheet extends StatelessWidget {
           const SizedBox(height: 8),
           const Text(
             'طابق الرموز في شبكة 3×5 واربح مضاعفات ذهبية',
+            style: TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: () {
+              Navigator.pop(context);
+              showSakiVipSlot(context, service, roomId);
+            },
+            borderRadius: BorderRadius.circular(22),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Stack(
+                children: [
+                  Image.asset(
+                    'assets/saki_games/saki_slot_thumbnail.png',
+                    height: 190,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: .84),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const Positioned(
+                    bottom: 14,
+                    right: 16,
+                    left: 16,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'ماكينة السلوت الملكية VIP',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 21,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        Icon(Icons.casino_rounded, color: _gold, size: 34),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '3×3 و5 خطوط فوز • الخصم والنتيجة بعملات SAKI الذهبية',
             style: TextStyle(color: Colors.black54),
           ),
           const SizedBox(height: 8),

@@ -81,6 +81,7 @@ flutter:
     - assets/saki_wheel/background.png
     - assets/saki_games/saki_gold_reels_thumbnail.png
     - assets/saki_games/saki_gold_reels_background.png
+    - assets/saki_games/saki_slot_thumbnail.png
     - assets/trace_profile/images/
     - assets/trace_profile/features/
     - assets/trace_profile/svg/
