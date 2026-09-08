@@ -14,6 +14,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
+import '../../core/room_background_bridge.dart';
 import '../../core/room_session.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
@@ -1357,6 +1358,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       micMuted: _micMuted,
       remoteUsers: _remoteUsers.length,
     );
+    RoomBackgroundBridge.start(
+      roomId: _roomId,
+      roomName: widget.room['name'] as String? ?? 'غرفة SAKI',
+      imageUrl: widget.room['image_url'] as String?,
+    );
     _engine = null;
     _joined = false;
     Navigator.of(context).pop();
@@ -1661,6 +1667,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     if (result == true) {
       await _service.leaveRoom(_roomId);
+      await RoomBackgroundBridge.stop();
       if (RoomSessionController.instance.engine == _engine ||
           RoomSessionController.instance.room?['id'] == _roomId) {
         await RoomSessionController.instance.close();
@@ -2987,7 +2994,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        if (await _confirmExit() && mounted) navigator.pop();
+        _minimizeRoom();
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF4A0E17),

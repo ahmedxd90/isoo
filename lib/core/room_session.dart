@@ -1,6 +1,8 @@
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
 
+import 'room_background_bridge.dart';
+
 class RoomSessionController extends ChangeNotifier {
   RoomSessionController._();
 
@@ -55,6 +57,7 @@ class RoomSessionController extends ChangeNotifier {
   }
 
   Future<void> close() async {
+    await RoomBackgroundBridge.stop();
     final value = engine;
     engine = null;
     room = null;

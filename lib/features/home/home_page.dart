@@ -55,6 +55,7 @@ class RoomMiniBubble extends StatefulWidget {
 
 class _RoomMiniBubbleState extends State<RoomMiniBubble> {
   final _session = RoomSessionController.instance;
+  Offset _dragOffset = Offset.zero;
 
   @override
   void initState() {
@@ -80,36 +81,44 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble> {
     return Positioned(
       right: 16,
       bottom: 92,
-      child: GestureDetector(
-        onTap: () async {
-          final current = _session.room;
-          if (current == null) return;
-          await Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  RoomDetailPage(room: Map<String, dynamic>.from(current)),
+      child: Transform.translate(
+        offset: _dragOffset,
+        child: GestureDetector(
+          onPanUpdate: (details) {
+            setState(() => _dragOffset += details.delta);
+          },
+          onTap: () async {
+            final current = _session.room;
+            if (current == null) return;
+            await Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    RoomDetailPage(room: Map<String, dynamic>.from(current)),
+              ),
+            );
+          },
+          child: Container(
+            width: 68,
+            height: 68,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF656BF9),
+              boxShadow: const [
+                BoxShadow(color: Colors.black45, blurRadius: 12),
+              ],
             ),
-          );
-        },
-        onLongPress: () {
-          _session.close();
-        },
-        child: Container(
-          width: 68,
-          height: 68,
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF656BF9),
-            boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12)],
-          ),
-          child: ClipOval(
-            child: image == null || image.isEmpty
-                ? Container(
-                    color: const Color(0xFF312E81),
-                    child: const Icon(Icons.meeting_room, color: Colors.white),
-                  )
-                : Image.network(image, fit: BoxFit.cover),
+            child: ClipOval(
+              child: image == null || image.isEmpty
+                  ? Container(
+                      color: const Color(0xFF312E81),
+                      child: const Icon(
+                        Icons.meeting_room,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Image.network(image, fit: BoxFit.cover),
+            ),
           ),
         ),
       ),
