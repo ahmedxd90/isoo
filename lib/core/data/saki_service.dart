@@ -2141,6 +2141,10 @@ class SakiService {
     await client.rpc('request_family_join', params: {'p_family_id': familyId});
   }
 
+  Future<void> leaveFamily(String familyId) async {
+    await client.rpc('leave_family', params: {'p_family_id': familyId});
+  }
+
   Future<List<Map<String, dynamic>>> familyJoinRequests(String familyId) async {
     final rows = await client
         .from('family_join_requests')

@@ -70,10 +70,29 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
   }
 
   Future<void> _join(Map<String, dynamic> family) async {
+    final familyName = family['name']?.toString() ?? 'هذه العائلة';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تأكيد الانضمام'),
+        content: Text('هل تريد إرسال طلب انضمام إلى عائلة $familyName؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('لا'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('موافق'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     try {
       await _service.requestFamilyJoin(family['id'].toString());
       if (mounted) {
-        _snack('تم إرسال طلب الانضمام إلى العائلة');
+        _snack('تم إرسال الطلب. بانتظار موافقة رئيس العائلة');
         await _load();
       }
     } catch (error) {
@@ -127,6 +146,7 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
                                   rank: i + 1,
                                   isMine: _myFamily?['id'] == top[i]['id'],
                                   onTap: () => _openFamily(top[i]),
+                                  onJoin: () => _join(top[i]),
                                 ),
                               ),
                             ),
@@ -566,6 +586,42 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
     if (mounted) _load();
   }
 
+  Future<void> _leaveFamily() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('الخروج من العائلة'),
+        content: const Text(
+          'هل تريد الخروج من هذه العائلة؟ ستتمكن من رؤية ميدان العائلة بعد الخروج.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('لا'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('خروج'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _service.leaveFamily(widget.family['id'].toString());
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم الخروج من العائلة. يمكنك الآن استكشاف الميدان'),
+          ),
+        );
+      }
+    } catch (error) {
+      _snack(error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final f = widget.family;
@@ -745,6 +801,29 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                           ),
                         ),
                       ),
+                    if (widget.family['owner_id']?.toString() !=
+                        _service.uid) ...[
+                      const SizedBox(height: 18),
+                      GestureDetector(
+                        onTap: _leaveFamily,
+                        child: Container(
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F2),
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: const Color(0xFFFECACA)),
+                          ),
+                          child: const Text(
+                            'الخروج من العائلة',
+                            style: TextStyle(
+                              color: Color(0xFFDC2626),
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ]),
                 ),
               ),
@@ -1691,11 +1770,13 @@ class _TopFamilyCard extends StatelessWidget {
     required this.rank,
     required this.isMine,
     required this.onTap,
+    required this.onJoin,
   });
   final Map<String, dynamic> family;
   final int rank;
   final bool isMine;
   final VoidCallback onTap;
+  final VoidCallback onJoin;
   @override
   Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
@@ -1734,11 +1815,22 @@ class _TopFamilyCard extends StatelessWidget {
             style: const TextStyle(color: Colors.white60, fontSize: 11),
           ),
           const Spacer(),
-          Text(
-            isMine ? 'ممثلي' : 'عرض العائلة',
-            style: const TextStyle(
-              color: _familyGold,
-              fontWeight: FontWeight.w800,
+          GestureDetector(
+            onTap: isMine ? null : onJoin,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+              decoration: BoxDecoration(
+                color: isMine ? Colors.white12 : _familyGold,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                isMine ? 'عائلتي' : 'انضمام',
+                style: TextStyle(
+                  color: isMine ? Colors.white54 : _familyInk,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
             ),
           ),
         ],
