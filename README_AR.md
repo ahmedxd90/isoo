@@ -8,7 +8,7 @@
 |---|---|
 | Supabase URL | `https://vzooppdaqayerpmvdotl.supabase.co` |
 | Supabase project ref | `vzooppdaqayerpmvdotl` |
-| Android package | `com.saki.saki` |
+| Android package | `saki.chat.co` |
 | Flutter | `3.47.2` |
 | Dart | `3.13.2` |
 | compileSdk | `36` |
@@ -58,7 +58,7 @@ build/app/outputs/flutter-apk/app-debug.apk
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
-تم التحقق من أن APK الإصدار يحمل الحزمة `com.saki.saki`، وأنه يستهدف Android 24 أو أحدث، ويحتوي على صلاحية الإنترنت، وأن البناء Release وDebug اكتمل بنجاح.
+تم التحقق من أن APK الإصدار يحمل الحزمة `saki.chat.co`، وأنه يستهدف Android 24 أو أحدث، ويحتوي على صلاحية الإنترنت، وأن البناء Release وDebug اكتمل بنجاح.
 
 ## ملاحظات التشغيل
 

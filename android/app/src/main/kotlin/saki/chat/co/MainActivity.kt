@@ -1,4 +1,4 @@
-package com.saki.saki
+package saki.chat.co
 
 import android.content.Intent
 import android.net.Uri

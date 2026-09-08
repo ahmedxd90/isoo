@@ -2,7 +2,7 @@ SAKI seat leave release — v1.3.2+15 — 2026-09-06
 
 Flutter: 3.47.2
 Dart: 3.13.2
-Android package: com.saki.saki
+Android package: saki.chat.co
 versionName: 1.3.2 | versionCode: 15
 compileSdk: 36 | targetSdk: 36 | minSdk: 24
 Supabase project ref: vzooppdaqayerpmvdotl
@@ -24,7 +24,7 @@ Final APK output:
 
 Validation:
 - Release APK build passed.
-- aapt confirmed package com.saki.saki, versionName 1.3.2, versionCode 15, compile/target SDK 36.
+- aapt confirmed package saki.chat.co, versionName 1.3.2, versionCode 15, compile/target SDK 36.
 - APK signature verification passed with APK Signature Scheme v2.
 - Supabase database already contains the trace feature migrations under applied migration records.
 - The previous main state is preserved on backup-main-before-trace-1.3.2-20260906131313.
