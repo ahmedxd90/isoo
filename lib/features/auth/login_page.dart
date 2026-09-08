@@ -28,6 +28,15 @@ class _LoginPageState extends State<LoginPage> {
     ) {
       if (event.session != null) _routeAfterAuth();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final error = GoRouterState.of(context)
+          .uri
+          .queryParameters['oauth_error'];
+      if (error != null && error.isNotEmpty) {
+        _showError(_friendlyOAuthError(error));
+      }
+    });
     _prepareVideo();
   }
 
@@ -51,14 +60,23 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _googleLogin() async {
     setState(() => _loading = true);
     try {
-      await Supabase.instance.client.auth.signInWithOAuth(
+      final launched = await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'io.supabase.saki://login-callback/',
       );
+      if (!launched) {
+        throw const AuthException(
+          'تعذر فتح نافذة تسجيل الدخول الآمنة من Google.',
+        );
+      }
     } on AuthException catch (e) {
-      _message(e.message);
-    } catch (_) {
-      _message('تعذر فتح تسجيل الدخول عبر Google.');
+      if (mounted) _showError(_friendlyAuthError(e.message));
+    } catch (error) {
+      if (mounted) {
+        _showError(
+          'تعذر بدء تسجيل الدخول عبر Google. تحقق من الاتصال وحاول مرة أخرى.\n$error',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -76,13 +94,55 @@ class _LoginPageState extends State<LoginPage> {
           profile?['country'] != null &&
           profile?['gender'] != null;
       if (mounted) context.go(complete ? '/home' : '/complete-profile');
+    } catch (_) {
+      if (mounted) {
+        _showError(
+          'تم تسجيل Google، لكن تعذر تحميل ملفك الشخصي. تحقق من الاتصال وحاول مرة أخرى.',
+        );
+      }
     } finally {
       _routing = false;
     }
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  String _friendlyAuthError(String message) {
+    final normalized = message.toLowerCase();
+    if (normalized.contains('cancel') || normalized.contains('access_denied')) {
+      return 'تم إلغاء تسجيل الدخول عبر Google.';
+    }
+    if (normalized.contains('network') || normalized.contains('socket')) {
+      return 'لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى.';
+    }
+    if (normalized.contains('provider') || normalized.contains('not enabled')) {
+      return 'تسجيل Google غير مفعّل في إعدادات الخادم حاليًا.';
+    }
+    return message.isEmpty ? 'تعذر تسجيل الدخول عبر Google.' : message;
+  }
+
+  String _friendlyOAuthError(String error) => _friendlyAuthError(error);
+
+  Future<void> _showError(String text) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('تعذر تسجيل الدخول'),
+          ],
+        ),
+        content: Text(text, textDirection: TextDirection.rtl),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('حسنًا'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void dispose() {
