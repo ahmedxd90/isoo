@@ -9,7 +9,6 @@ import '../profile/profile_page.dart';
 import '../reels/reels_page.dart';
 import '../rooms/rooms_page.dart';
 import '../../core/data/saki_service.dart';
-import '../../core/room_background_bridge.dart';
 import '../../core/room_session.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
@@ -63,15 +62,12 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     duration: const Duration(milliseconds: 900),
   )..repeat();
   bool _opening = false;
-  bool _checkingPending = false;
-  bool _overlayStarted = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _session.addListener(_changed);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openPendingRoom());
   }
 
   @override
@@ -88,62 +84,9 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final room = _session.room;
-    if (room == null || _session.engine == null || !_session.overlayEligible) {
-      return;
-    }
-    if ((state == AppLifecycleState.inactive ||
-            state == AppLifecycleState.paused) &&
-        !_overlayStarted) {
-      _overlayStarted = true;
-      unawaited(
-        RoomBackgroundBridge.start(
-          roomId: _session.roomId ?? room['id']?.toString() ?? '',
-          roomName: room['name']?.toString() ?? 'غرفة SAKI',
-          imageUrl: room['image_url']?.toString(),
-        ),
-      );
-    } else if (state == AppLifecycleState.resumed) {
-      _overlayStarted = false;
-      unawaited(RoomBackgroundBridge.stop());
-      unawaited(_openPendingRoom());
-    }
-  }
-
-  Future<void> _openPendingRoom() async {
-    if (_checkingPending) return;
-    _checkingPending = true;
-    await Future<void>.delayed(const Duration(milliseconds: 1800));
-    try {
-      if (!mounted || _opening) return;
-      final pending = await RoomBackgroundBridge.consumePendingRoom();
-      if (pending == null) return;
-      final roomId = pending['roomId']?.toString();
-      if (roomId == null || roomId.isEmpty || !mounted) return;
-      final current = _session.room;
-      if (current != null && _session.isSameRoom(roomId)) {
-        if (!mounted) return;
-        await Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                RoomDetailPage(room: Map<String, dynamic>.from(current)),
-          ),
-        );
-        return;
-      }
-      final room = <String, dynamic>{
-        'id': roomId,
-        'room_id': pending['roomNumber']?.toString() ?? '',
-        'name': pending['roomName']?.toString() ?? 'غرفة SAKI',
-        'image_url': pending['imageUrl']?.toString() ?? '',
-      };
-      await Navigator.of(
-        context,
-        rootNavigator: true,
-      ).push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
-    } finally {
-      _checkingPending = false;
-    }
+    // The old Android overlay bubble is intentionally disabled. The app now
+    // uses one in-app movable mini-room only, so two competing bubbles cannot
+    // appear and the live Agora session remains owned by this widget tree.
   }
 
   @override
@@ -180,8 +123,8 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
             }
           },
           child: Container(
-            width: 78,
-            height: 60,
+            width: 184,
+            height: 72,
             decoration: BoxDecoration(
               color: const Color(0xFF1D2442),
               borderRadius: BorderRadius.circular(18),
@@ -210,9 +153,61 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
                         : Image.network(image, fit: BoxFit.cover),
                   ),
                 ),
-                const SizedBox(width: 3),
-                Expanded(child: _SoundWaves(controller: _waveController)),
-                const SizedBox(width: 4),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        room['name']?.toString() ?? 'غرفة SAKI',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            _session.isOnSeat ? Icons.mic : Icons.headset,
+                            color: _session.isOnSeat && !_session.micMuted
+                                ? Colors.greenAccent
+                                : Colors.white70,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${_session.remoteUsers} متحدث • ${_session.isOnSeat ? 'على مقعد' : 'مستمع'}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 9,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          _SoundWaves(controller: _waveController),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    final callback = _session.onExitRequested;
+                    if (callback != null) await callback();
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

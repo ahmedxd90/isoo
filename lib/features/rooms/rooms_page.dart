@@ -1057,36 +1057,6 @@ class _RoomWaveState extends State<_RoomWave>
   }
 }
 
-class _ExitChoiceIcon extends StatelessWidget {
-  const _ExitChoiceIcon({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 72,
-      height: 72,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .18),
-        shape: BoxShape.circle,
-        border: Border.all(color: color.withValues(alpha: .75), width: 1.5),
-        boxShadow: [
-          BoxShadow(color: color.withValues(alpha: .28), blurRadius: 24),
-        ],
-      ),
-      child: Icon(icon, color: color, size: 30),
-    ),
-  );
-}
-
 class RoomDetailPage extends StatefulWidget {
   const RoomDetailPage({super.key, required this.room});
   final Map<String, dynamic> room;
@@ -1347,6 +1317,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         micMuted: _micMuted,
         remoteUsers: _remoteUsers.length,
         musicPlayer: _musicPlayer,
+        onExitRequested: () async {
+          await _service.leaveRoom(_roomId);
+          await RoomSessionController.instance.close();
+        },
       );
     } catch (_) {
       // Audio errors must not prevent the text room from loading.
@@ -1374,6 +1348,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       micMuted: _micMuted,
       remoteUsers: _remoteUsers.length,
       musicPlayer: _musicPlayer,
+      onExitRequested: () async {
+        await _service.leaveRoom(_roomId);
+        await RoomSessionController.instance.close();
+      },
     );
     // The in-app card is the only bubble while the app is visible. The
     // Android overlay is started by RoomMiniBubble only after the app pauses.
@@ -1660,33 +1638,39 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<bool> _confirmExit() async {
-    final result = await showGeneralDialog<bool>(
+    final result = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: .70),
-      transitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (_, _, _) => SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ExitChoiceIcon(
-                icon: Icons.logout_rounded,
-                color: const Color(0xFFFF496D),
-                onTap: () => Navigator.of(context).pop(true),
-              ),
-              const SizedBox(height: 18),
-              _ExitChoiceIcon(
-                icon: Icons.bookmark_rounded,
-                color: const Color(0xFF8B7CFF),
-                onTap: () => Navigator.of(context).pop(false),
-              ),
-            ],
-          ),
+      barrierDismissible: true,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF211F27),
+        title: const Text(
+          'مغادرة الغرفة؟',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
         ),
+        content: const Text(
+          'يمكنك الاحتفاظ بالجلسة وتصغير الغرفة، أو الخروج بالكامل والنزول من المقعد.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, height: 1.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('احتفظ بالغرفة'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE34D68),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('خروج كامل'),
+          ),
+        ],
       ),
     );
     if (result == true) {
+      await _service.leaveRoomSeat(_roomId).catchError((_) {});
       await _service.leaveRoom(_roomId);
       await RoomBackgroundBridge.stop();
       if (RoomSessionController.instance.engine == _engine ||
@@ -1695,7 +1679,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       }
       return true;
     }
-    _minimizeRoom();
+    if (result == false) _minimizeRoom();
     return false;
   }
 
@@ -2740,7 +2724,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        _minimizeRoom();
+        await _confirmExit();
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF4A0E17),

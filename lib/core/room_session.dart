@@ -6,7 +6,6 @@ import 'room_background_bridge.dart';
 
 class RoomSessionController extends ChangeNotifier {
   RoomSessionController._();
-
   static final RoomSessionController instance = RoomSessionController._();
 
   Map<String, dynamic>? room;
@@ -18,6 +17,7 @@ class RoomSessionController extends ChangeNotifier {
   AudioPlayer? musicPlayer;
   bool bubbleVisible = false;
   bool overlayEligible = false;
+  Future<void> Function()? onExitRequested;
 
   bool get isActive => room != null && engine != null;
 
@@ -28,6 +28,7 @@ class RoomSessionController extends ChangeNotifier {
     required bool micMuted,
     required int remoteUsers,
     AudioPlayer? musicPlayer,
+    Future<void> Function()? onExitRequested,
   }) {
     this.room = Map<String, dynamic>.from(room);
     roomId = room['id']?.toString() ?? room['room_id']?.toString();
@@ -36,6 +37,7 @@ class RoomSessionController extends ChangeNotifier {
     this.micMuted = micMuted;
     this.remoteUsers = remoteUsers;
     this.musicPlayer = musicPlayer;
+    this.onExitRequested = onExitRequested;
     overlayEligible = true;
     bubbleVisible = false;
     notifyListeners();
@@ -48,6 +50,7 @@ class RoomSessionController extends ChangeNotifier {
     required bool micMuted,
     required int remoteUsers,
     AudioPlayer? musicPlayer,
+    Future<void> Function()? onExitRequested,
   }) {
     this.room = Map<String, dynamic>.from(room);
     roomId = room['id']?.toString() ?? room['room_id']?.toString();
@@ -56,6 +59,7 @@ class RoomSessionController extends ChangeNotifier {
     this.micMuted = micMuted;
     this.remoteUsers = remoteUsers;
     this.musicPlayer = musicPlayer;
+    this.onExitRequested = onExitRequested;
     overlayEligible = true;
     bubbleVisible = true;
     notifyListeners();
@@ -73,8 +77,6 @@ class RoomSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void clearBubble() => hideBubble();
-
   bool isSameRoom(String id) => roomId == id;
 
   RtcEngine? takeEngine() {
@@ -82,6 +84,7 @@ class RoomSessionController extends ChangeNotifier {
     engine = null;
     room = null;
     roomId = null;
+    onExitRequested = null;
     overlayEligible = false;
     bubbleVisible = false;
     notifyListeners();
@@ -96,6 +99,7 @@ class RoomSessionController extends ChangeNotifier {
     musicPlayer = null;
     room = null;
     roomId = null;
+    onExitRequested = null;
     overlayEligible = false;
     bubbleVisible = false;
     if (value != null) {
