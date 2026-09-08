@@ -17,7 +17,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   static const _videoUrl = 'https://f.top4top.io/m_3901fr5rd0.mp4';
   static const _googleWebClientId =
-      '543559795997-lfhc47bl2bm8coc9r4lqf59k7plkh7pb.apps.googleusercontent.com';
+      '164807497226-nkgti09lmuin5ekmmlfg0kf7aafcpjic.apps.googleusercontent.com';
   StreamSubscription<AuthState>? _authSubscription;
   VideoPlayerController? _video;
   bool _loading = false;
