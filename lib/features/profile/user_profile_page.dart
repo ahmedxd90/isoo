@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../messages/messages_page.dart';
+import '../posts/posts_page.dart';
 
 const _profileYellow = Color(0xFFFFC107);
 const _profileBg = Color(0xFFF3F4F6);
@@ -31,7 +32,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Map<String, dynamic>? _profile;
   Map<String, int> _stats = {};
   List<Map<String, dynamic>> _posts = [];
-  List<Map<String, dynamic>> _reels = [];
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _vehicles = [];
   bool _following = false;
@@ -53,7 +53,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.familyBadgeForUser(widget.userId),
         SakiService.instance.userProfileStats(widget.userId),
         SakiService.instance.userPosts(widget.userId),
-        SakiService.instance.userReels(widget.userId),
         SakiService.instance.userReceivedGifts(widget.userId),
         SakiService.instance.userVehicles(widget.userId),
         SakiService.instance.isFollowing(widget.userId),
@@ -65,10 +64,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _profile = base == null ? null : {...base, 'family_badge': family};
         _stats = Map<String, int>.from(results[2] as Map);
         _posts = List<Map<String, dynamic>>.from(results[3] as List);
-        _reels = List<Map<String, dynamic>>.from(results[4] as List);
-        _gifts = List<Map<String, dynamic>>.from(results[5] as List);
-        _vehicles = List<Map<String, dynamic>>.from(results[6] as List);
-        _following = results[7] as bool;
+        _gifts = List<Map<String, dynamic>>.from(results[4] as List);
+        _vehicles = List<Map<String, dynamic>>.from(results[5] as List);
+        _following = results[6] as bool;
       });
     } catch (_) {
       if (mounted) {
@@ -279,7 +277,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       tab: _tab,
                       profile: profile,
                       posts: _posts,
-                      reels: _reels,
                       gifts: _gifts,
                       vehicles: _vehicles,
                     ),
@@ -838,14 +835,12 @@ class _ProfileTabContent extends StatelessWidget {
     required this.tab,
     required this.profile,
     required this.posts,
-    required this.reels,
     required this.gifts,
     required this.vehicles,
   });
   final int tab;
   final Map<String, dynamic> profile;
   final List<Map<String, dynamic>> posts;
-  final List<Map<String, dynamic>> reels;
   final List<Map<String, dynamic>> gifts;
   final List<Map<String, dynamic>> vehicles;
 
@@ -970,8 +965,7 @@ class _ProfileTabContent extends StatelessWidget {
         ),
       );
     }
-    final items = [...posts, ...reels];
-    if (items.isEmpty) {
+    if (posts.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(32),
         child: EmptyState(
@@ -983,39 +977,15 @@ class _ProfileTabContent extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsets.all(12),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: items.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-        ),
-        itemBuilder: (_, index) {
-          final item = items[index];
-          final isReel = item['video_url'] != null;
-          final url = isReel ? item['video_url'] as String? : null;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (url != null)
-                  Image.network(url, fit: BoxFit.cover)
-                else
-                  const ColoredBox(color: Color(0xFFFFF7ED)),
-                Center(
-                  child: FaIcon(
-                    isReel ? FontAwesomeIcons.play : FontAwesomeIcons.image,
-                    color: _profileYellow,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+      child: Column(
+        children: posts
+            .map(
+              (post) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: HtmlPostCard(post: post, onChanged: () {}),
+              ),
+            )
+            .toList(),
       ),
     );
   }

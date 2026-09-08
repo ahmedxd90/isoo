@@ -2112,11 +2112,37 @@ class SakiService {
   Future<List<Map<String, dynamic>>> userPosts(String userId) async {
     final data = await client
         .from('posts')
-        .select('id,content,created_at,post_media(storage_path,sort_order)')
+        .select(
+          'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)',
+        )
         .eq('author_id', userId)
         .order('created_at', ascending: false)
         .limit(60);
-    return List<Map<String, dynamic>>.from(data);
+    return List<Map<String, dynamic>>.from(data).map((post) {
+      final likes = List<Map<String, dynamic>>.from(
+        post['post_likes'] ?? const [],
+      );
+      final comments = List<Map<String, dynamic>>.from(
+        post['post_comments'] ?? const [],
+      );
+      final shares = List<Map<String, dynamic>>.from(
+        post['post_shares'] ?? const [],
+      );
+      final media =
+          List<Map<String, dynamic>>.from(post['post_media'] ?? const [])..sort(
+            (a, b) => (a['sort_order'] as int? ?? 0).compareTo(
+              b['sort_order'] as int? ?? 0,
+            ),
+          );
+      return {
+        ...post,
+        '_liked': likes.any((like) => like['user_id'] == uid),
+        '_likes_count': likes.length,
+        '_comments_count': comments.length,
+        '_shares_count': shares.length,
+        '_media': media,
+      };
+    }).toList();
   }
 
   Future<List<Map<String, dynamic>>> userReels(String userId) async {
