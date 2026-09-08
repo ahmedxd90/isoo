@@ -1147,6 +1147,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _musicOwnerId;
   Set<String> _previousSeatUserIds = <String>{};
   bool _seatStopPending = false;
+  Timer? _seatTaskTimer;
 
   @override
   void initState() {
@@ -1384,6 +1385,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     RoomSessionController.instance.updateVoiceState(isOnSeat: seated);
     await _syncMusicSeatAccess(seated);
     if (!seated) {
+      _seatTaskTimer?.cancel();
+      _seatTaskTimer = null;
       _micMuted = true;
       await _engine?.muteLocalAudioStream(true);
       await _engine?.setClientRole(role: ClientRoleType.clientRoleAudience);
@@ -1396,6 +1399,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (mounted) setState(() {});
       return;
     }
+    _seatTaskTimer?.cancel();
+    _seatTaskTimer = Timer(const Duration(minutes: 5), () {
+      _service
+          .recordUserTask('seat_5_minutes')
+          .catchError((_) => const <String, dynamic>{});
+    });
     await _engine?.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     await _engine?.updateChannelMediaOptions(
       const ChannelMediaOptions(
@@ -2975,6 +2984,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _roomSettingsSubscription?.cancel();
     _presenceTimer?.cancel();
+    _seatTaskTimer?.cancel();
     if (_musicPlaying && !preservedSession) {
       _roomChatChannel.sendBroadcastMessage(
         event: 'music',

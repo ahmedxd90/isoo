@@ -14,6 +14,7 @@ import 'super_admin_page.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import 'family_square_page.dart';
+import 'tasks_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 const _orange = Color(0xFFF97316);
@@ -135,6 +136,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openMenu(String title) async {
+    if (title == 'المهام') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const TasksPage()));
+      return;
+    }
     if (title == 'المستوى') {
       await _openModule('level');
       return;

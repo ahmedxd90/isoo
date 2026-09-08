@@ -22,6 +22,29 @@ class SakiService {
     return data;
   }
 
+  Future<List<Map<String, dynamic>>> userTasksSnapshot() async {
+    final rows = await client.rpc('user_tasks_snapshot');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<Map<String, dynamic>> claimDailyLogin() async {
+    final rows = await client.rpc('claim_user_daily_login');
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    return list.isEmpty ? const {} : list.first;
+  }
+
+  Future<Map<String, dynamic>> recordUserTask(
+    String taskKey, {
+    int increment = 1,
+  }) async {
+    final rows = await client.rpc(
+      'record_user_task_event',
+      params: {'p_task_key': taskKey, 'p_increment': increment},
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    return list.isEmpty ? const {} : list.first;
+  }
+
   Future<bool> isSuperAdmin() async {
     final result = await client.rpc('is_saki_super_admin');
     return result == true;
