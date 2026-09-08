@@ -1181,6 +1181,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final _message = TextEditingController();
   final _messageFocus = FocusNode();
   late final String _roomId = widget.room['id'] as String;
+  late final DateTime _roomOpenedAt = DateTime.now().toUtc();
   late final Stream<List<Map<String, dynamic>>> _seatStream;
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
   StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
@@ -1250,7 +1251,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _micPermission = updated['mic_permission'] as String? ?? _micPermission;
       });
     });
-    _messageStream = _service.roomMessagesStream(_roomId);
+    _messageStream = _service.roomMessagesStream(_roomId, after: _roomOpenedAt);
     _service.roomEmojis().then((items) {
       if (mounted) setState(() => _roomEmojis = items);
     });
@@ -2470,8 +2471,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   bool get _canOpenMusic => _isOnSeat;
 
+  bool get _isRoomOwner => widget.room['owner_id']?.toString() == _service.uid;
+
   bool get _canControlMusic =>
-      _activeMusic?['owner_id']?.toString() == _service.uid;
+      _isRoomOwner || _activeMusic?['owner_id']?.toString() == _service.uid;
 
   Future<void> _loadRoomMusic() async {
     try {
@@ -2570,7 +2573,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     if (action == 'play' &&
         _activeMusic != null &&
-        _activeMusic?['owner_id']?.toString() != _service.uid) {
+        _activeMusic?['owner_id']?.toString() != _service.uid &&
+        !_isRoomOwner) {
       _messageSnack('صاحب الأغنية الحالية يتحكم بها.');
       return;
     }

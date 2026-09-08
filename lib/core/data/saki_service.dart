@@ -1340,11 +1340,20 @@ class SakiService {
         .eq('user_id', uid);
   }
 
-  Stream<List<Map<String, dynamic>>> roomMessagesStream(String roomId) {
+  Stream<List<Map<String, dynamic>>> roomMessagesStream(
+    String roomId, {
+    DateTime? after,
+  }) {
     return client
         .from('room_messages')
         .stream(primaryKey: ['id'])
         .eq('room_id', roomId)
+        .gte(
+          'created_at',
+          (after ?? DateTime.fromMillisecondsSinceEpoch(0))
+              .toUtc()
+              .toIso8601String(),
+        )
         .order('created_at')
         .asyncMap((rows) async {
           final result = <Map<String, dynamic>>[];
@@ -1469,16 +1478,17 @@ class SakiService {
     double positionSeconds = 0,
     double volume = 1,
   }) async {
-    await client.from('room_music_state').upsert({
-      'room_id': roomId,
-      'music_id': musicId,
-      'owner_id': ownerId,
-      'is_playing': isPlaying,
-      'position_seconds': positionSeconds,
-      'volume': volume,
-      'updated_by': uid,
-      'updated_at': DateTime.now().toUtc().toIso8601String(),
-    });
+    await client.rpc(
+      'set_room_music_state',
+      params: {
+        'p_room_id': roomId,
+        'p_music_id': musicId,
+        'p_owner_id': ownerId,
+        'p_is_playing': isPlaying,
+        'p_position_seconds': positionSeconds,
+        'p_volume': volume,
+      },
+    );
   }
 
   Future<bool> isRoomModerator(String roomId) async {
