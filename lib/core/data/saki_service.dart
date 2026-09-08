@@ -1164,23 +1164,11 @@ class SakiService {
   }
 
   Future<void> joinRoom(String roomId) async {
-    final ban = await client
-        .from('room_bans')
-        .select('expires_at')
-        .eq('room_id', roomId)
-        .eq('user_id', uid)
-        .maybeSingle();
-    if (ban != null) {
-      final expires = ban['expires_at'] == null
-          ? null
-          : DateTime.tryParse(ban['expires_at'].toString());
-      if (expires == null || expires.isAfter(DateTime.now()))
-        throw Exception('تم حظرك من هذه الغرفة');
-    }
-    await client.from('room_members').upsert({
-      'room_id': roomId,
-      'user_id': uid,
-    });
+    await client.rpc('enter_room', params: {'p_room_id': roomId});
+  }
+
+  Future<void> touchRoomPresence(String roomId) async {
+    await client.rpc('touch_room_presence', params: {'p_room_id': roomId});
   }
 
   Future<void> leaveRoom(String roomId) async {
@@ -1214,6 +1202,13 @@ class SakiService {
           'user_id,joined_at,profiles:user_id(id,username,avatar_url,vip_level,vip_expires_at)',
         )
         .eq('room_id', roomId)
+        .gte(
+          'last_seen',
+          DateTime.now()
+              .toUtc()
+              .subtract(const Duration(seconds: 75))
+              .toIso8601String(),
+        )
         .order('joined_at', ascending: false)
         .limit(100);
     return List<Map<String, dynamic>>.from(rows)
@@ -1309,7 +1304,14 @@ class SakiService {
         .order('joined_at', ascending: false)
         .asyncMap((rows) async {
           final result = <Map<String, dynamic>>[];
+          final cutoff = DateTime.now().toUtc().subtract(
+            const Duration(seconds: 75),
+          );
           for (final row in rows) {
+            final lastSeen = DateTime.tryParse(
+              row['last_seen']?.toString() ?? '',
+            );
+            if (lastSeen == null || lastSeen.isBefore(cutoff)) continue;
             final profile = await userProfile(row['user_id'] as String);
             if (profile != null) result.add(profile);
           }

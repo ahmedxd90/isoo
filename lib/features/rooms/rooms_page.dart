@@ -1209,6 +1209,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
   List<Map<String, dynamic>> _roomMembers = [];
+  Timer? _presenceTimer;
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
@@ -1659,6 +1660,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       }
       await _service.sendRoomMessage(_roomId, 'انضم إلى الغرفة', type: 'join');
       if (mounted) setState(() => _joined = true);
+      _presenceTimer?.cancel();
+      _presenceTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+        _service.touchRoomPresence(_roomId).catchError((_) {});
+      });
     } catch (error) {
       if (mounted) {
         _messageSnack(error.toString().replaceFirst('Exception: ', ''));
@@ -2978,12 +2983,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   void _showOnline() async {
-    final rows = await _service.client
-        .from('room_members')
-        .select(
-          'user_id,joined_at,profiles:user_id(username,avatar_url,wealth_level,charm_level)',
-        )
-        .eq('room_id', _roomId);
+    final rows = await _service.roomMembers(_roomId);
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
@@ -3003,11 +3003,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 ),
               ),
             ),
-            ...List<Map<String, dynamic>>.from(rows).map((row) {
-              final profile = Map<String, dynamic>.from(
-                row['profiles'] ?? const {},
-              );
-              profile['id'] = row['user_id'];
+            ...rows.map((row) {
+              final profile = Map<String, dynamic>.from(row);
               return ListTile(
                 onTap: () {
                   Navigator.pop(context);
@@ -3049,6 +3046,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomEmojiSubscription?.cancel();
     for (final timer in _roomEmojiTimers.values) timer.cancel();
     _roomSettingsSubscription?.cancel();
+    _presenceTimer?.cancel();
     if (_musicPlaying) {
       _roomChatChannel.sendBroadcastMessage(
         event: 'music',
