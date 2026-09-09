@@ -78,7 +78,7 @@ class _VipNameTextState extends State<VipNameText>
         widget.profile['display_name']?.toString().trim().isNotEmpty == true
         ? widget.profile['display_name'].toString()
         : widget.profile['username']?.toString() ?? 'مستخدم';
-    if (level == 0)
+    if (level == 0) {
       return Text(
         name,
         maxLines: widget.maxLines,
@@ -90,6 +90,7 @@ class _VipNameTextState extends State<VipNameText>
           fontWeight: FontWeight.w800,
         ),
       );
+    }
     final colors = vipNameGradients[level] ?? vipNameGradients[1]!;
     return AnimatedBuilder(
       animation: _controller,

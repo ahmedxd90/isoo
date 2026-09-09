@@ -31,8 +31,9 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: _future,
       builder: (_, snapshot) {
-        if (!snapshot.hasData)
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         final rows = snapshot.data!;
         if (rows.isEmpty) return const Center(child: Text('لا توجد بلاغات'));
         return RefreshIndicator(

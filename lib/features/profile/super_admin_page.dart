@@ -810,13 +810,13 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
                       g['id'] as String,
                     );
                     await _load();
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     CustomToast.show(
                       context,
                       'تم حذف الهدية من قاعدة البيانات بنجاح',
                     );
                   } catch (error) {
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     CustomToast.show(context, 'تعذر حذف الهدية: $error');
                   }
                 },

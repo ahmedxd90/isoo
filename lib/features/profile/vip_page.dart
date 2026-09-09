@@ -202,11 +202,12 @@ class _VipPageState extends State<VipPage> {
   Widget build(BuildContext context) {
     final active = _active;
     final coins = (_account['gold_coins'] as num?)?.toInt() ?? 0;
-    if (_loading)
+    if (_loading) {
       return const Scaffold(
         backgroundColor: VipDesign.bg,
         body: Center(child: CircularProgressIndicator(color: VipDesign.gold)),
       );
+    }
     return Scaffold(
       backgroundColor: VipDesign.bg,
       body: SafeArea(

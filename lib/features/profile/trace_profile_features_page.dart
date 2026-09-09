@@ -486,8 +486,9 @@ class _LevelFeatureState extends State<LevelFeature> {
   }
 
   String _compact(int value) {
-    if (value >= 1000000000)
+    if (value >= 1000000000) {
       return '${(value / 1000000000).toStringAsFixed(1)}B';
+    }
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
     return '$value';

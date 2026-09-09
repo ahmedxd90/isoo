@@ -1639,8 +1639,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await engine.release().catchError((_) {});
       }
     } finally {
-      if (!mounted) return;
-      await showDialog<void>(
+      if (mounted) {
+        await showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => Directionality(
@@ -1726,9 +1726,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           ),
         ),
       );
-      if (mounted) {
-        _joined = false;
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        if (mounted) {
+          _joined = false;
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
     }
   }
@@ -2013,12 +2014,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         builder: (sheetContext, setSheetState) {
           Future<void> toggleFollow() async {
             await _service.toggleFollow(userId, following);
-            if (sheetContext.mounted)
+            if (sheetContext.mounted) {
               setSheetState(() => following = !following);
-            if (mounted)
+            }
+            if (mounted) {
               _messageSnack(
                 following ? 'تمت متابعة المستخدم.' : 'تم إلغاء المتابعة.',
               );
+            }
           }
 
           void openMainProfile() {
@@ -2142,8 +2145,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   onReport: () => _showRoomReportSheet(userId, username),
                   onBlock: () async {
                     final duration = await _banDuration();
-                    if (duration != null)
+                    if (duration != null) {
                       await _service.roomBan(_roomId, userId, duration);
+                    }
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   },
                 ),
@@ -2296,12 +2300,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               roomId: _roomId,
                               evidenceUrl: url,
                             );
-                            if (sheetContext.mounted)
+                            if (sheetContext.mounted) {
                               Navigator.pop(sheetContext);
+                            }
                             _messageSnack('تم إرسال البلاغ للمراجعة بنجاح');
                           } finally {
-                            if (context.mounted)
+                            if (context.mounted) {
                               setSheet(() => sending = false);
+                            }
                           }
                         },
                   child: Container(
@@ -5496,8 +5502,7 @@ class _RoomProfileBadge extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.color,
-    this.darkText = false,
-  });
+  }) : darkText = false;
   final IconData icon;
   final String label;
   final Color color;

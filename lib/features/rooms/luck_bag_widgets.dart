@@ -51,8 +51,9 @@ class _LuckBagComposerState extends State<LuckBagComposer> {
       if (mounted) Navigator.pop(context);
       widget.onCreated(bag);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         CustomToast.show(context, e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -194,12 +195,13 @@ class _LuckBagCardState extends State<LuckBagCard> {
 
   void _tick() {
     final d = DateTime.tryParse(widget.bag['expires_at']?.toString() ?? '');
-    if (mounted)
+    if (mounted) {
       setState(
         () => _left = d == null
             ? Duration.zero
             : d.difference(DateTime.now().toUtc()),
       );
+    }
   }
 
   @override
@@ -306,7 +308,7 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _c,
-    builder: (_, __) {
+    builder: (_, _) {
       final t = _c.value;
       final x = t < .25
           ? 1 - t / .25

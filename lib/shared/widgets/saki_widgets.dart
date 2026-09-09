@@ -86,8 +86,9 @@ int _activeVipLevel(Map<String, dynamic>? profile) {
   final expires = DateTime.tryParse(
     profile['vip_expires_at']?.toString() ?? '',
   );
-  if (level < 1 || expires == null || !expires.isAfter(DateTime.now()))
+  if (level < 1 || expires == null || !expires.isAfter(DateTime.now())) {
     return 0;
+  }
   return level;
 }
 
