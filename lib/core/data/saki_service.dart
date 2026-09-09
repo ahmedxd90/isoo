@@ -1319,24 +1319,20 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> rooms() async {
-    final data = await client
-        .from('rooms')
-        .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
-        )
-        .eq('is_active', true)
-        .order('created_at', ascending: false)
-        .limit(100);
-    return List<Map<String, dynamic>>.from(data)
-        .map(
-          (room) => {
-            ...room,
-            '_members_count': List<Map<String, dynamic>>.from(
-              room['room_members'] ?? const [],
-            ).length,
-          },
-        )
-        .toList();
+    final data = await client.rpc('get_trending_rooms');
+    return List<Map<String, dynamic>>.from(data).map((room) {
+      final owner = <String, dynamic>{
+        'username': room['owner_username'],
+        'avatar_url': room['owner_avatar_url'],
+        'vip_level': room['owner_vip_level'],
+        'vip_expires_at': room['owner_vip_expires_at'],
+      };
+      return {
+        ...room,
+        'profiles': owner,
+        '_members_count': (room['member_count'] as num?)?.toInt() ?? 0,
+      };
+    }).toList();
   }
 
   Future<Set<String>> followedRoomIds() async {
