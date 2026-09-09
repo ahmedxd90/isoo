@@ -45,7 +45,7 @@ as $$
   left join public.profiles p on p.id = r.owner_id
   where r.is_active = true
   group by r.id, p.username, p.avatar_url, p.vip_level, p.vip_expires_at
-  order by r.is_pinned desc, r.pin_priority desc, count(rm.user_id) desc,
+  order by count(rm.user_id) desc, r.is_pinned desc, r.pin_priority desc,
            r.is_official desc, r.created_at desc
   limit 100;
 $$;

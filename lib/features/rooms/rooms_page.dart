@@ -52,11 +52,35 @@ class _RoomsPageState extends State<RoomsPage> {
   bool _loading = true;
   bool _followingOnly = false;
   String _country = 'الترند';
+  StreamSubscription<List<Map<String, dynamic>>>? _roomPresenceSubscription;
+  Timer? _roomRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _roomPresenceSubscription = _service.client
+        .from('room_members')
+        .stream(primaryKey: ['room_id', 'user_id'])
+        .listen((_) => _scheduleRoomRefresh());
+  }
+
+  void _scheduleRoomRefresh() {
+    _roomRefreshTimer?.cancel();
+    _roomRefreshTimer = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      _refreshRoomsOnly();
+    });
+  }
+
+  Future<void> _refreshRoomsOnly() async {
+    try {
+      final rooms = await _service.rooms();
+      if (!mounted) return;
+      setState(() => _rooms = rooms);
+    } catch (_) {
+      // Keep the last good list during transient realtime failures.
+    }
   }
 
   Future<void> _load() async {
@@ -87,6 +111,13 @@ class _RoomsPageState extends State<RoomsPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  @override
+  void dispose() {
+    _roomPresenceSubscription?.cancel();
+    _roomRefreshTimer?.cancel();
+    super.dispose();
   }
 
   List<Map<String, dynamic>> get _visibleRooms {
@@ -254,11 +285,6 @@ class _RoomsPageState extends State<RoomsPage> {
                 ],
               ),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _create,
-        backgroundColor: _roomPrimary,
-        child: const FaIcon(FontAwesomeIcons.plus, color: Colors.white),
-      ),
     );
   }
 }
