@@ -4509,10 +4509,13 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
   Widget build(BuildContext context) {
     final vip = activeVipLevel(widget.profile);
     if (vip >= 8) {
-      return const VipSvgaAsset(
-        assetPath: 'assets/vip/vip8_voice_waves.svga',
-        fallbackAsset: 'assets/vip/title_vip8.png',
-        size: 68,
+      return ClipOval(
+        child: const VipSvgaAsset(
+          assetPath: 'assets/vip/vip8_voice_waves.svga',
+          fallbackAsset: 'assets/vip/title_vip8.png',
+          size: 52,
+          loop: true,
+        ),
       );
     }
     final level = (widget.profile['vip_level'] as num?)?.toInt() ?? 0;

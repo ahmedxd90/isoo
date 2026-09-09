@@ -156,10 +156,12 @@ class VipSvgaAsset extends StatefulWidget {
     required this.assetPath,
     required this.fallbackAsset,
     required this.size,
+    this.loop = false,
   });
   final String assetPath;
   final String fallbackAsset;
   final double size;
+  final bool loop;
   @override
   State<VipSvgaAsset> createState() => _VipSvgaAssetState();
 }
@@ -182,7 +184,11 @@ class _VipSvgaAssetState extends State<VipSvgaAsset>
       if (!mounted) return;
       _controller.videoItem = movie;
       setState(() {});
-      _controller.forward(from: 0);
+      if (widget.loop) {
+        _controller.repeat();
+      } else {
+        _controller.forward(from: 0);
+      }
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
