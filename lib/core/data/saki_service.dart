@@ -1168,7 +1168,7 @@ class SakiService {
     final bytes = await File(image.path).readAsBytes();
     final extension = image.path.split('.').last.toLowerCase();
     final path =
-        'chat/$uid/${DateTime.now().millisecondsSinceEpoch}.$extension';
+        '$uid/chat/${DateTime.now().millisecondsSinceEpoch}.$extension';
     await client.storage
         .from('avatars')
         .uploadBinary(

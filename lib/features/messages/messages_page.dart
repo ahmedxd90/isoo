@@ -2,11 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:gal/gal.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
+import '../../core/notifications/notification_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../profile/user_profile_page.dart';
 
@@ -545,6 +544,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _sending = false;
   bool _blocked = false;
   bool _blockedBy = false;
+  StreamSubscription<List<Map<String, dynamic>>>? _messageEvents;
+  String? _lastNotifiedMessage;
+  bool _messageStreamReady = false;
   String get _peerId => widget.participant['id'] as String? ?? '';
 
   @override
@@ -552,6 +554,32 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
     SakiService.instance.markConversationRead(widget.conversationId);
     _loadBlockState();
+    _messageEvents = SakiService.instance
+        .messagesStream(widget.conversationId)
+        .listen(_notifyForIncomingMessage);
+  }
+
+  Future<void> _notifyForIncomingMessage(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    final row = rows.last;
+    final id = row['id']?.toString();
+    if (!_messageStreamReady) {
+      _messageStreamReady = true;
+      _lastNotifiedMessage = id;
+      return;
+    }
+    if (id == null ||
+        id == _lastNotifiedMessage ||
+        row['sender_id'] == SakiService.instance.uid) {
+      return;
+    }
+    _lastNotifiedMessage = id;
+    await SakiNotificationService.instance.showMessage(
+      sender: widget.participant['username']?.toString() ?? 'مستخدم',
+      body: row['body']?.toString() ?? '',
+    );
   }
 
   Future<void> _loadBlockState() async {
@@ -757,6 +785,7 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   void dispose() {
+    _messageEvents?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -825,6 +854,22 @@ class _ChatPageState extends State<ChatPage> {
   }
 }
 
+Color _vipNameColor(Map<String, dynamic> participant) {
+  final level = (participant['vip_level'] as num?)?.toInt() ?? 0;
+  if (level >= 10) return const Color(0xFFE19B2D);
+  if (level >= 7) return const Color(0xFF9C55E8);
+  if (level >= 4) return const Color(0xFF427BFF);
+  if (level > 0) return const Color(0xFF159DAB);
+  return _ink;
+}
+
+bool _isParticipantOnline(Map<String, dynamic> participant) {
+  if (participant['is_online'] == true) return true;
+  final raw = participant['last_seen'] ?? participant['last_seen_at'];
+  final last = DateTime.tryParse(raw?.toString() ?? '')?.toUtc();
+  return last != null && DateTime.now().toUtc().difference(last).inSeconds < 90;
+}
+
 class _ChatHeader extends StatelessWidget {
   const _ChatHeader({
     required this.name,
@@ -860,15 +905,32 @@ class _ChatHeader extends StatelessWidget {
             children: [
               Text(
                 name,
-                style: const TextStyle(
-                  color: _ink,
+                style: TextStyle(
+                  color: _vipNameColor(participant),
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                 ),
               ),
-              const Text(
-                'محادثة خاصة',
-                style: TextStyle(color: _muted, fontSize: 11),
+              Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: _isParticipantOnline(participant)
+                          ? const Color(0xFF25C78B)
+                          : _muted,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    _isParticipantOnline(participant)
+                        ? 'متصل الآن'
+                        : 'غير متصل',
+                    style: const TextStyle(color: _muted, fontSize: 11),
+                  ),
+                ],
               ),
             ],
           ),
@@ -914,7 +976,7 @@ class _Bubble extends StatelessWidget {
           ? AlignmentDirectional.centerStart
           : AlignmentDirectional.centerEnd,
       child: GestureDetector(
-        onTap: image == null ? null : () => _openImage(context, image),
+        onTap: () => _handleBubbleTap(context, row, image),
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           constraints: const BoxConstraints(maxWidth: 300),
@@ -931,77 +993,6 @@ class _Bubble extends StatelessWidget {
             ),
           ),
           child: content,
-        ),
-      ),
-    );
-  }
-
-  void _openImage(BuildContext context, String url) {
-    showGeneralDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'image',
-      pageBuilder: (_, _, _) => Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Center(child: Image.network(url, fit: BoxFit.contain)),
-              Positioned(
-                bottom: 24,
-                left: 0,
-                right: 0,
-                child: Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () async {
-                        final bytes = await NetworkAssetBundle(Uri.parse(url))
-                            .load(url);
-                        await Gal.putImageBytes(bytes.buffer.asUint8List());
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: .16),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Text(
-                          'حفظ الصورة',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'saki chat',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 14,
-                right: 14,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(
-                    Icons.close_rounded,
-                    color: Colors.white,
-                    size: 29,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -1982,3 +1973,73 @@ void _openUser(BuildContext context, Map<String, dynamic> profile) {
 }
 
 // The page keeps the existing private chat flow below this point.
+
+final Map<String, int> _bubbleTapCounts = {};
+final Map<String, Timer> _bubbleTapTimers = {};
+
+void _handleBubbleTap(
+  BuildContext context,
+  Map<String, dynamic> row,
+  String? image,
+) {
+  final id = row['id']?.toString() ?? '${row['created_at']}';
+  final count = (_bubbleTapCounts[id] ?? 0) + 1;
+  _bubbleTapCounts[id] = count;
+  _bubbleTapTimers[id]?.cancel();
+  _bubbleTapTimers[id] = Timer(const Duration(milliseconds: 650), () {
+    _bubbleTapCounts.remove(id);
+    _bubbleTapTimers.remove(id);
+  });
+  if (count == 3) {
+    _bubbleTapCounts.remove(id);
+    _showReactionPicker(context);
+  } else if (count == 1 && image != null) {
+    _openChatImage(context, image);
+  }
+}
+
+void _showReactionPicker(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (_) => Container(
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: ['😂', '❤️', '😭', '😮'].map((emoji) {
+          return GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 55,
+              height: 55,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Text(emoji, style: const TextStyle(fontSize: 28)),
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  );
+}
+
+void _openChatImage(BuildContext context, String url) {
+  showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'image',
+    pageBuilder: (_, _, _) => Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Center(child: Image.network(url, fit: BoxFit.contain)),
+      ),
+    ),
+  );
+}

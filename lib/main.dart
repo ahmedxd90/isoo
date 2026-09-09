@@ -9,6 +9,7 @@ import 'features/auth/register_page.dart';
 import 'features/auth/complete_profile_page.dart';
 import 'features/home/home_page.dart';
 import 'core/data/saki_service.dart';
+import 'core/notifications/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,7 @@ Future<void> main() async {
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
   );
+  await SakiNotificationService.instance.initialize();
   runApp(const SakiApp());
 }
 
