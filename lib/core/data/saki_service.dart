@@ -1338,6 +1338,26 @@ class SakiService {
     await client.rpc('enter_room', params: {'p_room_id': roomId});
   }
 
+  Future<bool> isRoomBanned(String roomId) async {
+    final row = await client
+        .from('room_bans')
+        .select('expires_at')
+        .eq('room_id', roomId)
+        .eq('user_id', uid)
+        .maybeSingle();
+    if (row == null) return false;
+    final expiresAt = DateTime.tryParse(row['expires_at']?.toString() ?? '');
+    return expiresAt == null || expiresAt.isAfter(DateTime.now().toUtc());
+  }
+
+  Stream<List<Map<String, dynamic>>> roomBanStream(String roomId) {
+    return client
+        .from('room_bans')
+        .stream(primaryKey: ['room_id', 'user_id'])
+        .eq('room_id', roomId)
+        .eq('user_id', uid);
+  }
+
   Future<void> touchRoomPresence(String roomId) async {
     await client.rpc('touch_room_presence', params: {'p_room_id': roomId});
   }

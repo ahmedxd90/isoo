@@ -1104,6 +1104,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _luckBagSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _roomBanSubscription;
   final Map<String, Timer> _roomEmojiTimers = {};
   final Map<String, Map<String, dynamic>> _activeSeatEmojis = {};
   final Map<String, GlobalKey> _seatKeys = {};
@@ -1118,6 +1119,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _activeMusic;
   bool _musicPlaying = false;
   bool _closingRoom = false;
+  bool _handlingRoomBan = false;
   bool _localActuallySpeaking = false;
   double _musicVolume = 1;
   double _musicDurationSeconds = 0;
@@ -1195,6 +1197,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             _handleMusicEvent(Map<String, dynamic>.from(payload as Map)),
       )
       ..subscribe();
+    _roomBanSubscription = _service.roomBanStream(_roomId).listen((rows) {
+      if (rows.isEmpty || _handlingRoomBan) return;
+      final expiresAt = DateTime.tryParse(
+        rows.first['expires_at']?.toString() ?? '',
+      );
+      if (expiresAt == null || expiresAt.isAfter(DateTime.now().toUtc())) {
+        _handleRoomBan();
+      }
+    });
     final existingEngine = RoomSessionController.instance.engine;
     final restoredSession =
         existingEngine != null &&
@@ -1207,7 +1218,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _joined = true;
       RoomSessionController.instance.hideBubble();
     }
-    _join();
+    _join().then((allowed) {
+      if (allowed && !restoredSession) _startRoomAudio();
+    });
     _loadRoomState();
     _loadRoomMusic();
     _roomMembersSubscription = _service.roomMembersStream(_roomId).listen((
@@ -1249,7 +1262,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (!mounted) return;
       setState(() => _luckBags = bags);
     });
-    if (!restoredSession) _startRoomAudio();
   }
 
   int _numericUid(String value) {
@@ -1607,8 +1619,126 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     } catch (_) {}
   }
 
-  Future<void> _join() async {
+  Future<void> _handleRoomBan() async {
+    if (_handlingRoomBan || _closingRoom) return;
+    _handlingRoomBan = true;
+    _closingRoom = true;
+    _presenceTimer?.cancel();
+    _seatTaskTimer?.cancel();
+    _localActuallySpeaking = false;
     try {
+      await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
+      await _service.leaveRoomSeat(_roomId).catchError((_) {});
+      await _service.leaveRoom(_roomId).catchError((_) {});
+      await RoomBackgroundBridge.setPipEligible(false).catchError((_) {});
+      await RoomBackgroundBridge.stop().catchError((_) {});
+      await RoomSessionController.instance.close().catchError((_) {});
+      final engine = _engine;
+      if (engine != null) {
+        await engine.leaveChannel().catchError((_) {});
+        await engine.release().catchError((_) {});
+      }
+    } finally {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFB347), Color(0xFF67E8F9), Colors.white],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x55000000),
+                    blurRadius: 24,
+                    offset: Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.gpp_bad_rounded,
+                      color: Color(0xFFEA580C),
+                      size: 38,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'تم حظرك من الغرفة',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'لا يمكنك العودة إلى هذه الغرفة حتى يفك مالك الغرفة الحظر عنك.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.black87,
+                      height: 1.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text(
+                        'إغلاق',
+                        style: TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      if (mounted) {
+        _joined = false;
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    }
+  }
+
+  Future<bool> _join() async {
+    try {
+      if (await _service.isRoomBanned(_roomId)) {
+        await _handleRoomBan();
+        return false;
+      }
       await _service.joinRoom(_roomId);
       try {
         await _service.claimEquippedEntranceOnJoin(_roomId);
@@ -1621,11 +1751,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _presenceTimer = Timer.periodic(const Duration(seconds: 25), (_) {
         _service.touchRoomPresence(_roomId).catchError((_) {});
       });
+      return true;
     } catch (error) {
+      if (error.toString().contains('room_banned')) {
+        await _handleRoomBan();
+        return false;
+      }
       if (mounted) {
         _messageSnack(error.toString().replaceFirst('Exception: ', ''));
         Navigator.maybePop(context);
       }
+      return false;
     }
   }
 
@@ -1995,11 +2131,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     if (banned) {
                       await _service.removeRoomBan(_roomId, userId);
                     } else {
-                      await _service.roomBan(
-                        _roomId,
-                        userId,
-                        const Duration(minutes: 1),
-                      );
+                      await _service.roomBan(_roomId, userId, null);
                     }
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   },
@@ -2927,6 +3059,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomMembersSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
     _luckBagSubscription?.cancel();
+    _roomBanSubscription?.cancel();
     for (final timer in _roomEmojiTimers.values) {
       timer.cancel();
     }
