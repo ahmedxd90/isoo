@@ -74,7 +74,7 @@ class _MessagesPageState extends State<MessagesPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _InboxHeader(onRefresh: _load),
+            const _InboxHeader(),
             _SectionRail(
               selected: _section,
               followersCount: _followers.where((e) {
@@ -85,10 +85,6 @@ class _MessagesPageState extends State<MessagesPage> {
               onChanged: (value) => setState(() => _section = value),
             ),
             Expanded(child: _body()),
-            _InboxBottomBar(
-              selected: _section,
-              onChanged: (v) => setState(() => _section = v),
-            ),
           ],
         ),
       ),
@@ -106,8 +102,7 @@ class _MessagesPageState extends State<MessagesPage> {
 }
 
 class _InboxHeader extends StatelessWidget {
-  const _InboxHeader({required this.onRefresh});
-  final Future<void> Function() onRefresh;
+  const _InboxHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -117,40 +112,19 @@ class _InboxHeader extends StatelessWidget {
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFEDEFF5))),
       ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'الرسائل',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
-                color: _ink,
-              ),
-            ),
+      child: const Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          'الرسائل',
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            fontSize: 25,
+            fontWeight: FontWeight.w900,
+            color: _ink,
           ),
-          _CircleAction(icon: Icons.refresh_rounded, onTap: onRefresh),
-          const SizedBox(width: 9),
-          _CircleAction(
-            icon: Icons.edit_rounded,
-            filled: true,
-            onTap: () => _openNewChat(context),
-          ),
-        ],
+        ),
       ),
     );
-  }
-
-  Future<void> _openNewChat(BuildContext context) async {
-    final controller = TextEditingController();
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _NewChatSheet(controller: controller),
-    );
-    controller.dispose();
   }
 }
 
@@ -168,11 +142,11 @@ class _SectionRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['المحادثات', 'المتابعين', 'الاجتماعية'];
-    const icons = [
-      Icons.chat_bubble_rounded,
-      Icons.people_alt_rounded,
-      Icons.auto_awesome_rounded,
+    const labels = ['النظام', 'المتابعة', 'الاجتماعية'];
+    const assets = [
+      'assets/messages/icons/system.png',
+      'assets/messages/icons/following.png',
+      'assets/messages/icons/social.png',
     ];
     return Container(
       height: 84,
@@ -203,10 +177,14 @@ class _SectionRail extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            icons[index],
-                            color: active ? _blue : _muted,
-                            size: 21,
+                          Opacity(
+                            opacity: active ? 1 : .48,
+                            child: Image.asset(
+                              assets[index],
+                              width: 34,
+                              height: 34,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -237,75 +215,6 @@ class _SectionRail extends StatelessWidget {
       ),
     );
   }
-}
-
-class _InboxBottomBar extends StatelessWidget {
-  const _InboxBottomBar({required this.selected, required this.onChanged});
-  final int selected;
-  final ValueChanged<int> onChanged;
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 62,
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(top: BorderSide(color: Color(0xFFEDEFF5))),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _BottomItem(
-          icon: Icons.chat_bubble_outline_rounded,
-          label: 'المحادثات',
-          active: selected == 0,
-          onTap: () => onChanged(0),
-        ),
-        _BottomItem(
-          icon: Icons.people_outline_rounded,
-          label: 'المتابعين',
-          active: selected == 1,
-          onTap: () => onChanged(1),
-        ),
-        _BottomItem(
-          icon: Icons.auto_awesome_outlined,
-          label: 'الاجتماعية',
-          active: selected == 2,
-          onTap: () => onChanged(2),
-        ),
-      ],
-    ),
-  );
-}
-
-class _BottomItem extends StatelessWidget {
-  const _BottomItem({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, color: active ? _blue : _muted, size: 21),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            color: active ? _blue : _muted,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class _ConversationsView extends StatelessWidget {
@@ -1478,30 +1387,6 @@ class _GlassRow extends StatelessWidget {
         ],
       ),
       child: child,
-    ),
-  );
-}
-
-class _CircleAction extends StatelessWidget {
-  const _CircleAction({
-    required this.icon,
-    required this.onTap,
-    this.filled = false,
-  });
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool filled;
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 39,
-      height: 39,
-      decoration: BoxDecoration(
-        color: filled ? _blue : _surface,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: filled ? Colors.white : _ink, size: 19),
     ),
   );
 }

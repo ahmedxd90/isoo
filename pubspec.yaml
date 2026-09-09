@@ -75,6 +75,7 @@ flutter:
     - assets/saki_login_background.jpg
     - assets/vip/
     - assets/vip/profile_cards/
+    - assets/messages/icons/
     - assets/saki_super_admin_badge.png
     - assets/saki_gift_box_icon.png
     - assets/saki_leaderboard_trophy.png
