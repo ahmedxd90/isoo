@@ -23,50 +23,6 @@ class MessagesPage extends StatefulWidget {
 }
 
 class _MessagesPageState extends State<MessagesPage> {
-  int _section = 0;
-  List<Map<String, dynamic>> _conversations = [];
-  List<Map<String, dynamic>> _followers = [];
-  List<Map<String, dynamic>> _social = [];
-  bool _loading = true;
-  StreamSubscription<List<Map<String, dynamic>>>? _events;
-  Timer? _refreshTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _events = SakiService.instance.notificationsStream().listen((_) {
-      _refreshTimer?.cancel();
-      _refreshTimer = Timer(const Duration(milliseconds: 220), _load);
-    });
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _events?.cancel();
-    _refreshTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    if (mounted) setState(() => _loading = true);
-    try {
-      final result = await Future.wait([
-        SakiService.instance.conversationPreviews(),
-        SakiService.instance.followers(),
-        SakiService.instance.socialNotifications(),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _conversations = List<Map<String, dynamic>>.from(result[0] as List);
-        _followers = List<Map<String, dynamic>>.from(result[1] as List);
-        _social = List<Map<String, dynamic>>.from(result[2] as List);
-      });
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,33 +31,15 @@ class _MessagesPageState extends State<MessagesPage> {
         child: Column(
           children: [
             const _InboxHeader(),
-            _SectionRail(
-              selected: _section,
-              followersCount: _followers.where((e) {
-                final p = e['profiles'];
-                return p is Map && (e['is_read'] != true);
-              }).length,
-              socialCount: _social.where((e) => e['is_read'] != true).length,
-              onChanged: _openSection,
-            ),
-            Expanded(child: _body()),
+            _SectionRail(onChanged: _openSection),
+            const Expanded(child: _MessagesLanding()),
           ],
         ),
       ),
     );
   }
 
-  Widget _body() {
-    if (_loading) return const Center(child: SakiLoading());
-    if (_section == 1) {
-      return _FollowersView(rows: _followers, onRefresh: _load);
-    }
-    if (_section == 2) return _SocialView(rows: _social, onRefresh: _load);
-    return _ConversationsView(rows: _conversations, onRefresh: _load);
-  }
-
   void _openSection(int value) {
-    setState(() => _section = value);
     final page = switch (value) {
       0 => const SystemMessagesPage(),
       1 => const FollowingMessagesPage(),
@@ -109,6 +47,22 @@ class _MessagesPageState extends State<MessagesPage> {
     };
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
+}
+
+class _MessagesLanding extends StatelessWidget {
+  const _MessagesLanding();
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Text(
+      'اختر قسمًا لعرض رسائلك',
+      style: TextStyle(
+        color: _muted.withValues(alpha: .75),
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class _InboxHeader extends StatelessWidget {
@@ -139,15 +93,7 @@ class _InboxHeader extends StatelessWidget {
 }
 
 class _SectionRail extends StatelessWidget {
-  const _SectionRail({
-    required this.selected,
-    required this.onChanged,
-    this.followersCount = 0,
-    this.socialCount = 0,
-  });
-  final int selected;
-  final int followersCount;
-  final int socialCount;
+  const _SectionRail({required this.onChanged});
   final ValueChanged<int> onChanged;
 
   @override
@@ -164,12 +110,6 @@ class _SectionRail extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Row(
         children: List.generate(3, (index) {
-          final active = selected == index;
-          final count = index == 1
-              ? followersCount
-              : index == 2
-              ? socialCount
-              : 0;
           return Expanded(
             child: GestureDetector(
               onTap: () => onChanged(index),
@@ -177,349 +117,35 @@ class _SectionRail extends StatelessWidget {
                 duration: const Duration(milliseconds: 180),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 decoration: BoxDecoration(
-                  color: active ? const Color(0xFFF0F2FF) : Colors.transparent,
+                  color: Colors.transparent,
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Opacity(
-                            opacity: active ? 1 : .48,
-                            child: Image.asset(
-                              assets[index],
-                              width: 34,
-                              height: 34,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            labels[index],
-                            style: TextStyle(
-                              color: active ? _ink : _muted,
-                              fontSize: 11,
-                              fontWeight: active
-                                  ? FontWeight.w900
-                                  : FontWeight.w700,
-                            ),
-                          ),
-                        ],
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        assets[index],
+                        width: 38,
+                        height: 38,
+                        fit: BoxFit.contain,
                       ),
-                    ),
-                    if (count > 0)
-                      Positioned(
-                        top: 3,
-                        right: 17,
-                        child: _CountBadge(count: count),
+                      const SizedBox(height: 4),
+                      Text(
+                        labels[index],
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           );
         }),
-      ),
-    );
-  }
-}
-
-class _ConversationsView extends StatelessWidget {
-  const _ConversationsView({required this.rows, required this.onRefresh});
-  final List<Map<String, dynamic>> rows;
-  final Future<void> Function() onRefresh;
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: onRefresh,
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      children: [
-        const _ViewTitle(
-          title: 'المحادثات الأخيرة',
-          subtitle: 'رسائلك الخاصة في مكان واحد',
-        ),
-        const SizedBox(height: 14),
-        if (rows.isEmpty)
-          const _PremiumEmpty(
-            icon: Icons.forum_outlined,
-            title: 'لا توجد محادثات',
-            subtitle: 'ابدأ محادثة خاصة من بروفايل أي مستخدم.',
-          )
-        else
-          ...rows.map((row) => _ConversationRow(row: row)),
-      ],
-    ),
-  );
-}
-
-class _ConversationRow extends StatelessWidget {
-  const _ConversationRow({required this.row});
-  final Map<String, dynamic> row;
-  @override
-  Widget build(BuildContext context) {
-    final members = List<Map<String, dynamic>>.from(
-      row['conversation_members'] ?? const [],
-    );
-    final member = members.firstWhere(
-      (e) => e['user_id'] != SakiService.instance.uid,
-      orElse: () => <String, dynamic>{},
-    );
-    final profile = Map<String, dynamic>.from(member['profiles'] ?? const {});
-    final name = profile['username'] as String? ?? 'محادثة';
-    final last = Map<String, dynamic>.from(row['_last_message'] ?? const {});
-    final unread = row['_unread_count'] as int? ?? 0;
-    return _GlassRow(
-      onTap: () async {
-        await SakiService.instance.markConversationRead(row['id'] as String);
-        if (!context.mounted) return;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ChatPage(
-              conversationId: row['id'] as String,
-              participant: profile,
-            ),
-          ),
-        );
-      },
-      child: Row(
-        children: [
-          SakiAvatar(
-            url: profile['avatar_url'] as String?,
-            label: name,
-            radius: 27,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                VipUsername(
-                  profile: profile,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    color: _ink,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  last['body'] as String? ?? 'ابدأ محادثة خاصة',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (unread > 0) _CountBadge(count: unread),
-        ],
-      ),
-    );
-  }
-}
-
-class _FollowersView extends StatelessWidget {
-  const _FollowersView({required this.rows, required this.onRefresh});
-  final List<Map<String, dynamic>> rows;
-  final Future<void> Function() onRefresh;
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: onRefresh,
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      children: [
-        const _ViewTitle(
-          title: 'المتابعين',
-          subtitle: 'الأشخاص الذين بدأوا بمتابعتك',
-        ),
-        const SizedBox(height: 14),
-        if (rows.isEmpty)
-          const _PremiumEmpty(
-            icon: Icons.people_outline_rounded,
-            title: 'لا يوجد متابعون جدد',
-            subtitle: 'سيظهر هنا كل من يتابعك.',
-          )
-        else
-          ...rows.map((row) => _FollowerRow(row: row)),
-      ],
-    ),
-  );
-}
-
-class _FollowerRow extends StatelessWidget {
-  const _FollowerRow({required this.row});
-  final Map<String, dynamic> row;
-  @override
-  Widget build(BuildContext context) {
-    final profile = Map<String, dynamic>.from(row['profiles'] ?? const {});
-    final id = profile['id'] as String? ?? row['follower_id'] as String? ?? '';
-    final name = profile['username'] as String? ?? 'مستخدم';
-    return _GlassRow(
-      onTap: () {},
-      child: Row(
-        children: [
-          SakiAvatar(
-            url: profile['avatar_url'] as String?,
-            label: name,
-            radius: 24,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: VipUsername(
-              profile: profile,
-              style: const TextStyle(fontWeight: FontWeight.w900, color: _ink),
-            ),
-          ),
-          _FollowBackButton(userId: id),
-        ],
-      ),
-    );
-  }
-}
-
-class _FollowBackButton extends StatefulWidget {
-  const _FollowBackButton({required this.userId});
-  final String userId;
-  @override
-  State<_FollowBackButton> createState() => _FollowBackButtonState();
-}
-
-class _FollowBackButtonState extends State<_FollowBackButton> {
-  bool _following = false;
-  bool _loading = true;
-  @override
-  void initState() {
-    super.initState();
-    SakiService.instance.isFollowing(widget.userId).then((v) {
-      if (mounted) {
-        setState(() {
-          _following = v;
-          _loading = false;
-        });
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: _loading
-        ? null
-        : () async {
-            setState(() => _loading = true);
-            await SakiService.instance.toggleFollow(widget.userId, _following);
-            if (mounted) {
-              setState(() {
-                _following = !_following;
-                _loading = false;
-              });
-            }
-          },
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-      decoration: BoxDecoration(
-        color: _following ? const Color(0xFFF1F3F8) : _blue,
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Text(
-        _following ? 'متابَع' : 'رد متابعة',
-        style: TextStyle(
-          color: _following ? _muted : Colors.white,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    ),
-  );
-}
-
-class _SocialView extends StatelessWidget {
-  const _SocialView({required this.rows, required this.onRefresh});
-  final List<Map<String, dynamic>> rows;
-  final Future<void> Function() onRefresh;
-  @override
-  Widget build(BuildContext context) => RefreshIndicator(
-    onRefresh: onRefresh,
-    child: ListView(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-      children: [
-        const _ViewTitle(
-          title: 'الاجتماعية',
-          subtitle: 'كل التفاعلات التي وصلت إليك',
-        ),
-        const SizedBox(height: 14),
-        if (rows.isEmpty)
-          const _PremiumEmpty(
-            icon: Icons.auto_awesome_outlined,
-            title: 'لا توجد تفاعلات بعد',
-            subtitle: 'سيظهر هنا الإعجاب والتعليق والشعلة والمتابعة.',
-          )
-        else
-          ...rows.map((row) => _SocialRow(row: row)),
-      ],
-    ),
-  );
-}
-
-class _SocialRow extends StatelessWidget {
-  const _SocialRow({required this.row});
-  final Map<String, dynamic> row;
-  @override
-  Widget build(BuildContext context) {
-    final p = Map<String, dynamic>.from(row['profiles'] ?? const {});
-    final name = p['username'] as String? ?? 'مستخدم';
-    final type = row['type'] as String? ?? '';
-    final text = type == 'follow'
-        ? 'بدأ بمتابعتك'
-        : type == 'like'
-        ? 'أعجب بمنشورك أو أرسل شعلة'
-        : 'علّق على منشورك أو ريلز';
-    final icon = type == 'follow'
-        ? Icons.person_add_alt_1_rounded
-        : type == 'like'
-        ? Icons.local_fire_department_rounded
-        : Icons.chat_bubble_rounded;
-    return _GlassRow(
-      onTap: () {},
-      child: Row(
-        children: [
-          SakiAvatar(url: p['avatar_url'] as String?, label: name, radius: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: RichText(
-              textDirection: TextDirection.rtl,
-              text: TextSpan(
-                style: const TextStyle(color: _muted, fontSize: 12),
-                children: [
-                  TextSpan(
-                    text: name,
-                    style: const TextStyle(
-                      color: _ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  TextSpan(text: '  $text'),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: _blue.withValues(alpha: .1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: _blue, size: 18),
-          ),
-        ],
       ),
     );
   }
@@ -1333,91 +959,6 @@ class _SearchUser extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ViewTitle extends StatelessWidget {
-  const _ViewTitle({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-      Text(
-        title,
-        textDirection: TextDirection.rtl,
-        style: const TextStyle(
-          color: _ink,
-          fontSize: 21,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-      const SizedBox(height: 3),
-      Text(
-        subtitle,
-        textDirection: TextDirection.rtl,
-        style: const TextStyle(
-          color: _muted,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  );
-}
-
-class _GlassRow extends StatelessWidget {
-  const _GlassRow({required this.child, required this.onTap});
-  final Widget child;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(21),
-        border: Border.all(color: const Color(0xFFEFF1F6)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 12,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: child,
-    ),
-  );
-}
-
-class _CountBadge extends StatelessWidget {
-  const _CountBadge({required this.count});
-  final int count;
-  @override
-  Widget build(BuildContext context) => ConstrainedBox(
-    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-    child: Container(
-      height: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFF4E70),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          count > 99 ? '99+' : '$count',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 9,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    ),
-  );
 }
 
 class _PremiumEmpty extends StatelessWidget {
