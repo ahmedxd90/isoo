@@ -14,6 +14,9 @@ const _muted = Color(0xFF8B95A7);
 const _blue = Color(0xFF5267FF);
 const _violet = Color(0xFF7858F5);
 const _surface = Color(0xFFF7F8FC);
+const _chatOrange = Color(0xFFFF7A45);
+const _chatCyan = Color(0xFF16B8C8);
+const _chatPale = Color(0xFFFFF4EE);
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -23,6 +26,34 @@ class MessagesPage extends StatefulWidget {
 }
 
 class _MessagesPageState extends State<MessagesPage> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _conversations = [];
+  StreamSubscription<List<Map<String, dynamic>>>? _inboxEvents;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversations();
+    _inboxEvents = SakiService.instance.inboxMessagesStream().listen((_) {
+      _loadConversations();
+    });
+  }
+
+  @override
+  void dispose() {
+    _inboxEvents?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadConversations() async {
+    try {
+      final rows = await SakiService.instance.conversationPreviews();
+      if (mounted) setState(() => _conversations = rows);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +63,19 @@ class _MessagesPageState extends State<MessagesPage> {
           children: [
             const _InboxHeader(),
             _SectionRail(onChanged: _openSection),
-            const Expanded(child: _MessagesLanding()),
+            Expanded(
+              child: _loading
+                  ? const Center(child: SakiLoading())
+                  : _conversations.isEmpty
+                  ? const _MessagesLanding()
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                      itemCount: _conversations.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 9),
+                      itemBuilder: (_, index) =>
+                          _ConversationTile(row: _conversations[index]),
+                    ),
+            ),
           ],
         ),
       ),
@@ -86,6 +129,84 @@ class _InboxHeader extends StatelessWidget {
             fontWeight: FontWeight.w900,
             color: _ink,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConversationTile extends StatelessWidget {
+  const _ConversationTile({required this.row});
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final members = List<Map<String, dynamic>>.from(
+      row['conversation_members'] ?? const [],
+    );
+    Map<String, dynamic> user = {};
+    for (final member in members) {
+      final profile = member['profiles'];
+      if (profile is Map && profile['id'] != SakiService.instance.uid) {
+        user = Map<String, dynamic>.from(profile);
+        break;
+      }
+    }
+    final name = user['username']?.toString() ?? 'مستخدم';
+    final id = row['id']?.toString() ?? '';
+    return GestureDetector(
+      onTap: id.isEmpty || user['id'] == null
+          ? null
+          : () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatPage(conversationId: id, participant: user),
+              ),
+            ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: _chatCyan.withValues(alpha: .16)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0D16B8C8),
+              blurRadius: 18,
+              offset: Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            SakiAvatar(
+              url: user['avatar_url'] as String?,
+              label: name,
+              radius: 27,
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      color: _vipNameColor(user),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'محادثة خاصة • اضغط للفتح',
+                    style: TextStyle(color: _muted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left_rounded, color: _chatOrange),
+          ],
         ),
       ),
     );
@@ -420,7 +541,7 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     final name = widget.participant['username'] as String? ?? 'محادثة';
     return Scaffold(
-      backgroundColor: _surface,
+      backgroundColor: _chatPale,
       body: SafeArea(
         child: Column(
           children: [
@@ -428,6 +549,16 @@ class _ChatPageState extends State<ChatPage> {
               name: name,
               participant: widget.participant,
               onMenu: _menu,
+              onAvatarTap: () {
+                if (_peerId.isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserProfilePage(userId: _peerId),
+                    ),
+                  );
+                }
+              },
             ),
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
@@ -536,16 +667,25 @@ class _ChatHeader extends StatelessWidget {
     required this.name,
     required this.participant,
     required this.onMenu,
+    required this.onAvatarTap,
   });
   final String name;
   final Map<String, dynamic> participant;
   final VoidCallback onMenu;
+  final VoidCallback onAvatarTap;
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+    padding: const EdgeInsets.fromLTRB(14, 14, 16, 13),
     decoration: const BoxDecoration(
       color: Colors.white,
-      border: Border(bottom: BorderSide(color: Color(0xFFEDEFF5))),
+      border: Border(bottom: BorderSide(color: Color(0xFFFFE1D5))),
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x0DFF7A45),
+          blurRadius: 15,
+          offset: Offset(0, 5),
+        ),
+      ],
     ),
     child: Row(
       children: [
@@ -554,10 +694,13 @@ class _ChatHeader extends StatelessWidget {
           child: const Icon(Icons.arrow_forward_rounded, color: _ink),
         ),
         const SizedBox(width: 12),
-        SakiAvatar(
-          url: participant['avatar_url'] as String?,
-          label: name,
-          radius: 21,
+        GestureDetector(
+          onTap: onAvatarTap,
+          child: SakiAvatar(
+            url: participant['avatar_url'] as String?,
+            label: name,
+            radius: 21,
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -651,7 +794,7 @@ class _Bubble extends StatelessWidget {
               ? const EdgeInsets.symmetric(horizontal: 15, vertical: 11)
               : const EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: mine ? _blue : Colors.white,
+            color: mine ? _chatOrange : Colors.white,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(19),
               topRight: const Radius.circular(19),
@@ -723,7 +866,14 @@ class _Composer extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFEDEFF5))),
+        border: Border(top: BorderSide(color: Color(0xFFD8F5F7))),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0D16B8C8),
+            blurRadius: 15,
+            offset: Offset(0, -5),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -731,7 +881,7 @@ class _Composer extends StatelessWidget {
             onTap: disabled ? null : onImage,
             child: Icon(
               Icons.image_outlined,
-              color: disabled ? _muted : _violet,
+              color: disabled ? _muted : _chatCyan,
               size: 25,
             ),
           ),
@@ -763,7 +913,7 @@ class _Composer extends StatelessWidget {
               width: 43,
               height: 43,
               decoration: const BoxDecoration(
-                color: _blue,
+                color: _chatOrange,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -1227,7 +1377,7 @@ class _FullMessagesScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: _surface,
+    backgroundColor: _chatPale,
     appBar: AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
