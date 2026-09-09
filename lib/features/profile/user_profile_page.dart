@@ -525,53 +525,110 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                             _HtmlSection(
                               title: 'عائلتي',
                               accent: accent,
-                              child: _HtmlGlass(
-                                text: widget.profile['family_badge'] is Map
-                                    ? (widget.profile['family_badge']['name']
-                                              ?.toString() ??
-                                          'العائلة')
-                                    : 'لا توجد عائلة',
-                                icon: Icons.groups_rounded,
+                              child: _FamilyPreview(
+                                family: widget.profile['family_badge'] is Map
+                                    ? Map<String, dynamic>.from(
+                                        widget.profile['family_badge'],
+                                      )
+                                    : null,
                                 accent: accent,
                               ),
                             ),
                             _HtmlSection(
                               title: 'الأوسمة',
                               accent: accent,
-                              child: _HtmlGlass(
-                                text: vip > 0 ? 'VIP $vip' : 'لا توجد أوسمة',
-                                icon: Icons.workspace_premium_rounded,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => _HtmlCollectionPage(
+                                    title: 'الأوسمة',
+                                    items: _ownedBadges(
+                                      widget.profile,
+                                      widget.stats,
+                                    ),
+                                    kind: 'badge',
+                                    accent: accent,
+                                  ),
+                                ),
+                              ),
+                              child: _HtmlCollectionPreview(
+                                items: _ownedBadges(
+                                  widget.profile,
+                                  widget.stats,
+                                ),
+                                kind: 'badge',
                                 accent: accent,
                               ),
                             ),
                             _HtmlSection(
                               title: 'دخوليات',
                               accent: accent,
-                              child: _HtmlGlass(
-                                text: widget.vehicles.isEmpty
-                                    ? 'لا توجد دخوليات'
-                                    : '${widget.vehicles.length} دخولية',
-                                icon: Icons.directions_car_rounded,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => _HtmlCollectionPage(
+                                    title: 'دخولياتي',
+                                    items: _itemsByCategory(
+                                      widget.vehicles,
+                                      'entrance_effect',
+                                    ),
+                                    kind: 'entrance',
+                                    accent: accent,
+                                  ),
+                                ),
+                              ),
+                              child: _HtmlCollectionPreview(
+                                items: _itemsByCategory(
+                                  widget.vehicles,
+                                  'entrance_effect',
+                                ),
+                                kind: 'entrance',
                                 accent: accent,
                               ),
                             ),
                             _HtmlSection(
                               title: 'إطارات',
                               accent: accent,
-                              child: _HtmlGlass(
-                                text: 'إطارات VIP ومستوى المستخدم',
-                                icon: Icons.crop_square_rounded,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => _HtmlCollectionPage(
+                                    title: 'إطاراتي',
+                                    items: _itemsByCategory(
+                                      widget.vehicles,
+                                      'avatar_frame',
+                                    ),
+                                    kind: 'frame',
+                                    accent: accent,
+                                  ),
+                                ),
+                              ),
+                              child: _HtmlCollectionPreview(
+                                items: _itemsByCategory(
+                                  widget.vehicles,
+                                  'avatar_frame',
+                                ),
+                                kind: 'frame',
                                 accent: accent,
                               ),
                             ),
                             _HtmlSection(
                               title: 'الهدايا',
                               accent: accent,
-                              child: _HtmlGlass(
-                                text: widget.gifts.isEmpty
-                                    ? 'لا توجد هدايا'
-                                    : '${widget.gifts.length} هدية مستلمة',
-                                icon: Icons.card_giftcard_rounded,
+                              onTap: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => _HtmlCollectionPage(
+                                    title: 'الهدايا المستلمة',
+                                    items: widget.gifts,
+                                    kind: 'gift',
+                                    accent: accent,
+                                  ),
+                                ),
+                              ),
+                              child: _HtmlCollectionPreview(
+                                items: widget.gifts,
+                                kind: 'gift',
                                 accent: accent,
                               ),
                             ),
@@ -695,28 +752,314 @@ class _HtmlSection extends StatelessWidget {
     required this.title,
     required this.child,
     required this.accent,
+    this.onTap,
   });
   final String title;
   final Widget child;
   final Color accent;
+  final VoidCallback? onTap;
   @override
-  Widget build(BuildContext c) => Column(
-    crossAxisAlignment: CrossAxisAlignment.end,
-    children: [
-      Padding(
-        padding: const EdgeInsets.only(bottom: 7),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: accent,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
+  Widget build(BuildContext c) => GestureDetector(
+    onTap: onTap,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Text(
+            title,
+            style: TextStyle(
+              color: accent,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
+        child,
+        const SizedBox(height: 14),
+      ],
+    ),
+  );
+}
+
+List<Map<String, dynamic>> _itemsByCategory(
+  List<Map<String, dynamic>> items,
+  String category,
+) => items.where((item) => item['category']?.toString() == category).toList();
+List<Map<String, dynamic>> _ownedBadges(
+  Map<String, dynamic> profile,
+  Map<String, int> stats,
+) {
+  final result = <Map<String, dynamic>>[];
+  final vip = (profile['vip_level'] as num? ?? 0).toInt();
+  if (vip > 0)
+    result.add({
+      'name': 'شارة VIP $vip',
+      'asset': 'assets/trace_profile/images/ic_vip_badge.png',
+      'icon': Icons.workspace_premium_rounded,
+    });
+  if (profile['family_badge'] is Map)
+    result.add({
+      'name': 'عضو العائلة',
+      'asset': 'assets/trace_profile/images/ic_fans_badge.png',
+      'icon': Icons.groups_rounded,
+    });
+  if ((stats['followers'] ?? 0) > 0)
+    result.add({
+      'name': 'شارة المعجبين',
+      'asset': 'assets/trace_profile/images/ic_fans_badge.png',
+      'icon': Icons.favorite_rounded,
+    });
+  return result;
+}
+
+class _FamilyPreview extends StatelessWidget {
+  const _FamilyPreview({required this.family, required this.accent});
+  final Map<String, dynamic>? family;
+  final Color accent;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(11),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: .05),
+      border: Border.all(color: Colors.white.withValues(alpha: .07)),
+      borderRadius: BorderRadius.circular(15),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: family?['avatar_url']?.toString().isNotEmpty == true
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    family!['avatar_url'].toString(),
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Icon(Icons.groups_rounded, color: accent),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            family?['name']?.toString() ?? 'لا توجد عائلة',
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Text(
+          family == null ? '' : 'المستوى ${family!['level'] ?? 1}',
+          style: TextStyle(
+            color: accent,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HtmlCollectionPreview extends StatelessWidget {
+  const _HtmlCollectionPreview({
+    required this.items,
+    required this.kind,
+    required this.accent,
+  });
+  final List<Map<String, dynamic>> items;
+  final String kind;
+  final Color accent;
+  @override
+  Widget build(BuildContext context) {
+    final visible = items.take(4).toList();
+    if (visible.isEmpty)
+      return _HtmlGlass(
+        text: 'لا توجد عناصر مملوكة',
+        icon: kind == 'gift'
+            ? Icons.card_giftcard_rounded
+            : Icons.inventory_2_rounded,
+        accent: accent,
+      );
+    return SizedBox(
+      height: 104,
+      child: Row(
+        children: [
+          for (var i = 0; i < 4; i++)
+            Expanded(
+              child: i < visible.length
+                  ? _HtmlItemTile(item: visible[i], kind: kind, accent: accent)
+                  : const SizedBox(),
+            ),
+        ],
       ),
-      child,
-      const SizedBox(height: 14),
-    ],
+    );
+  }
+}
+
+class _HtmlItemTile extends StatelessWidget {
+  const _HtmlItemTile({
+    required this.item,
+    required this.kind,
+    required this.accent,
+  });
+  final Map<String, dynamic> item;
+  final String kind;
+  final Color accent;
+  String get title =>
+      item['name']?.toString() ??
+      (kind == 'badge'
+          ? 'وسام'
+          : kind == 'gift'
+          ? 'هدية'
+          : 'عنصر');
+  String? get image => item['media_url']?.toString().isNotEmpty == true
+      ? item['media_url'].toString()
+      : null;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 3),
+    child: Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .05),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: image != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: Image.network(
+                      image!,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  )
+                : Icon(
+                    item['icon'] is IconData
+                        ? item['icon']
+                        : (kind == 'gift'
+                              ? Icons.card_giftcard_rounded
+                              : kind == 'badge'
+                              ? Icons.workspace_premium_rounded
+                              : Icons.auto_awesome_rounded),
+                    color: accent,
+                    size: 30,
+                  ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (kind == 'gift')
+            Text(
+              '×${item['received_count'] ?? 0}',
+              style: TextStyle(
+                color: accent,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _HtmlCollectionPage extends StatelessWidget {
+  const _HtmlCollectionPage({
+    required this.title,
+    required this.items,
+    required this.kind,
+    required this.accent,
+  });
+  final String title, kind;
+  final List<Map<String, dynamic>> items;
+  final Color accent;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFF150622),
+    body: SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const Expanded(
+                  child: Text(
+                    'المجموعة',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                Icon(
+                  kind == 'gift'
+                      ? Icons.card_giftcard_rounded
+                      : Icons.auto_awesome_rounded,
+                  color: accent,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: items.isEmpty
+                ? const Center(
+                    child: Text(
+                      'لا توجد عناصر مملوكة',
+                      style: TextStyle(color: Colors.white54),
+                    ),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: items.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: .72,
+                        ),
+                    itemBuilder: (_, i) => _HtmlItemTile(
+                      item: items[i],
+                      kind: kind,
+                      accent: accent,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 
@@ -766,13 +1109,84 @@ class _HtmlGlass extends StatelessWidget {
   );
 }
 
-class _HtmlMoments extends StatelessWidget {
+class _HtmlMoments extends StatefulWidget {
   const _HtmlMoments({required this.posts, required this.accent});
   final List<Map<String, dynamic>> posts;
   final Color accent;
   @override
+  State<_HtmlMoments> createState() => _HtmlMomentsState();
+}
+
+class _HtmlMomentsState extends State<_HtmlMoments> {
+  Future<void> _comment(Map<String, dynamic> post) async {
+    final controller = TextEditingController();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF241331),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          MediaQuery.viewInsetsOf(ctx).bottom + 18,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'اكتب تعليقك',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  filled: true,
+                  fillColor: Colors.white10,
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.all(Radius.circular(14)),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () async {
+                if (controller.text.trim().isEmpty) return;
+                await SakiService.instance.addComment(
+                  post['id'].toString(),
+                  controller.text,
+                );
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted)
+                  setState(
+                    () => post['_comments_count'] =
+                        (post['_comments_count'] as int? ?? 0) + 1,
+                  );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: widget.accent,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (posts.isEmpty) {
+    if (widget.posts.isEmpty)
       return const Padding(
         padding: EdgeInsets.all(25),
         child: Text(
@@ -783,28 +1197,166 @@ class _HtmlMoments extends StatelessWidget {
           ),
         ),
       );
-    }
     return Column(
-      children: posts
+      children: widget.posts
           .map(
-            (post) => Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .05),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(
-                post['content']?.toString() ??
-                    post['description']?.toString() ??
-                    'منشور',
-                textDirection: TextDirection.rtl,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
+            (post) => _MomentCard(
+              post: post,
+              accent: widget.accent,
+              onComment: () => _comment(post),
+              onChanged: () => setState(() {}),
             ),
           )
           .toList(),
+    );
+  }
+}
+
+class _MomentCard extends StatelessWidget {
+  const _MomentCard({
+    required this.post,
+    required this.accent,
+    required this.onComment,
+    required this.onChanged,
+  });
+  final Map<String, dynamic> post;
+  final Color accent;
+  final VoidCallback onComment, onChanged;
+  @override
+  Widget build(BuildContext context) {
+    final author = post['profiles'] is Map
+        ? Map<String, dynamic>.from(post['profiles'])
+        : <String, dynamic>{};
+    final liked = post['_liked'] == true;
+    final media = List<Map<String, dynamic>>.from(post['_media'] ?? const []);
+    final mediaUrl = media.isEmpty
+        ? null
+        : SakiService.instance.postMediaUrl(
+            media.first['storage_path'].toString(),
+          );
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .05),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              SakiAvatar(
+                url: author['avatar_url']?.toString(),
+                label: author['username']?.toString() ?? 'مستخدم',
+                radius: 19,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  author['username']?.toString() ?? 'مستخدم',
+                  textDirection: TextDirection.rtl,
+                  style: TextStyle(
+                    color: ((author['vip_level'] as num?)?.toInt() ?? 0) > 0
+                        ? accent
+                        : Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Text(
+                post['created_at']?.toString().substring(0, 10) ?? '',
+                style: const TextStyle(color: Colors.white38, fontSize: 9),
+              ),
+            ],
+          ),
+          if ((post['content']?.toString() ?? '').isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                post['content'].toString(),
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          if (mediaUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 9),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(13),
+                child: Image.network(
+                  mediaUrl,
+                  height: 170,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () async {
+                  await SakiService.instance.togglePostLike(
+                    post['id'].toString(),
+                    liked,
+                  );
+                  post['_liked'] = !liked;
+                  post['_likes_count'] =
+                      (post['_likes_count'] as int? ?? 0) + (liked ? -1 : 1);
+                  onChanged();
+                },
+                child: Row(
+                  children: [
+                    Icon(
+                      liked
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color: liked ? const Color(0xFFFF6B81) : Colors.white70,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${post['_likes_count'] ?? 0}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 20),
+              GestureDetector(
+                onTap: onComment,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.mode_comment_outlined,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${post['_comments_count'] ?? 0}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -797,6 +797,9 @@ class SakiService {
     return List<Map<String, dynamic>>.from(data);
   }
 
+  String postMediaUrl(String storagePath) =>
+      client.storage.from('posts').getPublicUrl(storagePath);
+
   Future<void> addComment(String postId, String content) async {
     await client.from('post_comments').insert({
       'post_id': postId,
@@ -924,7 +927,9 @@ class SakiService {
   Future<Map<String, dynamic>?> familyBadgeForUser(String userId) async {
     final rows = await client
         .from('family_members')
-        .select('role,families:family_id(id,name,family_alias,level)')
+        .select(
+          'role,families:family_id(id,name,family_alias,level,avatar_url)',
+        )
         .eq('user_id', userId)
         .eq('status', 'active')
         .limit(1);
