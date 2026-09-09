@@ -2075,12 +2075,24 @@ class SakiService {
   Future<void> updateProfile({
     required String username,
     required String bio,
+    String? country,
+    String? countryCode,
     XFile? avatar,
   }) async {
     String? avatarUrl;
     if (avatar != null) {
       final bytes = await File(avatar.path).readAsBytes();
       final extension = avatar.path.split('.').last.toLowerCase();
+      if (extension == 'gif') {
+        final current = await myProfile();
+        final vip = (current?['vip_level'] as num?)?.toInt() ?? 0;
+        final expiry = DateTime.tryParse(
+          current?['vip_expires_at']?.toString() ?? '',
+        );
+        if (vip < 7 || (expiry != null && !expiry.isAfter(DateTime.now()))) {
+          throw Exception('vip7_required_for_gif');
+        }
+      }
       final path =
           '$uid/profile_${DateTime.now().millisecondsSinceEpoch}.$extension';
       await client.storage
@@ -2101,6 +2113,10 @@ class SakiService {
       'bio': bio.trim(),
       'updated_at': DateTime.now().toIso8601String(),
     };
+    if (country != null && country.trim().isNotEmpty) {
+      updates['country'] = country.trim();
+      updates['country_code'] = countryCode?.trim() ?? '';
+    }
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
     await client.from('profiles').update(updates).eq('id', uid);
   }

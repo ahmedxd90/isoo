@@ -81,11 +81,10 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _edit() async {
-    final updated = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EditProfileSheet(profile: _profile ?? {}),
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EditProfilePage(profile: _profile ?? {}),
+      ),
     );
     if (updated == true) _load();
   }
@@ -928,15 +927,15 @@ class _SheetShell extends StatelessWidget {
   );
 }
 
-class EditProfileSheet extends StatefulWidget {
-  const EditProfileSheet({super.key, required this.profile});
+class EditProfilePage extends StatefulWidget {
+  const EditProfilePage({super.key, required this.profile});
   final Map<String, dynamic> profile;
 
   @override
-  State<EditProfileSheet> createState() => _EditProfileSheetState();
+  State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfileSheetState extends State<EditProfileSheet> {
+class _EditProfilePageState extends State<EditProfilePage> {
   late final _username = TextEditingController(
     text: widget.profile['username'] as String? ?? '',
   );
@@ -945,8 +944,30 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
   );
   final _picker = ImagePicker();
   XFile? _avatar;
+  List<Map<String, dynamic>> _countries = const [];
+  String? _country;
+  String? _countryCode;
   bool _loading = false;
+  bool _loadingCountries = true;
   String? _error;
+
+  int get _vipLevel => (widget.profile['vip_level'] as num?)?.toInt() ?? 0;
+  bool get _canUseGif => _vipLevel >= 7;
+  DateTime? get _countryChangedAt =>
+      DateTime.tryParse(widget.profile['country_updated_at']?.toString() ?? '');
+  bool get _canChangeCountry {
+    final changed = _countryChangedAt;
+    return changed == null ||
+        DateTime.now().toUtc().difference(changed.toUtc()).inDays >= 30;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _country = widget.profile['country'] as String?;
+    _countryCode = widget.profile['country_code'] as String?;
+    _loadCountries();
+  }
 
   @override
   void dispose() {
@@ -955,17 +976,105 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
     super.dispose();
   }
 
-  Future<void> _pick() async {
-    final image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 82,
+  Future<void> _loadCountries() async {
+    try {
+      final rows = await SakiService.instance.countries();
+      if (!mounted) return;
+      setState(() {
+        _countries = rows;
+        _loadingCountries = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCountries = false);
+    }
+  }
+
+  Future<void> _chooseAvatar() async {
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: _line,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'اختيار صورة المستخدم',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: _ink,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: _orangeSoft,
+                  child: FaIcon(
+                    FontAwesomeIcons.image,
+                    color: _orange,
+                    size: 18,
+                  ),
+                ),
+                title: const Text('صورة عادية'),
+                subtitle: const Text('JPG أو PNG'),
+                onTap: () => Navigator.pop(sheetContext, 'image'),
+              ),
+              ListTile(
+                enabled: _canUseGif,
+                leading: CircleAvatar(
+                  backgroundColor: _canUseGif
+                      ? const Color(0xFFEDE9FE)
+                      : const Color(0xFFF3F4F6),
+                  child: FaIcon(
+                    FontAwesomeIcons.film,
+                    color: _canUseGif ? const Color(0xFF7C3AED) : _muted,
+                    size: 18,
+                  ),
+                ),
+                title: Text(
+                  'صورة GIF متحركة${_canUseGif ? '' : ' (VIP7 فقط)'}',
+                ),
+                subtitle: Text(
+                  _canUseGif
+                      ? 'متاحة لأن مستواك VIP هو $_vipLevel'
+                      : 'يجب أن يكون مستوى VIP7 أو أعلى',
+                ),
+                onTap: _canUseGif
+                    ? () => Navigator.pop(sheetContext, 'gif')
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+    if (type == null || !mounted) return;
+    final image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null && mounted) setState(() => _avatar = image);
   }
 
   Future<void> _save() async {
     if (_username.text.trim().length < 3) {
       setState(() => _error = 'اسم المستخدم قصير جدًا.');
+      return;
+    }
+    if (!_canChangeCountry && _country != widget.profile['country']) {
+      setState(() => _error = 'يمكن تغيير الدولة مرة واحدة كل 30 يومًا.');
       return;
     }
     setState(() {
@@ -976,95 +1085,194 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
       await SakiService.instance.updateProfile(
         username: _username.text,
         bio: _bio.text,
+        country: _country,
+        countryCode: _countryCode,
         avatar: _avatar,
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'تعذر حفظ التعديلات في Supabase.');
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().contains('country_change_cooldown')
+          ? 'لا يمكن تغيير الدولة قبل مرور 30 يومًا.'
+          : error.toString().contains('vip7_required_for_gif')
+          ? 'صور GIF متاحة لمستخدمي VIP7 أو أعلى فقط.'
+          : 'تعذر حفظ التعديلات في Supabase.';
+      setState(() => _error = message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  Widget _avatarPreview() {
+    final remote = widget.profile['avatar_url']?.toString();
+    return Container(
+      width: 112,
+      height: 112,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(colors: [_orange, _cyan]),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: _avatar != null
+            ? Image.file(File(_avatar!.path), fit: BoxFit.cover)
+            : remote == null || remote.isEmpty
+            ? const ColoredBox(
+                color: _orangeSoft,
+                child: Icon(Icons.person_rounded, color: _orange, size: 52),
+              )
+            : Image.network(remote, fit: BoxFit.cover),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF8FAFC),
+    appBar: AppBar(
+      title: const Text(
+        'تعديل الملف الشخصي',
+        style: TextStyle(fontWeight: FontWeight.w900),
+      ),
+      centerTitle: true,
+      backgroundColor: Colors.white,
+      foregroundColor: _ink,
+      elevation: 0,
     ),
-    padding: EdgeInsets.fromLTRB(
-      20,
-      14,
-      20,
-      MediaQuery.of(context).viewInsets.bottom + 20,
-    ),
-    child: SafeArea(
+    body: SafeArea(
       child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 30),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: _line,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'تعديل الملف الشخصي',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: _ink,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Center(
               child: GestureDetector(
-                onTap: _pick,
-                child: CircleAvatar(
-                  radius: 42,
-                  backgroundColor: _orangeSoft,
-                  backgroundImage: _avatar == null
-                      ? null
-                      : FileImage(File(_avatar!.path)),
-                  child: _avatar == null
-                      ? const FaIcon(FontAwesomeIcons.camera, color: _orange)
-                      : null,
+                onTap: _chooseAvatar,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _avatarPreview(),
+                    Positioned(
+                      bottom: -2,
+                      right: -2,
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: const BoxDecoration(
+                          color: _orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+            Center(
+              child: Text(
+                'اضغط على الصورة لتغييرها',
+                style: TextStyle(color: _muted, fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 26),
             TextField(
               controller: _username,
-              decoration: const InputDecoration(labelText: 'اسم المستخدم'),
+              decoration: const InputDecoration(
+                labelText: 'اسم المستخدم',
+                prefixIcon: Icon(Icons.person_outline_rounded),
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
+            InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'دولة المستخدم',
+                prefixIcon: const Icon(Icons.flag_outlined),
+                enabled: _canChangeCountry,
+              ),
+              child: _loadingCountries
+                  ? const SizedBox(height: 20, child: LinearProgressIndicator())
+                  : DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _countries.any((c) => c['name_ar'] == _country)
+                            ? _country
+                            : null,
+                        isExpanded: true,
+                        hint: const Text('اختر الدولة'),
+                        items: _countries
+                            .map(
+                              (c) => DropdownMenuItem<String>(
+                                value: c['name_ar']?.toString(),
+                                child: Text(
+                                  '${c['flag'] ?? '🌍'}  ${c['name_ar'] ?? ''}',
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: !_canChangeCountry
+                            ? null
+                            : (value) {
+                                final row = _countries.firstWhere(
+                                  (c) => c['name_ar'] == value,
+                                  orElse: () => {},
+                                );
+                                setState(() {
+                                  _country = value;
+                                  _countryCode = row['code']?.toString();
+                                });
+                              },
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _canChangeCountry
+                  ? 'يمكن تغيير الدولة مرة واحدة كل 30 يومًا.'
+                  : 'الدولة مقفلة حتى مرور 30 يومًا من آخر تغيير.',
+              style: const TextStyle(color: _muted, fontSize: 11),
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: _bio,
-              maxLines: 3,
-              decoration: const InputDecoration(labelText: 'النبذة'),
+              maxLines: 4,
+              maxLength: 160,
+              decoration: const InputDecoration(
+                labelText: 'نبذة عني',
+                alignLabelWithHint: true,
+                prefixIcon: Icon(Icons.notes_rounded),
+              ),
             ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
                   _error!,
-                  style: const TextStyle(color: Colors.redAccent),
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
             FilledButton(
               onPressed: _loading ? null : _save,
               style: FilledButton.styleFrom(
                 backgroundColor: _orange,
-                padding: const EdgeInsets.symmetric(vertical: 15),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(15),
                 ),
               ),
               child: _loading
@@ -1078,7 +1286,7 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
                     )
                   : const Text(
                       'حفظ التعديلات',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(fontWeight: FontWeight.w900),
                     ),
             ),
           ],
