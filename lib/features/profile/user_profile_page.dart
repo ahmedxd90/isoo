@@ -64,7 +64,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ]);
       if (!mounted) return;
       final countryFlag = await SakiService.instance.countryFlag(
-        (results[0] as Map<String, dynamic>?)?['country']?.toString(),
+        ((results[0] as Map<String, dynamic>?)?['country']
+                    ?.toString()
+                    .trim()
+                    .isNotEmpty ==
+                true)
+            ? (results[0] as Map<String, dynamic>)['country']?.toString()
+            : (results[0] as Map<String, dynamic>?)?['country_code']
+                  ?.toString(),
       );
       setState(() {
         final base = results[0] as Map<String, dynamic>?;
@@ -422,7 +429,10 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: VipNameText(
-                                  profile: widget.profile,
+                                  profile: {
+                                    ...widget.profile,
+                                    'display_name': widget.username,
+                                  },
                                   fontSize: 19,
                                   textAlign: TextAlign.center,
                                 ),

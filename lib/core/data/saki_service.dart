@@ -925,7 +925,7 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
+          'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
         )
         .eq('id', userId)
         .maybeSingle();
@@ -2100,7 +2100,15 @@ class SakiService {
         .select('flag')
         .eq('name_ar', country)
         .maybeSingle();
-    return row?['flag'] as String? ?? '🌍';
+    if (row?['flag'] is String && (row?['flag'] as String).isNotEmpty) {
+      return row!['flag'] as String;
+    }
+    final codeRow = await client
+        .from('countries')
+        .select('flag')
+        .eq('code', country.toUpperCase())
+        .maybeSingle();
+    return codeRow?['flag'] as String? ?? '🌍';
   }
 
   Future<List<Map<String, dynamic>>> searchAll(String query) async {
