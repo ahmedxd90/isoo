@@ -455,6 +455,103 @@ class VipPurchaseCard extends StatelessWidget {
   }
 }
 
+class VipStickyPurchaseBar extends StatelessWidget {
+  const VipStickyPurchaseBar({
+    super.key,
+    required this.level,
+    required this.price,
+    required this.coins,
+    required this.active,
+    required this.working,
+    required this.onBuy,
+  });
+  final int level, price, coins, active;
+  final bool working;
+  final VoidCallback onBuy;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = vipLevelColors[level]!;
+    final alreadyActive = active >= level;
+    final cannotAfford = coins < price;
+    final disabled = working || alreadyActive || cannotAfford;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xF2161624),
+        border: Border(top: BorderSide(color: color.withValues(alpha: .55))),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: .45), blurRadius: 18),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: .16),
+              border: Border.all(color: color.withValues(alpha: .75)),
+            ),
+            child: Icon(Icons.workspace_premium_rounded, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'VIP $level • 30 يومًا',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'السعر: ${formatVipPrice(price)} ذهب  •  رصيدك: ${formatVipPrice(coins)}',
+                  style: const TextStyle(color: VipDesign.muted, fontSize: 10),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: disabled ? null : onBuy,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 12),
+              decoration: BoxDecoration(
+                color: disabled ? Colors.white12 : color,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Text(
+                working
+                    ? 'جارٍ...'
+                    : alreadyActive
+                    ? 'مفعل'
+                    : cannotAfford
+                    ? 'الرصيد غير كافٍ'
+                    : 'شراء VIP $level',
+                style: TextStyle(
+                  color: disabled ? VipDesign.muted : Colors.black,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 String formatVipPrice(int value) => value >= 1000000
     ? '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M'
     : value >= 1000

@@ -1853,10 +1853,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final voiceMuted = moderation['mute_voice'] == true;
     final chatMuted = moderation['mute_chat'] == true;
     final banned = moderation['banned'] == true;
-    final vip =
-        (modules['vip_level'] as num?)?.toInt() ??
-        (profile['vip_level'] as num?)?.toInt() ??
-        0;
+    final vip = activeVipLevel({...profile, ...modules});
     final followers = profile['followers_count'] ?? profile['followers'] ?? 0;
     final followingCount =
         profile['following_count'] ?? profile['following'] ?? 0;
@@ -1912,7 +1909,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 ),
                 _RoomMiniProfileSheet(
                   username: username,
-                  profile: profile,
+                  profile: {...profile, ...modules, 'vip_level': vip},
                   countryFlag: countryFlag,
                   gender: gender,
                   vip: vip,
@@ -4794,9 +4791,35 @@ class _RoomMiniProfileSheet extends StatelessWidget {
     return Container(
       width: double.infinity,
       constraints: const BoxConstraints(maxHeight: 620),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: _miniProfileBg,
+        image: isVip
+            ? DecorationImage(
+                image: AssetImage('assets/vip/profile_cards/vip$vip.jpg'),
+                fit: BoxFit.cover,
+                opacity: .42,
+              )
+            : null,
+        gradient: isVip
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xAA111321), Color(0xEE111321)],
+              )
+            : null,
         borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
+        border: isVip
+            ? Border.all(color: vipAccent(vip).withValues(alpha: .72), width: 1.3)
+            : null,
+        boxShadow: isVip
+            ? [
+                BoxShadow(
+                  color: vipAccent(vip).withValues(alpha: .25),
+                  blurRadius: 28,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 54, 20, 24),

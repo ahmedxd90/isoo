@@ -273,6 +273,17 @@ class _VipPageState extends State<VipPage> {
           ],
         ),
       ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: VipStickyPurchaseBar(
+          level: _selected,
+          price: prices[_selected]!,
+          coins: coins,
+          active: active,
+          working: _working,
+          onBuy: _buy,
+        ),
+      ),
     );
   }
 }
