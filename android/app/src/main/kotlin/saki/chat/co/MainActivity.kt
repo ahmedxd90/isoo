@@ -76,6 +76,16 @@ class MainActivity : FlutterActivity() {
                         stopService(Intent(this, RoomOverlayService::class.java))
                         result.success(null)
                     }
+                    "setOverlayVisible" -> {
+                        RoomOverlayService.setVisible(
+                            this,
+                            call.argument<Boolean>("visible") == true,
+                            call.argument<String>("roomId").orEmpty(),
+                            call.argument<String>("roomName").orEmpty(),
+                            call.argument<String>("imageUrl").orEmpty(),
+                        )
+                        result.success(null)
+                    }
                     "requestOverlayPermission" -> {
                         if (!Settings.canDrawOverlays(this)) {
                             startActivity(

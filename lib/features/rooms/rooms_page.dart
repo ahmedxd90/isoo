@@ -1218,9 +1218,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _joined = true;
       RoomSessionController.instance.hideBubble();
     }
-    _join().then((allowed) {
-      if (allowed && !restoredSession) _startRoomAudio();
-    });
+    if (!restoredSession) {
+      _join().then((allowed) {
+        if (allowed) _startRoomAudio();
+      });
+    }
     _loadRoomState();
     _loadRoomMusic();
     _roomMembersSubscription = _service.roomMembersStream(_roomId).listen((
@@ -1383,7 +1385,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (token != null) await _engine?.renewToken(token);
   }
 
-  void _minimizeRoom() {
+  Future<void> _minimizeRoom() async {
     final engine = _engine;
     if (engine == null) return;
     RoomSessionController.instance.minimize(
@@ -1398,14 +1400,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await RoomSessionController.instance.close();
       },
     );
-    RoomBackgroundBridge.start(
+    await RoomBackgroundBridge.start(
       roomId: _roomId,
       roomName: widget.room['name']?.toString() ?? 'غرفة SAKI',
       imageUrl: widget.room['image_url']?.toString(),
     );
-    // The in-app card is the only bubble while the app is visible. The
-    // Android overlay is started by RoomMiniBubble only after the app pauses.
-    _joined = false;
+    // The in-app bubble is the only visible bubble while the app is active;
+    // the native view is toggled on only when the app goes to the background.
+    await RoomSessionController.instance.setOverlayVisible(false);
+    _joined = true;
     Navigator.of(context).pop();
   }
 
@@ -1867,7 +1870,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       }
       return true;
     }
-    if (result == false) _minimizeRoom();
+    if (result == false) await _minimizeRoom();
     return false;
   }
 

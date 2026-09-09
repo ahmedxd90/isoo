@@ -22,8 +22,6 @@ import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
 import android.graphics.drawable.GradientDrawable
 import androidx.core.app.NotificationCompat
 
@@ -42,10 +40,12 @@ class RoomOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        roomId = intent?.getStringExtra(EXTRA_ROOM_ID).orEmpty()
-        roomName = intent?.getStringExtra(EXTRA_ROOM_NAME).orEmpty().ifBlank { "غرفة SAKI" }
-        imageUrl = intent?.getStringExtra(EXTRA_IMAGE_URL).orEmpty()
-        if (Settings.canDrawOverlays(this)) showBubble()
+        intent?.getStringExtra(EXTRA_ROOM_ID)?.takeIf { it.isNotBlank() }?.let { roomId = it }
+        intent?.getStringExtra(EXTRA_ROOM_NAME)?.takeIf { it.isNotBlank() }?.let { roomName = it }
+        intent?.getStringExtra(EXTRA_IMAGE_URL)?.let { imageUrl = it }
+        val visible = intent?.getBooleanExtra(EXTRA_VISIBLE, true) ?: true
+        if (visible && Settings.canDrawOverlays(this)) showBubble()
+        if (!visible) hideBubble()
         if (imageUrl.isNotBlank()) loadBubbleImage()
         return START_REDELIVER_INTENT
     }
@@ -61,30 +61,19 @@ class RoomOverlayService : Service() {
         val view = FrameLayout(this).apply {
             background = GradientDrawable().apply {
                 setColor(Color.rgb(29, 36, 66))
-                cornerRadius = 18f * resources.displayMetrics.density
+                shape = GradientDrawable.OVAL
                 setStroke(
-                    (1.2f * resources.displayMetrics.density).toInt(),
-                    Color.rgb(124, 131, 255),
+                    (3f * resources.displayMetrics.density).toInt(),
+                    Color.rgb(103, 232, 249),
                 )
             }
             elevation = 12f
             contentDescription = roomName
             addView(image, FrameLayout.LayoutParams(-1, -1))
-            addView(WaveOverlayView(this@RoomOverlayService), FrameLayout.LayoutParams(-1, -1))
-            val controls = LinearLayout(this@RoomOverlayService).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER
-                setBackgroundColor(Color.argb(150, 10, 12, 28))
-                addView(control("عودة") { openApp("return") })
-                addView(control("خروج") { openApp("exit") })
-            }
-            addView(controls, FrameLayout.LayoutParams(-1, 28).apply {
-                gravity = Gravity.BOTTOM
-            })
         }
         bubbleImage = image
-        val width = (94 * resources.displayMetrics.density).toInt()
-        val height = (68 * resources.displayMetrics.density).toInt()
+        val width = (72 * resources.displayMetrics.density).toInt()
+        val height = width
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -167,20 +156,16 @@ class RoomOverlayService : Service() {
         startActivity(intent)
     }
 
-    private fun control(label: String, action: () -> Unit): TextView = TextView(this).apply {
-        text = label
-        setTextColor(Color.WHITE)
-        textSize = 10f
-        gravity = Gravity.CENTER
-        isClickable = true
-        setPadding(10, 0, 10, 0)
-        setOnClickListener { action() }
+    private fun hideBubble() {
+        bubble?.let { view ->
+            try { windowManager?.removeView(view) } catch (_: Exception) {}
+        }
+        bubble = null
+        bubbleImage = null
     }
 
     override fun onDestroy() {
-        bubble?.let { windowManager?.removeView(it) }
-        bubble = null
-        bubbleImage = null
+        hideBubble()
         super.onDestroy()
     }
 
@@ -257,6 +242,27 @@ class RoomOverlayService : Service() {
         const val EXTRA_ROOM_ID = "roomId"
         const val EXTRA_IMAGE_URL = "imageUrl"
         const val EXTRA_ACTION = "roomAction"
+        const val EXTRA_VISIBLE = "roomVisible"
+
+        fun setVisible(
+            context: Context,
+            visible: Boolean,
+            roomId: String,
+            roomName: String,
+            imageUrl: String,
+        ) {
+            val intent = Intent(context, RoomOverlayService::class.java).apply {
+                putExtra(EXTRA_VISIBLE, visible)
+                putExtra(EXTRA_ROOM_ID, roomId)
+                putExtra(EXTRA_ROOM_NAME, roomName)
+                putExtra(EXTRA_IMAGE_URL, imageUrl)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        }
 
         fun start(context: Context, roomId: String, roomName: String, imageUrl: String) {
             val intent = Intent(context, RoomOverlayService::class.java).apply {

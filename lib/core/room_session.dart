@@ -77,7 +77,25 @@ class RoomSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isSameRoom(String id) => roomId == id;
+  bool isSameRoom(String id) {
+    if (roomId == id) return true;
+    final current = room;
+    if (current == null) return false;
+    return current['id']?.toString() == id ||
+        current['room_id']?.toString() == id;
+  }
+
+  Future<void> setOverlayVisible(bool visible) async {
+    final currentRoom = room;
+    final currentRoomId = roomId;
+    if (!overlayEligible || currentRoom == null || currentRoomId == null) return;
+    await RoomBackgroundBridge.setOverlayVisible(
+      visible: visible,
+      roomId: currentRoomId,
+      roomName: currentRoom['name']?.toString() ?? 'غرفة SAKI',
+      imageUrl: currentRoom['image_url']?.toString(),
+    );
+  }
 
   RtcEngine? takeEngine() {
     final value = engine;

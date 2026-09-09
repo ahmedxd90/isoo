@@ -55,13 +55,9 @@ class RoomMiniBubble extends StatefulWidget {
 }
 
 class _RoomMiniBubbleState extends State<RoomMiniBubble>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with WidgetsBindingObserver {
   final _session = RoomSessionController.instance;
   Offset _dragOffset = Offset.zero;
-  late final AnimationController _waveController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat();
   bool _opening = false;
 
   @override
@@ -75,16 +71,39 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
   Future<void> _consumeNativeAction() async {
     final pending = await RoomBackgroundBridge.consumePendingRoom();
     if (!mounted || pending == null) return;
-    if (pending['action'] == 'exit') {
+    final action = pending['action']?.toString();
+    if (action == 'exit') {
       final callback = _session.onExitRequested;
       if (callback != null) await callback();
+      return;
+    }
+    if (action == 'return') {
+      final roomId = pending['roomId']?.toString() ?? '';
+      final current = _session.room;
+      if (current == null || !_session.isSameRoom(roomId) || _opening) return;
+      _openRoom(current);
+    }
+  }
+
+  Future<void> _openRoom(Map<String, dynamic> current) async {
+    if (_opening || !mounted) return;
+    setState(() => _opening = true);
+    await _session.setOverlayVisible(false);
+    if (!mounted) return;
+    try {
+      await Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(
+          builder: (_) => RoomDetailPage(room: Map<String, dynamic>.from(current)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _opening = false);
     }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _waveController.dispose();
     _session.removeListener(_changed);
     super.dispose();
   }
@@ -96,7 +115,11 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _session.setOverlayVisible(false);
       _consumeNativeAction();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _session.setOverlayVisible(true);
     }
   }
 
@@ -106,7 +129,7 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     if (!_session.bubbleVisible || room == null || _session.engine == null) {
       return const SizedBox.shrink();
     }
-    final image = room['image_url'] as String?;
+    final image = room['image_url']?.toString() ?? '';
     return Positioned(
       right: 16,
       bottom: 92,
@@ -116,175 +139,46 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
           onPanUpdate: (details) {
             setState(() => _dragOffset += details.delta);
           },
-          onTap: () async {
-            if (_opening) return;
-            final current = _session.room;
-            if (current == null) return;
-            setState(() => _opening = true);
-            if (!context.mounted) return;
-            try {
-              await Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute(
-                  builder: (_) =>
-                      RoomDetailPage(room: Map<String, dynamic>.from(current)),
+          onTap: () => _openRoom(room),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFF67E8F9), width: 3),
+                  boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 14)],
                 ),
-              );
-            } finally {
-              if (mounted) setState(() => _opening = false);
-            }
-          },
-          child: Container(
-            width: 184,
-            height: 72,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1D2442),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF7C83FF), width: 1.2),
-              boxShadow: const [
-                BoxShadow(color: Colors.black45, blurRadius: 12),
-              ],
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 42,
-                    height: 42,
-                    child: image == null || image.isEmpty
-                        ? const ColoredBox(
-                            color: Color(0xFF343B79),
-                            child: Icon(
-                              Icons.meeting_room,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          )
-                        : Image.network(image, fit: BoxFit.cover),
-                  ),
+                child: ClipOval(
+                  child: image.isEmpty
+                      ? const ColoredBox(
+                          color: Color(0xFF343B79),
+                          child: Icon(Icons.meeting_room, color: Colors.white, size: 28),
+                        )
+                      : Image.network(image, fit: BoxFit.cover),
                 ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        room['name']?.toString() ?? 'غرفة SAKI',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            _session.isOnSeat ? Icons.mic : Icons.headset,
-                            color: _session.isOnSeat && !_session.micMuted
-                                ? Colors.greenAccent
-                                : Colors.white70,
-                            size: 12,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            '${_session.remoteUsers} متحدث • ${_session.isOnSeat ? 'على مقعد' : 'مستمع'}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 9,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          _SoundWaves(controller: _waveController),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () async {
-                    if (_opening) return;
-                    final current = _session.room;
-                    if (current == null) return;
-                    setState(() => _opening = true);
-                    try {
-                      await Navigator.of(context, rootNavigator: true).push(
-                        MaterialPageRoute(
-                          builder: (_) => RoomDetailPage(
-                            room: Map<String, dynamic>.from(current),
-                          ),
-                        ),
-                      );
-                    } finally {
-                      if (mounted) setState(() => _opening = false);
-                    }
-                  },
+              ),
+              Positioned(
+                right: -4,
+                bottom: -2,
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(color: Color(0xFF1D2442), shape: BoxShape.circle),
                   child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(
-                      Icons.keyboard_return_rounded,
-                      color: Color(0xFF67E8F9),
-                      size: 20,
-                    ),
+                    padding: EdgeInsets.all(7),
+                    child: Icon(Icons.keyboard_return_rounded, color: Color(0xFF67E8F9), size: 17),
                   ),
                 ),
-                GestureDetector(
-                  onTap: () async {
-                    final callback = _session.onExitRequested;
-                    if (callback != null) await callback();
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.all(6),
-                    child: Icon(
-                      Icons.close_rounded,
-                      color: Colors.white70,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
 }
-
-class _SoundWaves extends StatelessWidget {
-  const _SoundWaves({required this.controller});
-  final Animation<double> controller;
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
-    builder: (_, _) {
-      const heights = [10.0, 19.0, 14.0, 23.0, 12.0];
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: List.generate(heights.length, (index) {
-          final phase = (controller.value + index * .17) % 1;
-          final scale = .65 + (.35 * ((phase < .5 ? phase : 1 - phase) * 2));
-          return Container(
-            width: 2.5,
-            height: heights[index] * scale,
-            margin: const EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(
-              color: const Color(0xFF67E8F9),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          );
-        }),
-      );
-    },
-  );
-}
-
 class _GlobalGiftBanner extends StatefulWidget {
   const _GlobalGiftBanner();
   @override

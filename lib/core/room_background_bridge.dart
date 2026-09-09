@@ -32,6 +32,26 @@ class RoomBackgroundBridge {
     }
   }
 
+  static Future<void> setOverlayVisible({
+    required bool visible,
+    required String roomId,
+    required String roomName,
+    String? imageUrl,
+  }) async {
+    try {
+      await _channel.invokeMethod<void>('setOverlayVisible', {
+        'visible': visible,
+        'roomId': roomId,
+        'roomName': roomName,
+        'imageUrl': imageUrl ?? '',
+      });
+    } on MissingPluginException {
+      // Unsupported platforms keep the in-app bubble.
+    } on PlatformException {
+      // Overlay visibility is optional and must not interrupt the room.
+    }
+  }
+
   static Future<void> requestOverlayPermission() async {
     try {
       await _channel.invokeMethod<void>('requestOverlayPermission');
