@@ -914,7 +914,7 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
+          'id,username,display_name,saki_id,avatar_url,bio,country,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
         )
         .eq('id', userId)
         .maybeSingle();
@@ -1372,7 +1372,32 @@ class SakiService {
           final result = <Map<String, dynamic>>[];
           for (final row in rows) {
             final copy = Map<String, dynamic>.from(row);
-            copy['profiles'] = await userProfile(row['user_id'] as String);
+            final userId = row['user_id'] as String;
+            final profile = await userProfile(userId);
+            if (profile != null) {
+              final equipped = await client
+                  .from('saki_store_inventory')
+                  .select(
+                    'equipped,expires_at,product:saki_store_products(category,media_type,media_url,thumbnail_url)',
+                  )
+                  .eq('user_id', userId)
+                  .eq('equipped', true)
+                  .limit(20);
+              for (final item in List<Map<String, dynamic>>.from(equipped)) {
+                final product = item['product'];
+                final expiry = DateTime.tryParse(
+                  item['expires_at']?.toString() ?? '',
+                );
+                if (product is Map &&
+                    product['category']?.toString() == 'frame' &&
+                    (expiry == null || expiry.isAfter(DateTime.now()))) {
+                  profile['active_frame_url'] =
+                      product['thumbnail_url'] ?? product['media_url'];
+                  break;
+                }
+              }
+            }
+            copy['profiles'] = profile;
             result.add(copy);
           }
           return result;

@@ -1115,6 +1115,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   List<Map<String, dynamic>> _roomMusic = [];
   Map<String, dynamic>? _activeMusic;
   bool _musicPlaying = false;
+  bool _closingRoom = false;
+  bool _localActuallySpeaking = false;
   double _musicVolume = 1;
   double _musicDurationSeconds = 0;
   String? _musicOwnerId;
@@ -1200,6 +1202,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       final session = RoomSessionController.instance;
       _isOnSeat = session.isOnSeat;
       _micMuted = session.micMuted;
+      _joined = true;
       RoomSessionController.instance.hideBubble();
     }
     _join();
@@ -1304,11 +1307,31 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               remoteUsers: _remoteUsers.length,
             );
           },
+          onAudioVolumeIndication:
+              (connection, speakers, speakerNumber, totalVolume) {
+                // Agora reports the local speaker with uid 0 in this callback.
+                final local = speakers
+                    .where((speaker) => speaker.uid == 0)
+                    .firstOrNull;
+                final speaking =
+                    !_micMuted &&
+                    _isOnSeat &&
+                    local != null &&
+                    ((local.vad ?? 0) == 1 || (local.volume ?? 0) >= 18);
+                if (speaking == _localActuallySpeaking) return;
+                _localActuallySpeaking = speaking;
+                _service.setRoomSpeaking(_roomId, speaking).catchError((_) {});
+              },
           onTokenPrivilegeWillExpire: (_, _) => _refreshRoomToken(),
         ),
       );
       await engine.setClientRole(role: ClientRoleType.clientRoleAudience);
       await engine.enableAudio();
+      await engine.enableAudioVolumeIndication(
+        interval: 200,
+        smooth: 3,
+        reportVad: true,
+      );
       await engine.joinChannel(
         token: token,
         channelId: _roomId,
@@ -1427,7 +1450,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
     await _engine?.muteLocalAudioStream(_micMuted);
-    await _service.setRoomSpeaking(_roomId, !_micMuted);
+    _localActuallySpeaking = false;
+    await _service.setRoomSpeaking(_roomId, false);
     if (mounted) setState(() {});
   }
 
@@ -1651,6 +1675,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<bool> _confirmExit() async {
+    if (_closingRoom) return true;
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -1683,13 +1708,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
     if (result == true) {
-      await RoomBackgroundBridge.setPipEligible(false);
-      await _service.leaveRoomSeat(_roomId).catchError((_) {});
-      await _service.leaveRoom(_roomId);
-      await RoomBackgroundBridge.stop();
-      if (RoomSessionController.instance.engine == _engine ||
-          RoomSessionController.instance.room?['id'] == _roomId) {
-        await RoomSessionController.instance.close();
+      _closingRoom = true;
+      if (mounted) setState(() {});
+      try {
+        await RoomBackgroundBridge.setPipEligible(false);
+        await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
+        await _service.leaveRoomSeat(_roomId).catchError((_) {});
+        await _service.leaveRoom(_roomId).catchError((_) {});
+      } finally {
+        await RoomBackgroundBridge.stop().catchError((_) {});
+        if (RoomSessionController.instance.engine == _engine ||
+            RoomSessionController.instance.room?['id'] == _roomId) {
+          await RoomSessionController.instance.close().catchError((_) {});
+        }
+        if (mounted) {
+          _joined = false;
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       }
       return true;
     }
@@ -3009,6 +3044,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                           ? Stack(
                                               alignment: Alignment.center,
                                               children: [
+                                                if (row['is_speaking'] == true)
+                                                  Positioned.fill(
+                                                    child: IgnorePointer(
+                                                      child: Center(
+                                                        child: _VipVoiceWave(
+                                                          profile: profile,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 GestureDetector(
                                                   onTap: () => _showUserCard(
                                                     profile,
@@ -3022,18 +3067,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                         profile['username']
                                                             as String?,
                                                     radius: 25,
+                                                    profile: profile,
                                                   ),
                                                 ),
-                                                if (row['is_speaking'] == true)
-                                                  Positioned.fill(
-                                                    child: IgnorePointer(
-                                                      child: Center(
-                                                        child: _VipVoiceWave(
-                                                          profile: profile,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
                                                 if (_activeSeatEmojis[row['user_id']
                                                         ?.toString()] !=
                                                     null)

@@ -19,6 +19,7 @@ class SakiAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = _activeVipLevel(profile);
+    final activeFrameUrl = profile?['active_frame_url']?.toString();
     final avatar = CircleAvatar(
       radius: radius,
       backgroundColor: SakiColors.royalPurple.withValues(alpha: .25),
@@ -35,6 +36,27 @@ class SakiAvatar extends StatelessWidget {
             )
           : null,
     );
+    if (activeFrameUrl != null && activeFrameUrl.isNotEmpty) {
+      return SizedBox(
+        width: radius * 2 + 14,
+        height: radius * 2 + 14,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            avatar,
+            IgnorePointer(
+              child: Image.network(
+                activeFrameUrl,
+                width: radius * 2 + 14,
+                height: radius * 2 + 14,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (level == 0 || profile?['vip_frame_enabled'] == false) return avatar;
     return SizedBox(
       width: radius * 2 + 14,
