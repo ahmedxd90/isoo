@@ -37,6 +37,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   List<Map<String, dynamic>> _posts = [];
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _vehicles = [];
+  List<Map<String, dynamic>> _badges = [];
   bool _following = false;
   bool _loading = true;
   bool _actionLoading = false;
@@ -58,6 +59,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.userReceivedGifts(widget.userId),
         SakiService.instance.userVehicles(widget.userId),
         SakiService.instance.isFollowing(widget.userId),
+        SakiService.instance.userBadges(widget.userId),
       ]);
       if (!mounted) return;
       setState(() {
@@ -69,6 +71,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _gifts = List<Map<String, dynamic>>.from(results[4] as List);
         _vehicles = List<Map<String, dynamic>>.from(results[5] as List);
         _following = results[6] as bool;
+        _badges = List<Map<String, dynamic>>.from(results[7] as List);
       });
     } catch (_) {
       if (mounted) {
@@ -241,6 +244,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       posts: _posts,
       gifts: _gifts,
       vehicles: _vehicles,
+      badges: _badges,
       username: username,
       avatar: avatar,
       country: country,
@@ -264,6 +268,7 @@ class _HtmlProfileView extends StatefulWidget {
     required this.posts,
     required this.gifts,
     required this.vehicles,
+    required this.badges,
     required this.username,
     required this.avatar,
     required this.country,
@@ -280,6 +285,7 @@ class _HtmlProfileView extends StatefulWidget {
   final Map<String, dynamic> profile;
   final Map<String, int> stats;
   final List<Map<String, dynamic>> posts, gifts, vehicles;
+  final List<Map<String, dynamic>> badges;
   final String username;
   final String? avatar, country;
   final String gender;
@@ -545,6 +551,7 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                                     items: _ownedBadges(
                                       widget.profile,
                                       widget.stats,
+                                      widget.badges,
                                     ),
                                     kind: 'badge',
                                     accent: accent,
@@ -555,6 +562,7 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                                 items: _ownedBadges(
                                   widget.profile,
                                   widget.stats,
+                                  widget.badges,
                                 ),
                                 kind: 'badge',
                                 accent: accent,
@@ -789,7 +797,19 @@ List<Map<String, dynamic>> _itemsByCategory(
 List<Map<String, dynamic>> _ownedBadges(
   Map<String, dynamic> profile,
   Map<String, int> stats,
+  List<Map<String, dynamic>> badges,
 ) {
+  if (badges.isNotEmpty) {
+    return badges
+        .map(
+          (badge) => {
+            ...badge,
+            'name': badge['name']?.toString() ?? 'وسام',
+            'asset': badge['asset_path']?.toString(),
+          },
+        )
+        .toList();
+  }
   final result = <Map<String, dynamic>>[];
   final vip = (profile['vip_level'] as num? ?? 0).toInt();
   if (vip > 0)
@@ -923,6 +943,8 @@ class _HtmlItemTile extends StatelessWidget {
           : 'عنصر');
   String? get image => item['media_url']?.toString().isNotEmpty == true
       ? item['media_url'].toString()
+      : item['asset']?.toString().isNotEmpty == true
+      ? item['asset'].toString()
       : null;
   @override
   Widget build(BuildContext context) => Padding(
@@ -940,11 +962,17 @@ class _HtmlItemTile extends StatelessWidget {
             child: image != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(9),
-                    child: Image.network(
-                      image!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
+                    child: image!.startsWith('assets/')
+                        ? Image.asset(
+                            image!,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                          )
+                        : Image.network(
+                            image!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                          ),
                   )
                 : Icon(
                     item['icon'] is IconData
@@ -978,10 +1006,24 @@ class _HtmlItemTile extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
+          if (kind == 'badge' && item['earned_at'] != null)
+            Text(
+              _badgeDate(item['earned_at']),
+              style: TextStyle(
+                color: accent,
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
         ],
       ),
     ),
   );
+}
+
+String _badgeDate(dynamic value) {
+  final date = DateTime.tryParse(value.toString())?.toLocal();
+  return date == null ? '' : '${date.day}/${date.month}/${date.year}';
 }
 
 class _HtmlCollectionPage extends StatelessWidget {

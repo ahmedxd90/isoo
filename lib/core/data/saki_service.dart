@@ -22,6 +22,14 @@ class SakiService {
     return data;
   }
 
+  Future<List<Map<String, dynamic>>> userBadges(String userId) async {
+    final rows = await client.rpc(
+      'user_badges_for_profile',
+      params: {'p_user_id': userId},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<List<Map<String, dynamic>>> userTasksSnapshot() async {
     final rows = await client.rpc('user_tasks_snapshot');
     return List<Map<String, dynamic>>.from(rows as List);
@@ -1083,9 +1091,18 @@ class SakiService {
       'message',
       'social',
     };
-    return List<Map<String, dynamic>>.from(rows)
+    final result = List<Map<String, dynamic>>.from(rows)
         .where((row) => !socialTypes.contains(row['type']?.toString()))
         .toList();
+    final badges = await userBadges(uid);
+    var badgeIndex = 0;
+    return result.map((row) {
+      if (row['type']?.toString() == 'badge_earned' &&
+          badgeIndex < badges.length) {
+        return {...row, '_badge': badges[badgeIndex++]};
+      }
+      return row;
+    }).toList();
   }
 
   Future<void> markNotificationsRead({String? type}) async {

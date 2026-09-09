@@ -1645,6 +1645,7 @@ class _NotificationThumbnail extends StatelessWidget {
 }
 
 String _systemTitle(String type) => switch (type) {
+  'badge_earned' => 'مبروك! حصلت على وسام جديد',
   'daily_login' => 'مكافأة تسجيل الدخول اليومي',
   'coin_purchase' || 'coins_purchase' => 'شراء العملات',
   'vip_purchase' => 'شراء VIP',
@@ -1672,6 +1673,7 @@ String _systemText(Map<String, dynamic> row, String type) {
     }
   }
   return switch (type) {
+    'badge_earned' => 'تهانينا، لقد حققت إنجازًا جديدًا وحصلت على هذا الوسام.',
     'daily_login' => 'تم تسجيل دخولك اليومي وإضافة مكافأتك إلى حسابك.',
     'coin_purchase' || 'coins_purchase' => 'تمت إضافة العملات إلى رصيدك بنجاح.',
     'vip_purchase' => 'تم تفعيل عضوية VIP في حسابك.',
@@ -1684,6 +1686,12 @@ String _systemText(Map<String, dynamic> row, String type) {
 }
 
 String? _notificationImage(Map<String, dynamic> row) {
+  final badgeAsset = row['badge_asset_path']?.toString();
+  if (badgeAsset != null && badgeAsset.isNotEmpty) return badgeAsset;
+  final badge = row['_badge'];
+  if (badge is Map && badge['asset_path']?.toString().isNotEmpty == true) {
+    return badge['asset_path'].toString();
+  }
   for (final key in [
     'thumbnail_url',
     'image_url',
