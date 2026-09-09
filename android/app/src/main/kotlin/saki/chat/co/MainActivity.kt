@@ -44,6 +44,7 @@ class MainActivity : FlutterActivity() {
             "roomId" to roomId,
             "roomName" to intent?.getStringExtra(RoomOverlayService.EXTRA_ROOM_NAME).orEmpty(),
             "imageUrl" to intent?.getStringExtra(RoomOverlayService.EXTRA_IMAGE_URL).orEmpty(),
+            "action" to intent?.getStringExtra(RoomOverlayService.EXTRA_ACTION).orEmpty(),
         )
     }
 

@@ -1361,7 +1361,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await RoomSessionController.instance.close();
       },
     );
-    RoomBackgroundBridge.setPipEligible(true);
+    RoomBackgroundBridge.start(
+      roomId: _roomId,
+      roomName: widget.room['name']?.toString() ?? 'غرفة SAKI',
+      imageUrl: widget.room['image_url']?.toString(),
+    );
     // The in-app card is the only bubble while the app is visible. The
     // Android overlay is started by RoomMiniBubble only after the app pauses.
     _joined = false;

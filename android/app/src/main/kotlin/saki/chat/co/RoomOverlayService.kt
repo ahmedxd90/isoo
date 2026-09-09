@@ -22,6 +22,8 @@ import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.graphics.drawable.GradientDrawable
 import androidx.core.app.NotificationCompat
 
@@ -69,6 +71,16 @@ class RoomOverlayService : Service() {
             contentDescription = roomName
             addView(image, FrameLayout.LayoutParams(-1, -1))
             addView(WaveOverlayView(this@RoomOverlayService), FrameLayout.LayoutParams(-1, -1))
+            val controls = LinearLayout(this@RoomOverlayService).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setBackgroundColor(Color.argb(150, 10, 12, 28))
+                addView(control("عودة") { openApp("return") })
+                addView(control("خروج") { openApp("exit") })
+            }
+            addView(controls, FrameLayout.LayoutParams(-1, 28).apply {
+                gravity = Gravity.BOTTOM
+            })
         }
         bubbleImage = image
         val width = (94 * resources.displayMetrics.density).toInt()
@@ -141,13 +153,28 @@ class RoomOverlayService : Service() {
     }
 
     private fun openApp() {
+        openApp("return")
+    }
+
+    private fun openApp(action: String) {
         val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             putExtra(EXTRA_ROOM_ID, roomId)
             putExtra(EXTRA_ROOM_NAME, roomName)
             putExtra(EXTRA_IMAGE_URL, imageUrl)
+            putExtra(EXTRA_ACTION, action)
         } ?: return
         startActivity(intent)
+    }
+
+    private fun control(label: String, action: () -> Unit): TextView = TextView(this).apply {
+        text = label
+        setTextColor(Color.WHITE)
+        textSize = 10f
+        gravity = Gravity.CENTER
+        isClickable = true
+        setPadding(10, 0, 10, 0)
+        setOnClickListener { action() }
     }
 
     override fun onDestroy() {
@@ -229,6 +256,7 @@ class RoomOverlayService : Service() {
         const val EXTRA_ROOM_NAME = "roomName"
         const val EXTRA_ROOM_ID = "roomId"
         const val EXTRA_IMAGE_URL = "imageUrl"
+        const val EXTRA_ACTION = "roomAction"
 
         fun start(context: Context, roomId: String, roomName: String, imageUrl: String) {
             val intent = Intent(context, RoomOverlayService::class.java).apply {

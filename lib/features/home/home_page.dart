@@ -10,6 +10,7 @@ import '../reels/reels_page.dart';
 import '../rooms/rooms_page.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/room_session.dart';
+import '../../core/room_background_bridge.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 class HomePage extends StatefulWidget {
@@ -68,6 +69,16 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _session.addListener(_changed);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _consumeNativeAction());
+  }
+
+  Future<void> _consumeNativeAction() async {
+    final pending = await RoomBackgroundBridge.consumePendingRoom();
+    if (!mounted || pending == null) return;
+    if (pending['action'] == 'exit') {
+      final callback = _session.onExitRequested;
+      if (callback != null) await callback();
+    }
   }
 
   @override
@@ -84,9 +95,9 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // The old Android overlay bubble is intentionally disabled. The app now
-    // uses one in-app movable mini-room only, so two competing bubbles cannot
-    // appear and the live Agora session remains owned by this widget tree.
+    if (state == AppLifecycleState.resumed) {
+      _consumeNativeAction();
+    }
   }
 
   @override
@@ -192,6 +203,33 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
                         ],
                       ),
                     ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () async {
+                    if (_opening) return;
+                    final current = _session.room;
+                    if (current == null) return;
+                    setState(() => _opening = true);
+                    try {
+                      await Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute(
+                          builder: (_) => RoomDetailPage(
+                            room: Map<String, dynamic>.from(current),
+                          ),
+                        ),
+                      );
+                    } finally {
+                      if (mounted) setState(() => _opening = false);
+                    }
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(
+                      Icons.keyboard_return_rounded,
+                      color: Color(0xFF67E8F9),
+                      size: 20,
+                    ),
                   ),
                 ),
                 GestureDetector(
