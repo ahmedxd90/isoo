@@ -1502,24 +1502,14 @@ class SakiService {
   }
 
   Future<void> claimRoomSeat(String roomId, int seatNo) async {
-    await client
-        .from('room_seats')
-        .delete()
-        .eq('user_id', uid)
-        .eq('room_id', roomId);
-    await client.from('room_seats').insert({
-      'room_id': roomId,
-      'seat_no': seatNo,
-      'user_id': uid,
-    });
+    await client.rpc(
+      'claim_room_seat',
+      params: {'p_room_id': roomId, 'p_seat_no': seatNo},
+    );
   }
 
   Future<void> leaveRoomSeat(String roomId) async {
-    await client
-        .from('room_seats')
-        .delete()
-        .eq('room_id', roomId)
-        .eq('user_id', uid);
+    await client.rpc('leave_room_seat', params: {'p_room_id': roomId});
   }
 
   Stream<List<Map<String, dynamic>>> roomMessagesStream(
@@ -1555,38 +1545,61 @@ class SakiService {
         .eq('room_id', roomId)
         .order('seat_no')
         .asyncMap((rows) async {
-          final result = <Map<String, dynamic>>[];
-          for (final row in rows) {
+          if (rows.isEmpty) return <Map<String, dynamic>>[];
+          final userIds = rows
+              .map((row) => row['user_id']?.toString())
+              .whereType<String>()
+              .toSet()
+              .toList();
+          final profilesFuture = client
+              .from('profiles')
+              .select(
+                'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
+              )
+              .inFilter('id', userIds);
+          final inventoryFuture = client
+              .from('saki_store_inventory')
+              .select(
+                'user_id,expires_at,product:saki_store_products(category,media_type,media_url,thumbnail_url)',
+              )
+              .inFilter('user_id', userIds)
+              .eq('equipped', true)
+              .limit(100);
+          final loaded = await Future.wait<dynamic>([
+            profilesFuture,
+            inventoryFuture,
+          ]);
+          final profiles = <String, Map<String, dynamic>>{
+            for (final profile in List<Map<String, dynamic>>.from(loaded[0]))
+              profile['id'].toString(): Map<String, dynamic>.from(profile),
+          };
+          final frames = <String, String>{};
+          for (final item in List<Map<String, dynamic>>.from(loaded[1])) {
+            final product = item['product'];
+            final expiry = DateTime.tryParse(
+              item['expires_at']?.toString() ?? '',
+            );
+            final userId = item['user_id']?.toString();
+            if (userId != null &&
+                product is Map &&
+                product['category']?.toString() == 'frame' &&
+                (expiry == null || expiry.isAfter(DateTime.now()))) {
+              frames[userId] =
+                  (product['thumbnail_url'] ?? product['media_url'])
+                      ?.toString() ??
+                  '';
+            }
+          }
+          return rows.map((row) {
             final copy = Map<String, dynamic>.from(row);
-            final userId = row['user_id'] as String;
-            final profile = await userProfile(userId);
-            if (profile != null) {
-              final equipped = await client
-                  .from('saki_store_inventory')
-                  .select(
-                    'equipped,expires_at,product:saki_store_products(category,media_type,media_url,thumbnail_url)',
-                  )
-                  .eq('user_id', userId)
-                  .eq('equipped', true)
-                  .limit(20);
-              for (final item in List<Map<String, dynamic>>.from(equipped)) {
-                final product = item['product'];
-                final expiry = DateTime.tryParse(
-                  item['expires_at']?.toString() ?? '',
-                );
-                if (product is Map &&
-                    product['category']?.toString() == 'frame' &&
-                    (expiry == null || expiry.isAfter(DateTime.now()))) {
-                  profile['active_frame_url'] =
-                      product['thumbnail_url'] ?? product['media_url'];
-                  break;
-                }
-              }
+            final userId = row['user_id']?.toString();
+            final profile = userId == null ? null : profiles[userId];
+            if (profile != null && frames[userId]?.isNotEmpty == true) {
+              profile['active_frame_url'] = frames[userId];
             }
             copy['profiles'] = profile;
-            result.add(copy);
-          }
-          return result;
+            return copy;
+          }).toList();
         });
   }
 

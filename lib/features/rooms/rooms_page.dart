@@ -1397,6 +1397,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Set<String> _previousSeatUserIds = <String>{};
   bool _seatStopPending = false;
   Timer? _seatTaskTimer;
+  Map<String, dynamic>? _optimisticSeatRow;
   List<Map<String, dynamic>> _luckBags = [];
   Map<String, dynamic>? _newLuckBag;
 
@@ -3201,11 +3202,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _leaveOwnSeat() async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _optimisticSeatRow = null;
+      _isOnSeat = false;
+    });
+    unawaited(_setSeatAudio(false));
     try {
       await _service.leaveRoomSeat(_roomId);
-      await _setSeatAudio(false);
-      await _service.sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat');
+      unawaited(
+        _service
+            .sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat')
+            .catchError((_) {}),
+      );
       if (mounted) _messageSnack('تم النزول من المقعد بنجاح.');
     } catch (error) {
       if (mounted) _messageSnack('تعذر النزول من المقعد: $error');
@@ -3249,9 +3258,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     setState(() => _busy = true);
     try {
       if (!take) {
+        setState(() {
+          _optimisticSeatRow = null;
+          _isOnSeat = false;
+        });
+        unawaited(_setSeatAudio(false));
         await _service.leaveRoomSeat(_roomId);
-        await _setSeatAudio(false);
-        await _service.sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat');
+        unawaited(
+          _service
+              .sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat')
+              .catchError((_) {}),
+        );
       } else {
         final allowed =
             _micPermission == 'everyone' ||
@@ -3263,11 +3280,33 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _messageSnack('المالك لا يسمح لك بأخذ المايك حاليًا.');
           return;
         }
+        final profile = occupied?['profiles'] ?? <String, dynamic>{};
+        setState(() {
+          _optimisticSeatRow = {
+            'room_id': _roomId,
+            'seat_no': seatNo,
+            'user_id': _service.uid,
+            'is_speaking': false,
+            'profiles': profile,
+          };
+          _isOnSeat = true;
+        });
+        unawaited(_setSeatAudio(true));
         await _service.claimRoomSeat(_roomId, seatNo);
-        await _setSeatAudio(true);
-        await _service.sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat');
+        unawaited(
+          _service
+              .sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat')
+              .catchError((_) {}),
+        );
       }
     } catch (error) {
+      if (mounted) {
+        setState(() {
+          _optimisticSeatRow = null;
+          _isOnSeat = false;
+        });
+        unawaited(_setSeatAudio(false));
+      }
       if (mounted) _messageSnack('تعذر استخدام المقعد: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -3531,7 +3570,29 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     StreamBuilder<List<Map<String, dynamic>>>(
                       stream: _seatStream,
                       builder: (_, snap) {
-                        final seatRows = snap.data ?? <Map<String, dynamic>>[];
+                        final serverSeatRows =
+                            snap.data ?? <Map<String, dynamic>>[];
+                        final optimistic = _optimisticSeatRow;
+                        final seatRows = optimistic == null
+                            ? serverSeatRows
+                            : [
+                                ...serverSeatRows.where(
+                                  (row) => row['user_id'] != _service.uid,
+                                ),
+                                optimistic,
+                              ];
+                        if (optimistic != null &&
+                            serverSeatRows.any(
+                              (row) =>
+                                  row['user_id'] == _service.uid &&
+                                  row['seat_no'] == optimistic['seat_no'],
+                            )) {
+                          scheduleMicrotask(() {
+                            if (mounted && _optimisticSeatRow != null) {
+                              setState(() => _optimisticSeatRow = null);
+                            }
+                          });
+                        }
                         final seatUserIds = seatRows
                             .map((row) => row['user_id']?.toString())
                             .whereType<String>()
@@ -3634,16 +3695,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                               alignment: Alignment.center,
                                               clipBehavior: Clip.none,
                                               children: [
-                                                if (row['is_speaking'] == true)
-                                                  Positioned.fill(
-                                                    child: IgnorePointer(
-                                                      child: Center(
-                                                        child: _VipVoiceWave(
-                                                          profile: profile,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
                                                 GestureDetector(
                                                   onTap: () => _showUserCard(
                                                     profile,
@@ -3660,6 +3711,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     profile: profile,
                                                   ),
                                                 ),
+                                                if (row['is_speaking'] == true)
+                                                  Positioned.fill(
+                                                    child: IgnorePointer(
+                                                      child: Center(
+                                                        child: _VipVoiceWave(
+                                                          profile: profile,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
                                                 if (_activeSeatEmojis[row['user_id']
                                                         ?.toString()] !=
                                                     null)
@@ -4930,7 +4991,7 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
       return const VipSvgaAsset(
         assetPath: 'assets/vip/vip8_voice_waves.svga',
         fallbackAsset: 'assets/vip/title_vip8.png',
-        size: 68,
+        size: 82,
         loop: true,
       );
     }
@@ -4941,7 +5002,7 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
     return AnimatedBuilder(
       animation: _controller,
       builder: (_, _) {
-        final size = 56 + (_controller.value * 5);
+        final size = 70 + (_controller.value * 8);
         return Container(
           width: size,
           height: size,
@@ -4964,11 +5025,11 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
               mainAxisSize: MainAxisSize.min,
               children: List.generate(5, (i) {
                 final height =
-                    8.0 + (((i + 1) % 3) * 5) + (_controller.value * 4);
+                    10.0 + (((i + 1) % 3) * 7) + (_controller.value * 6);
                 return Container(
-                  width: 3,
+                  width: 4,
                   height: height,
-                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
                   decoration: BoxDecoration(
                     color: colors[i % colors.length],
                     borderRadius: BorderRadius.circular(4),
