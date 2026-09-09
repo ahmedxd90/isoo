@@ -15,7 +15,8 @@
     <application
         android:label="SAKI"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:supportsPictureInPicture="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -49,12 +50,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <service
-            android:name=".RoomOverlayService"
-            android:enabled="true"
-            android:exported="false"
-            android:stopWithTask="false"
-            android:foregroundServiceType="microphone" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

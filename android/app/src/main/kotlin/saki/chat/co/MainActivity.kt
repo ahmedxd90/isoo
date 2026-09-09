@@ -3,6 +3,9 @@ package saki.chat.co
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.app.PictureInPictureParams
+import android.util.Rational
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -11,6 +14,17 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val channelName = "saki/room_background"
     private var pendingRoom: HashMap<String, String>? = null
+    private var pipEligible = false
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipEligible && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .build()
+            enterPictureInPictureMode(params)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,6 +82,18 @@ class MainActivity : FlutterActivity() {
                                     Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     Uri.parse("package:$packageName"),
                                 ),
+                            )
+                        }
+                        result.success(null)
+                    }
+                    "setPipEligible" -> {
+                        pipEligible = call.argument<Boolean>("eligible") == true
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            setPictureInPictureParams(
+                                PictureInPictureParams.Builder()
+                                    .setAspectRatio(Rational(16, 9))
+                                    .setAutoEnterEnabled(pipEligible)
+                                    .build()
                             )
                         }
                         result.success(null)

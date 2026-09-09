@@ -1361,6 +1361,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await RoomSessionController.instance.close();
       },
     );
+    RoomBackgroundBridge.setPipEligible(true);
     // The in-app card is the only bubble while the app is visible. The
     // Android overlay is started by RoomMiniBubble only after the app pauses.
     _joined = false;
@@ -1678,6 +1679,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
     if (result == true) {
+      await RoomBackgroundBridge.setPipEligible(false);
       await _service.leaveRoomSeat(_roomId).catchError((_) {});
       await _service.leaveRoom(_roomId);
       await RoomBackgroundBridge.stop();

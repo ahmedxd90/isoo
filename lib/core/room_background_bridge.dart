@@ -42,6 +42,18 @@ class RoomBackgroundBridge {
     }
   }
 
+  static Future<void> setPipEligible(bool eligible) async {
+    try {
+      await _channel.invokeMethod<void>('setPipEligible', {
+        'eligible': eligible,
+      });
+    } on MissingPluginException {
+      // Unsupported platforms simply keep the in-app mini room.
+    } on PlatformException {
+      // PiP is optional; never interrupt the room session.
+    }
+  }
+
   static Future<Map<String, dynamic>?> consumePendingRoom() async {
     try {
       final value = await _channel.invokeMethod<dynamic>('consumePendingRoom');
