@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 class WalletPage extends StatefulWidget {
   const WalletPage({super.key});
   @override
@@ -62,8 +64,7 @@ class _WalletPageState extends State<WalletPage> {
     }
   }
 
-  void _message(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _message(String text) => CustomToast.show(context, text);
 
   @override
   void dispose() {

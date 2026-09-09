@@ -9,6 +9,8 @@ import '../../core/notifications/notification_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../profile/user_profile_page.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _ink = Color(0xFF111827);
 const _muted = Color(0xFF8B95A7);
 const _blue = Color(0xFF5267FF);
@@ -359,8 +361,7 @@ class _ChatPageState extends State<ChatPage> {
       await SakiService.instance.sendMessage(widget.conversationId, body);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$error')));
+        CustomToast.show(context, '$error');
       }
     } finally {
       if (mounted) {
@@ -398,8 +399,7 @@ class _ChatPageState extends State<ChatPage> {
             );
           } catch (error) {
             if (mounted) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('$error')));
+              CustomToast.show(context, '$error');
             }
           }
         },
@@ -501,9 +501,7 @@ class _ChatPageState extends State<ChatPage> {
                   );
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم إرسال البلاغ بنجاح')),
-                    );
+                    CustomToast.show(context, 'تم إرسال البلاغ بنجاح');
                   }
                 },
                 child: Container(

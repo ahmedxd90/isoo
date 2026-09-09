@@ -9,6 +9,8 @@ import 'package:video_player/video_player.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/vip_identity.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _storeOrange = Color(0xFF9B27B0);
 const _storeCyan = Color(0xFF6A1B9A);
 const _storeGold = Color(0xFFFFC107);
@@ -195,7 +197,11 @@ class _EntranceFlyingBanner extends StatelessWidget {
       ? [_accent.withValues(alpha: .92), const Color(0xCC1E293B)]
       : vip <= 6
       ? [_accent.withValues(alpha: .95), const Color(0xCC111827)]
-      : [const Color(0xE6F59E0B), _accent.withValues(alpha: .95), const Color(0xDD27133F)];
+      : [
+          const Color(0xE6F59E0B),
+          _accent.withValues(alpha: .95),
+          const Color(0xDD27133F),
+        ];
 
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<Offset>(
@@ -274,7 +280,9 @@ class _EntranceFlyingBanner extends StatelessWidget {
             ),
             const SizedBox(width: 9),
             Icon(
-              vip >= 7 ? Icons.workspace_premium_rounded : Icons.auto_awesome_rounded,
+              vip >= 7
+                  ? Icons.workspace_premium_rounded
+                  : Icons.auto_awesome_rounded,
               color: _accent,
               size: vip >= 7 ? 24 : 20,
             ),
@@ -355,9 +363,7 @@ class _StorePageState extends State<StorePage> {
       await SakiService.instance.storeBuy(product['id'] as String);
       if (!mounted) return;
       setState(() => _selectedProduct = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم الشراء وإضافة المنتج إلى الحقيبة')),
-      );
+      CustomToast.show(context, 'تم الشراء وإضافة المنتج إلى الحقيبة');
       setState(_reload);
     } catch (e) {
       if (mounted) {
@@ -365,8 +371,7 @@ class _StorePageState extends State<StorePage> {
         final message = raw.contains('vip_frame_granted_with_vip_purchase')
             ? 'إطار VIP يُمنح تلقائيًا عند شراء مستوى VIP ولا يُشترى منفصلًا.'
             : raw.replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        CustomToast.show(context, message);
       }
     } finally {
       if (mounted) setState(() => _buying = false);
@@ -514,9 +519,7 @@ class _StorePageState extends State<StorePage> {
 
   void _sendSelected() {
     if (_selectedProduct == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('حدد غرفة أو مستخدماً لإرسال المنتج')),
-    );
+    CustomToast.show(context, 'حدد غرفة أو مستخدماً لإرسال المنتج');
   }
 
   @override
@@ -1421,8 +1424,7 @@ class _AdminStorePageState extends State<AdminStorePage> {
     final path = result?.path;
     if (path == null || result?.extension?.toLowerCase() != extension) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('اختر ملف .$extension فقط')));
+        CustomToast.show(context, 'اختر ملف .$extension فقط');
       }
       return null;
     }
@@ -1581,10 +1583,9 @@ class _AdminStorePageState extends State<AdminStorePage> {
                           if (name.text.trim().isEmpty ||
                               parsedPrice == null ||
                               parsedPrice <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('أدخل اسم المنتج وسعراً صحيحاً'),
-                              ),
+                            CustomToast.show(
+                              context,
+                              'أدخل اسم المنتج وسعراً صحيحاً',
                             );
                             return;
                           }
@@ -1608,17 +1609,14 @@ class _AdminStorePageState extends State<AdminStorePage> {
                               Navigator.pop(dialogContext);
                             }
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تم رفع المنتج ونشره بنجاح'),
-                                ),
+                              CustomToast.show(
+                                context,
+                                'تم رفع المنتج ونشره بنجاح',
                               );
                             }
                           } catch (e) {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('فشل رفع المنتج: $e')),
-                              );
+                              CustomToast.show(context, 'فشل رفع المنتج: $e');
                             }
                             setDialog(() => _saving = false);
                           }

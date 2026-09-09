@@ -3,6 +3,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _taskPurple = Color(0xFF5B21B6);
 const _taskGold = Color(0xFFF59E0B);
 const _taskInk = Color(0xFF1F2937);
@@ -42,9 +44,7 @@ class _TasksPageState extends State<TasksPage> {
       });
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('تعذر تحميل المهمات: $error')));
+        CustomToast.show(context, 'تعذر تحميل المهمات: $error');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -173,12 +173,9 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   void _showRoute(String route) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'اذهب إلى القسم المطلوب داخل التطبيق لإكمال المهمة ($route)',
-        ),
-      ),
+    CustomToast.show(
+      context,
+      'اذهب إلى القسم المطلوب داخل التطبيق لإكمال المهمة ($route)',
     );
   }
 }

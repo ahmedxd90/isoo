@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _orange = Color(0xFFF97316);
 const _cyan = Color(0xFF06B6D4);
 
@@ -64,9 +66,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
         'settings_updated',
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ إعدادات الغرفة حقيقيًا')),
-        );
+        CustomToast.show(context, 'تم حفظ إعدادات الغرفة حقيقيًا');
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -526,10 +526,9 @@ class _RoomBackgroundPageState extends State<RoomBackgroundPage> {
     if (!mounted) return;
     final vip = (p?['vip_level'] as num?)?.toInt() ?? 0;
     if (vip < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('رفع خلفية من الجهاز متاح لمالك الغرفة VIP5 فأعلى'),
-        ),
+      CustomToast.show(
+        context,
+        'رفع خلفية من الجهاز متاح لمالك الغرفة VIP5 فأعلى',
       );
       return;
     }

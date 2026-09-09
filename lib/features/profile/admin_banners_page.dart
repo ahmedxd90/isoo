@@ -3,6 +3,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 class AdminBannersPage extends StatefulWidget {
   const AdminBannersPage({super.key});
   @override
@@ -27,9 +29,7 @@ class _AdminBannersPageState extends State<AdminBannersPage> {
       if (mounted) setState(() => _items = items);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('تعذر تحميل البنرات: $error')));
+        CustomToast.show(context, 'تعذر تحميل البنرات: $error');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -171,8 +171,7 @@ class _BannerFormState extends State<_BannerForm> {
 
   Future<void> _save() async {
     if (_image == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('اختر صورة البنر أولًا')));
+      CustomToast.show(context, 'اختر صورة البنر أولًا');
       return;
     }
     setState(() => _saving = true);
@@ -204,8 +203,7 @@ class _BannerFormState extends State<_BannerForm> {
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$error')));
+        CustomToast.show(context, '$error');
       }
     } finally {
       if (mounted) setState(() => _saving = false);

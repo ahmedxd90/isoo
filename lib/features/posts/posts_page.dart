@@ -13,6 +13,8 @@ import '../notifications/notifications_page.dart';
 import '../profile/user_profile_page.dart';
 import '../search/search_page.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _brand = Color(0xFFF97316);
 const _brandDark = Color(0xFFEA580C);
 const _brandSoft = Color(0xFFFFF7ED);
@@ -300,14 +302,11 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
       await _service.sharePost(widget.post['id'] as String);
       if (mounted) setState(() => _shares += 1);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم تسجيل المشاركة في Supabase')),
-        );
+        CustomToast.show(context, 'تم تسجيل المشاركة في Supabase');
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('تعذر تسجيل المشاركة')));
+        CustomToast.show(context, 'تعذر تسجيل المشاركة');
       }
     }
   }
@@ -466,9 +465,7 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم إرسال البلاغ للمراجعة')),
-                  );
+                  CustomToast.show(context, 'تم إرسال البلاغ للمراجعة');
                 },
               ),
               ListTile(
@@ -479,9 +476,7 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم تجهيز رابط المنشور')),
-                  );
+                  CustomToast.show(context, 'تم تجهيز رابط المنشور');
                 },
               ),
               const SizedBox(height: 8),

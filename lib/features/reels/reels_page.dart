@@ -9,6 +9,8 @@ import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
 import '../profile/user_profile_page.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _reelTeal = Color(0xFF2DD4BF);
 
 class ReelsPage extends StatefulWidget {
@@ -44,9 +46,7 @@ class _ReelsPageState extends State<ReelsPage> {
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تحميل الريلز من Supabase')),
-        );
+        CustomToast.show(context, 'تعذر تحميل الريلز من Supabase');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -418,14 +418,11 @@ class _ReelCardState extends State<ReelCard> {
     try {
       await SakiService.instance.shareReel(widget.reel['id'] as String);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم تسجيل مشاركة الريلز')));
+        CustomToast.show(context, 'تم تسجيل مشاركة الريلز');
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('تعذر تسجيل المشاركة')));
+        CustomToast.show(context, 'تعذر تسجيل المشاركة');
       }
     }
   }

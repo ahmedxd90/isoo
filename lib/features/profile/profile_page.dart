@@ -19,6 +19,8 @@ import 'redeem_code_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _orange = Color(0xFFF97316);
 const _orangeSoft = Color(0xFFFFF7ED);
 const _cyan = Color(0xFF06B6D4);
@@ -71,9 +73,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) setState(() => _isSuperAdmin = isSuperAdmin);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تحميل بيانات الملف من Supabase')),
-        );
+        CustomToast.show(context, 'تعذر تحميل بيانات الملف من Supabase');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -164,9 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
             MaterialPageRoute(builder: (_) => const SuperAdminPage()),
           );
         } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('هذه الصفحة متاحة للسوبر أدمن فقط')),
-          );
+          CustomToast.show(context, 'هذه الصفحة متاحة للسوبر أدمن فقط');
         }
       } catch (_) {}
       return;

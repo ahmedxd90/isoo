@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 class UserSettingsPage extends StatefulWidget {
   const UserSettingsPage({super.key, required this.profile});
 
@@ -147,19 +149,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
 
   void _toast(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(text, textDirection: TextDirection.rtl),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: _ink,
-          margin: const EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      );
+    CustomToast.show(context, text);
   }
 
   @override

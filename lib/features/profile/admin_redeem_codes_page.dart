@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _adminOrange = Color(0xFFF97316);
 const _adminCyan = Color(0xFF06B6D4);
 const _adminInk = Color(0xFF111827);
@@ -229,9 +231,7 @@ class _AddRedeemCodePageState extends State<AddRedeemCodePage> {
 
   Future<void> _pickItems() async {
     if (_items.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('لا توجد عناصر متجر فعالة')));
+      CustomToast.show(context, 'لا توجد عناصر متجر فعالة');
       return;
     }
     final selected = await showModalBottomSheet<Set<String>>(
@@ -337,8 +337,7 @@ class _AddRedeemCodePageState extends State<AddRedeemCodePage> {
     }
   }
 
-  void _error(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _error(String text) => CustomToast.show(context, text);
 
   @override
   Widget build(BuildContext context) => Scaffold(

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _bagRed = Color(0xFFE73855);
 const _bagGold = Color(0xFFFFC857);
 
@@ -50,9 +52,7 @@ class _LuckBagComposerState extends State<LuckBagComposer> {
       widget.onCreated(bag);
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        CustomToast.show(context, e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _sending = false);
     }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/data/saki_service.dart';
 import 'vip_widgets.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 class VipPage extends StatefulWidget {
   const VipPage({super.key});
   @override
@@ -194,8 +196,7 @@ class _VipPageState extends State<VipPage> {
     }
   }
 
-  void _toast(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _toast(String text) => CustomToast.show(context, text);
 
   @override
   Widget build(BuildContext context) {

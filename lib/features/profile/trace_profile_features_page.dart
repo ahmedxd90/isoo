@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _blue = Color(0xFF656BF9);
 const _ink = Color(0xFF262633);
 const _muted = Color(0xFF8D8E99);
@@ -357,9 +359,7 @@ class _AgencyFeatureState extends State<AgencyFeature> {
                   'agency_status': 'pending',
                 });
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم حفظ طلب الوكالة')),
-                );
+                CustomToast.show(context, 'تم حفظ طلب الوكالة');
               },
               child: const Text('إرسال'),
             ),
@@ -436,9 +436,7 @@ class _FamilyFeatureState extends State<FamilyFeature> {
                     'family_status': 'active',
                   });
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم حفظ بيانات العائلة')),
-                  );
+                  CustomToast.show(context, 'تم حفظ بيانات العائلة');
                 },
                 child: const Text('حفظ'),
               ),

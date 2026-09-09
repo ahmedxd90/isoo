@@ -28,6 +28,8 @@ import '../profile/vip_widgets.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _roomPrimary = Color(0xFF656BF9);
 const _roomSecondary = Color(0xFF8E91FF);
 const _roomTrophyGold = Color(0xFFF3B83F);
@@ -80,9 +82,7 @@ class _RoomsPageState extends State<RoomsPage> {
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر تحميل الغرف من Supabase')),
-        );
+        CustomToast.show(context, 'تعذر تحميل الغرف من Supabase');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -2341,9 +2341,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  void _messageSnack(String value) =>
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(value)));
+  void _messageSnack(String value) => CustomToast.show(context, value);
 
   bool get _canOpenMusic => _isOnSeat;
 

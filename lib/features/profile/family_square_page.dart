@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _familyGold = Color(0xFFFFB800);
 const _familyInk = Color(0xFF171A27);
 const _familyPurple = Color(0xFF7B35D4);
@@ -55,9 +57,7 @@ class _FamilySquarePageState extends State<FamilySquarePage> {
   }
 
   void _snack(Object error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
-    );
+    CustomToast.show(context, error.toString().replaceFirst('Exception: ', ''));
   }
 
   Future<void> _create() async {
@@ -242,11 +242,7 @@ class _CreateFamilyPageState extends State<CreateFamilyPage> {
     final name = _name.text.trim();
     final alias = _alias.text.trim();
     if (name.length < 2 || alias.length < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('أدخل اسم العائلة ولقباً من 5 أحرف على الأقل'),
-        ),
-      );
+      CustomToast.show(context, 'أدخل اسم العائلة ولقباً من 5 أحرف على الأقل');
       return;
     }
     setState(() => _saving = true);
@@ -266,10 +262,9 @@ class _CreateFamilyPageState extends State<CreateFamilyPage> {
     } catch (error) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     }
@@ -454,10 +449,9 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
     } catch (error) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     }
@@ -522,8 +516,7 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
     final id = _text(widget.family['h_id']);
     await Clipboard.setData(ClipboardData(text: id));
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم نسخ ID العائلة')));
+      CustomToast.show(context, 'تم نسخ ID العائلة');
     }
   }
 
@@ -567,8 +560,9 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
     }
   }
 
-  void _snack(Object error) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(error.toString().replaceFirst('Exception: ', ''))),
+  void _snack(Object error) => CustomToast.show(
+    context,
+    error.toString().replaceFirst('Exception: ', ''),
   );
 
   Future<void> _openOwnerTools() async {
@@ -610,10 +604,9 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
       await _service.leaveFamily(widget.family['id'].toString());
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم الخروج من العائلة. يمكنك الآن استكشاف الميدان'),
-          ),
+        CustomToast.show(
+          context,
+          'تم الخروج من العائلة. يمكنك الآن استكشاف الميدان',
         );
       }
     } catch (error) {
@@ -1527,9 +1520,7 @@ class _MemberProfileSheet extends StatelessWidget {
           child: FilledButton.icon(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('تم إرسال طلب الهدية')),
-              );
+              CustomToast.show(context, 'تم إرسال طلب الهدية');
             },
             icon: const Icon(Icons.card_giftcard_rounded),
             label: const Text('إرسال هدية'),
@@ -2093,16 +2084,13 @@ class _FamilySettingsPageState extends State<FamilySettingsPage> {
         announcement: _notice.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تم حفظ إعدادات العائلة')));
+      CustomToast.show(context, 'تم حفظ إعدادات العائلة');
       Navigator.pop(context);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     } finally {
@@ -2319,20 +2307,16 @@ class _FamilyJoinRequestsPageState extends State<FamilyJoinRequestsPage> {
       }
       await _load();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              approve ? 'تم قبول العضو في العائلة' : 'تم رفض الطلب',
-            ),
-          ),
+        CustomToast.show(
+          context,
+          approve ? 'تم قبول العضو في العائلة' : 'تم رفض الطلب',
         );
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     }

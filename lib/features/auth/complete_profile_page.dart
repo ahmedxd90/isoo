@@ -6,6 +6,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 class CompleteProfilePage extends StatefulWidget {
   const CompleteProfilePage({super.key});
   @override
@@ -58,9 +60,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     if (_username.text.trim().length < 3 ||
         _country == null ||
         _gender == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('أكمل الاسم والدولة والجنس أولًا.')),
-      );
+      CustomToast.show(context, 'أكمل الاسم والدولة والجنس أولًا.');
       return;
     }
     setState(() => _saving = true);
@@ -74,9 +74,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       if (mounted) context.go('/home');
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر حفظ معلوماتك. حاول مرة أخرى.')),
-        );
+        CustomToast.show(context, 'تعذر حفظ معلوماتك. حاول مرة أخرى.');
       }
     } finally {
       if (mounted) setState(() => _saving = false);

@@ -14,6 +14,8 @@ import '../messages/messages_page.dart';
 import '../posts/posts_page.dart';
 import '../rooms/rooms_page.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _profileYellow = Color(0xFFFFC107);
 const _profileBg = Color(0xFFF3F4F6);
 const _profileInk = Color(0xFF111827);
@@ -87,11 +89,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       });
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تعذر تحميل بروفايل المستخدم من Supabase'),
-          ),
-        );
+        CustomToast.show(context, 'تعذر تحميل بروفايل المستخدم من Supabase');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -194,9 +192,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: details));
               if (dialogContext.mounted) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('تم نسخ الخطأ كاملًا')),
-                );
+                CustomToast.show(context, 'تم نسخ الخطأ كاملًا');
               }
             },
             child: const Text('نسخ الخطأ'),
@@ -215,8 +211,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ClipboardData(text: '${_profile?['saki_id'] ?? ''}'),
     );
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم نسخ SAKI ID')));
+      CustomToast.show(context, 'تم نسخ SAKI ID');
     }
   }
 
@@ -1564,9 +1559,7 @@ class _ProfileBannerCarouselState extends State<_ProfileBannerCarousel> {
       );
       if (!mounted) return;
       if (room == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الغرفة غير متاحة حاليًا')),
-        );
+        CustomToast.show(context, 'الغرفة غير متاحة حاليًا');
         return;
       }
       await Navigator.push(

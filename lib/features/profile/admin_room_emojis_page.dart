@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _orange = Color(0xFFF97316);
 const _cyan = Color(0xFF06B6D4);
 const _ink = Color(0xFF111827);
@@ -31,8 +33,7 @@ class _AdminRoomEmojisState extends State<AdminRoomEmojisPage> {
     }
   }
 
-  void _snack(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _snack(String text) => CustomToast.show(context, text);
   Future<XFile?> _pickGif() async {
     final f = await FilePicker.pickFile(type: FileType.any);
     if (f?.path == null || f?.extension?.toLowerCase() != 'gif') {

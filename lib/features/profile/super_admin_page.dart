@@ -12,6 +12,8 @@ import 'admin_redeem_codes_page.dart';
 import 'admin_reports_page.dart';
 import 'store_pages.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _blue = Color(0xFFF97316);
 const _cyan = Color(0xFF06B6D4);
 const _adminInk = Color(0xFF111827);
@@ -636,8 +638,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       if (mounted) _find();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        CustomToast.show(context, e.toString());
       }
     }
   }
@@ -716,9 +717,8 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
     }
   }
 
-  void _snack(String value) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(value.replaceFirst('Exception: ', ''))),
-  );
+  void _snack(String value) =>
+      CustomToast.show(context, value.replaceFirst('Exception: ', ''));
 
   Future<void> _add() async {
     final saved = await Navigator.of(context).push<bool>(
@@ -785,7 +785,6 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
               ),
               IconButton(
                 onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (_) => AlertDialog(
@@ -812,16 +811,13 @@ class _AdminGiftsPageState extends State<AdminGiftsPage> {
                     );
                     await _load();
                     if (!mounted) return;
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('تم حذف الهدية من قاعدة البيانات بنجاح'),
-                      ),
+                    CustomToast.show(
+                      context,
+                      'تم حذف الهدية من قاعدة البيانات بنجاح',
                     );
                   } catch (error) {
                     if (!mounted) return;
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('تعذر حذف الهدية: $error')),
-                    );
+                    CustomToast.show(context, 'تعذر حذف الهدية: $error');
                   }
                 },
                 icon: const Icon(
@@ -880,9 +876,8 @@ class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
     return file;
   }
 
-  void _message(String value) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(value.replaceFirst('Exception: ', ''))),
-  );
+  void _message(String value) =>
+      CustomToast.show(context, value.replaceFirst('Exception: ', ''));
 
   Future<void> _save() async {
     if (name.text.trim().isEmpty || int.tryParse(price.text) == null) {

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 const _giftOrange = Color(0xFFFF8A3D);
 const _giftCyan = Color(0xFF32D7FF);
 const _giftViolet = Color(0xFF9B6CFF);
@@ -136,12 +138,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   }
 
   void _message(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: const Color(0xFF26263A),
-        content: Text(text, style: const TextStyle(color: Colors.white)),
-      ),
-    );
+    CustomToast.show(context, text);
   }
 
   void _toggleRecipient(String id) {
