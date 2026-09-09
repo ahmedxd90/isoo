@@ -2,19 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'saki_widgets.dart';
 
-const vipTitles = <int, String>{
-  1: 'نجم مبتدئ',
-  2: 'نجم لامع',
-  3: 'سفير الأناقة',
-  4: 'أمير الحضور',
-  5: 'سيد التألق',
-  6: 'ملك الإبداع',
-  7: 'أسطورة الغرفة',
-  8: 'الإمبراطور الماسي',
-  9: 'الملك الذهبي',
-  10: 'التاج الملكي',
-};
-
 const vipNameGradients = <int, List<Color>>{
   1: [Color(0xFFFFC4B9), Color(0xFFFF806D), Color(0xFFFFE1D8)],
   2: [Color(0xFFE8F0FF), Color(0xFF9DB7E7), Color(0xFFFFFFFF)],
@@ -51,7 +38,7 @@ Color vipAccent(int level) =>
 int activeVipLevel(Map<String, dynamic> profile) {
   final level = (profile['vip_level'] as num?)?.toInt() ?? 0;
   final expiry = DateTime.tryParse(profile['vip_expires_at']?.toString() ?? '');
-  return expiry != null && expiry.isAfter(DateTime.now())
+  return level > 0 && (expiry == null || expiry.isAfter(DateTime.now()))
       ? level.clamp(0, 10)
       : 0;
 }
@@ -188,7 +175,7 @@ class VipTitleBadge extends StatelessWidget {
           const SizedBox(width: 3),
           const SizedBox(width: 1),
           Text(
-            'VIP $level • ${vipTitles[level]}',
+            'VIP $level',
             style: TextStyle(
               color: Colors.white,
               fontSize: compact ? 9 : 11,
@@ -261,6 +248,68 @@ class VipIdentity extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class VipSakiId extends StatefulWidget {
+  const VipSakiId({super.key, required this.profile, this.fontSize = 12});
+  final Map<String, dynamic> profile;
+  final double fontSize;
+
+  @override
+  State<VipSakiId> createState() => _VipSakiIdState();
+}
+
+class _VipSakiIdState extends State<VipSakiId>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final level = activeVipLevel(widget.profile);
+    final value = widget.profile['saki_id']?.toString() ?? '—';
+    if (level < 6) {
+      return Text(
+        'SAKI ID: $value',
+        style: TextStyle(
+          color: Colors.white60,
+          fontSize: widget.fontSize,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+    final colors = vipNameGradients[level] ?? vipNameGradients[6]!;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, _) => ShaderMask(
+        shaderCallback: (bounds) {
+          final shift = (_controller.value * 2) - 1;
+          return LinearGradient(
+            begin: Alignment(shift - 1, 0),
+            end: Alignment(shift + 1, 0),
+            colors: colors,
+          ).createShader(bounds);
+        },
+        child: Text(
+          'SAKI ID: $value',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: widget.fontSize,
+            fontWeight: FontWeight.w900,
+            shadows: [Shadow(color: vipAccent(level), blurRadius: 7)],
+          ),
+        ),
+      ),
     );
   }
 }

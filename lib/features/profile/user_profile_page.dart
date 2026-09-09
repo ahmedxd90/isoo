@@ -38,6 +38,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _vehicles = [];
   List<Map<String, dynamic>> _badges = [];
+  String _countryFlag = '🌍';
   bool _following = false;
   bool _loading = true;
   bool _actionLoading = false;
@@ -62,6 +63,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.userBadges(widget.userId),
       ]);
       if (!mounted) return;
+      final countryFlag = await SakiService.instance.countryFlag(
+        (results[0] as Map<String, dynamic>?)?['country']?.toString(),
+      );
       setState(() {
         final base = results[0] as Map<String, dynamic>?;
         final family = results[1] as Map<String, dynamic>?;
@@ -72,6 +76,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _vehicles = List<Map<String, dynamic>>.from(results[5] as List);
         _following = results[6] as bool;
         _badges = List<Map<String, dynamic>>.from(results[7] as List);
+        _countryFlag = countryFlag;
       });
     } catch (_) {
       if (mounted) {
@@ -245,6 +250,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       gifts: _gifts,
       vehicles: _vehicles,
       badges: _badges,
+      countryFlag: _countryFlag,
       username: username,
       avatar: avatar,
       country: country,
@@ -269,6 +275,7 @@ class _HtmlProfileView extends StatefulWidget {
     required this.gifts,
     required this.vehicles,
     required this.badges,
+    required this.countryFlag,
     required this.username,
     required this.avatar,
     required this.country,
@@ -286,6 +293,7 @@ class _HtmlProfileView extends StatefulWidget {
   final Map<String, int> stats;
   final List<Map<String, dynamic>> posts, gifts, vehicles;
   final List<Map<String, dynamic>> badges;
+  final String countryFlag;
   final String username;
   final String? avatar, country;
   final String gender;
@@ -407,21 +415,16 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              if ((widget.country ?? '').isNotEmpty)
-                                Text(
-                                  widget.country!,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              const SizedBox(width: 6),
                               Text(
-                                widget.username,
-                                style: TextStyle(
-                                  color: accent,
+                                widget.countryFlag,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: VipNameText(
+                                  profile: widget.profile,
                                   fontSize: 19,
-                                  fontWeight: FontWeight.w900,
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                               if ((widget.gender).isNotEmpty) ...[
@@ -448,6 +451,19 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                             ],
                           ),
                           const SizedBox(height: 6),
+                          VipSakiId(profile: widget.profile, fontSize: 11),
+                          if (activeVipLevel(widget.profile) > 0) ...[
+                            const SizedBox(height: 5),
+                            VipTitleBadge(
+                              profile: widget.profile,
+                              compact: true,
+                            ),
+                          ],
+                          if (widget.profile['is_super_admin'] == true) ...[
+                            const SizedBox(height: 5),
+                            const SuperAdminBadge(),
+                          ],
+                          const SizedBox(height: 6),
                           GestureDetector(
                             onTap: widget.onCopy,
                             child: Row(
@@ -460,10 +476,10 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'UID: ${widget.profile['saki_id'] ?? '—'}',
+                                  'اضغط لنسخ SAKI ID',
                                   style: const TextStyle(
                                     color: Colors.white60,
-                                    fontSize: 11,
+                                    fontSize: 10,
                                   ),
                                 ),
                               ],
@@ -482,14 +498,14 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                                 label: 'معجبين',
                                 accent: accent,
                               ),
-                              _HtmlStat(
+                              _LevelMetric(
                                 value: '$wealth',
-                                label: 'ثروة',
+                                icon: Icons.monetization_on_rounded,
                                 accent: const Color(0xFF49D17D),
                               ),
-                              _HtmlStat(
+                              _LevelMetric(
                                 value: '$charm',
-                                label: 'سحر',
+                                icon: Icons.auto_awesome_rounded,
                                 accent: const Color(0xFFD699FF),
                               ),
                             ],
@@ -710,6 +726,36 @@ class _HtmlStat extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(color: Color(0xFFA295B3), fontSize: 10),
+        ),
+      ],
+    ),
+  );
+}
+
+class _LevelMetric extends StatelessWidget {
+  const _LevelMetric({
+    required this.value,
+    required this.icon,
+    required this.accent,
+  });
+  final String value;
+  final IconData icon;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: accent, size: 18),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: accent,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+          ),
         ),
       ],
     ),
@@ -2616,7 +2662,7 @@ class _VehicleRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(15),
             ),
             child: Image.asset(
-              vehicle['asset_key']?.toString() ?? '',
+              _vehicleAssetPath(vehicle['asset_key']?.toString()),
               fit: BoxFit.contain,
               errorBuilder: (_, _, _) => const FaIcon(
                 FontAwesomeIcons.carSide,
@@ -2658,6 +2704,14 @@ class _VehicleRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _vehicleAssetPath(String? key) {
+  final value = key?.trim() ?? '';
+  if (value.isEmpty)
+    return 'assets/trace_profile/features/bg_entrance_effect_selected.png';
+  if (value.startsWith('assets/')) return value;
+  return 'assets/trace_profile/features/$value';
 }
 
 class _TraceProfileBenefits extends StatelessWidget {
