@@ -71,7 +71,7 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 38),
-                  children: [LevelFeature(settings: settings)],
+                  children: [LevelFeature(settings: modules)],
                 ),
               ),
             ],
