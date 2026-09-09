@@ -1208,16 +1208,34 @@ class SakiService {
   }
 
   Future<void> leaveRoom(String roomId) async {
-    await client
-        .from('room_members')
-        .delete()
-        .eq('room_id', roomId)
-        .eq('user_id', uid);
-    await client
-        .from('room_seats')
-        .delete()
-        .eq('room_id', roomId)
-        .eq('user_id', uid);
+    try {
+      await client.rpc('leave_room', params: {'p_room_id': roomId});
+      return;
+    } catch (_) {
+      // Keep a direct fallback for installations that have not applied the migration yet.
+    }
+    Object? memberError;
+    Object? seatError;
+    try {
+      await client
+          .from('room_members')
+          .delete()
+          .eq('room_id', roomId)
+          .eq('user_id', uid);
+    } catch (error) {
+      memberError = error;
+    }
+    try {
+      await client
+          .from('room_seats')
+          .delete()
+          .eq('room_id', roomId)
+          .eq('user_id', uid);
+    } catch (error) {
+      seatError = error;
+    }
+    if (memberError != null) throw memberError;
+    if (seatError != null) throw seatError;
   }
 
   Future<List<Map<String, dynamic>>> roomSeats(String roomId) async {
