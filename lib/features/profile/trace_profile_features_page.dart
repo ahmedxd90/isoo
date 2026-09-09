@@ -59,6 +59,24 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
     final settings = Map<String, dynamic>.from(
       modules['settings'] as Map? ?? {},
     );
+    if (widget.feature == 'level') {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8F7FB),
+        body: SafeArea(
+          child: Column(
+            children: [
+              const _LevelPageHeader(),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 38),
+                  children: [LevelFeature(settings: settings)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
@@ -93,6 +111,51 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
       ),
     );
   }
+}
+
+class _LevelPageHeader extends StatelessWidget {
+  const _LevelPageHeader();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      border: Border(bottom: BorderSide(color: Color(0xFFEDEAF3))),
+    ),
+    child: Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.maybePop(context),
+          child: const Icon(Icons.arrow_forward_rounded, color: _ink),
+        ),
+        const Expanded(
+          child: Text(
+            'المستويات',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _ink,
+              fontSize: 19,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFF1E8),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            color: Color(0xFFFF8A3D),
+            size: 18,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class StoreFeature extends StatefulWidget {
@@ -401,7 +464,6 @@ class LevelFeature extends StatefulWidget {
 
 class _LevelFeatureState extends State<LevelFeature> {
   int tab = 0;
-
   int _levelFor(int xp, bool wealth) {
     var level = 0;
     for (var i = 1; i <= 500; i++) {
@@ -426,40 +488,11 @@ class _LevelFeatureState extends State<LevelFeature> {
   }
 
   String _compact(int value) {
-    if (value >= 1000000000) {
+    if (value >= 1000000000)
       return '${(value / 1000000000).toStringAsFixed(1)}B';
-    }
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
     return '$value';
-  }
-
-  Color _bandColor(int level, bool wealth) {
-    if (level < 10) {
-      return wealth ? const Color(0xFFFF2E74) : const Color(0xFF9B30FF);
-    }
-    const colors = [
-      Color(0xFF22C55E),
-      Color(0xFF3B82F6),
-      Color(0xFFA855F7),
-      Color(0xFFF59E0B),
-      Color(0xFFEF4444),
-      Color(0xFF14B8A6),
-    ];
-    return colors[((level ~/ 10) - 1) % colors.length];
-  }
-
-  IconData _bandIcon(int level) {
-    if (level < 10) return Icons.star_outline_rounded;
-    const icons = [
-      Icons.emoji_events_rounded,
-      Icons.diamond_rounded,
-      Icons.auto_awesome_rounded,
-      Icons.local_fire_department_rounded,
-      Icons.workspace_premium_rounded,
-      Icons.bolt_rounded,
-    ];
-    return icons[((level ~/ 10) - 1) % icons.length];
   }
 
   @override
@@ -471,220 +504,247 @@ class _LevelFeatureState extends State<LevelFeature> {
         (widget.settings[wealth ? 'wealth_level' : 'charm_level'] as num?)
             ?.toInt() ??
         _levelFor(xp, wealth);
-    final currentReq = _required(level, wealth);
-    final nextReq = level >= 500 ? currentReq : _required(level + 1, wealth);
+    final current = _required(level, wealth);
+    final next = level >= 500 ? current : _required(level + 1, wealth);
     final progress = level >= 500
         ? 1.0
-        : ((xp - currentReq).clamp(0, nextReq - currentReq) /
-              (nextReq - currentReq));
-    final accent = _bandColor(level, wealth);
+        : ((xp - current).clamp(0, next - current) / (next - current));
+    final accent = wealth ? const Color(0xFFFF8A3D) : const Color(0xFF20C5D5);
+    final features = wealth
+        ? const [
+            ('إرسال الهدايا', 'كل عملة = خبرة', Icons.card_giftcard_rounded),
+            ('شارة الثروة', 'تظهر في ملفك', Icons.workspace_premium_rounded),
+            ('ترتيب المتصدرين', 'تقدم في القائمة', Icons.leaderboard_rounded),
+            ('مؤثرات الغرفة', 'تتطور مع المستوى', Icons.auto_awesome_rounded),
+            ('إطارات خاصة', 'تفتح تدريجيًا', Icons.crop_square_rounded),
+            ('هدايا المستوى', 'مكافآت حقيقية', Icons.redeem_rounded),
+          ]
+        : const [
+            ('استقبال الهدايا', 'كل عملة = خبرة', Icons.card_giftcard_rounded),
+            ('شارة السحر', 'تظهر في ملفك', Icons.auto_awesome_rounded),
+            ('ترتيب السحر', 'تقدم في القائمة', Icons.leaderboard_rounded),
+            ('تأثيرات الدخول', 'تتطور مع المستوى', Icons.bolt_rounded),
+            ('مظهر الملف', 'مزايا VIP', Icons.badge_rounded),
+            ('مكافآت التفاعل', 'تفتح تدريجيًا', Icons.stars_rounded),
+          ];
     return Column(
       children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
-              colors: wealth
-                  ? const [Color(0xFFFF4580), Color(0xFFFF7B8E)]
-                  : const [Color(0xFF9B30FF), Color(0xFFD17BF8)],
-            ),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                child: Row(
-                  children: [
-                    Expanded(child: _tabButton('مستوى الثروة', 0)),
-                    Expanded(child: _tabButton('مستوى السحر', 1)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  CircleAvatar(
-                    radius: 45,
-                    backgroundColor: Colors.white.withValues(alpha: .25),
-                    child: Icon(
-                      wealth ? Icons.send_rounded : Icons.card_giftcard_rounded,
-                      color: Colors.white,
-                      size: 42,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'LV $level',
-                      style: TextStyle(
-                        color: accent,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'LV ${level >= 500 ? 500 : level + 1}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'LV $level',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 7),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        value: progress.toDouble(),
-                        minHeight: 10,
-                        backgroundColor: Colors.white38,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      level >= 500
-                          ? 'وصلت إلى أعلى مستوى'
-                          : '${_compact(xp)} خبرة • تحتاج ${_compact((nextReq - xp).clamp(0, nextReq))} خبرة للمستوى التالي',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        _LevelHero(
+          tab: tab,
+          level: level,
+          xp: xp,
+          progress: progress.toDouble(),
+          accent: accent,
+          next: next,
+          compact: _compact,
+          onTab: (v) => setState(() => tab = v),
         ),
         const SizedBox(height: 16),
-        _ornamentTitle('اللقب الحالي'),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 22),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: accent.withValues(alpha: .3)),
+        _LevelSectionTitle(
+          title: wealth ? 'مميزات مستوى الثروة' : 'مميزات مستوى السحر',
+          accent: accent,
+        ),
+        const SizedBox(height: 10),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: features.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: .86,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: accent.withValues(alpha: .12),
-                ),
-                child: Icon(_bandIcon(level), color: accent, size: 30),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'LV $level',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      level < 10 ? 'اللقب الأساسي' : 'لقب جديد كل 10 مستويات',
-                      style: const TextStyle(color: _muted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          itemBuilder: (_, i) => _LevelFeatureTile(
+            item: features[i],
+            accent: accent,
+            unlocked: level >= i + 1,
           ),
         ),
-        const SizedBox(height: 16),
-        _ornamentTitle('كيفية اكتساب الخبرة'),
-        const SizedBox(height: 12),
-        FeatureCard(
-          icon: '${_asset}grade_up.png',
-          title: wealth ? 'إرسال الهدايا في الغرف' : 'استقبال الهدايا في الغرف',
-          subtitle: 'كل 1 عملة ذهبية = 1 خبرة',
-          child: Row(
-            children: [
-              Icon(
-                wealth ? Icons.send_rounded : Icons.card_giftcard_rounded,
-                color: accent,
-                size: 28,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  wealth
-                      ? 'أرسل هدايا من رصيدك الذهبي لرفع مستوى الثروة.'
-                      : 'استقبل هدايا ذهبية من الغرف لرفع مستوى السحر.',
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+        const SizedBox(height: 18),
+        _LevelSectionTitle(title: 'المكافآت والمزايا', accent: accent),
+        const SizedBox(height: 10),
+        for (final item in [
+          (
+            wealth ? 'أرسل الهدايا في الغرف' : 'استقبل الهدايا في الغرف',
+            wealth ? 'يرفع خبرة الثروة' : 'يرفع خبرة السحر',
+            Icons.stars_rounded,
           ),
-        ),
-        const SizedBox(height: 12),
-        InfoList(
-          title: 'نظام المستويات',
-          items: [
-            wealth
-                ? 'LV 1 يبدأ عند إرسال 5K ذهب'
-                : 'LV 1 يبدأ عند استقبال 20K ذهب',
-            wealth
-                ? 'LV 2 يبدأ عند إرسال 15K ذهب'
-                : 'LV 2 يبدأ عند استقبال 40K ذهب',
-            'يتضاعف المطلوب تدريجياً حتى LV 500',
-          ],
-        ),
+          (
+            'كل مستوى يفتح ميزة جديدة',
+            'المكافأة مرتبطة بمستواك الحقيقي',
+            Icons.lock_open_rounded,
+          ),
+          (
+            'المستوى الحالي LV $level',
+            level >= 500
+                ? 'وصلت إلى القمة'
+                : 'المطلوب التالي ${_compact((next - xp).clamp(0, next))} خبرة',
+            Icons.emoji_events_rounded,
+          ),
+        ])
+          _LevelRewardTile(
+            title: item.$1,
+            subtitle: item.$2,
+            icon: item.$3,
+            accent: accent,
+          ),
       ],
     );
   }
+}
 
-  Widget _tabButton(String text, int value) => GestureDetector(
-    onTap: () => setState(() => tab = value),
+class _LevelHero extends StatelessWidget {
+  const _LevelHero({
+    required this.tab,
+    required this.level,
+    required this.xp,
+    required this.progress,
+    required this.accent,
+    required this.next,
+    required this.compact,
+    required this.onTab,
+  });
+  final int tab, level, xp, next;
+  final double progress;
+  final Color accent;
+  final String Function(int) compact;
+  final ValueChanged<int> onTab;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(12, 12, 12, 18),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [accent.withValues(alpha: .95), const Color(0xFF201A37)],
+      ),
+      borderRadius: BorderRadius.circular(28),
+      boxShadow: [
+        BoxShadow(
+          color: accent.withValues(alpha: .25),
+          blurRadius: 20,
+          offset: const Offset(0, 9),
+        ),
+      ],
+    ),
+    child: Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _levelTab('الثروة', 0)),
+            Expanded(child: _levelTab('السحر', 1)),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: .16),
+                border: Border.all(color: Colors.white54),
+              ),
+              child: Icon(
+                tab == 0
+                    ? Icons.card_giftcard_rounded
+                    : Icons.auto_awesome_rounded,
+                color: Colors.white,
+                size: 38,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'مستواك الحالي',
+                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  Text(
+                    'LV $level',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    '${compact(xp)} خبرة',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                'LV ${level + 1}',
+                style: TextStyle(color: accent, fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'LV $level',
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+            Text(
+              level >= 500
+                  ? 'الحد الأعلى'
+                  : 'المتبقي ${compact((next - xp).clamp(0, next))}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Stack(
+          children: [
+            Container(
+              height: 9,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            FractionallySizedBox(
+              widthFactor: progress.clamp(0, 1),
+              child: Container(
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+  Widget _levelTab(String text, int value) => GestureDetector(
+    onTap: () => onTab(value),
     child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
-        color: tab == value
-            ? Colors.white.withValues(alpha: .22)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        color: tab == value ? Colors.white24 : Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Text(
-        text,
+        'مستوى $text',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
@@ -693,29 +753,164 @@ class _LevelFeatureState extends State<LevelFeature> {
       ),
     ),
   );
+}
 
-  Widget _ornamentTitle(String text) => Row(
+class _LevelSectionTitle extends StatelessWidget {
+  const _LevelSectionTitle({required this.title, required this.accent});
+  final String title;
+  final Color accent;
+  @override
+  Widget build(BuildContext context) => Row(
     children: [
-      const Expanded(child: Divider(color: Color(0xFFEAD0AC))),
       Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 7),
+        width: 4,
+        height: 22,
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF8EC),
-          border: Border.all(color: const Color(0xFFF1D2A3)),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Color(0xFF4A3519),
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
-          ),
+          color: accent,
+          borderRadius: BorderRadius.circular(4),
         ),
       ),
-      const Expanded(child: Divider(color: Color(0xFFEAD0AC))),
+      const SizedBox(width: 8),
+      Text(
+        title,
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      const Spacer(),
+      Icon(Icons.auto_awesome_rounded, color: accent, size: 18),
     ],
+  );
+}
+
+class _LevelFeatureTile extends StatelessWidget {
+  const _LevelFeatureTile({
+    required this.item,
+    required this.accent,
+    required this.unlocked,
+  });
+  final (String, String, IconData) item;
+  final Color accent;
+  final bool unlocked;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: unlocked
+            ? accent.withValues(alpha: .24)
+            : const Color(0xFFE9EAF0),
+      ),
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: unlocked
+                ? accent.withValues(alpha: .12)
+                : const Color(0xFFF1F2F5),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            unlocked ? item.$3 : Icons.lock_rounded,
+            color: unlocked ? accent : _muted,
+            size: 20,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          item.$1,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: _ink,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          unlocked ? item.$2 : 'مغلق',
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: unlocked ? accent : _muted,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _LevelRewardTile extends StatelessWidget {
+  const _LevelRewardTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+  });
+  final String title, subtitle;
+  final IconData icon;
+  final Color accent;
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: accent.withValues(alpha: .15)),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .12),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon, color: accent),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: _muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Icon(Icons.check_circle_rounded, color: accent, size: 20),
+      ],
+    ),
   );
 }
 
