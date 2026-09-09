@@ -436,16 +436,29 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 builder: (_, snapshot) {
                   final remote = snapshot.data ?? <Map<String, dynamic>>[];
-                  final rows = [
-                    ...remote,
-                    ..._pending.where(
-                      (p) => !remote.any(
-                        (r) =>
-                            r['body'] == p['body'] &&
-                            r['sender_id'] == p['sender_id'],
-                      ),
-                    ),
-                  ];
+                  final rows =
+                      <Map<String, dynamic>>[
+                        ...remote,
+                        ..._pending.where(
+                          (p) => !remote.any(
+                            (r) =>
+                                r['body'] == p['body'] &&
+                                r['sender_id'] == p['sender_id'],
+                          ),
+                        ),
+                      ]..sort((a, b) {
+                        final first =
+                            DateTime.tryParse(
+                              a['created_at']?.toString() ?? '',
+                            ) ??
+                            DateTime.fromMillisecondsSinceEpoch(0);
+                        final second =
+                            DateTime.tryParse(
+                              b['created_at']?.toString() ?? '',
+                            ) ??
+                            DateTime.fromMillisecondsSinceEpoch(0);
+                        return first.compareTo(second);
+                      });
                   if (rows.isEmpty &&
                       snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: SakiLoading());
@@ -457,10 +470,32 @@ class _ChatPageState extends State<ChatPage> {
                       subtitle: 'أرسل أول رسالة خاصة الآن.',
                     );
                   }
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
-                    itemCount: rows.length,
-                    itemBuilder: (_, i) => _Bubble(row: rows[i]),
+                  return StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: SakiService.instance.messageReactionsStream(
+                      widget.conversationId,
+                    ),
+                    builder: (_, reactionSnapshot) {
+                      final reactions = reactionSnapshot.data ?? const [];
+                      return ListView.builder(
+                        reverse: true,
+                        padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
+                        itemCount: rows.length,
+                        itemBuilder: (_, i) {
+                          final row = rows[rows.length - 1 - i];
+                          return _Bubble(
+                            row: row,
+                            conversationId: widget.conversationId,
+                            reactions: reactions
+                                .where(
+                                  (reaction) =>
+                                      reaction['message_id']?.toString() ==
+                                      row['id']?.toString(),
+                                )
+                                .toList(),
+                          );
+                        },
+                      );
+                    },
                   );
                 },
               ),
@@ -571,8 +606,14 @@ class _ChatHeader extends StatelessWidget {
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.row});
+  const _Bubble({
+    required this.row,
+    required this.conversationId,
+    required this.reactions,
+  });
   final Map<String, dynamic> row;
+  final String conversationId;
+  final List<Map<String, dynamic>> reactions;
 
   @override
   Widget build(BuildContext context) {
@@ -602,7 +643,7 @@ class _Bubble extends StatelessWidget {
           ? AlignmentDirectional.centerStart
           : AlignmentDirectional.centerEnd,
       child: GestureDetector(
-        onTap: () => _handleBubbleTap(context, row, image),
+        onTap: () => _handleBubbleTap(context, row, image, conversationId),
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           constraints: const BoxConstraints(maxWidth: 300),
@@ -618,7 +659,28 @@ class _Bubble extends StatelessWidget {
               bottomRight: Radius.circular(mine ? 19 : 5),
             ),
           ),
-          child: content,
+          child: Column(
+            crossAxisAlignment: mine
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              content,
+              if (reactions.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 3,
+                  children: reactions
+                      .map(
+                        (reaction) => Text(
+                          reaction['emoji']?.toString() ?? '',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -1522,6 +1584,7 @@ void _handleBubbleTap(
   BuildContext context,
   Map<String, dynamic> row,
   String? image,
+  String conversationId,
 ) {
   final id = row['id']?.toString() ?? '${row['created_at']}';
   final count = (_bubbleTapCounts[id] ?? 0) + 1;
@@ -1533,13 +1596,17 @@ void _handleBubbleTap(
   });
   if (count == 3) {
     _bubbleTapCounts.remove(id);
-    _showReactionPicker(context);
+    _showReactionPicker(context, row, conversationId);
   } else if (count == 1 && image != null) {
     _openChatImage(context, image);
   }
 }
 
-void _showReactionPicker(BuildContext context) {
+void _showReactionPicker(
+  BuildContext context,
+  Map<String, dynamic> row,
+  String conversationId,
+) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: Colors.transparent,
@@ -1553,7 +1620,19 @@ void _showReactionPicker(BuildContext context) {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: ['😂', '❤️', '😭', '😮'].map((emoji) {
           return GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () async {
+              final messageId = row['id']?.toString();
+              if (messageId == null || messageId.startsWith('local-')) {
+                Navigator.pop(context);
+                return;
+              }
+              await SakiService.instance.reactToMessage(
+                messageId: messageId,
+                conversationId: conversationId,
+                emoji: emoji,
+              );
+              if (context.mounted) Navigator.pop(context);
+            },
             child: Container(
               width: 55,
               height: 55,

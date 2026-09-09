@@ -1190,6 +1190,29 @@ class SakiService {
         .order('created_at');
   }
 
+  Stream<List<Map<String, dynamic>>> messageReactionsStream(
+    String conversationId,
+  ) {
+    return client
+        .from('message_reactions')
+        .stream(primaryKey: ['id'])
+        .eq('conversation_id', conversationId)
+        .order('created_at');
+  }
+
+  Future<void> reactToMessage({
+    required String messageId,
+    required String conversationId,
+    required String emoji,
+  }) async {
+    await client.from('message_reactions').upsert({
+      'message_id': messageId,
+      'conversation_id': conversationId,
+      'user_id': uid,
+      'emoji': emoji,
+    }, onConflict: 'message_id,user_id');
+  }
+
   Stream<List<Map<String, dynamic>>> inboxMessagesStream() {
     return client
         .from('messages')
