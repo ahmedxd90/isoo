@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
+import '../../shared/widgets/vip_identity.dart';
 
 const _storeOrange = Color(0xFF9B27B0);
 const _storeCyan = Color(0xFF6A1B9A);
@@ -165,6 +166,7 @@ class _StoreEntranceOverlayState extends State<StoreEntranceOverlay>
                 child: _EntranceFlyingBanner(
                   avatarUrl: avatar,
                   username: username.toString(),
+                  vip: activeVipLevel(widget.profile),
                 ),
               ),
             ],
@@ -179,47 +181,102 @@ class _EntranceFlyingBanner extends StatelessWidget {
   const _EntranceFlyingBanner({
     required this.avatarUrl,
     required this.username,
+    required this.vip,
   });
   final String? avatarUrl;
   final String username;
+  final int vip;
+
+  Color get _accent => vipAccent(vip);
+
+  List<Color> get _gradient => vip <= 0
+      ? const [Color(0xCC334155), Color(0xCC64748B)]
+      : vip <= 3
+      ? [_accent.withValues(alpha: .92), const Color(0xCC1E293B)]
+      : vip <= 6
+      ? [_accent.withValues(alpha: .95), const Color(0xCC111827)]
+      : [const Color(0xE6F59E0B), _accent.withValues(alpha: .95), const Color(0xDD27133F)];
+
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<Offset>(
-    tween: Tween(begin: const Offset(-1.2, 0), end: Offset.zero),
-    duration: const Duration(milliseconds: 1100),
+    tween: Tween(begin: const Offset(-1.35, 0), end: Offset.zero),
+    duration: const Duration(milliseconds: 900),
     builder: (_, offset, child) =>
         FractionalTranslation(translation: offset, child: child),
     child: Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        margin: const EdgeInsets.symmetric(horizontal: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xCC6A1B9A), Color(0xCCF97316)],
-          ),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.white70, width: 1.4),
-          boxShadow: const [BoxShadow(color: Colors.white54, blurRadius: 18)],
+          gradient: LinearGradient(colors: _gradient),
+          borderRadius: BorderRadius.circular(vip >= 7 ? 18 : 30),
+          border: Border.all(color: _accent.withValues(alpha: .85), width: 1.3),
+          boxShadow: [
+            BoxShadow(
+              color: _accent.withValues(alpha: vip >= 7 ? .55 : .30),
+              blurRadius: vip >= 7 ? 24 : 14,
+              spreadRadius: vip >= 10 ? 2 : 0,
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (avatarUrl != null && avatarUrl!.startsWith('http'))
-              ClipOval(
-                child: Image.network(
-                  avatarUrl!,
-                  width: 38,
-                  height: 38,
-                  fit: BoxFit.cover,
-                ),
-              )
-            else
-              const CircleAvatar(child: Icon(Icons.person)),
-            const SizedBox(width: 9),
-            Text(
-              '$username انضم إلى الغرفة',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
+            Container(
+              width: vip >= 7 ? 46 : 40,
+              height: vip >= 7 ? 46 : 40,
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: _accent, width: vip >= 7 ? 2.5 : 2),
               ),
+              child: ClipOval(
+                child: avatarUrl != null && avatarUrl!.startsWith('http')
+                    ? Image.network(
+                        avatarUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const ColoredBox(
+                          color: Color(0x33222222),
+                          child: Icon(Icons.person, color: Colors.white),
+                        ),
+                      )
+                    : const ColoredBox(
+                        color: Color(0x33222222),
+                        child: Icon(Icons.person, color: Colors.white),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 9),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    username,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    vip > 0 ? 'VIP $vip • دخل إلى الغرفة' : 'دخل إلى الغرفة',
+                    style: TextStyle(
+                      color: vip > 0 ? _accent : Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 9),
+            Icon(
+              vip >= 7 ? Icons.workspace_premium_rounded : Icons.auto_awesome_rounded,
+              color: _accent,
+              size: vip >= 7 ? 24 : 20,
             ),
           ],
         ),

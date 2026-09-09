@@ -345,8 +345,7 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
   late final SVGAAnimationController _svga = SVGAAnimationController(
     vsync: this,
   );
-  int get _vip =>
-      ((widget.profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+  int get _vip => activeVipLevel(widget.profile);
   Color get _color => vipEntranceColors[_vip] ?? const Color(0xFF64748B);
 
   @override
