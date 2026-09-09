@@ -553,7 +553,7 @@ class SakiService {
   Future<List<Map<String, dynamic>>> adminRooms() async {
     final rows = await client
         .from('rooms')
-        .select('id,room_id,name,owner_id,is_official')
+        .select('id,room_id,name,owner_id,is_official,is_pinned,pin_priority')
         .order('created_at', ascending: false)
         .limit(100);
     return List<Map<String, dynamic>>.from(rows);
@@ -570,6 +570,23 @@ class SakiService {
         'p_room_id': roomId,
         'p_new_room_id': newRoomId,
         'p_official': official,
+      },
+    );
+  }
+
+  Future<void> adminSetRoomPresentation(
+    String roomId, {
+    required bool official,
+    required bool pinned,
+    required int priority,
+  }) async {
+    await client.rpc(
+      'admin_set_room_presentation',
+      params: {
+        'p_room_id': roomId,
+        'p_official': official,
+        'p_pinned': pinned,
+        'p_pin_priority': priority,
       },
     );
   }

@@ -1218,6 +1218,10 @@ class _AdminRoomsPageState extends State<AdminRoomsPage> {
   Future<void> _edit(Map<String, dynamic> room) async {
     final id = TextEditingController(text: room['room_id'] as String? ?? '');
     bool official = room['is_official'] == true;
+    bool pinned = room['is_pinned'] == true;
+    final priority = TextEditingController(
+      text: '${room['pin_priority'] as int? ?? 0}',
+    );
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => StatefulBuilder(
@@ -1239,6 +1243,19 @@ class _AdminRoomsPageState extends State<AdminRoomsPage> {
                 onChanged: (v) => set(() => official = v),
                 title: const Text('غرفة رسمية'),
               ),
+              SwitchListTile(
+                value: pinned,
+                onChanged: (v) => set(() => pinned = v),
+                title: const Text('تثبيت في TOP'),
+              ),
+              if (pinned)
+                TextField(
+                  controller: priority,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'أولوية التثبيت (الأعلى أولاً)',
+                  ),
+                ),
             ],
           ),
           actions: [
@@ -1259,6 +1276,12 @@ class _AdminRoomsPageState extends State<AdminRoomsPage> {
         room['id'] as String,
         id.text,
         official,
+      );
+      await SakiService.instance.adminSetRoomPresentation(
+        room['id'] as String,
+        official: official,
+        pinned: pinned,
+        priority: int.tryParse(priority.text) ?? 0,
       );
       _load();
     }

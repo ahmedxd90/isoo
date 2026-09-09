@@ -78,6 +78,7 @@ flutter:
     - assets/saki_gift_box_icon.png
     - assets/saki_leaderboard_trophy.png
     - assets/saki_trending_flame.png
+    - assets/rooms/
     - assets/saki_tasks_banner.png
     - assets/trace_profile/images/
     - assets/trace_profile/features/

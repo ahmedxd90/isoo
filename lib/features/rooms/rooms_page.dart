@@ -234,15 +234,21 @@ class _RoomsPageState extends State<RoomsPage> {
                   else
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
-                      sliver: SliverList.builder(
-                        itemCount: _visibleRooms.length,
-                        itemBuilder: (_, index) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: HtmlRoomCard(
+                      sliver: SliverGrid(
+                        delegate: SliverChildBuilderDelegate(
+                          (_, index) => RoomGridCard(
                             room: _visibleRooms[index],
                             rank: index + 1,
                           ),
+                          childCount: _visibleRooms.length,
                         ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: .72,
+                            ),
                       ),
                     ),
                 ],
@@ -998,6 +1004,245 @@ class _ReferenceWaveState extends State<_ReferenceWave>
   );
 }
 
+class RoomGridCard extends StatefulWidget {
+  const RoomGridCard({super.key, required this.room, required this.rank});
+  final Map<String, dynamic> room;
+  final int rank;
+
+  @override
+  State<RoomGridCard> createState() => _RoomGridCardState();
+}
+
+class _RoomGridCardState extends State<RoomGridCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _wave = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _wave.dispose();
+    super.dispose();
+  }
+
+  Future<void> _open() async {
+    final active = RoomSessionController.instance.room;
+    if (active != null && active['id'] != widget.room['id']) {
+      await RoomSessionController.instance.close();
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => RoomDetailPage(room: widget.room)),
+    );
+  }
+
+  String? get _frame => switch (widget.rank) {
+    1 => 'assets/rooms/top_square_frame.png',
+    2 => 'assets/rooms/top2_square_frame.png',
+    3 => 'assets/rooms/top3_square_frame.png',
+    _ => null,
+  };
+
+  String? get _badge => switch (widget.rank) {
+    1 => 'assets/rooms/top1_badge.png',
+    2 => 'assets/rooms/top2_badge.png',
+    3 => 'assets/rooms/top3_badge.png',
+    _ => null,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final room = widget.room;
+    final image = room['image_url']?.toString() ?? '';
+    final name = room['name']?.toString() ?? 'غرفة SAKI';
+    final country = room['country']?.toString() ?? '';
+    final members = (room['_members_count'] as num?)?.toInt() ?? 0;
+    final official = room['is_official'] == true;
+    final pinned = room['is_pinned'] == true;
+    return InkWell(
+      onTap: _open,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFFFFF), Color(0xFFF5F3FF)],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: widget.rank <= 3
+                ? const Color(0xFFF2C14E)
+                : const Color(0xFFE6E8F0),
+            width: widget.rank <= 3 ? 1.5 : 1,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x160F172A),
+              blurRadius: 14,
+              offset: Offset(0, 7),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(9),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: image.isEmpty
+                          ? const ColoredBox(
+                              color: Color(0xFF312E81),
+                              child: Icon(
+                                Icons.meeting_room_rounded,
+                                color: Colors.white,
+                                size: 38,
+                              ),
+                            )
+                          : Image.network(image, fit: BoxFit.cover),
+                    ),
+                  ),
+                  if (_frame != null)
+                    Positioned.fill(
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: IgnorePointer(
+                          child: Image.asset(_frame!, fit: BoxFit.fill),
+                        ),
+                      ),
+                    ),
+                  if (_badge != null)
+                    Positioned(
+                      top: 4,
+                      left: 4,
+                      child: Image.asset(_badge!, width: 48, height: 48),
+                    ),
+                  if (pinned)
+                    const Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Icon(
+                        Icons.push_pin_rounded,
+                        color: Color(0xFFFFB800),
+                        size: 20,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(11, 0, 11, 11),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF17203A),
+                          ),
+                        ),
+                      ),
+                      if (country.isNotEmpty)
+                        Text(
+                          _flagForCountry(country),
+                          style: const TextStyle(fontSize: 17),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  if (official)
+                    Row(
+                      children: [
+                        Image.asset(
+                          'assets/rooms/official_badge.png',
+                          width: 20,
+                          height: 20,
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'غرفة رسمية',
+                          style: TextStyle(
+                            color: Color(0xFF9A6500),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    const SizedBox(height: 20),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.people_alt_rounded,
+                        color: Color(0xFF10B981),
+                        size: 15,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$members متصل',
+                        style: const TextStyle(
+                          color: Color(0xFF047857),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      _RoomVoiceWaves(animation: _wave),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoomVoiceWaves extends StatelessWidget {
+  const _RoomVoiceWaves({required this.animation});
+  final Animation<double> animation;
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: animation,
+    builder: (_, _) => Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(5, (index) {
+        final phase = (animation.value + index * .16) % 1;
+        final height = 5 + (10 * (phase < .5 ? phase * 2 : (1 - phase) * 2));
+        return Container(
+          width: 3,
+          height: height,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: const Color(0xFF656BF9),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
+    ),
+  );
+}
+
 class HtmlRoomCard extends StatelessWidget {
   const HtmlRoomCard({super.key, required this.room, required this.rank});
   final Map<String, dynamic> room;
@@ -1408,6 +1653,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     // The in-app bubble is the only visible bubble while the app is active;
     // the native view is toggled on only when the app goes to the background.
     await RoomSessionController.instance.setOverlayVisible(false);
+    if (!mounted) return;
     _joined = true;
     Navigator.of(context).pop();
   }
@@ -1644,91 +1890,95 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     } finally {
       if (mounted) {
         await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFFB347), Color(0xFF67E8F9), Colors.white],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFFFB347),
+                      Color(0xFF67E8F9),
+                      Colors.white,
+                    ],
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x55000000),
+                      blurRadius: 24,
+                      offset: Offset(0, 12),
+                    ),
+                  ],
                 ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x55000000),
-                    blurRadius: 24,
-                    offset: Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 64,
-                    height: 64,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.gpp_bad_rounded,
+                        color: Color(0xFFEA580C),
+                        size: 38,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.gpp_bad_rounded,
-                      color: Color(0xFFEA580C),
-                      size: 38,
+                    const SizedBox(height: 16),
+                    const Text(
+                      'تم حظرك من الغرفة',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'تم حظرك من الغرفة',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
+                    const SizedBox(height: 8),
+                    const Text(
+                      'لا يمكنك العودة إلى هذه الغرفة حتى يفك مالك الغرفة الحظر عنك.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black87,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'لا يمكنك العودة إلى هذه الغرفة حتى يفك مالك الغرفة الحظر عنك.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black87,
-                      height: 1.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text(
+                          'إغلاق',
+                          style: TextStyle(fontWeight: FontWeight.w900),
                         ),
                       ),
-                      onPressed: () => Navigator.pop(dialogContext),
-                      child: const Text(
-                        'إغلاق',
-                        style: TextStyle(fontWeight: FontWeight.w900),
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
         if (mounted) {
           _joined = false;
           Navigator.of(context).popUntil((route) => route.isFirst);
