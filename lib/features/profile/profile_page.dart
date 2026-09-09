@@ -712,7 +712,7 @@ class ModuleSheet extends StatelessWidget {
         'عضوية VIP',
         FontAwesomeIcons.crown,
         const Color(0xFFD97706),
-        'مستوى VIP الحالي: ${modules['vip_level'] ?? 0}\n${modules['vip_label'] ?? 'عضو جديد'}',
+        'VIP ${modules['vip_level'] ?? 0}',
       ),
       _ => (
         'المتجر',

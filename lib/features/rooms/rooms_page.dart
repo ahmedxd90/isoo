@@ -5034,13 +5034,19 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 VipNameText(
-                  profile: {...profile, 'vip_level': vip},
+                  profile: {
+                    ...profile,
+                    'display_name': username,
+                    'vip_level': vip,
+                  },
                   fontSize: 21,
                   maxLines: 1,
                 ),
                 const SizedBox(height: 6),
-                VipTitleBadge(profile: {...profile, 'vip_level': vip}),
+                VipSakiId(profile: {...profile, 'vip_level': vip}),
                 const SizedBox(height: 5),
+                VipTitleBadge(profile: {...profile, 'vip_level': vip}),
+                const SizedBox(height: 8),
                 Wrap(
                   alignment: WrapAlignment.center,
                   spacing: 8,
@@ -5054,14 +5060,6 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
-                    const Text('|', style: TextStyle(color: _miniProfileMuted)),
-                    Text(
-                      'UID: ${profile['saki_id'] ?? '—'}',
-                      style: const TextStyle(
-                        color: _miniProfileMuted,
-                        fontSize: 12,
-                      ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -5070,21 +5068,14 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                   spacing: 7,
                   runSpacing: 7,
                   children: [
-                    if (isVip)
-                      _RoomProfileBadge(
-                        icon: Icons.workspace_premium_rounded,
-                        label: 'VIP $vip',
-                        color: const Color(0xFFFF9800),
-                        darkText: true,
-                      ),
                     _RoomProfileBadge(
                       icon: Icons.diamond_rounded,
-                      label: 'ثروة Lv.$wealth',
+                      label: '$wealth',
                       color: const Color(0xFF00C853),
                     ),
                     _RoomProfileBadge(
                       icon: Icons.star_rounded,
-                      label: 'رائج Lv.$charm',
+                      label: '$charm',
                       color: const Color(0xFFAA00FF),
                     ),
                     if (familyBadge != null)
