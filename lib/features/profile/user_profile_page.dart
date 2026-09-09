@@ -40,7 +40,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   bool _following = false;
   bool _loading = true;
   bool _actionLoading = false;
-  int _tab = 0;
 
   @override
   void initState() {
@@ -234,73 +233,622 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final avatar = profile['avatar_url'] as String?;
     final country = profile['country'] as String? ?? '—';
     final gender = profile['gender'] as String? ?? '';
-    final level = (_stats['posts'] ?? 0).clamp(0, 99);
     final isSelf = widget.userId == SakiService.instance.currentUser?.id;
 
+    return _HtmlProfileView(
+      profile: profile,
+      stats: _stats,
+      posts: _posts,
+      gifts: _gifts,
+      vehicles: _vehicles,
+      username: username,
+      avatar: avatar,
+      country: country,
+      gender: gender,
+      isSelf: isSelf,
+      following: _following,
+      loading: _actionLoading,
+      onBack: () => Navigator.maybePop(context),
+      onCopy: _copyId,
+      onFollow: _toggleFollow,
+      onMessage: _message,
+      onReport: () {},
+    );
+  }
+}
+
+class _HtmlProfileView extends StatefulWidget {
+  const _HtmlProfileView({
+    required this.profile,
+    required this.stats,
+    required this.posts,
+    required this.gifts,
+    required this.vehicles,
+    required this.username,
+    required this.avatar,
+    required this.country,
+    required this.gender,
+    required this.isSelf,
+    required this.following,
+    required this.loading,
+    required this.onBack,
+    required this.onCopy,
+    required this.onFollow,
+    required this.onMessage,
+    required this.onReport,
+  });
+  final Map<String, dynamic> profile;
+  final Map<String, int> stats;
+  final List<Map<String, dynamic>> posts, gifts, vehicles;
+  final String username;
+  final String? avatar, country;
+  final String gender;
+  final bool isSelf, following, loading;
+  final VoidCallback onBack, onCopy, onFollow, onMessage, onReport;
+  @override
+  State<_HtmlProfileView> createState() => _HtmlProfileViewState();
+}
+
+class _HtmlProfileViewState extends State<_HtmlProfileView> {
+  int tab = 0;
+  @override
+  Widget build(BuildContext context) {
+    final vip = (widget.profile['vip_level'] as num? ?? 0).toInt().clamp(0, 10);
+    final wealth = widget.profile['wealth_level'] ?? 0;
+    final charm = widget.profile['charm_level'] ?? 0;
+    final accent = vip > 0 ? vipAccent(vip) : const Color(0xFFECC271);
     return Scaffold(
-      backgroundColor: _profileBg,
+      backgroundColor: const Color(0xFF120D1D),
       body: SafeArea(
-        bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: _ProfileHero(
-                      profile: profile,
-                      username: username,
-                      avatar: avatar,
-                      country: country,
-                      gender: gender,
-                      level: level,
-                      stats: _stats,
-                      onCopy: _copyId,
-                    ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFFB5B5B8),
+                      const Color(0xFFEEE8F0),
+                      const Color(0xFF120D1D),
+                    ],
+                    stops: const [.0, .34, .55],
                   ),
-                  const SliverToBoxAdapter(child: _ProfileBannerCarousel()),
-                  SliverToBoxAdapter(
-                    child: _TraceProfileSummary(
-                      profile: profile,
-                      stats: _stats,
-                      onCopy: _copyId,
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Container(height: 8, color: _profileBg),
-                  ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _ProfileTabsDelegate(
-                      selected: _tab,
-                      onSelect: (value) => setState(() => _tab = value),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: _ProfileTabContent(
-                      tab: _tab,
-                      profile: profile,
-                      posts: _posts,
-                      gifts: _gifts,
-                      vehicles: _vehicles,
-                    ),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                ],
+                ),
               ),
             ),
-            if (!isSelf)
-              _ProfileBottomActions(
-                following: _following,
-                loading: _actionLoading,
-                onFollow: _toggleFollow,
-                onMessage: _message,
+            Positioned(
+              top: 42,
+              left: 0,
+              right: 0,
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: Colors.white.withValues(alpha: .18),
+                size: 170,
+              ),
+            ),
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: widget.onReport,
+                        child: const Icon(
+                          Icons.more_horiz_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: widget.onBack,
+                        child: const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(28),
+                      ),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Color(0xFF421A5C),
+                          Color(0xFF210D32),
+                          Color(0xFF150622),
+                        ],
+                      ),
+                      border: Border(
+                        top: BorderSide(color: Color(0xFFF4D07B), width: 2),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withValues(alpha: .3),
+                          blurRadius: 24,
+                        ),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [const Color(0xFFF4D07B), accent],
+                              ),
+                            ),
+                            child: SakiAvatar(
+                              url: widget.avatar,
+                              label: widget.username,
+                              radius: 40,
+                            ),
+                          ),
+                          const SizedBox(height: 9),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if ((widget.country ?? '').isNotEmpty)
+                                Text(
+                                  widget.country!,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              const SizedBox(width: 6),
+                              Text(
+                                widget.username,
+                                style: TextStyle(
+                                  color: accent,
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              if ((widget.gender).isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF3B82F6),
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                  child: Text(
+                                    widget.gender,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                            onTap: widget.onCopy,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.copy_rounded,
+                                  color: Colors.white54,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'UID: ${widget.profile['saki_id'] ?? '—'}',
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _HtmlStat(
+                                value: '${widget.stats['following'] ?? 0}',
+                                label: 'متابعة',
+                                accent: accent,
+                              ),
+                              _HtmlStat(
+                                value: '${widget.stats['followers'] ?? 0}',
+                                label: 'معجبين',
+                                accent: accent,
+                              ),
+                              _HtmlStat(
+                                value: '$wealth',
+                                label: 'ثروة',
+                                accent: const Color(0xFF49D17D),
+                              ),
+                              _HtmlStat(
+                                value: '$charm',
+                                label: 'سحر',
+                                accent: const Color(0xFFD699FF),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          if ((widget.profile['bio']?.toString() ?? '')
+                              .isNotEmpty)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                widget.profile['bio'].toString(),
+                                textDirection: TextDirection.rtl,
+                                style: const TextStyle(
+                                  color: Color(0xFFD4CCE0),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              _HtmlTab(
+                                text: 'معلوماتي',
+                                active: tab == 0,
+                                onTap: () => setState(() => tab = 0),
+                                accent: accent,
+                              ),
+                              _HtmlTab(
+                                text: 'اللحظات',
+                                active: tab == 1,
+                                onTap: () => setState(() => tab = 1),
+                                accent: accent,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (tab == 0) ...[
+                            _HtmlSection(
+                              title: 'عائلتي',
+                              accent: accent,
+                              child: _HtmlGlass(
+                                text: widget.profile['family_badge'] is Map
+                                    ? (widget.profile['family_badge']['name']
+                                              ?.toString() ??
+                                          'العائلة')
+                                    : 'لا توجد عائلة',
+                                icon: Icons.groups_rounded,
+                                accent: accent,
+                              ),
+                            ),
+                            _HtmlSection(
+                              title: 'الأوسمة',
+                              accent: accent,
+                              child: _HtmlGlass(
+                                text: vip > 0 ? 'VIP $vip' : 'لا توجد أوسمة',
+                                icon: Icons.workspace_premium_rounded,
+                                accent: accent,
+                              ),
+                            ),
+                            _HtmlSection(
+                              title: 'دخوليات',
+                              accent: accent,
+                              child: _HtmlGlass(
+                                text: widget.vehicles.isEmpty
+                                    ? 'لا توجد دخوليات'
+                                    : '${widget.vehicles.length} دخولية',
+                                icon: Icons.directions_car_rounded,
+                                accent: accent,
+                              ),
+                            ),
+                            _HtmlSection(
+                              title: 'إطارات',
+                              accent: accent,
+                              child: _HtmlGlass(
+                                text: 'إطارات VIP ومستوى المستخدم',
+                                icon: Icons.crop_square_rounded,
+                                accent: accent,
+                              ),
+                            ),
+                            _HtmlSection(
+                              title: 'الهدايا',
+                              accent: accent,
+                              child: _HtmlGlass(
+                                text: widget.gifts.isEmpty
+                                    ? 'لا توجد هدايا'
+                                    : '${widget.gifts.length} هدية مستلمة',
+                                icon: Icons.card_giftcard_rounded,
+                                accent: accent,
+                              ),
+                            ),
+                          ] else ...[
+                            _HtmlMoments(posts: widget.posts, accent: accent),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (!widget.isSelf)
+              Positioned(
+                bottom: 12,
+                left: 18,
+                right: 18,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _HtmlAction(
+                        label: 'رسالة',
+                        icon: Icons.chat_bubble_rounded,
+                        color: const Color(0xFF3B82F6),
+                        onTap: widget.onMessage,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _HtmlAction(
+                        label: widget.following ? 'متابَع' : 'متابعة',
+                        icon: widget.following
+                            ? Icons.check_rounded
+                            : Icons.person_add_alt_1_rounded,
+                        color: accent,
+                        onTap: widget.onFollow,
+                      ),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
       ),
     );
   }
+}
+
+class _HtmlStat extends StatelessWidget {
+  const _HtmlStat({
+    required this.value,
+    required this.label,
+    required this.accent,
+  });
+  final String value, label;
+  final Color accent;
+  @override
+  Widget build(BuildContext c) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: accent,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: const TextStyle(color: Color(0xFFA295B3), fontSize: 10),
+        ),
+      ],
+    ),
+  );
+}
+
+class _HtmlTab extends StatelessWidget {
+  const _HtmlTab({
+    required this.text,
+    required this.active,
+    required this.onTap,
+    required this.accent,
+  });
+  final String text;
+  final bool active;
+  final VoidCallback onTap;
+  final Color accent;
+  @override
+  Widget build(BuildContext c) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 9),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? accent : Colors.white12,
+              width: active ? 3 : 1,
+            ),
+          ),
+        ),
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? accent : const Color(0xFF8A7D9B),
+            fontWeight: FontWeight.w800,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _HtmlSection extends StatelessWidget {
+  const _HtmlSection({
+    required this.title,
+    required this.child,
+    required this.accent,
+  });
+  final String title;
+  final Widget child;
+  final Color accent;
+  @override
+  Widget build(BuildContext c) => Column(
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 7),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: accent,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+      child,
+      const SizedBox(height: 14),
+    ],
+  );
+}
+
+class _HtmlGlass extends StatelessWidget {
+  const _HtmlGlass({
+    required this.text,
+    required this.icon,
+    required this.accent,
+  });
+  final String text;
+  final IconData icon;
+  final Color accent;
+  @override
+  Widget build(BuildContext c) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: .05),
+      border: Border.all(color: Colors.white.withValues(alpha: .07)),
+      borderRadius: BorderRadius.circular(15),
+    ),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: accent),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const Icon(Icons.chevron_left_rounded, color: Colors.white54, size: 18),
+      ],
+    ),
+  );
+}
+
+class _HtmlMoments extends StatelessWidget {
+  const _HtmlMoments({required this.posts, required this.accent});
+  final List<Map<String, dynamic>> posts;
+  final Color accent;
+  @override
+  Widget build(BuildContext context) {
+    if (posts.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(25),
+        child: Text(
+          'لا توجد لحظات بعد',
+          style: TextStyle(
+            color: Color(0xFFA295B3),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
+    return Column(
+      children: posts
+          .map(
+            (post) => Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .05),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Text(
+                post['content']?.toString() ??
+                    post['description']?.toString() ??
+                    'منشور',
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _HtmlAction extends StatelessWidget {
+  const _HtmlAction({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext c) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: .3), blurRadius: 10),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _ProfileBannerCarousel extends StatefulWidget {
