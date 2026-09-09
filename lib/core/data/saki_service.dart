@@ -1144,13 +1144,51 @@ class SakiService {
     String userId,
     String category, {
     String? details,
+    String? roomId,
+    String? evidenceUrl,
   }) async {
     await client.from('user_reports').insert({
       'reporter_id': uid,
       'reported_id': userId,
       'category': category,
       'details': details?.trim(),
+      'room_id': roomId,
+      'evidence_url': evidenceUrl,
     });
+  }
+
+  Future<String> uploadReportEvidence(XFile video) async {
+    final bytes = await File(video.path).readAsBytes();
+    final extension = video.path.split('.').last.toLowerCase();
+    final path = '$uid/${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('report_evidence')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: extension == 'mov'
+                ? 'video/quicktime'
+                : 'video/$extension',
+          ),
+        );
+    return client.storage.from('report_evidence').getPublicUrl(path);
+  }
+
+  Future<List<Map<String, dynamic>>> adminReports() async {
+    final rows = await client
+        .from('user_reports')
+        .select(
+          '*,reporter:reporter_id(id,username,avatar_url),reported:reported_id(id,username,avatar_url)',
+        )
+        .order('created_at', ascending: false)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> adminUpdateReportStatus(String id, String status) async {
+    await client.from('user_reports').update({'status': status}).eq('id', id);
   }
 
   Future<String?> conversationPeerId(String conversationId) async {

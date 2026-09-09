@@ -9,6 +9,7 @@ import 'admin_trace_modules_page.dart';
 import 'admin_room_emojis_page.dart';
 import 'admin_banners_page.dart';
 import 'admin_redeem_codes_page.dart';
+import 'admin_reports_page.dart';
 import 'store_pages.dart';
 
 const _blue = Color(0xFFF97316);
@@ -220,6 +221,18 @@ class SuperAdminPage extends StatelessWidget {
                 );
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.flag_rounded),
+              title: const Text('بلاغات المستخدمين'),
+              subtitle: const Text('مراجعة البلاغات وفيديوهات الإثبات'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminReportsPage()),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -363,6 +376,15 @@ class SuperAdminPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AdminRedeemCodesPage()),
+          ),
+        ),
+        _AdminCard(
+          icon: Icons.flag_rounded,
+          title: 'بلاغات المستخدمين',
+          subtitle: 'مراجعة الأسباب ومشاهدة فيديو الإثبات وتحديث الحالة',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AdminReportsPage()),
           ),
         ),
       ],

@@ -23,6 +23,7 @@ import 'room_gift_ranking_sheet.dart';
 import 'luck_bag_widgets.dart';
 import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
+import '../messages/messages_page.dart';
 import '../profile/vip_widgets.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
@@ -1067,6 +1068,7 @@ class RoomDetailPage extends StatefulWidget {
 
 class _RoomDetailPageState extends State<RoomDetailPage> {
   final _service = SakiService.instance;
+  final _picker = ImagePicker();
   final _message = TextEditingController();
   final _messageFocus = FocusNode();
   late final String _roomId = widget.room['id'] as String;
@@ -1932,16 +1934,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     Navigator.pop(dialogContext);
                     _showGiftPanel();
                   },
-                  onMention: () {
+                  onMention: () async {
                     Navigator.pop(dialogContext);
-                    _message.text = '@$username ';
-                    _message.selection = TextSelection.collapsed(
-                      offset: _message.text.length,
+                    if (selfSeat) return;
+                    final conversationId = await _service.createConversation(
+                      userId,
                     );
-                    if (mounted) {
-                      setState(() => _isComposing = true);
-                      _messageFocus.requestFocus();
-                    }
+                    if (!mounted) return;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatPage(
+                          conversationId: conversationId,
+                          participant: profile,
+                        ),
+                      ),
+                    );
                   },
                   onLeaveSeat: () async {
                     final left = await _confirmLeaveSeat();
@@ -1999,6 +2007,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     await _service.inviteToRoomSeat(_roomId, userId);
                     if (dialogContext.mounted) Navigator.pop(dialogContext);
                   },
+                  onReport: () => _showRoomReportSheet(userId, username),
                   onBlock: () async {
                     final duration = await _banDuration();
                     if (duration != null)
@@ -2012,6 +2021,180 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         },
       ),
     );
+  }
+
+  Future<void> _showRoomReportSheet(String userId, String username) async {
+    String category = 'abuse';
+    final details = TextEditingController();
+    XFile? evidence;
+    var sending = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheet) => Container(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            18,
+            20,
+            MediaQuery.viewInsetsOf(context).bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF20202D),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'إبلاغ عن مستخدم',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '@$username',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+                const SizedBox(height: 16),
+                for (final item in const {
+                  'abuse': 'سب وشتم',
+                  'promotion': 'ترويج لتطبيقات أخرى',
+                  'sexual': 'محتوى جنسي',
+                  'harassment': 'مستخدم مسيء',
+                }.entries)
+                  GestureDetector(
+                    onTap: () => setSheet(() => category = item.key),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(13),
+                      decoration: BoxDecoration(
+                        color: category == item.key
+                            ? const Color(0xFFFF6B55)
+                            : const Color(0xFF2B2B3A),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Text(
+                        item.value,
+                        textDirection: TextDirection.rtl,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                TextField(
+                  controller: details,
+                  maxLines: 3,
+                  textDirection: TextDirection.rtl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'أضف تفاصيل البلاغ (اختياري)',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    filled: true,
+                    fillColor: const Color(0xFF2B2B3A),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () async {
+                    final picked = await _picker.pickVideo(
+                      source: ImageSource.gallery,
+                    );
+                    if (picked != null) setSheet(() => evidence = picked);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2B2B3A),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.video_library_rounded,
+                          color: Color(0xFF20C5D5),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            evidence == null
+                                ? 'إرفاق فيديو إثبات'
+                                : 'تم اختيار فيديو الإثبات',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const Icon(Icons.add_rounded, color: Colors.white70),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                GestureDetector(
+                  onTap: sending
+                      ? null
+                      : () async {
+                          setSheet(() => sending = true);
+                          try {
+                            final url = evidence == null
+                                ? null
+                                : await _service.uploadReportEvidence(
+                                    evidence!,
+                                  );
+                            await _service.reportUser(
+                              userId,
+                              category,
+                              details: details.text,
+                              roomId: _roomId,
+                              evidenceUrl: url,
+                            );
+                            if (sheetContext.mounted)
+                              Navigator.pop(sheetContext);
+                            _messageSnack('تم إرسال البلاغ للمراجعة بنجاح');
+                          } finally {
+                            if (context.mounted)
+                              setSheet(() => sending = false);
+                          }
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(
+                      color: sending ? Colors.white24 : const Color(0xFFFF6B55),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      sending ? 'جارٍ الإرسال...' : 'إرسال البلاغ',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    details.dispose();
   }
 
   Future<Duration?> _banDuration() => showModalBottomSheet<Duration?>(
@@ -4747,6 +4930,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
     required this.onBan,
     required this.onInvite,
     required this.onBlock,
+    required this.onReport,
   });
 
   final String username;
@@ -4778,6 +4962,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
   final VoidCallback onBan;
   final VoidCallback onInvite;
   final VoidCallback onBlock;
+  final VoidCallback onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -4809,7 +4994,10 @@ class _RoomMiniProfileSheet extends StatelessWidget {
             : null,
         borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
         border: isVip
-            ? Border.all(color: vipAccent(vip).withValues(alpha: .72), width: 1.3)
+            ? Border.all(
+                color: vipAccent(vip).withValues(alpha: .72),
+                width: 1.3,
+              )
             : null,
         boxShadow: isVip
             ? [
@@ -4924,29 +5112,30 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 22),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _RoomProfileButton(
-                        icon: Icons.chat_bubble_rounded,
-                        label: 'رسالة',
-                        color: _miniProfilePanel,
-                        onTap: onMention,
+                if (!selfSeat)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _RoomProfileButton(
+                          icon: Icons.chat_bubble_rounded,
+                          label: 'رسالة',
+                          color: _miniProfilePanel,
+                          onTap: onMention,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _RoomProfileButton(
-                        icon: isFollowing
-                            ? Icons.check_rounded
-                            : Icons.person_add_alt_1_rounded,
-                        label: isFollowing ? 'متابَع' : 'متابعة',
-                        color: _miniProfilePurple,
-                        onTap: onFollow,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _RoomProfileButton(
+                          icon: isFollowing
+                              ? Icons.check_rounded
+                              : Icons.person_add_alt_1_rounded,
+                          label: isFollowing ? 'متابَع' : 'متابعة',
+                          color: _miniProfilePurple,
+                          onTap: onFollow,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 const SizedBox(height: 12),
                 _RoomProfileButton(
                   icon: Icons.card_giftcard_rounded,
@@ -5039,8 +5228,8 @@ class _RoomMiniProfileSheet extends StatelessWidget {
               top: -38,
               right: 0,
               child: _RoomProfileCircleAction(
-                icon: Icons.close_rounded,
-                onTap: onClose,
+                icon: Icons.alternate_email_rounded,
+                onTap: selfSeat ? onClose : onMention,
               ),
             ),
           ],
@@ -5050,8 +5239,35 @@ class _RoomMiniProfileSheet extends StatelessWidget {
   }
 
   void _showRoomProfileNotice(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('المزيد من خيارات المستخدم قريبًا')),
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+        decoration: const BoxDecoration(
+          color: Color(0xFF20202D),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.pop(context);
+            onReport();
+          },
+          child: const Row(
+            children: [
+              Icon(Icons.flag_rounded, color: Color(0xFFFF6B6B)),
+              SizedBox(width: 12),
+              Text(
+                'إبلاغ عن المستخدم',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
