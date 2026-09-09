@@ -4507,6 +4507,14 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
 
   @override
   Widget build(BuildContext context) {
+    final vip = activeVipLevel(widget.profile);
+    if (vip >= 8) {
+      return const VipSvgaAsset(
+        assetPath: 'assets/vip/vip8_voice_waves.svga',
+        fallbackAsset: 'assets/vip/title_vip8.png',
+        size: 68,
+      );
+    }
     final level = (widget.profile['vip_level'] as num?)?.toInt() ?? 0;
     final colors = level >= 6
         ? const [Colors.red, Colors.amber, Colors.blue]
