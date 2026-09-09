@@ -2785,7 +2785,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         : backgroundUrl == 'free://sunset'
         ? const [Color(0xFFF97316), Color(0xFFDB2777), Color(0xFF4A0E17)]
         : const [Color(0xFF4A0E17), Color(0xFF8A1C30), Color(0xFF2A080C)];
-    final navigator = Navigator.of(context);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -2895,9 +2894,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           ),
                           IconButton(
                             onPressed: () async {
-                              if (await _confirmExit() && mounted) {
-                                navigator.pop();
-                              }
+                              await _confirmExit();
                             },
                             icon: const Icon(
                               Icons.close_rounded,
