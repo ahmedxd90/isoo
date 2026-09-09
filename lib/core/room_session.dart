@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -15,9 +17,10 @@ class RoomSessionController extends ChangeNotifier {
   bool micMuted = true;
   int remoteUsers = 0;
   AudioPlayer? musicPlayer;
-  bool bubbleVisible = false;
   bool overlayEligible = false;
+  bool bubbleVisible = false;
   Future<void> Function()? onExitRequested;
+  Timer? _presenceTimer;
 
   bool get isActive => room != null && engine != null;
 
@@ -72,6 +75,18 @@ class RoomSessionController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void startPresenceHeartbeat(Future<void> Function() touch) {
+    _presenceTimer?.cancel();
+    _presenceTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      touch().catchError((_) {});
+    });
+  }
+
+  void stopPresenceHeartbeat() {
+    _presenceTimer?.cancel();
+    _presenceTimer = null;
+  }
+
   void hideBubble() {
     bubbleVisible = false;
     notifyListeners();
@@ -88,7 +103,9 @@ class RoomSessionController extends ChangeNotifier {
   Future<void> setOverlayVisible(bool visible) async {
     final currentRoom = room;
     final currentRoomId = roomId;
-    if (!overlayEligible || currentRoom == null || currentRoomId == null) return;
+    if (!overlayEligible || currentRoom == null || currentRoomId == null) {
+      return;
+    }
     await RoomBackgroundBridge.setOverlayVisible(
       visible: visible,
       roomId: currentRoomId,
@@ -98,6 +115,7 @@ class RoomSessionController extends ChangeNotifier {
   }
 
   RtcEngine? takeEngine() {
+    stopPresenceHeartbeat();
     final value = engine;
     engine = null;
     room = null;
@@ -110,6 +128,7 @@ class RoomSessionController extends ChangeNotifier {
   }
 
   Future<void> close() async {
+    stopPresenceHeartbeat();
     await RoomBackgroundBridge.stop();
     final value = engine;
     final player = musicPlayer;

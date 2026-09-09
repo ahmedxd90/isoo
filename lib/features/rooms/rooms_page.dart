@@ -1370,7 +1370,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
   List<Map<String, dynamic>> _roomMembers = [];
-  Timer? _presenceTimer;
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
@@ -1898,7 +1897,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (_handlingRoomBan || _closingRoom) return;
     _handlingRoomBan = true;
     _closingRoom = true;
-    _presenceTimer?.cancel();
     _seatTaskTimer?.cancel();
     _localActuallySpeaking = false;
     try {
@@ -2027,10 +2025,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       }
       await _service.sendRoomMessage(_roomId, 'انضم إلى الغرفة', type: 'join');
       if (mounted) setState(() => _joined = true);
-      _presenceTimer?.cancel();
-      _presenceTimer = Timer.periodic(const Duration(seconds: 25), (_) {
-        _service.touchRoomPresence(_roomId).catchError((_) {});
-      });
+      RoomSessionController.instance.startPresenceHeartbeat(
+        () => _service.touchRoomPresence(_roomId),
+      );
       return true;
     } catch (error) {
       if (error.toString().contains('room_banned')) {
@@ -3349,7 +3346,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       timer.cancel();
     }
     _roomSettingsSubscription?.cancel();
-    _presenceTimer?.cancel();
     _seatTaskTimer?.cancel();
     if (_musicPlaying && !preservedSession) {
       _roomChatChannel.sendBroadcastMessage(
