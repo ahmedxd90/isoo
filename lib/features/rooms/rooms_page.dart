@@ -3218,6 +3218,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       child: occupied
                                           ? Stack(
                                               alignment: Alignment.center,
+                                              clipBehavior: Clip.none,
                                               children: [
                                                 if (row['is_speaking'] == true)
                                                   Positioned.fill(
@@ -4509,13 +4510,14 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
   Widget build(BuildContext context) {
     final vip = activeVipLevel(widget.profile);
     if (vip >= 8) {
-      return ClipOval(
-        child: const VipSvgaAsset(
-          assetPath: 'assets/vip/vip8_voice_waves.svga',
-          fallbackAsset: 'assets/vip/title_vip8.png',
-          size: 52,
-          loop: true,
-        ),
+      // The SVGA is already a complete 420x420 circular composition. Do not
+      // ClipOval it: clipping the 52px seat bounds cuts the outer rings and
+      // makes the effect look like a partial glow instead of a full wave.
+      return const VipSvgaAsset(
+        assetPath: 'assets/vip/vip8_voice_waves.svga',
+        fallbackAsset: 'assets/vip/title_vip8.png',
+        size: 68,
+        loop: true,
       );
     }
     final level = (widget.profile['vip_level'] as num?)?.toInt() ?? 0;
