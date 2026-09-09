@@ -1015,20 +1015,72 @@ class SakiService {
         .eq('following_id', uid)
         .order('created_at', ascending: false)
         .limit(100);
-    return List<Map<String, dynamic>>.from(rows);
+    final followingRows = await client
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', uid);
+    final followingIds = List<Map<String, dynamic>>.from(followingRows)
+        .map((row) => row['following_id']?.toString())
+        .whereType<String>()
+        .toSet();
+    return List<Map<String, dynamic>>.from(rows)
+        .map(
+          (row) => {
+            ...row,
+            '_following': followingIds.contains(row['follower_id']),
+          },
+        )
+        .toList();
   }
 
   Future<List<Map<String, dynamic>>> socialNotifications() async {
     final rows = await client
         .from('notifications')
         .select(
-          'id,type,entity_id,is_read,created_at,profiles:actor_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at)',
+          '*,profiles:actor_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at)',
         )
         .eq('user_id', uid)
-        .inFilter('type', ['follow', 'like', 'comment'])
         .order('created_at', ascending: false)
         .limit(100);
-    return List<Map<String, dynamic>>.from(rows);
+    const systemTypes = {
+      'system',
+      'announcement',
+      'daily_login',
+      'coin_purchase',
+      'vip_purchase',
+      'wealth_upgrade',
+      'level_upgrade',
+      'reward',
+      'entrance_purchase',
+      'frame_purchase',
+      'room_kick',
+      'room_ban',
+    };
+    return List<Map<String, dynamic>>.from(rows)
+        .where((row) => !systemTypes.contains(row['type']?.toString()))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> systemNotifications() async {
+    final rows = await client
+        .from('notifications')
+        .select(
+          '*,profiles:actor_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at)',
+        )
+        .eq('user_id', uid)
+        .order('created_at', ascending: false)
+        .limit(200);
+    const socialTypes = {
+      'follow',
+      'friend_request',
+      'like',
+      'comment',
+      'message',
+      'social',
+    };
+    return List<Map<String, dynamic>>.from(rows)
+        .where((row) => !socialTypes.contains(row['type']?.toString()))
+        .toList();
   }
 
   Future<void> markNotificationsRead({String? type}) async {
@@ -2123,7 +2175,7 @@ class SakiService {
     final data = await client
         .from('notifications')
         .select(
-          'id,type,entity_id,is_read,created_at,profiles:actor_id(username,avatar_url,vip_level,vip_expires_at)',
+          '*,profiles:actor_id(username,display_name,avatar_url,vip_level,vip_expires_at)',
         )
         .eq('user_id', uid)
         .order('created_at', ascending: false)

@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../profile/user_profile_page.dart';
 
 const _ink = Color(0xFF111827);
 const _muted = Color(0xFF8B95A7);
@@ -82,7 +83,7 @@ class _MessagesPageState extends State<MessagesPage> {
                 return p is Map && (e['is_read'] != true);
               }).length,
               socialCount: _social.where((e) => e['is_read'] != true).length,
-              onChanged: (value) => setState(() => _section = value),
+              onChanged: _openSection,
             ),
             Expanded(child: _body()),
           ],
@@ -98,6 +99,16 @@ class _MessagesPageState extends State<MessagesPage> {
     }
     if (_section == 2) return _SocialView(rows: _social, onRefresh: _load);
     return _ConversationsView(rows: _conversations, onRefresh: _load);
+  }
+
+  void _openSection(int value) {
+    setState(() => _section = value);
+    final page = switch (value) {
+      0 => const SystemMessagesPage(),
+      1 => const FollowingMessagesPage(),
+      _ => const SocialMessagesPage(),
+    };
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 }
 
@@ -1460,3 +1471,514 @@ class _PremiumEmpty extends StatelessWidget {
     ),
   );
 }
+
+class SystemMessagesPage extends StatefulWidget {
+  const SystemMessagesPage({super.key});
+  @override
+  State<SystemMessagesPage> createState() => _SystemMessagesPageState();
+}
+
+class _SystemMessagesPageState extends State<SystemMessagesPage> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final rows = await SakiService.instance.systemNotifications();
+      if (!mounted) return;
+      setState(() => _rows = rows);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _FullMessagesScaffold(
+    title: 'رسائل النظام',
+    icon: 'assets/messages/icons/system.png',
+    onRefresh: _load,
+    loading: _loading,
+    child: _rows.isEmpty
+        ? const _PremiumEmpty(
+            icon: Icons.notifications_none_rounded,
+            title: 'لا توجد رسائل نظام',
+            subtitle: 'ستظهر هنا المكافآت والمشتريات وترقياتك وأحداث الغرف.',
+          )
+        : ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            itemCount: _rows.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (_, index) => _SystemMessageBubble(row: _rows[index]),
+          ),
+  );
+}
+
+class FollowingMessagesPage extends StatefulWidget {
+  const FollowingMessagesPage({super.key});
+  @override
+  State<FollowingMessagesPage> createState() => _FollowingMessagesPageState();
+}
+
+class _FollowingMessagesPageState extends State<FollowingMessagesPage> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final rows = await SakiService.instance.followers();
+      if (!mounted) return;
+      setState(() => _rows = rows);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _FullMessagesScaffold(
+    title: 'المتابعة',
+    icon: 'assets/messages/icons/following.png',
+    onRefresh: _load,
+    loading: _loading,
+    child: _rows.isEmpty
+        ? const _PremiumEmpty(
+            icon: Icons.people_outline_rounded,
+            title: 'لا يوجد متابعون جدد',
+            subtitle: 'ستظهر هنا الحسابات التي بدأت بمتابعتك.',
+          )
+        : ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            itemCount: _rows.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (_, index) =>
+                _FollowingMessageBubble(row: _rows[index]),
+          ),
+  );
+}
+
+class SocialMessagesPage extends StatefulWidget {
+  const SocialMessagesPage({super.key});
+  @override
+  State<SocialMessagesPage> createState() => _SocialMessagesPageState();
+}
+
+class _SocialMessagesPageState extends State<SocialMessagesPage> {
+  bool _loading = true;
+  List<Map<String, dynamic>> _rows = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final rows = await SakiService.instance.socialNotifications();
+      if (!mounted) return;
+      setState(() => _rows = rows);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _FullMessagesScaffold(
+    title: 'الاجتماعية',
+    icon: 'assets/messages/icons/social.png',
+    onRefresh: _load,
+    loading: _loading,
+    child: _rows.isEmpty
+        ? const _PremiumEmpty(
+            icon: Icons.auto_awesome_outlined,
+            title: 'لا توجد تفاعلات بعد',
+            subtitle: 'ستظهر هنا إعجابات وتعليقات المنشورات والريلز.',
+          )
+        : ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            itemCount: _rows.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (_, index) => _SocialMessageBubble(row: _rows[index]),
+          ),
+  );
+}
+
+class _FullMessagesScaffold extends StatelessWidget {
+  const _FullMessagesScaffold({
+    required this.title,
+    required this.icon,
+    required this.onRefresh,
+    required this.loading,
+    required this.child,
+  });
+  final String title;
+  final String icon;
+  final Future<void> Function() onRefresh;
+  final bool loading;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: _surface,
+    appBar: AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(icon, width: 30, height: 30),
+          const SizedBox(width: 8),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+        ],
+      ),
+    ),
+    body: loading
+        ? const Center(child: SakiLoading())
+        : RefreshIndicator(onRefresh: onRefresh, child: child),
+  );
+}
+
+class _SystemMessageBubble extends StatelessWidget {
+  const _SystemMessageBubble({required this.row});
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = row['type']?.toString() ?? 'system';
+    final title = _systemTitle(type);
+    final text = _systemText(row, type);
+    final thumb = _notificationImage(row);
+    final read = row['is_read'] == true;
+    return _NotificationBubble(
+      unread: !read,
+      leading: Image.asset(
+        'assets/messages/icons/system.png',
+        width: 42,
+        height: 42,
+      ),
+      title: title,
+      text: text,
+      time: _messageTime(row['created_at']),
+      thumbnail: thumb,
+      onTap: () =>
+          SakiService.instance.markNotificationRead(row['id'].toString()),
+      accent: _blue,
+    );
+  }
+}
+
+class _FollowingMessageBubble extends StatelessWidget {
+  const _FollowingMessageBubble({required this.row});
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = Map<String, dynamic>.from(row['profiles'] ?? const {});
+    final name = profile['display_name']?.toString().trim().isNotEmpty == true
+        ? profile['display_name'].toString()
+        : profile['username']?.toString() ?? 'مستخدم';
+    final following = row['_following'] == true;
+    return _NotificationBubble(
+      unread: true,
+      leading: SakiAvatar(
+        url: profile['avatar_url'] as String?,
+        label: name,
+        radius: 24,
+      ),
+      title: name,
+      text: 'بدأ بمتابعتك',
+      time: _messageTime(row['created_at']),
+      onTap: () => _openUser(context, profile),
+      trailing: GestureDetector(
+        onTap: () async {
+          await SakiService.instance.toggleFollow(
+            profile['id'].toString(),
+            following,
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: following ? Colors.white : _blue,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: following ? const Color(0xFFE5E7EB) : _blue,
+            ),
+          ),
+          child: Text(
+            following ? 'متابَع' : 'رد متابعة',
+            style: TextStyle(
+              color: following ? _muted : Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+      accent: _violet,
+    );
+  }
+}
+
+class _SocialMessageBubble extends StatelessWidget {
+  const _SocialMessageBubble({required this.row});
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = Map<String, dynamic>.from(row['profiles'] ?? const {});
+    final name = profile['username']?.toString() ?? 'مستخدم';
+    final type = row['type']?.toString() ?? 'social';
+    final isLike = type == 'like' || type == 'post_like' || type == 'reel_like';
+    final isComment =
+        type == 'comment' || type == 'post_comment' || type == 'reel_comment';
+    final text = isLike
+        ? (type.contains('reel') ? 'أعجب بالريلز الخاص بك' : 'أعجب بمنشورك')
+        : isComment
+        ? (type.contains('reel')
+              ? 'علّق على الريلز الخاص بك'
+              : 'علّق على منشورك')
+        : type == 'follow'
+        ? 'بدأ بمتابعتك'
+        : 'تفاعل مع محتواك';
+    return _NotificationBubble(
+      unread: row['is_read'] != true,
+      leading: SakiAvatar(
+        url: profile['avatar_url'] as String?,
+        label: name,
+        radius: 24,
+      ),
+      title: name,
+      text: text,
+      time: _messageTime(row['created_at']),
+      thumbnail: _notificationImage(row),
+      onTap: () =>
+          SakiService.instance.markNotificationRead(row['id'].toString()),
+      accent: isLike ? const Color(0xFFFF5470) : const Color(0xFF06B6D4),
+    );
+  }
+}
+
+class _NotificationBubble extends StatelessWidget {
+  const _NotificationBubble({
+    required this.unread,
+    required this.leading,
+    required this.title,
+    required this.text,
+    required this.time,
+    required this.onTap,
+    required this.accent,
+    this.thumbnail,
+    this.trailing,
+  });
+  final bool unread;
+  final Widget leading;
+  final String title;
+  final String text;
+  final String time;
+  final VoidCallback onTap;
+  final Color accent;
+  final String? thumbnail;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: unread ? accent.withValues(alpha: .07) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: unread
+              ? accent.withValues(alpha: .35)
+              : const Color(0xFFEDEFF5),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x07000000),
+            blurRadius: 12,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          leading,
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    text,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  time,
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (thumbnail != null) ...[
+            const SizedBox(width: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: _NotificationThumbnail(url: thumbnail!),
+            ),
+          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        ],
+      ),
+    ),
+  );
+}
+
+class _NotificationThumbnail extends StatelessWidget {
+  const _NotificationThumbnail({required this.url});
+  final String url;
+  @override
+  Widget build(BuildContext context) => url.startsWith('assets/')
+      ? Image.asset(url, width: 48, height: 48, fit: BoxFit.cover)
+      : Image.network(
+          url,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const SizedBox(
+            width: 48,
+            height: 48,
+            child: Icon(Icons.image_not_supported_outlined, color: _muted),
+          ),
+        );
+}
+
+String _systemTitle(String type) => switch (type) {
+  'daily_login' => 'مكافأة تسجيل الدخول اليومي',
+  'coin_purchase' || 'coins_purchase' => 'شراء العملات',
+  'vip_purchase' => 'شراء VIP',
+  'wealth_upgrade' => 'ترقية مستوى الثروة',
+  'level_upgrade' => 'ترقية المستوى',
+  'reward' => 'مكافأة جديدة',
+  'entrance_purchase' => 'شراء دخولية',
+  'frame_purchase' => 'الحصول على إطار',
+  'room_kick' => 'تم طردك من الغرفة',
+  'room_ban' => 'تم حظرك من الغرفة',
+  'announcement' => 'إعلان من النظام',
+  _ => 'نظام SAKI',
+};
+
+String _systemText(Map<String, dynamic> row, String type) {
+  for (final key in ['message', 'body', 'text', 'description', 'content']) {
+    final value = row[key]?.toString().trim();
+    if (value != null && value.isNotEmpty) return value;
+  }
+  final payload = row['payload'];
+  if (payload is Map) {
+    for (final key in ['message', 'body', 'text', 'description']) {
+      final value = payload[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+  }
+  return switch (type) {
+    'daily_login' => 'تم تسجيل دخولك اليومي وإضافة مكافأتك إلى حسابك.',
+    'coin_purchase' || 'coins_purchase' => 'تمت إضافة العملات إلى رصيدك بنجاح.',
+    'vip_purchase' => 'تم تفعيل عضوية VIP في حسابك.',
+    'wealth_upgrade' => 'مبروك، تمت ترقية مستوى الثروة الخاص بك.',
+    'level_upgrade' => 'مبروك، وصلت إلى مستوى جديد.',
+    'room_kick' => 'تم إخراجك من الغرفة بواسطة الإدارة.',
+    'room_ban' => 'تم حظرك من الغرفة بواسطة الإدارة.',
+    _ => 'لديك تحديث جديد من نظام SAKI.',
+  };
+}
+
+String? _notificationImage(Map<String, dynamic> row) {
+  for (final key in [
+    'thumbnail_url',
+    'image_url',
+    'media_url',
+    'icon_url',
+    'asset_path',
+  ]) {
+    final value = row[key]?.toString();
+    if (value != null && value.isNotEmpty) return value;
+  }
+  final payload = row['payload'];
+  if (payload is Map) {
+    for (final key in [
+      'thumbnail_url',
+      'image_url',
+      'media_url',
+      'icon_url',
+      'asset_path',
+    ]) {
+      final value = payload[key]?.toString();
+      if (value != null && value.isNotEmpty) return value;
+    }
+  }
+  return null;
+}
+
+String _messageTime(dynamic value) {
+  final date = DateTime.tryParse(value?.toString() ?? '')?.toLocal();
+  if (date == null) return '';
+  return '${date.day}/${date.month}/${date.year}  ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
+
+void _openUser(BuildContext context, Map<String, dynamic> profile) {
+  final id = profile['id']?.toString();
+  if (id == null || id.isEmpty) return;
+  Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => UserProfilePage(userId: id)),
+  );
+}
+
+// The page keeps the existing private chat flow below this point.
