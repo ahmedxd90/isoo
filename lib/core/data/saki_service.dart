@@ -1642,11 +1642,36 @@ class SakiService {
   Future<List<Map<String, dynamic>>> roomMusic(String roomId) async {
     final rows = await client
         .from('room_music')
-        .select('id,room_id,owner_id,title,storage_path,audio_url,created_at')
-        .eq('owner_id', uid)
+        .select(
+          'id,room_id,owner_id,title,artist,cover_url,audio_url,duration_seconds,storage_path,created_at',
+        )
         .order('created_at', ascending: false)
         .limit(100);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> roomPlaylist(String roomId) async {
+    final rows = await client
+        .from('room_playlist')
+        .select(
+          'id,room_id,track_id,added_by,position,created_at,room_music(*)',
+        )
+        .eq('room_id', roomId)
+        .order('position')
+        .order('created_at');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<void> addRoomPlaylistTrack(String roomId, String trackId) async {
+    await client.from('room_playlist').upsert({
+      'room_id': roomId,
+      'track_id': trackId,
+      'added_by': uid,
+    }, onConflict: 'room_id,track_id');
+  }
+
+  Future<void> removeRoomPlaylistTrack(String playlistId) async {
+    await client.from('room_playlist').delete().eq('id', playlistId);
   }
 
   Future<Map<String, dynamic>> uploadRoomMusic(
@@ -1672,10 +1697,13 @@ class SakiService {
           'room_id': null,
           'owner_id': uid,
           'title': title,
+          'artist': 'SAKI Creator',
           'storage_path': path,
           'audio_url': url,
         })
-        .select('id,room_id,owner_id,title,storage_path,audio_url,created_at')
+        .select(
+          'id,room_id,owner_id,title,artist,cover_url,audio_url,duration_seconds,storage_path,created_at',
+        )
         .single();
     return Map<String, dynamic>.from(row);
   }
@@ -1684,12 +1712,18 @@ class SakiService {
     final row = await client
         .from('room_music_state')
         .select(
-          'room_id,music_id,owner_id,is_playing,position_seconds,volume,updated_at,room_music(*)',
+          'room_id,music_id,owner_id,is_playing,position_seconds,volume,started_at,repeat_mode,shuffle_mode,updated_at,room_music(*)',
         )
         .eq('room_id', roomId)
         .maybeSingle();
     return row == null ? null : Map<String, dynamic>.from(row);
   }
+
+  Stream<List<Map<String, dynamic>>> roomMusicStateStream(String roomId) =>
+      client
+          .from('room_music_state')
+          .stream(primaryKey: ['room_id'])
+          .eq('room_id', roomId);
 
   Future<void> setActiveRoomMusic(
     String roomId, {
@@ -1698,6 +1732,9 @@ class SakiService {
     required bool isPlaying,
     double positionSeconds = 0,
     double volume = 1,
+    DateTime? startedAt,
+    String repeatMode = 'off',
+    bool shuffleMode = false,
   }) async {
     await client.rpc(
       'set_room_music_state',
@@ -1708,6 +1745,9 @@ class SakiService {
         'p_is_playing': isPlaying,
         'p_position_seconds': positionSeconds,
         'p_volume': volume,
+        'p_started_at': startedAt?.toUtc().toIso8601String(),
+        'p_repeat_mode': repeatMode,
+        'p_shuffle_mode': shuffleMode,
       },
     );
   }

@@ -1383,11 +1383,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _entranceProfile;
   Map<String, dynamic>? _entranceProduct;
   Timer? _entranceTimer;
+  StreamSubscription<List<Map<String, dynamic>>>? _musicStateSubscription;
+  StreamSubscription<ProcessingState>? _musicCompletionSubscription;
   bool _membersInitialized = false;
   late AudioPlayer _musicPlayer;
   List<Map<String, dynamic>> _roomMusic = [];
+  List<Map<String, dynamic>> _roomPlaylist = [];
   Map<String, dynamic>? _activeMusic;
   bool _musicPlaying = false;
+  String _musicRepeatMode = 'off';
+  bool _musicShuffle = false;
   bool _closingRoom = false;
   bool _handlingRoomBan = false;
   bool _localActuallySpeaking = false;
@@ -1410,6 +1415,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _musicPlayer = session.isSameRoom(_roomId)
         ? (session.musicPlayer ?? AudioPlayer())
         : AudioPlayer();
+    _musicCompletionSubscription = _musicPlayer.processingStateStream.listen((
+      state,
+    ) {
+      if (state == ProcessingState.completed) _handleMusicCompleted();
+    });
     _seatStream = _service.roomSeatsStream(_roomId);
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
@@ -1496,6 +1506,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _loadRoomState();
     _loadRoomMusic();
+    _musicStateSubscription = _service.roomMusicStateStream(_roomId).listen((
+      _,
+    ) {
+      _loadRoomMusic();
+    });
     _roomMembersSubscription = _service.roomMembersStream(_roomId).listen((
       members,
     ) {
@@ -2770,19 +2785,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       final results = await Future.wait<dynamic>([
         _service.roomMusic(_roomId),
         _service.activeRoomMusic(_roomId),
+        _service.roomPlaylist(_roomId),
       ]);
       if (!mounted) return;
       setState(() {
         _roomMusic = List<Map<String, dynamic>>.from(results[0] as List);
         _activeMusic = results[1] as Map<String, dynamic>?;
+        _roomPlaylist = List<Map<String, dynamic>>.from(results[2] as List);
         _musicPlaying = _activeMusic?['is_playing'] == true;
         _musicOwnerId = _activeMusic?['owner_id']?.toString();
+        _musicRepeatMode = _activeMusic?['repeat_mode']?.toString() ?? 'off';
+        _musicShuffle = _activeMusic?['shuffle_mode'] == true;
         _musicVolume = ((_activeMusic?['volume'] as num?) ?? 1)
             .toDouble()
             .clamp(0.0, 1.0);
       });
       final nested = _activeMusic?['room_music'];
-      if (_musicPlaying && _isOnSeat && nested is Map) {
+      if (_isOnSeat && nested is Map) {
         final duration = await _musicPlayer.setUrl(
           nested['audio_url'] as String,
         );
@@ -2790,7 +2809,27 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ? 0
             : duration!.inMilliseconds / 1000;
         await _musicPlayer.setVolume(_musicVolume);
-        await _musicPlayer.play();
+        var position = ((_activeMusic?['position_seconds'] as num?) ?? 0)
+            .toDouble();
+        final startedAt = DateTime.tryParse(
+          _activeMusic?['started_at']?.toString() ?? '',
+        );
+        if (_musicPlaying && startedAt != null) {
+          position +=
+              DateTime.now().toUtc().difference(startedAt).inMilliseconds /
+              1000;
+        }
+        if (_musicDurationSeconds > 0) {
+          position = position.clamp(0.0, _musicDurationSeconds);
+        }
+        await _musicPlayer.seek(
+          Duration(milliseconds: (position * 1000).round()),
+        );
+        if (_musicPlaying) {
+          await _musicPlayer.play();
+        } else {
+          await _musicPlayer.pause();
+        }
       }
     } catch (_) {}
   }
@@ -2798,6 +2837,142 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _syncMusicSeatAccess(bool seated) async {
     if (seated || !_musicPlaying) return;
     await _stopRoomMusic(broadcastOnly: true);
+  }
+
+  List<Map<String, dynamic>> get _playlistTracks => _roomPlaylist
+      .map((row) => row['room_music'])
+      .whereType<Map>()
+      .map((row) => Map<String, dynamic>.from(row))
+      .toList();
+
+  Future<void> _handleMusicCompleted() async {
+    if (!mounted || !_musicPlaying || !_canControlMusic) return;
+    final tracks = _playlistTracks;
+    final currentId = _activeMusic?['music_id']?.toString();
+    if (_musicRepeatMode == 'one' && currentId != null) {
+      final current = tracks.where(
+        (item) => item['id']?.toString() == currentId,
+      );
+      if (current.isNotEmpty) {
+        await _broadcastMusic('play', current.first);
+        return;
+      }
+    }
+    if (tracks.isEmpty) {
+      await _stopRoomMusic();
+      return;
+    }
+    var index = tracks.indexWhere(
+      (item) => item['id']?.toString() == currentId,
+    );
+    if (index < 0) index = 0;
+    if (_musicShuffle) {
+      index = (index + 1) % tracks.length;
+    } else {
+      index += 1;
+    }
+    if (index >= tracks.length) {
+      if (_musicRepeatMode != 'all') {
+        await _stopRoomMusic();
+        return;
+      }
+      index = 0;
+    }
+    await _broadcastMusic('play', tracks[index]);
+  }
+
+  Future<void> _nextRoomMusic() async {
+    if (!_canControlMusic) {
+      _messageSnack('لا تملك صلاحية تغيير الأغنية.');
+      return;
+    }
+    final tracks = _playlistTracks;
+    if (tracks.isEmpty) return;
+    final current = tracks.indexWhere(
+      (item) => item['id']?.toString() == _activeMusic?['music_id']?.toString(),
+    );
+    await _broadcastMusic('play', tracks[(current + 1) % tracks.length]);
+  }
+
+  Future<void> _previousRoomMusic() async {
+    if (!_canControlMusic) {
+      _messageSnack('لا تملك صلاحية تغيير الأغنية.');
+      return;
+    }
+    final tracks = _playlistTracks;
+    if (tracks.isEmpty) return;
+    final current = tracks.indexWhere(
+      (item) => item['id']?.toString() == _activeMusic?['music_id']?.toString(),
+    );
+    final index = current <= 0 ? tracks.length - 1 : current - 1;
+    await _broadcastMusic('play', tracks[index]);
+  }
+
+  Future<void> _addMusicToPlaylist(Map<String, dynamic> music) async {
+    try {
+      await _service.addRoomPlaylistTrack(_roomId, music['id'].toString());
+      await _loadRoomMusic();
+    } catch (error) {
+      if (mounted) _messageSnack('تعذر إضافة الأغنية إلى القائمة: $error');
+    }
+  }
+
+  Future<void> _removeMusicFromPlaylist(Map<String, dynamic> row) async {
+    try {
+      await _service.removeRoomPlaylistTrack(row['id'].toString());
+      await _loadRoomMusic();
+    } catch (error) {
+      if (mounted) _messageSnack('تعذر حذف الأغنية من القائمة: $error');
+    }
+  }
+
+  Future<void> _toggleMusicRepeat() async {
+    if (!_canControlMusic) return;
+    const modes = ['off', 'all', 'one'];
+    final next = modes[(modes.indexOf(_musicRepeatMode) + 1) % modes.length];
+    setState(() => _musicRepeatMode = next);
+    await _service.setActiveRoomMusic(
+      _roomId,
+      musicId: _activeMusic?['music_id']?.toString(),
+      ownerId: _musicOwnerId,
+      isPlaying: _musicPlaying,
+      positionSeconds: _musicPlayer.position.inMilliseconds / 1000,
+      volume: _musicVolume,
+      repeatMode: next,
+      shuffleMode: _musicShuffle,
+    );
+    await _roomChatChannel.sendBroadcastMessage(
+      event: 'music',
+      payload: {
+        'action': 'mode',
+        'repeat_mode': next,
+        'shuffle_mode': _musicShuffle,
+      },
+    );
+  }
+
+  Future<void> _toggleMusicShuffle() async {
+    if (!_canControlMusic) return;
+    final next = !_musicShuffle;
+    setState(() => _musicShuffle = next);
+    await _service.setActiveRoomMusic(
+      _roomId,
+      musicId: _activeMusic?['music_id']?.toString(),
+      ownerId: _musicOwnerId,
+      isPlaying: _musicPlaying,
+      positionSeconds: _musicPlayer.position.inMilliseconds / 1000,
+      volume: _musicVolume,
+      repeatMode: _musicRepeatMode,
+      shuffleMode: next,
+    );
+    await _roomChatChannel.sendBroadcastMessage(
+      event: 'music',
+      payload: {
+        'action': 'mode',
+        'repeat_mode': _musicRepeatMode,
+        'shuffle_mode': next,
+      },
+    );
   }
 
   Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
@@ -2817,10 +2992,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
       return;
     }
+    if (action == 'mode') {
+      if (mounted) {
+        setState(() {
+          _musicRepeatMode =
+              event['repeat_mode']?.toString() ?? _musicRepeatMode;
+          _musicShuffle = event['shuffle_mode'] == true;
+        });
+      }
+      return;
+    }
     if (action == 'stop') {
       await _musicPlayer.stop();
       if (mounted) setState(() => _musicPlaying = false);
       return;
+    }
+    if (event['repeat_mode'] != null) {
+      _musicRepeatMode = event['repeat_mode'].toString();
+    }
+    if (event['shuffle_mode'] != null) {
+      _musicShuffle = event['shuffle_mode'] == true;
     }
     final music = Map<String, dynamic>.from(event['music'] ?? const {});
     final url = music['audio_url']?.toString();
@@ -2848,6 +3039,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _activeMusic = {'music_id': music['id'], 'room_music': music};
         _musicOwnerId = music['owner_id']?.toString();
         _musicPlaying = action != 'pause';
+        _musicRepeatMode = event['repeat_mode']?.toString() ?? _musicRepeatMode;
+        _musicShuffle = event['shuffle_mode'] == true;
       });
     }
   }
@@ -2877,6 +3070,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'music': music,
       'position_seconds': position,
       'volume': _musicVolume,
+      'started_at': DateTime.now()
+          .toUtc()
+          .subtract(Duration(milliseconds: (position * 1000).round()))
+          .toIso8601String(),
+      'repeat_mode': _musicRepeatMode,
+      'shuffle_mode': _musicShuffle,
     };
     await _service.setActiveRoomMusic(
       _roomId,
@@ -2885,6 +3084,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       isPlaying: action == 'play',
       positionSeconds: position,
       volume: _musicVolume,
+      startedAt: DateTime.tryParse(event['started_at'] as String),
+      repeatMode: _musicRepeatMode,
+      shuffleMode: _musicShuffle,
     );
     await _roomChatChannel.sendBroadcastMessage(event: 'music', payload: event);
     await _handleMusicEvent(event);
@@ -2991,6 +3193,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       backgroundColor: Colors.transparent,
       builder: (_) => RoomMusicSheet(
         music: _roomMusic,
+        playlist: _roomPlaylist,
         activeMusic: _activeMusic,
         playing: _musicPlaying,
         volume: _musicVolume,
@@ -2998,6 +3201,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         onPlay: (music) => _broadcastMusic('play', music),
         onPause: (music) => _broadcastMusic('pause', music),
         onStop: _stopRoomMusic,
+        onNext: _nextRoomMusic,
+        onPrevious: _previousRoomMusic,
+        onAddToPlaylist: _addMusicToPlaylist,
+        onRemoveFromPlaylist: _removeMusicFromPlaylist,
+        onRepeat: _toggleMusicRepeat,
+        onShuffle: _toggleMusicShuffle,
         canControl: _canControlMusic,
         onVolume: _broadcastMusicVolume,
         onSeek: _broadcastMusicSeek,
@@ -3393,6 +3602,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
       _musicPlayer.stop();
     }
+    _musicStateSubscription?.cancel();
+    _musicCompletionSubscription?.cancel();
     _service.client.removeChannel(_roomChatChannel);
     if (!preservedSession) {
       _musicPlayer.dispose();
@@ -5048,6 +5259,7 @@ class RoomMusicSheet extends StatelessWidget {
   const RoomMusicSheet({
     super.key,
     required this.music,
+    required this.playlist,
     required this.activeMusic,
     required this.playing,
     required this.volume,
@@ -5055,6 +5267,12 @@ class RoomMusicSheet extends StatelessWidget {
     required this.onPlay,
     required this.onPause,
     required this.onStop,
+    required this.onNext,
+    required this.onPrevious,
+    required this.onAddToPlaylist,
+    required this.onRemoveFromPlaylist,
+    required this.onRepeat,
+    required this.onShuffle,
     required this.onVolume,
     required this.onSeek,
     required this.canControl,
@@ -5063,6 +5281,7 @@ class RoomMusicSheet extends StatelessWidget {
   });
 
   final List<Map<String, dynamic>> music;
+  final List<Map<String, dynamic>> playlist;
   final Map<String, dynamic>? activeMusic;
   final bool playing;
   final double volume;
@@ -5070,6 +5289,12 @@ class RoomMusicSheet extends StatelessWidget {
   final Future<void> Function(Map<String, dynamic>) onPlay;
   final Future<void> Function(Map<String, dynamic>) onPause;
   final Future<void> Function() onStop;
+  final Future<void> Function() onNext;
+  final Future<void> Function() onPrevious;
+  final Future<void> Function(Map<String, dynamic>) onAddToPlaylist;
+  final Future<void> Function(Map<String, dynamic>) onRemoveFromPlaylist;
+  final Future<void> Function() onRepeat;
+  final Future<void> Function() onShuffle;
   final ValueChanged<double> onVolume;
   final ValueChanged<double> onSeek;
   final bool canControl;
@@ -5118,6 +5343,17 @@ class RoomMusicSheet extends StatelessWidget {
                         fontSize: 19,
                         fontWeight: FontWeight.w900,
                       ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'بحث عن أغنية',
+                    onPressed: () => showSearch<void>(
+                      context: context,
+                      delegate: _RoomMusicSearchDelegate(music),
+                    ),
+                    icon: const Icon(
+                      Icons.search_rounded,
+                      color: Colors.white70,
                     ),
                   ),
                   GestureDetector(
@@ -5327,6 +5563,43 @@ class RoomMusicSheet extends StatelessWidget {
                         ),
                       ],
                     ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        tooltip: 'Shuffle',
+                        onPressed: canControl ? onShuffle : null,
+                        icon: const Icon(
+                          Icons.shuffle_rounded,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'السابق',
+                        onPressed: canControl ? onPrevious : null,
+                        icon: const Icon(
+                          Icons.skip_previous_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'التالي',
+                        onPressed: canControl ? onNext : null,
+                        icon: const Icon(
+                          Icons.skip_next_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'تكرار',
+                        onPressed: canControl ? onRepeat : null,
+                        icon: const Icon(
+                          Icons.repeat_rounded,
+                          color: Color(0xFFE9B949),
+                        ),
+                      ),
+                    ],
+                  ),
                   Row(
                     children: [
                       IconButton(
@@ -5994,4 +6267,47 @@ class _RoomProfileAdminAction extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _RoomMusicSearchDelegate extends SearchDelegate<void> {
+  _RoomMusicSearchDelegate(this.tracks);
+  final List<Map<String, dynamic>> tracks;
+
+  @override
+  List<Widget>? buildActions(BuildContext context) => [
+    IconButton(onPressed: () => query = '', icon: const Icon(Icons.clear)),
+  ];
+
+  @override
+  Widget? buildLeading(BuildContext context) => IconButton(
+    onPressed: () => close(context, null),
+    icon: const Icon(Icons.arrow_back),
+  );
+
+  @override
+  Widget buildResults(BuildContext context) => _results();
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _results();
+
+  Widget _results() {
+    final needle = query.trim().toLowerCase();
+    final result = tracks.where((track) {
+      final title = track['title']?.toString().toLowerCase() ?? '';
+      final artist = track['artist']?.toString().toLowerCase() ?? '';
+      return needle.isEmpty ||
+          title.contains(needle) ||
+          artist.contains(needle);
+    }).toList();
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: result.length,
+      separatorBuilder: (_, _) => const Divider(),
+      itemBuilder: (_, index) => ListTile(
+        leading: const CircleAvatar(child: Icon(Icons.music_note)),
+        title: Text(result[index]['title']?.toString() ?? 'موسيقى'),
+        subtitle: Text(result[index]['artist']?.toString() ?? 'SAKI Creator'),
+      ),
+    );
+  }
 }
