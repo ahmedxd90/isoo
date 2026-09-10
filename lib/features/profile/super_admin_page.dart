@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../core/theme/app_theme.dart';
 import 'admin_trace_modules_page.dart';
 import 'admin_room_emojis_page.dart';
 import 'admin_banners_page.dart';
@@ -653,11 +654,12 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         );
       } else if (action == 'role') {
         final role = await _selectRole(_role(user));
-        if (role != null)
+        if (role != null) {
           await SakiService.instance.adminSetUserRole(
             user['id'] as String,
             role,
           );
+        }
       } else if (action == 'id') {
         await _changeSakiId(user);
       }
@@ -673,11 +675,22 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       title: const Text('تعيين صلاحيات المستخدم'),
       children: roles.entries
           .map(
-            (entry) => RadioListTile<String>(
-              value: entry.key,
-              groupValue: current,
-              title: Text(entry.value),
-              onChanged: (value) => Navigator.pop(context, value),
+            (entry) => SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, entry.key),
+              child: Row(
+                children: [
+                  Icon(
+                    entry.key == current
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_off,
+                    color: entry.key == current
+                        ? SakiColors.royalPurple
+                        : SakiColors.muted,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(entry.value),
+                ],
+              ),
             ),
           )
           .toList(),
@@ -710,11 +723,12 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       ),
     );
     controller.dispose();
-    if (value != null)
+    if (value != null) {
       await SakiService.instance.adminUpdateUserSakiId(
         user['id'] as String,
         value,
       );
+    }
   }
 
   @override

@@ -9,7 +9,9 @@ class SakiNotificationService {
 
   Future<void> initialize() async {
     const settings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await plugin.initialize(const InitializationSettings(android: settings));
+    await plugin.initialize(
+      settings: InitializationSettings(android: settings),
+    );
     await plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -32,10 +34,10 @@ class SakiNotificationService {
       styleInformation: BigTextStyleInformation(''),
     );
     await plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
-      'SAKI • $sender',
-      body.isEmpty ? 'أرسل لك صورة' : 'أرسل لك رسالة: $body',
-      const NotificationDetails(android: details),
+      id: DateTime.now().millisecondsSinceEpoch.remainder(1 << 31),
+      title: 'SAKI • $sender',
+      body: body.isEmpty ? 'أرسل لك صورة' : 'أرسل لك رسالة: $body',
+      notificationDetails: const NotificationDetails(android: details),
       payload: 'messages',
     );
   }

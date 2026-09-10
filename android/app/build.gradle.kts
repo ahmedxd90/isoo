@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "saki.chat.co"
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
