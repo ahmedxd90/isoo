@@ -372,13 +372,13 @@ class SakiHtmlBottomNav extends StatelessWidget {
     return Container(
       height: 78,
       decoration: const BoxDecoration(
-        color: Color(0xFF12162A),
-        border: Border(top: BorderSide(color: Color(0x222ED9E6))),
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
         boxShadow: [
           BoxShadow(
-            color: Color(0x55000000),
-            blurRadius: 16,
-            offset: Offset(0, -3),
+            color: Color(0x120F172A),
+            blurRadius: 14,
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -393,7 +393,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
             return Expanded(
               child: InkWell(
                 onTap: () => onSelected(index),
-                splashColor: const Color(0xFF2ED9E6).withValues(alpha: .12),
+                splashColor: const Color(0xFFFF6B35).withValues(alpha: .12),
                 highlightColor: Colors.transparent,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -403,11 +403,13 @@ class SakiHtmlBottomNav extends StatelessWidget {
                     children: [
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
-                        width: active && index == 0 ? 34 : 30,
-                        height: active && index == 0 ? 34 : 30,
+                        width: active ? 34 : 30,
+                        height: active ? 34 : 30,
                         decoration: BoxDecoration(
-                          color: active && index == 0
-                              ? const Color(0xFF7C5CFF).withValues(alpha: .18)
+                          color: active
+                              ? (index.isEven
+                                    ? const Color(0xFFFF6B35).withValues(alpha: .12)
+                                    : const Color(0xFF06B6D4).withValues(alpha: .12))
                               : Colors.transparent,
                           shape: BoxShape.circle,
                         ),
@@ -419,8 +421,10 @@ class SakiHtmlBottomNav extends StatelessWidget {
                             errorBuilder: (_, _, _) => FaIcon(
                               FontAwesomeIcons.circle,
                               color: active
-                                  ? const Color(0xFF2ED9E6)
-                                  : const Color(0xFF7F8BAB),
+                                  ? (index.isEven
+                                        ? const Color(0xFFFF6B35)
+                                        : const Color(0xFF06B6D4))
+                                  : const Color(0xFF111827),
                               size: active ? 19 : 18,
                             ),
                           ),
@@ -431,8 +435,10 @@ class SakiHtmlBottomNav extends StatelessWidget {
                         item.$3,
                         style: TextStyle(
                           color: active
-                              ? const Color(0xFF2ED9E6)
-                              : const Color(0xFF7F8BAB),
+                              ? (index.isEven
+                                    ? const Color(0xFFFF6B35)
+                                    : const Color(0xFF06B6D4))
+                              : const Color(0xFF111827),
                           fontSize: 10,
                           fontWeight: active
                               ? FontWeight.w900

@@ -245,14 +245,14 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: SakiColors.card.withValues(alpha: .88),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+        border: Border.all(color: SakiColors.line),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 18,
-            offset: Offset(0, 8),
+            color: Color(0x120F172A),
+            blurRadius: 16,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -355,7 +355,7 @@ class _VipUsernameState extends State<VipUsername>
         : widget.profile['username'] as String? ?? 'مستخدم';
     final base =
         widget.style ??
-        const TextStyle(color: Colors.white, fontWeight: FontWeight.w700);
+        const TextStyle(color: SakiColors.ink, fontWeight: FontWeight.w700);
     if (!active) {
       return Text(
         text,

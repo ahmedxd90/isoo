@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import 'saki_widgets.dart';
 
 const vipNameGradients = <int, List<Color>>{
@@ -85,7 +86,7 @@ class _VipNameTextState extends State<VipNameText>
         overflow: TextOverflow.ellipsis,
         textAlign: widget.textAlign,
         style: TextStyle(
-          color: Colors.white,
+          color: SakiColors.ink,
           fontSize: widget.fontSize,
           fontWeight: FontWeight.w800,
         ),
@@ -162,19 +163,6 @@ class VipTitleBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(
-            'assets/vip/title_vip$level.png',
-            width: compact ? 18 : 26,
-            height: compact ? 18 : 26,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => Icon(
-              Icons.workspace_premium_rounded,
-              color: Colors.white,
-              size: compact ? 12 : 15,
-            ),
-          ),
-          const SizedBox(width: 3),
-          const SizedBox(width: 1),
           Text(
             'VIP $level',
             style: TextStyle(
@@ -283,7 +271,7 @@ class _VipSakiIdState extends State<VipSakiId>
       return Text(
         'SAKI ID: $value',
         style: TextStyle(
-          color: Colors.white60,
+          color: SakiColors.muted,
           fontSize: widget.fontSize,
           fontWeight: FontWeight.w700,
         ),

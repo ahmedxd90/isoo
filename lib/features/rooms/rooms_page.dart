@@ -30,12 +30,12 @@ import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
-const _roomPrimary = Color(0xFF656BF9);
-const _roomSecondary = Color(0xFF8E91FF);
+const _roomPrimary = Color(0xFFFF6B35);
+const _roomSecondary = Color(0xFF06B6D4);
 const _roomTrophyGold = Color(0xFFF3B83F);
 const _roomTrendOrange = Color(0xFFFF6B35);
-const _roomBg = Color(0xFFF7F7F7);
-const _roomMuted = Color(0xFF9CA3AF);
+const _roomBg = Colors.white;
+const _roomMuted = Color(0xFF64748B);
 
 class RoomsPage extends StatefulWidget {
   const RoomsPage({super.key});
@@ -4896,15 +4896,15 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
 
   InputDecoration _input(String hint) => InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(color: Colors.white38, fontSize: 15),
+    hintStyle: const TextStyle(color: _roomMuted, fontSize: 15),
     enabledBorder: const UnderlineInputBorder(
-      borderSide: BorderSide(color: Colors.white12),
+      borderSide: BorderSide(color: Color(0xFFE2E8F0)),
     ),
     focusedBorder: const UnderlineInputBorder(
-      borderSide: BorderSide(color: Colors.white60),
+      borderSide: BorderSide(color: _roomPrimary, width: 2),
     ),
     border: const UnderlineInputBorder(
-      borderSide: BorderSide(color: Colors.white12),
+      borderSide: BorderSide(color: Color(0xFFE2E8F0)),
     ),
     filled: false,
   );
@@ -4912,16 +4912,20 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: Colors.white,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            'https://images.unsplash.com/photo-1534880606858-29b0e8a24e8d?q=80&w=1000&auto=format&fit=crop',
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+          const ColoredBox(color: Colors.white),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0x14FF6B35), Color(0x1006B6D4), Colors.white],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
           ),
-          Container(color: const Color.fromRGBO(15, 10, 5, .78)),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),

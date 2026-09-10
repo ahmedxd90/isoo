@@ -52,7 +52,7 @@ class SakiApp extends StatelessWidget {
       title: 'SAKI',
       theme: SakiTheme.light(),
       darkTheme: SakiTheme.dark(),
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.light,
       routerConfig: router,
       locale: const Locale('ar'),
       builder: (context, child) => Stack(

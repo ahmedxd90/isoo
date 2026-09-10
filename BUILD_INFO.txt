@@ -1,5 +1,17 @@
 SAKI current Android release build — v3.0.1+90 — 2026-09-10
 
+Modern white UI redesign — 2026-09-10
+
+- Replaced the global application presentation with a white Material 3 theme using SAKI orange and cyan accents, black primary text, dark-gray secondary text, and lightweight borders/shadows.
+- Updated the main bottom navigation to a white surface with black inactive icons/text, animated active states, and orange/cyan highlights while preserving all five existing destinations and indices.
+- Updated the rooms listing and room creation presentation to the new white social-audio visual language without changing realtime streams, room creation, moderation, seats, microphones, gifts, or navigation logic.
+- Updated Profile presentation colors and shared cards while preserving Supabase profile loading, wallet, VIP, store, family, levels, tasks, redeem codes, settings, Super Admin access, and logout flows.
+- Preserved VIP levels 1–10, gradient username rendering, SAKI ID rendering, and changed the shared VIP badge to the requested text-only `VIP N` format.
+- No WebView, fake data, replacement APIs, or backend changes were introduced.
+- Validation: `flutter analyze` completed with no issues; APK signature and ZIP integrity checks passed.
+- Modern UI APK: `dist/saki-modern-white-v3.0.1+90.apk`
+- Modern UI APK SHA-256: 80f895e55feee321d4a0a4b30cf495b2d56f8d9f35da4268e5faffc129816daa
+
 Flutter: 3.47.3
 Dart: 3.13.3
 Java: OpenJDK 21.0.12 (full JDK)
