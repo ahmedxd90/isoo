@@ -15,15 +15,15 @@ import 'store_pages.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
-const _blue = Color(0xFF7C5CFF);
-const _cyan = Color(0xFF2ED9E6);
-const _adminInk = Color(0xFFF8FAFF);
+const _blue = Color(0xFFFF6B35);
+const _cyan = Color(0xFF06B6D4);
+const _adminInk = Color(0xFF111827);
 
 class SuperAdminPage extends StatelessWidget {
   const SuperAdminPage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFF080A18),
+    backgroundColor: Colors.white,
     appBar: PreferredSize(
       preferredSize: const Size.fromHeight(78),
       child: Container(
@@ -528,7 +528,15 @@ class _AdminCard extends StatelessWidget {
 }
 
 class AdminUsersPage extends StatefulWidget {
-  const AdminUsersPage({super.key});
+  const AdminUsersPage({
+    super.key,
+    this.canBanUsers = true,
+    this.canManageRoles = true,
+    this.canChangeSakiId = true,
+  });
+  final bool canBanUsers;
+  final bool canManageRoles;
+  final bool canChangeSakiId;
   @override
   State<AdminUsersPage> createState() => _AdminUsersPageState();
 }
@@ -610,36 +618,39 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                   fontSize: 16,
                 ),
               ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFFFF7ED),
-                  child: Icon(Icons.block_rounded, color: Colors.redAccent),
-                ),
-                title: const Text('حظر مستخدم'),
-                subtitle: const Text('حظر التطبيق لمدة 7 أيام'),
-                onTap: () => Navigator.pop(context, 'ban'),
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFEFF6FF),
-                  child: Icon(
-                    Icons.admin_panel_settings_rounded,
-                    color: Color(0xFF0284C7),
+              if (widget.canBanUsers)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFFF7ED),
+                    child: Icon(Icons.block_rounded, color: Colors.redAccent),
                   ),
+                  title: const Text('حظر مستخدم'),
+                  subtitle: const Text('حظر التطبيق لمدة 7 أيام'),
+                  onTap: () => Navigator.pop(context, 'ban'),
                 ),
-                title: const Text('صلاحيات المستخدم'),
-                subtitle: Text(roles[_role(user)] ?? 'مستخدم'),
-                onTap: () => Navigator.pop(context, 'role'),
-              ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0xFFF5F3FF),
-                  child: Icon(Icons.badge_rounded, color: Color(0xFF7C3AED)),
+              if (widget.canManageRoles)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFEFF6FF),
+                    child: Icon(
+                      Icons.admin_panel_settings_rounded,
+                      color: Color(0xFF0284C7),
+                    ),
+                  ),
+                  title: const Text('صلاحيات المستخدم'),
+                  subtitle: Text(roles[_role(user)] ?? 'مستخدم'),
+                  onTap: () => Navigator.pop(context, 'role'),
                 ),
-                title: const Text('تغيير SAKI ID'),
-                subtitle: Text('الحالي: ${user['saki_id'] ?? '—'}'),
-                onTap: () => Navigator.pop(context, 'id'),
-              ),
+              if (widget.canChangeSakiId)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFF5F3FF),
+                    child: Icon(Icons.badge_rounded, color: Color(0xFF7C3AED)),
+                  ),
+                  title: const Text('تغيير SAKI ID'),
+                  subtitle: Text('الحالي: ${user['saki_id'] ?? '—'}'),
+                  onTap: () => Navigator.pop(context, 'id'),
+                ),
             ],
           ),
         ),

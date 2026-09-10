@@ -1,5 +1,16 @@
 SAKI current Android release build — v3.0.1+90 — 2026-09-10
 
+Role-based administration update — 2026-09-10
+
+- Added database-enforced RBAC for `super_admin`, `admin`, `bd`, `official_host`, `customer_service`, and `user`.
+- Added `admin_role_permissions` and `admin_audit_log`, protected admin RPCs from `anon`, and updated RLS for agencies, families, and reports.
+- Added role-aware Profile entry points, Admin/BD/Official Host/Customer Service dashboards, permission-limited user actions, and vector role badges.
+- Supabase migrations: `20260910_role_based_admin_permissions.sql`, `20260910_role_based_module_policies.sql`.
+- RBAC documentation: `RBAC_PERMISSIONS.md`.
+- Validation: `flutter analyze` completed with no issues; APK signature and ZIP integrity checks passed.
+- RBAC APK: `dist/saki-rbac-v3.0.1+90.apk`
+- RBAC APK SHA-256: `9f855124987b27b34d3f6b4785da5aed52cb62f77530feaaba2ea05dbc33eb82`
+
 Modern white UI redesign — 2026-09-10
 
 - Replaced the global application presentation with a white Material 3 theme using SAKI orange and cyan accents, black primary text, dark-gray secondary text, and lightweight borders/shadows.

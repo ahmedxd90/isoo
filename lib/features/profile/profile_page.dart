@@ -11,12 +11,14 @@ import 'wallet_page.dart';
 import 'vip_page.dart';
 import 'user_settings_page.dart';
 import 'super_admin_page.dart';
+import 'role_admin_page.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -42,6 +44,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic> _modules = {};
   bool _loading = true;
   bool _isSuperAdmin = false;
+  String _adminRole = 'user';
 
   @override
   void initState() {
@@ -68,6 +71,9 @@ class _ProfilePageState extends State<ProfilePage> {
             : {...base, 'family_badge': results[5] as Map<String, dynamic>?};
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
+        _adminRole = base?['is_super_admin'] == true
+            ? 'super_admin'
+            : (base?['admin_role']?.toString() ?? 'user');
       });
       final isSuperAdmin = await SakiService.instance.isSuperAdmin();
       if (mounted) setState(() => _isSuperAdmin = isSuperAdmin);
@@ -306,6 +312,60 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
+            if (_adminRole != 'user') ...[
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: () {
+                  if (_adminRole == 'super_admin') {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SuperAdminPage()),
+                    );
+                  } else {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => RoleAdminPage(role: _adminRole),
+                      ),
+                    );
+                  }
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: SakiTheme.gradient,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _adminRole == 'bd'
+                            ? Icons.handshake_rounded
+                            : Icons.admin_panel_settings_rounded,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _adminRole == 'super_admin'
+                              ? 'لوحة Super Admin'
+                              : 'لوحة ${_adminRole.toUpperCase()}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      RoleBadge(role: _adminRole, light: true),
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.chevron_left_rounded,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             _MenuCard(onTap: _openMenu, isSuperAdmin: _isSuperAdmin),
             const SizedBox(height: 12),
@@ -420,6 +480,16 @@ class _ProfileCard extends StatelessWidget {
                 if (familyBadge != null) ...[
                   const SizedBox(height: 6),
                   FamilyTitleBadge(family: familyBadge, compact: true),
+                ],
+                if ((profile['admin_role']?.toString() ?? 'user') != 'user' ||
+                    profile['is_super_admin'] == true) ...[
+                  const SizedBox(height: 6),
+                  RoleBadge(
+                    role: profile['is_super_admin'] == true
+                        ? 'super_admin'
+                        : profile['admin_role']?.toString() ?? 'user',
+                    compact: true,
+                  ),
                 ],
                 const SizedBox(height: 2),
                 Text(

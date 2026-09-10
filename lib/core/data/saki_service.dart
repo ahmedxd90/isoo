@@ -58,6 +58,19 @@ class SakiService {
     return result == true;
   }
 
+  Future<Map<String, dynamic>> adminAccess() async {
+    final result = await client.rpc('admin_my_access');
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> adminAuditLog({int limit = 100}) async {
+    final rows = await client.rpc(
+      'admin_list_audit_log',
+      params: {'p_limit': limit},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<Map<String, dynamic>> adminDashboard() async {
     final result = await client.rpc('saki_admin_dashboard');
     return Map<String, dynamic>.from(result as Map);
