@@ -1,5 +1,14 @@
 SAKI current Android release build — v3.0.1+90 — 2026-09-10
 
+Host agency title update — 2026-09-10
+
+- Added the supplied `wakeel.svga` as a bundled Flutter asset.
+- Added database-backed `is_host_agency_owner` detection so the title is shown only for users who own an active host agency.
+- Added the animated title to the owner's Profile, public user profile, and room user information card.
+- Validation: `flutter analyze` completed with no issues; the APK contains `assets/flutter_assets/assets/badges/wakeel.svga`, signature verification passed, and ZIP integrity passed.
+- Wakeel title APK: `dist/saki-wakeel-title-v3.0.1+90.apk`
+- Wakeel title APK SHA-256: `da9ecf9a3526a665035d50998eefa54ec0a53456617155d6b2255ba9e4d91c2a`
+
 Host agency management update — 2026-09-10
 
 - Added real host-agency management on top of `trace_agencies` and `trace_agency_members`.

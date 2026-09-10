@@ -13,6 +13,7 @@ import 'user_settings_page.dart';
 import 'super_admin_page.dart';
 import 'role_admin_page.dart';
 import 'host_agency_page.dart';
+import 'vip_widgets.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import 'family_square_page.dart';
@@ -63,13 +64,18 @@ class _ProfilePageState extends State<ProfilePage> {
         SakiService.instance.userReels(SakiService.instance.uid),
         SakiService.instance.accountModules(),
         SakiService.instance.familyBadgeForUser(SakiService.instance.uid),
+        SakiService.instance.isHostAgencyOwner(SakiService.instance.uid),
       ]);
       if (!mounted) return;
       setState(() {
         final base = results[0] as Map<String, dynamic>?;
         _profile = base == null
             ? null
-            : {...base, 'family_badge': results[5] as Map<String, dynamic>?};
+            : {
+                ...base,
+                'family_badge': results[5] as Map<String, dynamic>?,
+                'host_agency_owner': results[6] == true,
+              };
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
         _adminRole = base?['is_super_admin'] == true
@@ -515,6 +521,10 @@ class _ProfileCard extends StatelessWidget {
                         : profile['admin_role']?.toString() ?? 'user',
                     compact: true,
                   ),
+                ],
+                if (profile['host_agency_owner'] == true) ...[
+                  const SizedBox(height: 6),
+                  const HostAgencyTitleBadge(compact: true),
                 ],
                 const SizedBox(height: 2),
                 Text(

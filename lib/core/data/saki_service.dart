@@ -1003,11 +1003,19 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin',
+          'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,charm_xp,charm_level,is_super_admin,admin_role',
         )
         .eq('id', userId)
         .maybeSingle();
     return data == null ? null : Map<String, dynamic>.from(data);
+  }
+
+  Future<bool> isHostAgencyOwner(String userId) async {
+    final result = await client.rpc(
+      'is_host_agency_owner',
+      params: {'p_user_id': userId},
+    );
+    return result == true;
   }
 
   Future<Map<String, dynamic>?> familyBadgeForUser(String userId) async {

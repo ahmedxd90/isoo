@@ -582,3 +582,20 @@ String formatVipPrice(int value) => value >= 1000000
     : value >= 1000
     ? '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K'
     : '$value';
+
+class HostAgencyTitleBadge extends StatelessWidget {
+  const HostAgencyTitleBadge({super.key, this.compact = false});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: compact ? 92 : 128,
+    height: compact ? 34 : 46,
+    child: VipSvgaAsset(
+      assetPath: 'assets/badges/wakeel.svga',
+      fallbackAsset: 'assets/saki_super_admin_badge.png',
+      size: compact ? 34 : 46,
+      loop: true,
+    ),
+  );
+}

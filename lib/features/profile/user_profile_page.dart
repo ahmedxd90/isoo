@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
+import 'vip_widgets.dart';
 import '../messages/messages_page.dart';
 import '../rooms/rooms_page.dart';
 
@@ -56,6 +57,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.userVehicles(widget.userId),
         SakiService.instance.isFollowing(widget.userId),
         SakiService.instance.userBadges(widget.userId),
+        SakiService.instance.isHostAgencyOwner(widget.userId),
       ]);
       if (!mounted) return;
       final countryFlag = await SakiService.instance.countryFlag(
@@ -71,7 +73,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
       setState(() {
         final base = results[0] as Map<String, dynamic>?;
         final family = results[1] as Map<String, dynamic>?;
-        _profile = base == null ? null : {...base, 'family_badge': family};
+        _profile = base == null
+            ? null
+            : {
+                ...base,
+                'family_badge': family,
+                'host_agency_owner': results[8] == true,
+              };
         _stats = Map<String, int>.from(results[2] as Map);
         _posts = List<Map<String, dynamic>>.from(results[3] as List);
         _gifts = List<Map<String, dynamic>>.from(results[4] as List);
@@ -460,6 +468,10 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                           if (widget.profile['is_super_admin'] == true) ...[
                             const SizedBox(height: 5),
                             const SuperAdminBadge(),
+                          ],
+                          if (widget.profile['host_agency_owner'] == true) ...[
+                            const SizedBox(height: 5),
+                            const HostAgencyTitleBadge(compact: true),
                           ],
                           const SizedBox(height: 6),
                           GestureDetector(

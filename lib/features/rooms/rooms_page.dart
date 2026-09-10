@@ -2278,6 +2278,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     final modules = await _service.accountModulesForUser(userId);
     final familyBadge = await _service.familyBadgeForUser(userId);
+    final isHostAgencyOwner = await _service.isHostAgencyOwner(userId);
     final moderation = canModerate
         ? await _service.roomModerationStatus(_roomId, userId)
         : const <String, dynamic>{};
@@ -2347,6 +2348,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   gender: gender,
                   vip: vip,
                   familyBadge: familyBadge,
+                  isHostAgencyOwner: isHostAgencyOwner,
                   followers: followers,
                   following: followingCount,
                   isFollowing: following,
@@ -5670,6 +5672,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
     required this.gender,
     required this.vip,
     required this.familyBadge,
+    required this.isHostAgencyOwner,
     required this.followers,
     required this.following,
     required this.isFollowing,
@@ -5702,6 +5705,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
   final String gender;
   final int vip;
   final Map<String, dynamic>? familyBadge;
+  final bool isHostAgencyOwner;
   final dynamic followers;
   final dynamic following;
   final bool isFollowing;
@@ -5811,6 +5815,10 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                 VipSakiId(profile: {...profile, 'vip_level': vip}),
                 const SizedBox(height: 5),
                 VipTitleBadge(profile: {...profile, 'vip_level': vip}),
+                if (isHostAgencyOwner) ...[
+                  const SizedBox(height: 5),
+                  const HostAgencyTitleBadge(compact: true),
+                ],
                 const SizedBox(height: 8),
                 Wrap(
                   alignment: WrapAlignment.center,
