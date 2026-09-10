@@ -11,6 +11,7 @@ import 'admin_room_emojis_page.dart';
 import 'admin_banners_page.dart';
 import 'admin_redeem_codes_page.dart';
 import 'admin_reports_page.dart';
+import 'admin_shipping_agents_page.dart';
 import 'store_pages.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -170,6 +171,20 @@ class SuperAdminPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const AdminFamiliesPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.local_shipping_rounded),
+              title: const Text('إدارة وكلاء الشحن'),
+              subtitle: const Text('تعيين الوكلاء وإدارة عملة ساكي'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AdminShippingAgentsPage(),
+                  ),
                 );
               },
             ),

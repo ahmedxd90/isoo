@@ -2280,6 +2280,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final familyBadge = await _service.familyBadgeForUser(userId);
     final isHostAgencyOwner = await _service.isHostAgencyMember(userId);
     final isAgencyOwner = await _service.isHostAgencyOwner(userId);
+    final isShippingAgent = await _service.isShippingAgent(userId);
     final moderation = canModerate
         ? await _service.roomModerationStatus(_roomId, userId)
         : const <String, dynamic>{};
@@ -2351,6 +2352,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   familyBadge: familyBadge,
                   isHostAgencyOwner: isHostAgencyOwner,
                   isAgencyOwner: isAgencyOwner,
+                  isShippingAgent: isShippingAgent,
                   followers: followers,
                   following: followingCount,
                   isFollowing: following,
@@ -5676,6 +5678,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
     required this.familyBadge,
     required this.isHostAgencyOwner,
     required this.isAgencyOwner,
+    required this.isShippingAgent,
     required this.followers,
     required this.following,
     required this.isFollowing,
@@ -5710,6 +5713,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
   final Map<String, dynamic>? familyBadge;
   final bool isHostAgencyOwner;
   final bool isAgencyOwner;
+  final bool isShippingAgent;
   final dynamic followers;
   final dynamic following;
   final bool isFollowing;
@@ -5825,6 +5829,10 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                     compact: true,
                     label: isAgencyOwner ? 'وكيل' : 'مضيف',
                   ),
+                ],
+                if (isShippingAgent) ...[
+                  const SizedBox(height: 5),
+                  const HostAgencyTitleBadge(label: 'وكيل شحن', compact: true),
                 ],
                 const SizedBox(height: 8),
                 Wrap(

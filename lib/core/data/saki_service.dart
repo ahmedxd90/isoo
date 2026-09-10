@@ -2944,6 +2944,68 @@ class SakiService {
     return list.first;
   }
 
+  Future<bool> isShippingAgent(String userId) async {
+    final result = await client.rpc(
+      'is_shipping_agent',
+      params: {'p_user_id': userId},
+    );
+    return result == true;
+  }
+
+  Future<Map<String, dynamic>> shippingAgentDashboard() async {
+    final result = await client.rpc('shipping_agent_dashboard');
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>?> shippingFindUser(int sakiId) async {
+    final result = await client.rpc(
+      'shipping_find_user',
+      params: {'p_saki_id': sakiId},
+    );
+    final rows = List<Map<String, dynamic>>.from(result as List);
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  Future<Map<String, dynamic>> shippingTopupUser(
+    int recipientSakiId,
+    int sakiCoins,
+  ) async {
+    final result = await client.rpc(
+      'shipping_topup_user',
+      params: {
+        'p_recipient_saki_id': recipientSakiId,
+        'p_saki_coins': sakiCoins,
+      },
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> adminShippingAgents() async {
+    final result = await client.rpc('admin_shipping_agents');
+    return List<Map<String, dynamic>>.from(result as List);
+  }
+
+  Future<void> adminAssignShippingAgent(int sakiId) async {
+    await client.rpc(
+      'admin_assign_shipping_agent',
+      params: {'p_saki_id': sakiId},
+    );
+  }
+
+  Future<void> adminRemoveShippingAgent(String userId) async {
+    await client.rpc(
+      'admin_remove_shipping_agent',
+      params: {'p_user_id': userId},
+    );
+  }
+
+  Future<void> adminAddSakiCoins(String userId, int amount) async {
+    await client.rpc(
+      'admin_add_saki_coins',
+      params: {'p_user_id': userId, 'p_amount': amount},
+    );
+  }
+
   Future<void> updateAccountSettings(Map<String, dynamic> settings) async {
     await client
         .from('saki_account_modules')

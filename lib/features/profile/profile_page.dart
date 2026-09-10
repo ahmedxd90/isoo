@@ -13,6 +13,7 @@ import 'user_settings_page.dart';
 import 'super_admin_page.dart';
 import 'role_admin_page.dart';
 import 'host_agency_page.dart';
+import 'shipping_agent_page.dart';
 import 'vip_widgets.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
@@ -66,6 +67,7 @@ class _ProfilePageState extends State<ProfilePage> {
         SakiService.instance.familyBadgeForUser(SakiService.instance.uid),
         SakiService.instance.isHostAgencyMember(SakiService.instance.uid),
         SakiService.instance.isHostAgencyOwner(SakiService.instance.uid),
+        SakiService.instance.isShippingAgent(SakiService.instance.uid),
       ]);
       if (!mounted) return;
       setState(() {
@@ -77,6 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 'family_badge': results[5] as Map<String, dynamic>?,
                 'host_agency_member': results[6] == true,
                 'host_agency_owner': results[7] == true,
+                'shipping_agent': results[8] == true,
               };
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
@@ -125,6 +128,12 @@ class _ProfilePageState extends State<ProfilePage> {
     if (type == 'host_agency') {
       await Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const HostAgencyPage()));
+      if (mounted) _load();
+      return;
+    }
+    if (type == 'shipping_agent') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const ShippingAgentPage()));
       if (mounted) _load();
       return;
     }
@@ -346,6 +355,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   const Expanded(child: SizedBox()),
                 ],
               ),
+            if (profile['shipping_agent'] == true) ...[
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionTile(
+                      icon: FontAwesomeIcons.coins,
+                      label: 'وكيل شحن',
+                      color: const Color(0xFF2563EB),
+                      background: const Color(0xFFEFF6FF),
+                      onTap: () => _openModule('shipping_agent'),
+                    ),
+                  ),
+                  const Expanded(child: SizedBox()),
+                  const Expanded(child: SizedBox()),
+                ],
+              ),
+            ],
             if (_adminRole != 'user') ...[
               const SizedBox(height: 14),
               InkWell(
@@ -533,6 +560,10 @@ class _ProfileCard extends StatelessWidget {
                         ? 'وكيل'
                         : 'مضيف',
                   ),
+                ],
+                if (profile['shipping_agent'] == true) ...[
+                  const SizedBox(height: 6),
+                  const HostAgencyTitleBadge(label: 'وكيل شحن', compact: true),
                 ],
                 const SizedBox(height: 2),
                 Text(
