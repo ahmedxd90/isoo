@@ -311,10 +311,12 @@ class VipPrivilegesGrid extends StatelessWidget {
   const VipPrivilegesGrid({
     super.key,
     required this.selectedLevel,
+    required this.activeLevel,
     required this.benefits,
     required this.color,
   });
   final int selectedLevel;
+  final int activeLevel;
   final List<VipBenefit> benefits;
   final Color color;
   @override
@@ -330,18 +332,25 @@ class VipPrivilegesGrid extends StatelessWidget {
     ),
     itemBuilder: (_, index) {
       final b = benefits[index];
-      final unlocked = selectedLevel >= b.requiredLevel;
+      final available = selectedLevel >= b.requiredLevel;
+      final enabled = activeLevel >= b.requiredLevel;
       return AnimatedOpacity(
-        opacity: unlocked ? 1 : .38,
+        opacity: available ? 1 : .38,
         duration: const Duration(milliseconds: 200),
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: unlocked ? color.withValues(alpha: .12) : VipDesign.panel,
+            color: enabled
+                ? color.withValues(alpha: .20)
+                : available
+                ? color.withValues(alpha: .08)
+                : VipDesign.panel,
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
-              color: unlocked
-                  ? color.withValues(alpha: .65)
+              color: enabled
+                  ? color.withValues(alpha: .75)
+                  : available
+                  ? color.withValues(alpha: .35)
                   : Colors.white.withValues(alpha: .08),
             ),
           ),
@@ -356,8 +365,14 @@ class VipPrivilegesGrid extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  unlocked ? b.icon : Icons.lock_outline_rounded,
-                  color: unlocked ? color : VipDesign.muted,
+                  available
+                      ? (enabled ? b.icon : Icons.lock_clock_rounded)
+                      : Icons.lock_outline_rounded,
+                  color: enabled
+                      ? color
+                      : available
+                      ? color.withValues(alpha: .75)
+                      : VipDesign.muted,
                   size: 24,
                 ),
               ),
@@ -367,7 +382,11 @@ class VipPrivilegesGrid extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 style: TextStyle(
-                  color: unlocked ? Colors.white : VipDesign.muted,
+                  color: enabled
+                      ? Colors.white
+                      : available
+                      ? Colors.white70
+                      : VipDesign.muted,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),

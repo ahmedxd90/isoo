@@ -25,20 +25,17 @@ class _VipPageState extends State<VipPage> {
     10: 20000000,
   };
   static const benefits = <VipBenefit>[
-    VipBenefit(Icons.directions_walk_rounded, 'مؤثر دخول', 1),
-    VipBenefit(Icons.crop_rounded, 'إطار خاص', 1),
-    VipBenefit(Icons.card_giftcard_rounded, 'صندوق أسبوعي', 1),
-    VipBenefit(Icons.comment_rounded, 'فقاعة دردشة', 2),
-    VipBenefit(Icons.auto_delete_rounded, 'مسح الدردشة', 2),
-    VipBenefit(Icons.send_rounded, 'رسائل طائرة', 3),
-    VipBenefit(Icons.person_rounded, 'صورة متحركة', 4),
-    VipBenefit(Icons.do_not_disturb_on_rounded, 'منع الإزعاج', 5),
-    VipBenefit(Icons.public_rounded, 'إعلان عالمي', 6),
-    VipBenefit(Icons.block_rounded, 'حظر الغرباء', 7),
-    VipBenefit(Icons.admin_panel_settings_rounded, 'منع الطرد', 8),
-    VipBenefit(Icons.push_pin_rounded, 'تثبيت الغرفة', 9),
-    VipBenefit(Icons.note_alt_rounded, 'بطاقة منشور', 10),
-    VipBenefit(Icons.workspace_premium_rounded, 'إشراف خارق', 10),
+    VipBenefit(Icons.crop_rounded, 'إطار وصورة VIP', 1),
+    VipBenefit(Icons.directions_walk_rounded, 'دخول VIP متحرك', 1),
+    VipBenefit(Icons.gradient_rounded, 'اسم ملون متحرك', 2),
+    VipBenefit(Icons.badge_rounded, 'بطاقة ملف VIP', 3),
+    VipBenefit(Icons.auto_awesome_rounded, 'مؤثر دخول متقدم', 4),
+    VipBenefit(Icons.wallpaper_rounded, 'خلفية غرفة مخصصة', 5),
+    VipBenefit(Icons.perm_identity_rounded, 'SAKI ID متدرج', 6),
+    VipBenefit(Icons.gif_box_rounded, 'صورة GIF للملف', 7),
+    VipBenefit(Icons.graphic_eq_rounded, 'موجة صوت VIP8', 8),
+    VipBenefit(Icons.workspace_premium_rounded, 'شارة VIP9 وVIP10', 9),
+    VipBenefit(Icons.card_giftcard_rounded, 'إطار VIP10 المميز', 10),
   ];
 
   final _service = SakiService.instance;
@@ -101,10 +98,7 @@ class _VipPageState extends State<VipPage> {
       profile['vip_expires_at']?.toString() ?? '',
     );
     return expiry != null && expiry.isAfter(DateTime.now())
-        ? ((_profile['vip_level'] as num?)?.toInt() ??
-                  (profile['vip_level'] as num?)?.toInt() ??
-                  0)
-              .clamp(1, 10)
+        ? ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(1, 10)
         : 0;
   }
 
@@ -251,6 +245,7 @@ class _VipPageState extends State<VipPage> {
                         ),
                         VipPrivilegesGrid(
                           selectedLevel: level,
+                          activeLevel: active,
                           benefits: benefits,
                           color: color,
                         ),
