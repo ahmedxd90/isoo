@@ -619,6 +619,18 @@ class HostAgencyTitleBadge extends StatelessWidget {
           color: Colors.white,
           size: compact ? 12 : 16,
         ),
+        if (label == 'وكيل شحن') ...[
+          const SizedBox(width: 3),
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: VipSvgaAsset(
+              assetPath: 'assets/badges/wkelchain_new.svga',
+              fallbackAsset: 'assets/badges/saki_coin.png',
+              size: 16,
+            ),
+          ),
+        ],
         SizedBox(width: compact ? 4 : 6),
         Text(
           label,
