@@ -65,6 +65,7 @@ class _ProfilePageState extends State<ProfilePage> {
         SakiService.instance.accountModules(),
         SakiService.instance.familyBadgeForUser(SakiService.instance.uid),
         SakiService.instance.isHostAgencyMember(SakiService.instance.uid),
+        SakiService.instance.isHostAgencyOwner(SakiService.instance.uid),
       ]);
       if (!mounted) return;
       setState(() {
@@ -75,6 +76,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ...base,
                 'family_badge': results[5] as Map<String, dynamic>?,
                 'host_agency_member': results[6] == true,
+                'host_agency_owner': results[7] == true,
               };
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
@@ -525,7 +527,12 @@ class _ProfileCard extends StatelessWidget {
                 ],
                 if (profile['host_agency_member'] == true) ...[
                   const SizedBox(height: 6),
-                  const HostAgencyTitleBadge(compact: true),
+                  HostAgencyTitleBadge(
+                    compact: true,
+                    label: profile['host_agency_owner'] == true
+                        ? 'وكيل'
+                        : 'مضيف',
+                  ),
                 ],
                 const SizedBox(height: 2),
                 Text(

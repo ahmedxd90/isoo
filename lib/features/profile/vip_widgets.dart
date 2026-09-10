@@ -584,8 +584,13 @@ String formatVipPrice(int value) => value >= 1000000
     : '$value';
 
 class HostAgencyTitleBadge extends StatelessWidget {
-  const HostAgencyTitleBadge({super.key, this.compact = false});
+  const HostAgencyTitleBadge({
+    super.key,
+    this.compact = false,
+    this.label = 'مضيف',
+  });
   final bool compact;
+  final String label;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -616,7 +621,7 @@ class HostAgencyTitleBadge extends StatelessWidget {
         ),
         SizedBox(width: compact ? 4 : 6),
         Text(
-          'مضيف',
+          label,
           style: TextStyle(
             color: Colors.white,
             fontSize: compact ? 10 : 12,
