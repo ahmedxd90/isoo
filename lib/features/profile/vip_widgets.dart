@@ -588,14 +588,42 @@ class HostAgencyTitleBadge extends StatelessWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: compact ? 92 : 128,
-    height: compact ? 34 : 46,
-    child: VipSvgaAsset(
-      assetPath: 'assets/badges/wakeel.svga',
-      fallbackAsset: 'assets/saki_super_admin_badge.png',
-      size: compact ? 34 : 46,
-      loop: true,
+  Widget build(BuildContext context) => Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: compact ? 8 : 12,
+      vertical: compact ? 4 : 7,
+    ),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFF0EA5E9), Color(0xFF7C3AED)],
+      ),
+      borderRadius: BorderRadius.circular(999),
+      border: Border.all(color: const Color(0xFFBAE6FD), width: 1),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFF0EA5E9).withValues(alpha: .28),
+          blurRadius: compact ? 7 : 12,
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.mic_external_on_rounded,
+          color: Colors.white,
+          size: compact ? 12 : 16,
+        ),
+        SizedBox(width: compact ? 4 : 6),
+        Text(
+          'مضيف',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: compact ? 10 : 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     ),
   );
 }

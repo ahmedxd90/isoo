@@ -64,7 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
         SakiService.instance.userReels(SakiService.instance.uid),
         SakiService.instance.accountModules(),
         SakiService.instance.familyBadgeForUser(SakiService.instance.uid),
-        SakiService.instance.isHostAgencyOwner(SakiService.instance.uid),
+        SakiService.instance.isHostAgencyMember(SakiService.instance.uid),
       ]);
       if (!mounted) return;
       setState(() {
@@ -74,7 +74,7 @@ class _ProfilePageState extends State<ProfilePage> {
             : {
                 ...base,
                 'family_badge': results[5] as Map<String, dynamic>?,
-                'host_agency_owner': results[6] == true,
+                'host_agency_member': results[6] == true,
               };
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
@@ -326,23 +326,24 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
             const SizedBox(height: 9),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.building,
-                    label: 'وكالة المضيفين',
-                    color: _cyan,
-                    background: _cyanSoft,
-                    onTap: () => _openModule('host_agency'),
+            if (profile['host_agency_member'] == true)
+              Row(
+                children: [
+                  Expanded(
+                    child: _ActionTile(
+                      icon: FontAwesomeIcons.building,
+                      label: 'وكالة المضيفين',
+                      color: _cyan,
+                      background: _cyanSoft,
+                      onTap: () => _openModule('host_agency'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 9),
-                const Expanded(child: SizedBox()),
-                const SizedBox(width: 9),
-                const Expanded(child: SizedBox()),
-              ],
-            ),
+                  const SizedBox(width: 9),
+                  const Expanded(child: SizedBox()),
+                  const SizedBox(width: 9),
+                  const Expanded(child: SizedBox()),
+                ],
+              ),
             if (_adminRole != 'user') ...[
               const SizedBox(height: 14),
               InkWell(
@@ -522,7 +523,7 @@ class _ProfileCard extends StatelessWidget {
                     compact: true,
                   ),
                 ],
-                if (profile['host_agency_owner'] == true) ...[
+                if (profile['host_agency_member'] == true) ...[
                   const SizedBox(height: 6),
                   const HostAgencyTitleBadge(compact: true),
                 ],

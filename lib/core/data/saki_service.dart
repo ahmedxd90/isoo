@@ -118,6 +118,87 @@ class SakiService {
     );
   }
 
+  Future<void> hostAgencyRemoveHost(String userId) async {
+    await client.rpc('host_agency_remove_host', params: {'p_user_id': userId});
+  }
+
+  Future<String> hostAgencyInviteHost(int sakiId) async {
+    final result = await client.rpc(
+      'host_agency_invite_host',
+      params: {'p_saki_id': sakiId},
+    );
+    return result.toString();
+  }
+
+  Future<bool> isHostAgencyMember(String userId) async {
+    final result = await client.rpc(
+      'is_host_agency_member',
+      params: {'p_user_id': userId},
+    );
+    return result == true;
+  }
+
+  Future<Map<String, dynamic>> hostAgencyHostDashboard() async {
+    final result = await client.rpc('host_agency_host_dashboard');
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> hostAgencyWalletDashboard() async {
+    final result = await client.rpc('host_agency_wallet_dashboard');
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<void> hostAgencyAcceptInvite(String inviteId) async {
+    await client.rpc(
+      'host_agency_accept_invite',
+      params: {'p_invite_id': inviteId},
+    );
+  }
+
+  Future<void> hostAgencyDeclineInvite(String inviteId) async {
+    await client.rpc(
+      'host_agency_decline_invite',
+      params: {'p_invite_id': inviteId},
+    );
+  }
+
+  Future<Map<String, dynamic>> hostAgencyConvertDiamondsToUsd(
+    int diamonds,
+  ) async {
+    final result = await client.rpc(
+      'host_agency_convert_diamonds_to_usd',
+      params: {'p_diamonds': diamonds},
+    );
+    final rows = result is List ? result : [result];
+    return rows.isEmpty
+        ? const {}
+        : Map<String, dynamic>.from(rows.first as Map);
+  }
+
+  Future<Map<String, dynamic>> hostAgencyConvertUsdToGold(double usd) async {
+    final result = await client.rpc(
+      'host_agency_convert_usd_to_gold',
+      params: {'p_usd': usd},
+    );
+    final rows = result is List ? result : [result];
+    return rows.isEmpty
+        ? const {}
+        : Map<String, dynamic>.from(rows.first as Map);
+  }
+
+  Future<String> hostAgencyRequestUsdWithdrawal(double usd) async {
+    final result = await client.rpc(
+      'host_agency_request_usd_withdrawal',
+      params: {'p_usd': usd},
+    );
+    return result.toString();
+  }
+
+  Future<List<Map<String, dynamic>>> hostAgencyWithdrawals() async {
+    final rows = await client.rpc('host_agency_my_withdrawals');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<List<Map<String, dynamic>>> adminFamilies() async {
     final rows = await client
         .from('trace_families')

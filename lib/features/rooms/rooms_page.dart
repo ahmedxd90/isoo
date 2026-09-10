@@ -2278,7 +2278,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     final modules = await _service.accountModulesForUser(userId);
     final familyBadge = await _service.familyBadgeForUser(userId);
-    final isHostAgencyOwner = await _service.isHostAgencyOwner(userId);
+    final isHostAgencyOwner = await _service.isHostAgencyMember(userId);
     final moderation = canModerate
         ? await _service.roomModerationStatus(_roomId, userId)
         : const <String, dynamic>{};

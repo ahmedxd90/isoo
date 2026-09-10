@@ -57,7 +57,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.userVehicles(widget.userId),
         SakiService.instance.isFollowing(widget.userId),
         SakiService.instance.userBadges(widget.userId),
-        SakiService.instance.isHostAgencyOwner(widget.userId),
+        SakiService.instance.isHostAgencyMember(widget.userId),
       ]);
       if (!mounted) return;
       final countryFlag = await SakiService.instance.countryFlag(
@@ -78,7 +78,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
             : {
                 ...base,
                 'family_badge': family,
-                'host_agency_owner': results[8] == true,
+                'host_agency_member': results[8] == true,
               };
         _stats = Map<String, int>.from(results[2] as Map);
         _posts = List<Map<String, dynamic>>.from(results[3] as List);
@@ -469,7 +469,7 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                             const SizedBox(height: 5),
                             const SuperAdminBadge(),
                           ],
-                          if (widget.profile['host_agency_owner'] == true) ...[
+                          if (widget.profile['host_agency_member'] == true) ...[
                             const SizedBox(height: 5),
                             const HostAgencyTitleBadge(compact: true),
                           ],
