@@ -14,15 +14,15 @@ import 'store_pages.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
-const _blue = Color(0xFFF97316);
-const _cyan = Color(0xFF06B6D4);
-const _adminInk = Color(0xFF111827);
+const _blue = Color(0xFF7C5CFF);
+const _cyan = Color(0xFF2ED9E6);
+const _adminInk = Color(0xFFF8FAFF);
 
 class SuperAdminPage extends StatelessWidget {
   const SuperAdminPage({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: const Color(0xFFF7FAFC),
+    backgroundColor: const Color(0xFF080A18),
     appBar: PreferredSize(
       preferredSize: const Size.fromHeight(78),
       child: Container(
@@ -403,7 +403,7 @@ class _MetricCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: const Color(0xFF12162A),
       borderRadius: BorderRadius.circular(18),
       border: Border.all(color: _cyan.withValues(alpha: .12)),
       boxShadow: const [
@@ -442,7 +442,7 @@ class _MetricCard extends StatelessWidget {
               Text(
                 label,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.black54, fontSize: 11),
+                style: const TextStyle(color: Color(0xFF9AA4C2), fontSize: 11),
               ),
             ],
           ),
@@ -470,7 +470,7 @@ class _AdminCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF12162A),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black.withValues(alpha: .05)),
         boxShadow: const [
@@ -507,7 +507,10 @@ class _AdminCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Colors.black54, fontSize: 11),
+                  style: const TextStyle(
+                    color: Color(0xFF9AA4C2),
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
@@ -515,7 +518,7 @@ class _AdminCard extends StatelessWidget {
           const Icon(
             Icons.arrow_back_ios_new_rounded,
             size: 14,
-            color: Colors.black38,
+            color: Color(0xFF7F8BAB),
           ),
         ],
       ),

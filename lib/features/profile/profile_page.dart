@@ -17,17 +17,18 @@ import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
-const _orange = Color(0xFFF97316);
-const _orangeSoft = Color(0xFFFFF7ED);
-const _cyan = Color(0xFF06B6D4);
-const _cyanSoft = Color(0xFFECFEFF);
-const _ink = Color(0xFF1F2937);
-const _muted = Color(0xFF9CA3AF);
-const _line = Color(0xFFF0F1F5);
+const _orange = Color(0xFF7C5CFF);
+const _orangeSoft = Color(0x267C5CFF);
+const _cyan = Color(0xFF2ED9E6);
+const _cyanSoft = Color(0x222ED9E6);
+const _ink = Color(0xFFF8FAFF);
+const _muted = Color(0xFF9AA4C2);
+const _line = Color(0x1AFFFFFF);
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -206,9 +207,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final followers = _stats['followers'] ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: SakiColors.dark,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: SakiColors.card,
         elevation: 0,
         surfaceTintColor: Colors.white,
         leading: IconButton(

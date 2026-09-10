@@ -93,7 +93,8 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     try {
       await Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute(
-          builder: (_) => RoomDetailPage(room: Map<String, dynamic>.from(current)),
+          builder: (_) =>
+              RoomDetailPage(room: Map<String, dynamic>.from(current)),
         ),
       );
     } finally {
@@ -149,13 +150,19 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFF67E8F9), width: 3),
-                  boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 14)],
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black54, blurRadius: 14),
+                  ],
                 ),
                 child: ClipOval(
                   child: image.isEmpty
                       ? const ColoredBox(
                           color: Color(0xFF343B79),
-                          child: Icon(Icons.meeting_room, color: Colors.white, size: 28),
+                          child: Icon(
+                            Icons.meeting_room,
+                            color: Colors.white,
+                            size: 28,
+                          ),
                         )
                       : Image.network(image, fit: BoxFit.cover),
                 ),
@@ -164,10 +171,17 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
                 right: -4,
                 bottom: -2,
                 child: DecoratedBox(
-                  decoration: const BoxDecoration(color: Color(0xFF1D2442), shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF1D2442),
+                    shape: BoxShape.circle,
+                  ),
                   child: const Padding(
                     padding: EdgeInsets.all(7),
-                    child: Icon(Icons.keyboard_return_rounded, color: Color(0xFF67E8F9), size: 17),
+                    child: Icon(
+                      Icons.keyboard_return_rounded,
+                      color: Color(0xFF67E8F9),
+                      size: 17,
+                    ),
                   ),
                 ),
               ),
@@ -177,8 +191,8 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
       ),
     );
   }
-
 }
+
 class _GlobalGiftBanner extends StatefulWidget {
   const _GlobalGiftBanner();
   @override
@@ -358,8 +372,8 @@ class SakiHtmlBottomNav extends StatelessWidget {
     return Container(
       height: 78,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+        color: Color(0xFF12162A),
+        border: Border(top: BorderSide(color: Color(0x222ED9E6))),
         boxShadow: [
           BoxShadow(
             color: Color(0x55000000),
@@ -379,7 +393,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
             return Expanded(
               child: InkWell(
                 onTap: () => onSelected(index),
-                splashColor: const Color(0xFF656BF9).withValues(alpha: .12),
+                splashColor: const Color(0xFF2ED9E6).withValues(alpha: .12),
                 highlightColor: Colors.transparent,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
@@ -393,7 +407,7 @@ class SakiHtmlBottomNav extends StatelessWidget {
                         height: active && index == 0 ? 34 : 30,
                         decoration: BoxDecoration(
                           color: active && index == 0
-                              ? const Color(0xFF656BF9).withValues(alpha: .14)
+                              ? const Color(0xFF7C5CFF).withValues(alpha: .18)
                               : Colors.transparent,
                           shape: BoxShape.circle,
                         ),
@@ -405,8 +419,8 @@ class SakiHtmlBottomNav extends StatelessWidget {
                             errorBuilder: (_, _, _) => FaIcon(
                               FontAwesomeIcons.circle,
                               color: active
-                                  ? const Color(0xFF656BF9)
-                                  : const Color(0xFF9CA3AF),
+                                  ? const Color(0xFF2ED9E6)
+                                  : const Color(0xFF7F8BAB),
                               size: active ? 19 : 18,
                             ),
                           ),
@@ -417,8 +431,8 @@ class SakiHtmlBottomNav extends StatelessWidget {
                         item.$3,
                         style: TextStyle(
                           color: active
-                              ? const Color(0xFF656BF9)
-                              : const Color(0xFF9CA3AF),
+                              ? const Color(0xFF2ED9E6)
+                              : const Color(0xFF7F8BAB),
                           fontSize: 10,
                           fontWeight: active
                               ? FontWeight.w900

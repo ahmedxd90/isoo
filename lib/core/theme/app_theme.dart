@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class SakiColors {
-  static const royalPurple = Color(0xFF656BF9);
-  static const darkPurple = Color(0xFF4F55C9);
-  static const cyan = Color(0xFF8E91FF);
-  static const navy = Color(0xFF1B1B23);
-  static const dark = Color(0xFF09090B);
-  static const card = Color(0xFF18181B);
-  static const muted = Color(0xFFA1A1AA);
+  static const royalPurple = Color(0xFF7C5CFF);
+  static const darkPurple = Color(0xFF4C35B8);
+  static const cyan = Color(0xFF2ED9E6);
+  static const navy = Color(0xFF12152D);
+  static const dark = Color(0xFF080A18);
+  static const card = Color(0xFF12162A);
+  static const muted = Color(0xFF9AA4C2);
   static const gold = Color(0xFFF59E0B);
-  static const light = Color(0xFFF7F7F7);
+  static const light = Color(0xFFF4F6FF);
 }
 
 class SakiTheme {
@@ -67,6 +67,7 @@ class SakiTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: SakiColors.card,
         indicatorColor: SakiColors.royalPurple.withValues(alpha: .28),
+        height: 72,
         labelTextStyle: WidgetStatePropertyAll(
           const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         ),
@@ -96,6 +97,11 @@ class SakiTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        indicatorColor: SakiColors.royalPurple.withValues(alpha: .12),
+        height: 72,
       ),
     );
   }

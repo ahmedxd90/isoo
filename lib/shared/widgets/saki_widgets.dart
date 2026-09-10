@@ -243,10 +243,68 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: SakiColors.card.withValues(alpha: .88),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
       child: Padding(padding: padding, child: child),
     );
   }
+}
+
+class SakiSectionHeader extends StatelessWidget {
+  const SakiSectionHeader({
+    super.key,
+    required this.title,
+    this.subtitle,
+    this.action,
+    this.onAction,
+  });
+  final String title;
+  final String? subtitle;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 4,
+        height: 28,
+        decoration: BoxDecoration(
+          gradient: SakiTheme.gradient,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+            ),
+            if (subtitle != null)
+              Text(
+                subtitle!,
+                style: const TextStyle(color: SakiColors.muted, fontSize: 11),
+              ),
+          ],
+        ),
+      ),
+      if (action != null) TextButton(onPressed: onAction, child: Text(action!)),
+    ],
+  );
 }
 
 class VipUsername extends StatefulWidget {
