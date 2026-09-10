@@ -1,3 +1,27 @@
+SAKI current Android release build — v3.0.1+90 — 2026-09-10
+
+Flutter: 3.47.3
+Dart: 3.13.3
+Java: OpenJDK 21.0.12 (full JDK)
+Android SDK: Platform 37.0.0 / Build Tools 37.0.0
+Android package: saki.chat.co
+versionName: 3.0.1 | versionCode: 90
+compileSdk: 37 | targetSdk: 36 | minSdk: 24
+Supabase project ref: vzooppdaqayerpmvdotl
+
+Final APK output:
+- build/app/outputs/flutter-apk/app-release.apk
+- Delivery copy: dist/saki-release-v3.0.1+90.apk
+- Size: 457,614,724 bytes (457.6 MB)
+- SHA-256: c6352be25df02b0129d5558474e9b2d925465407465e9aa4aa9ef2ea2599e5de
+
+Validation:
+- `flutter pub get` completed successfully.
+- `flutter analyze` completed with no issues.
+- Supabase Auth health returned HTTP 200 and PostgREST read access to `profiles` returned HTTP 200 using the configured publishable key.
+- `aapt` confirmed package `saki.chat.co`, versionName `3.0.1`, versionCode `90`, compile SDK 37, target SDK 36, and min SDK 24.
+- APK Signature Scheme v2 verification passed; ZIP integrity test passed.
+
 SAKI seat leave release — v1.3.2+15 — 2026-09-06
 
 Flutter: 3.47.2

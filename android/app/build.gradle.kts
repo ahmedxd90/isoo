@@ -9,6 +9,7 @@ plugins {
 
 android {
     namespace = "saki.chat.co"
+    // permission_handler 13 requires Android SDK 37 or newer.
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
