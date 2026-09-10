@@ -12,6 +12,7 @@ import 'vip_page.dart';
 import 'user_settings_page.dart';
 import 'super_admin_page.dart';
 import 'role_admin_page.dart';
+import 'host_agency_page.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import 'family_square_page.dart';
@@ -110,6 +111,12 @@ class _ProfilePageState extends State<ProfilePage> {
     if (type == 'family') {
       await Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const FamilySquarePage()));
+      if (mounted) _load();
+      return;
+    }
+    if (type == 'host_agency') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const HostAgencyPage()));
       if (mounted) _load();
       return;
     }
@@ -310,6 +317,24 @@ class _ProfilePageState extends State<ProfilePage> {
                     onTap: () => _openModule('store'),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionTile(
+                    icon: FontAwesomeIcons.building,
+                    label: 'وكالة المضيفين',
+                    color: _cyan,
+                    background: _cyanSoft,
+                    onTap: () => _openModule('host_agency'),
+                  ),
+                ),
+                const SizedBox(width: 9),
+                const Expanded(child: SizedBox()),
+                const SizedBox(width: 9),
+                const Expanded(child: SizedBox()),
               ],
             ),
             if (_adminRole != 'user') ...[

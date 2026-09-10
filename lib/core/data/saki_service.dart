@@ -77,12 +77,45 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> adminAgencies() async {
-    final rows = await client
-        .from('trace_agencies')
-        .select('id,name,agent_code,status,created_at,owner_id')
-        .order('created_at', ascending: false)
-        .limit(200);
-    return List<Map<String, dynamic>>.from(rows);
+    final rows = await client.rpc('admin_list_agencies');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<Map<String, dynamic>> adminCreateHostAgency({
+    required String name,
+    required int ownerSakiId,
+    required String country,
+  }) async {
+    final result = await client.rpc(
+      'admin_create_host_agency',
+      params: {
+        'p_name': name,
+        'p_owner_saki_id': ownerSakiId,
+        'p_country': country,
+      },
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> hostAgencyDashboard() async {
+    final result = await client.rpc('host_agency_dashboard');
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> hostAgencyHosts() async {
+    final rows = await client.rpc('host_agency_hosts');
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<void> hostAgencyAddHost(int sakiId) async {
+    await client.rpc('host_agency_add_host', params: {'p_saki_id': sakiId});
+  }
+
+  Future<void> hostAgencySetHostStatus(String userId, String status) async {
+    await client.rpc(
+      'host_agency_set_host_status',
+      params: {'p_user_id': userId, 'p_status': status},
+    );
   }
 
   Future<List<Map<String, dynamic>>> adminFamilies() async {

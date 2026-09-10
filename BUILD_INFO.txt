@@ -1,5 +1,16 @@
 SAKI current Android release build — v3.0.1+90 — 2026-09-10
 
+Host agency management update — 2026-09-10
+
+- Added real host-agency management on top of `trace_agencies` and `trace_agency_members`.
+- Added Supabase functions for creating agencies, resolving agency owners by SAKI ID, agency-owner dashboard metrics, adding hosts by SAKI ID, and changing host status.
+- Added country, owner, host count, agency code, and status to Super Admin agency management.
+- Added a complete Super Admin create-agency screen and a Profile entry for the host-agency owner dashboard.
+- Added host list, host status controls, active rooms, pending hosts, and gift totals to the agency dashboard.
+- Validation: `flutter analyze` completed with no issues; APK Signature Scheme v2 and ZIP integrity checks passed.
+- Host agency APK: `dist/saki-host-agency-v3.0.1+90.apk`
+- Host agency APK SHA-256: `c27bd006157eca12268daef323a43e9c8bc8e874ef1525acba71e30765cdaef0`
+
 Role-based administration update — 2026-09-10
 
 - Added database-enforced RBAC for `super_admin`, `admin`, `bd`, `official_host`, `customer_service`, and `user`.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
+import 'create_host_agency_page.dart';
 
 const _adminBlue = Color(0xFF4F46E5);
 const _adminCyan = Color(0xFF06B6D4);
@@ -28,11 +29,23 @@ class _AdminAgenciesPageState extends State<AdminAgenciesPage> {
     future: _future,
     empty: 'لا توجد وكالات مسجلة حاليًا.',
     onRefresh: _reload,
+    floatingActionButton: FloatingActionButton.extended(
+      backgroundColor: _adminCyan,
+      onPressed: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CreateHostAgencyPage()),
+        );
+        _reload();
+      },
+      icon: const Icon(Icons.add_business_rounded, color: Colors.white),
+      label: const Text('إضافة وكالة', style: TextStyle(color: Colors.white)),
+    ),
     itemBuilder: (row) => _AdminRecordCard(
       icon: Icons.business_rounded,
       title: row['name'] as String? ?? 'وكالة',
       subtitle:
-          'كود الوكالة: ${row['agent_code'] ?? '—'}\nالحالة: ${row['status'] ?? '—'}',
+          'المالك: ${row['owner_username'] ?? '—'} (SAKI ID: ${row['owner_saki_id'] ?? '—'})\nالدولة: ${row['country'] ?? '—'} • المضيفون: ${row['host_count'] ?? 0}\nكود الوكالة: ${row['agent_code'] ?? '—'}\nالحالة: ${row['status'] ?? '—'}',
       status: row['status'] as String?,
       onStatus: (status) async {
         await SakiService.instance.adminSetAgencyStatus(
@@ -125,12 +138,14 @@ class _AdminRecordsScaffold extends StatelessWidget {
     required this.empty,
     required this.itemBuilder,
     required this.onRefresh,
+    this.floatingActionButton,
   });
   final String title, empty;
   final IconData icon;
   final Future<List<Map<String, dynamic>>> future;
   final Widget Function(Map<String, dynamic>) itemBuilder;
   final VoidCallback onRefresh;
+  final Widget? floatingActionButton;
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -142,6 +157,7 @@ class _AdminRecordsScaffold extends StatelessWidget {
         ),
       ],
     ),
+    floatingActionButton: floatingActionButton,
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: future,
       builder: (_, snapshot) {
