@@ -263,15 +263,30 @@ class SakiService {
     );
   }
 
+  Future<void> adminUpdateUserSakiId(String userId, int newId) async {
+    await client.rpc(
+      'admin_update_user_profile',
+      params: {'p_user_id': userId, 'p_new_saki_id': newId},
+    );
+  }
+
+  Future<void> adminSetUserRole(String userId, String role) async {
+    await client.rpc(
+      'admin_set_user_role',
+      params: {'p_user_id': userId, 'p_role': role},
+    );
+  }
+
   Future<List<Map<String, dynamic>>> adminUsers(String query) async {
-    final rows = await client
-        .from('profiles')
-        .select(
-          'id,saki_id,username,avatar_url,vip_level,vip_expires_at,is_super_admin',
-        )
-        .or('username.ilike.%$query%,saki_id.eq.$query')
-        .limit(50);
-    return List<Map<String, dynamic>>.from(rows);
+    final rows = await client.rpc(
+      'admin_list_users',
+      params: {
+        'p_query': query.isEmpty ? null : query,
+        'p_limit': 50,
+        'p_offset': 0,
+      },
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
   }
 
   Future<List<Map<String, dynamic>>> adminGiftCatalog() async {

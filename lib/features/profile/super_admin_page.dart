@@ -533,159 +533,355 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   final _search = TextEditingController();
   List<Map<String, dynamic>> _users = [];
   bool _loading = false;
+  static const roles = <String, String>{
+    'user': 'مستخدم',
+    'super_admin': 'سوبر أدمن',
+    'admin': 'أدمن',
+    'bd': 'BD',
+    'official_host': 'مذيع SAKI الرسمي',
+    'customer_service': 'خدمة عملاء',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _find();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
   Future<void> _find() async {
-    setState(() => _loading = true);
+    if (mounted) setState(() => _loading = true);
     try {
-      _users = await SakiService.instance.adminUsers(_search.text.trim());
+      final users = await SakiService.instance.adminUsers(_search.text.trim());
+      if (mounted) setState(() => _users = users);
+    } catch (error) {
+      if (mounted) CustomToast.show(context, _cleanError(error));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  String _cleanError(Object error) =>
+      error.toString().replaceFirst('Exception: ', '');
+  String _role(Map<String, dynamic> user) =>
+      user['admin_role']?.toString() ?? 'user';
+  String _date(Map<String, dynamic> user) {
+    final date = DateTime.tryParse(user['created_at']?.toString() ?? '');
+    if (date == null) return 'غير معروف';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
   Future<void> _action(Map<String, dynamic> user) async {
     final action = await showModalBottomSheet<String>(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (_) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.monetization_on),
-              title: const Text('إضافة ذهب'),
-              onTap: () => Navigator.pop(context, 'gold'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.workspace_premium),
-              title: const Text('تعيين VIP 5 لمدة 30 يومًا'),
-              onTap: () => Navigator.pop(context, 'vip'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.block),
-              title: const Text('حظر من التطبيق 7 أيام'),
-              onTap: () => Navigator.pop(context, 'ban'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.badge),
-              title: const Text('تغيير Saki ID'),
-              onTap: () => Navigator.pop(context, 'id'),
-            ),
-          ],
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 18),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'إجراءات ${user['username'] ?? 'المستخدم'}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF7ED),
+                  child: Icon(Icons.block_rounded, color: Colors.redAccent),
+                ),
+                title: const Text('حظر مستخدم'),
+                subtitle: const Text('حظر التطبيق لمدة 7 أيام'),
+                onTap: () => Navigator.pop(context, 'ban'),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFEFF6FF),
+                  child: Icon(
+                    Icons.admin_panel_settings_rounded,
+                    color: Color(0xFF0284C7),
+                  ),
+                ),
+                title: const Text('صلاحيات المستخدم'),
+                subtitle: Text(roles[_role(user)] ?? 'مستخدم'),
+                onTap: () => Navigator.pop(context, 'role'),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF5F3FF),
+                  child: Icon(Icons.badge_rounded, color: Color(0xFF7C3AED)),
+                ),
+                title: const Text('تغيير SAKI ID'),
+                subtitle: Text('الحالي: ${user['saki_id'] ?? '—'}'),
+                onTap: () => Navigator.pop(context, 'id'),
+              ),
+            ],
+          ),
         ),
       ),
     );
-    final saki = (user['saki_id'] as num?)?.toInt() ?? 0;
     try {
-      if (action == 'gold') {
-        final c = TextEditingController();
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('إضافة ذهب'),
-            content: TextField(
-              controller: c,
-              keyboardType: TextInputType.number,
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () async {
-                  await SakiService.instance.adminAddGold(
-                    saki,
-                    int.parse(c.text),
-                  );
-                  if (!dialogContext.mounted) return;
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('حفظ'),
-              ),
-            ],
-          ),
-        );
-      } else if (action == 'vip') {
-        await SakiService.instance.adminSetVip(saki, 5, 30);
-      } else if (action == 'ban') {
+      if (action == 'ban') {
         await SakiService.instance.adminBanApp(
-          saki,
+          (user['saki_id'] as num).toInt(),
           const Duration(days: 7),
           'حظر بواسطة سوبر أدمن',
         );
+      } else if (action == 'role') {
+        final role = await _selectRole(_role(user));
+        if (role != null)
+          await SakiService.instance.adminSetUserRole(
+            user['id'] as String,
+            role,
+          );
       } else if (action == 'id') {
-        final c = TextEditingController();
-        if (!mounted) return;
-        await showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: const Text('Saki ID الجديد'),
-            content: TextField(
-              controller: c,
-              keyboardType: TextInputType.number,
-            ),
-            actions: [
-              FilledButton(
-                onPressed: () async {
-                  await SakiService.instance.adminSetSakiId(
-                    user['id'] as String,
-                    int.parse(c.text),
-                  );
-                  if (!dialogContext.mounted) return;
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('حفظ'),
-              ),
-            ],
-          ),
-        );
+        await _changeSakiId(user);
       }
-      if (mounted) _find();
-    } catch (e) {
-      if (mounted) {
-        CustomToast.show(context, e.toString());
-      }
+      if (action != null && mounted) await _find();
+    } catch (error) {
+      if (mounted) CustomToast.show(context, _cleanError(error));
     }
+  }
+
+  Future<String?> _selectRole(String current) => showDialog<String>(
+    context: context,
+    builder: (_) => SimpleDialog(
+      title: const Text('تعيين صلاحيات المستخدم'),
+      children: roles.entries
+          .map(
+            (entry) => RadioListTile<String>(
+              value: entry.key,
+              groupValue: current,
+              title: Text(entry.value),
+              onChanged: (value) => Navigator.pop(context, value),
+            ),
+          )
+          .toList(),
+    ),
+  );
+
+  Future<void> _changeSakiId(Map<String, dynamic> user) async {
+    final controller = TextEditingController(text: '${user['saki_id'] ?? ''}');
+    final value = await showDialog<int>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('تغيير SAKI ID'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'SAKI ID الجديد'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(context, int.tryParse(controller.text.trim())),
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null)
+      await SakiService.instance.adminUpdateUserSakiId(
+        user['id'] as String,
+        value,
+      );
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('إدارة المستخدمين')),
+    backgroundColor: const Color(0xFFF8FAFC),
+    appBar: AppBar(
+      title: const Text('إدارة المستخدمين'),
+      backgroundColor: Colors.white,
+      foregroundColor: _adminInk,
+      elevation: 0,
+    ),
     body: Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _search,
-                  decoration: const InputDecoration(
-                    hintText: 'اسم المستخدم أو Saki ID',
-                  ),
-                ),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+          child: TextField(
+            controller: _search,
+            onSubmitted: (_) => _find(),
+            decoration: InputDecoration(
+              hintText: 'بحث باسم المستخدم أو SAKI ID',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                onPressed: _find,
+                icon: const Icon(Icons.arrow_forward_rounded),
               ),
-              IconButton(onPressed: _find, icon: const Icon(Icons.search)),
-            ],
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
           ),
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  itemCount: _users.length,
-                  itemBuilder: (_, i) {
-                    final u = _users[i];
-                    return ListTile(
-                      leading: SakiAvatar(
-                        url: u['avatar_url'] as String?,
-                        label: u['username'] as String?,
-                      ),
-                      title: Text(u['username'] as String? ?? 'عضو'),
-                      subtitle: Text(
-                        'Saki ID: ${u['saki_id'] ?? '—'} • VIP ${u['vip_level'] ?? 0}',
-                      ),
-                      trailing: IconButton(
-                        onPressed: () => _action(u),
-                        icon: const Icon(Icons.more_vert),
-                      ),
-                    );
-                  },
+              : RefreshIndicator(
+                  onRefresh: _find,
+                  child: _users.isEmpty
+                      ? ListView(
+                          children: const [
+                            SizedBox(height: 180),
+                            Center(child: Text('لا توجد حسابات مطابقة')),
+                          ],
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(14, 8, 14, 24),
+                          itemCount: _users.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 9),
+                          itemBuilder: (_, index) {
+                            final user = _users[index];
+                            final level =
+                                ((user['vip_level'] as num?)?.toInt() ?? 0)
+                                    .clamp(0, 10);
+                            final banned = user['is_banned'] == true;
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  SakiAvatar(
+                                    url: user['avatar_url'] as String?,
+                                    label: user['username'] as String?,
+                                    radius: 25,
+                                  ),
+                                  const SizedBox(width: 11),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                user['display_name']
+                                                            ?.toString()
+                                                            .trim()
+                                                            .isNotEmpty ==
+                                                        true
+                                                    ? user['display_name']
+                                                          .toString()
+                                                    : user['username']
+                                                              ?.toString() ??
+                                                          'مستخدم',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w900,
+                                                  color: _adminInk,
+                                                ),
+                                              ),
+                                            ),
+                                            if (level > 0)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 3,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFFFF7ED,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  'VIP $level',
+                                                  style: const TextStyle(
+                                                    color: Color(0xFFEA580C),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          'SAKI ID: ${user['saki_id'] ?? '—'}  •  ${roles[_role(user)] ?? 'مستخدم'}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF475569),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          'تاريخ الإنشاء: ${_date(user)}${banned ? '  •  محظور' : ''}',
+                                          style: TextStyle(
+                                            color: banned
+                                                ? Colors.redAccent
+                                                : const Color(0xFF94A3B8),
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _action(user),
+                                    tooltip: 'تعديل',
+                                    icon: const Icon(
+                                      Icons.edit_rounded,
+                                      color: Color(0xFF0284C7),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => _action(user),
+                                    tooltip: 'حظر',
+                                    icon: Icon(
+                                      Icons.block_rounded,
+                                      color: banned
+                                          ? Colors.redAccent
+                                          : const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                 ),
         ),
       ],
