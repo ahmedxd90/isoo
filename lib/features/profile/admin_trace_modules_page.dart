@@ -54,6 +54,46 @@ class _AdminAgenciesPageState extends State<AdminAgenciesPage> {
         );
         _reload();
       },
+      onDelete: () async {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('حذف الوكالة نهائياً'),
+            content: Text(
+              'سيتم حذف وكالة ${row['name'] ?? 'هذه الوكالة'} وكل عضوياتها وطلبات السحب التابعة لها. لا يمكن التراجع عن العملية.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('حذف نهائياً'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+        try {
+          await SakiService.instance.adminDeleteHostAgency(row['id'] as String);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم حذف الوكالة فعلياً.')),
+            );
+          }
+          _reload();
+        } catch (error) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error.toString().replaceFirst('Exception: ', '')),
+              ),
+            );
+          }
+        }
+      },
     ),
   );
 }
@@ -192,11 +232,13 @@ class _AdminRecordCard extends StatelessWidget {
     required this.subtitle,
     this.status,
     this.onStatus,
+    this.onDelete,
   });
   final IconData icon;
   final String title, subtitle;
   final String? status;
   final Future<void> Function(String status)? onStatus;
+  final Future<void> Function()? onDelete;
   @override
   Widget build(BuildContext context) => Card(
     elevation: 0,
@@ -225,13 +267,27 @@ class _AdminRecordCard extends StatelessWidget {
               ],
             ),
           ),
-          if (onStatus != null)
+          if (onStatus != null || onDelete != null)
             PopupMenuButton<String>(
-              onSelected: onStatus,
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'active', child: Text('تفعيل')),
-                PopupMenuItem(value: 'suspended', child: Text('تعليق')),
-                PopupMenuItem(value: 'closed', child: Text('إغلاق')),
+              onSelected: (value) async {
+                if (value == 'delete') {
+                  await onDelete?.call();
+                } else {
+                  await onStatus?.call(value);
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'active', child: Text('تفعيل')),
+                const PopupMenuItem(value: 'suspended', child: Text('تعليق')),
+                const PopupMenuItem(value: 'closed', child: Text('إغلاق')),
+                if (onDelete != null)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      'حذف نهائي',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
               ],
             ),
         ],

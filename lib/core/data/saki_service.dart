@@ -224,6 +224,10 @@ class SakiService {
     );
   }
 
+  Future<void> adminDeleteHostAgency(String id) async {
+    await client.rpc('admin_delete_host_agency', params: {'p_agency_id': id});
+  }
+
   Future<void> adminSetFamilyStatus(String id, String status) async {
     await client.rpc(
       'admin_set_family_status',
