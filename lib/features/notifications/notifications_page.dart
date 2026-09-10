@@ -137,6 +137,7 @@ class _AgencyInviteTile extends StatefulWidget {
 
 class _AgencyInviteTileState extends State<_AgencyInviteTile> {
   bool _working = false;
+  bool _responded = false;
 
   Future<void> _respond(bool accept) async {
     final inviteId = widget.notification['entity_id']?.toString();
@@ -172,6 +173,10 @@ class _AgencyInviteTileState extends State<_AgencyInviteTile> {
         await SakiService.instance.hostAgencyDeclineInvite(inviteId);
       }
       if (mounted) {
+        setState(() {
+          _working = false;
+          _responded = true;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -179,7 +184,6 @@ class _AgencyInviteTileState extends State<_AgencyInviteTile> {
             ),
           ),
         );
-        setState(() => _working = false);
       }
     } catch (error) {
       if (mounted) {
@@ -200,6 +204,9 @@ class _AgencyInviteTileState extends State<_AgencyInviteTile> {
         widget.data['agent_name']?.toString().trim().isNotEmpty == true
         ? widget.data['agent_name'].toString()
         : widget.actor;
+    final response = widget.data['response']?.toString();
+    final completed =
+        _responded || response == 'accepted' || response == 'declined';
     return Card(
       color: widget.read ? null : SakiColors.darkPurple.withValues(alpha: .35),
       child: Padding(
@@ -226,30 +233,42 @@ class _AgencyInviteTileState extends State<_AgencyInviteTile> {
               ],
             ),
             const SizedBox(height: 8),
-            const Text(
-              'تمت دعوتك كمضيف. اختر موافق للانضمام أو إلغاء لرفض الدعوة.',
-              style: TextStyle(color: SakiColors.muted, fontSize: 12),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _working ? null : () => _respond(true),
-                    icon: const Icon(Icons.check_rounded, size: 17),
-                    label: const Text('موافق'),
-                  ),
+            if (completed)
+              Text(
+                response == 'accepted' || _responded
+                    ? 'تم قبول الدعوة والانضمام إلى الوكالة.'
+                    : 'تم إلغاء دعوة الوكالة.',
+                style: const TextStyle(
+                  color: SakiColors.cyan,
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _working ? null : () => _respond(false),
-                    icon: const Icon(Icons.close_rounded, size: 17),
-                    label: const Text('إلغاء'),
+              )
+            else ...[
+              const Text(
+                'تمت دعوتك كمضيف. اختر موافق للانضمام أو إلغاء لرفض الدعوة.',
+                style: TextStyle(color: SakiColors.muted, fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _working ? null : () => _respond(true),
+                      icon: const Icon(Icons.check_rounded, size: 17),
+                      label: const Text('موافق'),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _working ? null : () => _respond(false),
+                      icon: const Icon(Icons.close_rounded, size: 17),
+                      label: const Text('إلغاء'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

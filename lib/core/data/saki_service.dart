@@ -2535,7 +2535,32 @@ class SakiService {
         .from('notifications')
         .stream(primaryKey: ['id'])
         .eq('user_id', uid)
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false)
+        .asyncMap((rows) async {
+          final result = List<Map<String, dynamic>>.from(rows);
+          final actorIds = result
+              .map((row) => row['actor_id']?.toString())
+              .whereType<String>()
+              .toSet()
+              .toList();
+          if (actorIds.isEmpty) return result;
+          final profiles = await client
+              .from('profiles')
+              .select('id,username,display_name,avatar_url')
+              .inFilter('id', actorIds);
+          final byId = {
+            for (final profile in List<Map<String, dynamic>>.from(profiles))
+              profile['id'].toString(): profile,
+          };
+          return result.map((row) {
+            final actorId = row['actor_id']?.toString();
+            return {
+              ...row,
+              if (actorId != null && byId[actorId] != null)
+                'profiles': byId[actorId],
+            };
+          }).toList();
+        });
   }
 
   Future<void> markNotificationRead(String id) async {
