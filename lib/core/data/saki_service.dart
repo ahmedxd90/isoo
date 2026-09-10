@@ -41,6 +41,12 @@ class SakiService {
     return list.isEmpty ? const {} : list.first;
   }
 
+  Future<Map<String, dynamic>> dailyLoginStatus() async {
+    final rows = await client.rpc('user_daily_login_status');
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    return list.isEmpty ? const {'claimed': true} : list.first;
+  }
+
   Future<Map<String, dynamic>> recordUserTask(
     String taskKey, {
     int increment = 1,
