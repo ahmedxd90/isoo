@@ -71,8 +71,11 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       _controller = YoutubePlayerController.fromVideoId(
         videoId: id,
         params: const YoutubePlayerParams(
-          showControls: false,
-          showFullscreenButton: false,
+          mute: true,
+          showControls: true,
+          showFullscreenButton: true,
+          interfaceLanguage: 'ar',
+          origin: 'https://www.youtube.com',
         ),
       );
       _initialised = true;
@@ -250,7 +253,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       child: Column(
         children: [
           SizedBox(
-            height: 106,
+            height: 150,
             child: _controller == null || !_initialised
                 ? const Center(
                     child: Icon(
@@ -259,7 +262,12 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
                       size: 46,
                     ),
                   )
-                : YoutubePlayer(controller: _controller!),
+                : LayoutBuilder(
+                    builder: (context, constraints) => YoutubePlayer(
+                      controller: _controller!,
+                      aspectRatio: constraints.maxWidth / 150,
+                    ),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
