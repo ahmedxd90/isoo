@@ -79,16 +79,17 @@ class SakiTheme {
   }
 
   static ThemeData light() {
-    final scheme = ColorScheme.fromSeed(
-      seedColor: SakiColors.orange,
-      brightness: Brightness.light,
-    ).copyWith(
-      primary: SakiColors.orange,
-      secondary: SakiColors.cyan,
-      surface: Colors.white,
-      onSurface: SakiColors.ink,
-      onPrimary: Colors.white,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: SakiColors.orange,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: SakiColors.orange,
+          secondary: SakiColors.cyan,
+          surface: Colors.white,
+          onSurface: SakiColors.ink,
+          onPrimary: Colors.white,
+        );
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,

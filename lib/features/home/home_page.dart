@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -90,19 +92,13 @@ class _DailyLoginRewardDialogState extends State<_DailyLoginRewardDialog> {
       if (!mounted) return;
       final amount = (result['amount'] as num?)?.toInt() ?? 0;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text('تم استلام مكافأة اليوم: $amount عملة ذهبية'),
-        ),
-      );
+      CustomToast.show(context, 'تم استلام مكافأة اليوم: $amount عملة ذهبية');
     } catch (error) {
       if (mounted) {
         setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     }

@@ -1,4 +1,4 @@
-package saki.chat.co
+package saki.room.ch
 
 import android.content.Intent
 import android.net.Uri

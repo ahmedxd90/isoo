@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -177,21 +179,17 @@ class _AgencyInviteTileState extends State<_AgencyInviteTile> {
           _working = false;
           _responded = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              accept ? 'تم قبول الدعوة والانضمام للوكالة.' : 'تم إلغاء الدعوة.',
-            ),
-          ),
+        CustomToast.show(
+          context,
+          accept ? 'تم قبول الدعوة والانضمام للوكالة.' : 'تم إلغاء الدعوة.',
         );
       }
     } catch (error) {
       if (mounted) {
         setState(() => _working = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     }

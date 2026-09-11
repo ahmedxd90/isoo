@@ -1481,20 +1481,16 @@ class _SystemAgencyInviteBubbleState extends State<_SystemAgencyInviteBubble> {
         _working = false;
         _response = accept ? 'accepted' : 'declined';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            accept ? 'تم الانضمام إلى الوكالة.' : 'تم إلغاء الدعوة.',
-          ),
-        ),
+      CustomToast.show(
+        context,
+        accept ? 'تم الانضمام إلى الوكالة.' : 'تم إلغاء الدعوة.',
       );
     } catch (error) {
       if (!mounted) return;
       setState(() => _working = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-        ),
+      CustomToast.show(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
       );
     }
   }

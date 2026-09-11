@@ -3142,6 +3142,38 @@ class SakiService {
       .eq('room_id', roomId)
       .order('created_at', ascending: false)
       .limit(10);
+
+  Stream<List<Map<String, dynamic>>> allRoomLuckBagsStream() => client
+      .from('room_luck_bags')
+      .stream(primaryKey: ['id'])
+      .order('created_at', ascending: false)
+      .limit(50);
+
+  Future<Map<String, dynamic>> enrichRoomLuckBag(
+    Map<String, dynamic> bag,
+  ) async {
+    final senderId = bag['sender_id']?.toString();
+    final roomId = bag['room_id']?.toString();
+    final profile = senderId == null
+        ? null
+        : await client
+              .from('profiles')
+              .select('id,username,avatar_url')
+              .eq('id', senderId)
+              .maybeSingle();
+    final room = roomId == null
+        ? null
+        : await client
+              .from('rooms')
+              .select('id,name,room_id,image_url')
+              .eq('id', roomId)
+              .maybeSingle();
+    return {
+      ...bag,
+      '_sender': profile ?? const <String, dynamic>{},
+      '_room': room ?? const <String, dynamic>{},
+    };
+  }
 }
 
 class RoomGiftRankingResult {

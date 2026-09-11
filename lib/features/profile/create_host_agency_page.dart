@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import '../../core/data/saki_service.dart';
 
 class CreateHostAgencyPage extends StatefulWidget {
@@ -51,9 +53,7 @@ class _CreateHostAgencyPageState extends State<CreateHostAgencyPage> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        CustomToast.show(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

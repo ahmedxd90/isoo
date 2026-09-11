@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -63,8 +65,7 @@ class _HostAgencyPageState extends State<HostAgencyPage> {
     }
   }
 
-  void _toast(String text) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+  void _toast(String text) => CustomToast.show(context, text);
 
   @override
   Widget build(BuildContext context) => Scaffold(

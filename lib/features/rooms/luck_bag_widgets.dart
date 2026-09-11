@@ -278,9 +278,15 @@ class _LuckBagCardState extends State<LuckBagCard> {
 }
 
 class LuckBagFlyBanner extends StatefulWidget {
-  const LuckBagFlyBanner({super.key, required this.bag, required this.onGo});
+  const LuckBagFlyBanner({
+    super.key,
+    required this.bag,
+    required this.onGo,
+    required this.onDone,
+  });
   final Map<String, dynamic> bag;
   final VoidCallback onGo;
+  final VoidCallback onDone;
   @override
   State<LuckBagFlyBanner> createState() => _LuckBagFlyBannerState();
 }
@@ -295,7 +301,7 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 12), () {
-      if (mounted) setState(() {});
+      if (mounted) widget.onDone();
     });
   }
 
@@ -317,34 +323,73 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
           : (t - .75) / .25 - 1;
       return Positioned(
         top: 72,
-        left: x == 0 ? 12 : null,
-        right: x == 0 ? 12 : null,
+        left: x == 0 ? 10 : null,
+        right: x == 0 ? 10 : null,
         child: Transform.translate(
           offset: Offset(x * MediaQuery.sizeOf(context).width, 0),
           child: Container(
-            padding: const EdgeInsets.all(10),
+            width: MediaQuery.sizeOf(context).width - 20,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: _bagRed,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _bagGold),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFFFD54F),
+                  Color(0xFFFFA000),
+                  Color(0xFFFFE082),
+                  Color(0xFFFF8F00),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white, width: 1.2),
+              boxShadow: const [
+                BoxShadow(color: Color(0xCCFFB300), blurRadius: 18),
+                BoxShadow(color: Colors.black45, blurRadius: 8),
+              ],
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                const CircleAvatar(
-                  backgroundColor: _bagGold,
-                  child: Icon(Icons.card_giftcard, color: _bagRed),
+                _SenderAvatar(
+                  url: (widget.bag['_sender'] as Map?)?['avatar_url']
+                      ?.toString(),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'أرسل حقيبة حظ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${(widget.bag['_sender'] as Map?)?['username'] ?? 'مستخدم'} أرسل حقيبة حظ',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF4A2500),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        'في ${(widget.bag['_room'] as Map?)?['name'] ?? 'غرفة SAKI'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF6D3B00),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                TextButton(onPressed: widget.onGo, child: const Text('اذهب')),
+                const SizedBox(width: 5),
+                FilledButton(
+                  onPressed: widget.onGo,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF6D2100),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 34),
+                  ),
+                  child: const Text('GO'),
+                ),
               ],
             ),
           ),
@@ -352,4 +397,23 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
       );
     },
   );
+}
+
+class _SenderAvatar extends StatelessWidget {
+  const _SenderAvatar({this.url});
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 22,
+      backgroundColor: Colors.white,
+      backgroundImage: url != null && url!.isNotEmpty
+          ? NetworkImage(url!)
+          : null,
+      child: url == null || url!.isEmpty
+          ? const Icon(Icons.person, color: _bagRed)
+          : null,
+    );
+  }
 }

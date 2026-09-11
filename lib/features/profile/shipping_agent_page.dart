@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import 'vip_widgets.dart';
@@ -28,10 +30,9 @@ class _ShippingAgentPageState extends State<ShippingAgentPage> {
       if (mounted) setState(() => _dashboard = data);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     } finally {
@@ -232,10 +233,9 @@ class _TopupSheetState extends State<_TopupSheet> {
       if (mounted) setState(() => _user = user);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     } finally {
@@ -253,20 +253,16 @@ class _TopupSheetState extends State<_TopupSheet> {
       await SakiService.instance.shippingTopupUser(id, coins);
       if (mounted) {
         Navigator.pop(context, true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'تم شحن العملة الذهبية للمستخدم وإرسال إشعار النظام.',
-            ),
-          ),
+        CustomToast.show(
+          context,
+          'تم شحن العملة الذهبية للمستخدم وإرسال إشعار النظام.',
         );
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.toString().replaceFirst('Exception: ', '')),
-          ),
+        CustomToast.show(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
         );
       }
     } finally {

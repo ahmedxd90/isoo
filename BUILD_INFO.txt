@@ -47,7 +47,7 @@ Flutter: 3.47.3
 Dart: 3.13.3
 Java: OpenJDK 21.0.12 (full JDK)
 Android SDK: Platform 37.0.0 / Build Tools 37.0.0
-Android package: saki.chat.co
+Android package: saki.room.ch
 versionName: 3.0.1 | versionCode: 90
 compileSdk: 37 | targetSdk: 36 | minSdk: 24
 Supabase project ref: vzooppdaqayerpmvdotl
@@ -62,14 +62,14 @@ Validation:
 - `flutter pub get` completed successfully.
 - `flutter analyze` completed with no issues.
 - Supabase Auth health returned HTTP 200 and PostgREST read access to `profiles` returned HTTP 200 using the configured publishable key.
-- `aapt` confirmed package `saki.chat.co`, versionName `3.0.1`, versionCode `90`, compile SDK 37, target SDK 36, and min SDK 24.
+- `aapt` confirmed package `saki.room.ch`, versionName `3.0.1`, versionCode `90`, compile SDK 37, target SDK 36, and min SDK 24.
 - APK Signature Scheme v2 verification passed; ZIP integrity test passed.
 
 SAKI seat leave release — v1.3.2+15 — 2026-09-06
 
 Flutter: 3.47.2
 Dart: 3.13.2
-Android package: saki.chat.co
+Android package: saki.room.ch
 versionName: 1.3.2 | versionCode: 15
 compileSdk: 36 | targetSdk: 36 | minSdk: 24
 Supabase project ref: vzooppdaqayerpmvdotl
@@ -91,7 +91,7 @@ Final APK output:
 
 Validation:
 - Release APK build passed.
-- aapt confirmed package saki.chat.co, versionName 1.3.2, versionCode 15, compile/target SDK 36.
+- aapt confirmed package saki.room.ch, versionName 1.3.2, versionCode 15, compile/target SDK 36.
 - APK signature verification passed with APK Signature Scheme v2.
 - Supabase database already contains the trace feature migrations under applied migration records.
 - The previous main state is preserved on backup-main-before-trace-1.3.2-20260906131313.

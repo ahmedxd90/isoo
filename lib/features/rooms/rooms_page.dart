@@ -1405,6 +1405,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _optimisticSeatRow;
   List<Map<String, dynamic>> _luckBags = [];
   Map<String, dynamic>? _newLuckBag;
+  StreamSubscription<List<Map<String, dynamic>>>? _globalLuckBagSubscription;
+  Timer? _luckBagExpiryTimer;
+  final Set<String> _seenGlobalLuckBagIds = <String>{};
+  bool _globalLuckBagsInitialized = false;
 
   @override
   void initState() {
@@ -1548,8 +1552,46 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     });
     _luckBagSubscription = _service.roomLuckBagsStream(_roomId).listen((bags) {
       if (!mounted) return;
-      setState(() => _luckBags = bags);
+      _refreshVisibleLuckBags(bags);
     });
+    _luckBagExpiryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _refreshVisibleLuckBags(_luckBags);
+    });
+    _globalLuckBagSubscription = _service.allRoomLuckBagsStream().listen((
+      bags,
+    ) {
+      if (!mounted) return;
+      final ids = bags.map((bag) => bag['id']?.toString()).whereType<String>();
+      if (!_globalLuckBagsInitialized) {
+        _seenGlobalLuckBagIds.addAll(ids);
+        _globalLuckBagsInitialized = true;
+        return;
+      }
+      final fresh = bags.where((bag) {
+        final id = bag['id']?.toString();
+        return id != null && !_seenGlobalLuckBagIds.contains(id);
+      }).toList();
+      _seenGlobalLuckBagIds.addAll(ids);
+      for (final bag in fresh) {
+        final expires = DateTime.tryParse(bag['expires_at']?.toString() ?? '');
+        if (expires == null || !expires.isAfter(DateTime.now().toUtc())) {
+          continue;
+        }
+        _service.enrichRoomLuckBag(bag).then((enriched) {
+          if (!mounted) return;
+          setState(() => _newLuckBag = enriched);
+        });
+      }
+    });
+  }
+
+  void _refreshVisibleLuckBags(List<Map<String, dynamic>> bags) {
+    final now = DateTime.now().toUtc();
+    final visible = bags.where((bag) {
+      final expires = DateTime.tryParse(bag['expires_at']?.toString() ?? '');
+      return bag['status'] == 'open' && expires != null && expires.isAfter(now);
+    }).toList();
+    if (mounted) setState(() => _luckBags = visible);
   }
 
   int _numericUid(String value) {
@@ -1794,19 +1836,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             type: 'gift',
             payload: payload,
           );
-          final giftRequest = _service.sendRoomGift(
-            roomId: _roomId,
-            recipientId: recipientId,
-            giftId: gift['id'] as String,
-          );
-          final messageRequest = _service.sendRoomMessage(
-            _roomId,
-            'أرسل هدية ${gift['name'] ?? 'هدية'}',
-            type: 'gift',
-            payload: payload,
-          );
           try {
-            await Future.wait([giftRequest, messageRequest]);
+            await _service.sendRoomGift(
+              roomId: _roomId,
+              recipientId: recipientId,
+              giftId: gift['id'] as String,
+            );
+            await _service.sendRoomMessage(
+              _roomId,
+              'أرسل هدية ${gift['name'] ?? 'هدية'}',
+              type: 'gift',
+              payload: payload,
+            );
           } catch (_) {
             _removeOptimisticMessage(optimistic);
             rethrow;
@@ -3281,7 +3322,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               _toolButton(Icons.card_giftcard_rounded, 'حقيبة حظ', () {
                 Navigator.pop(context);
                 LuckBagComposer.show(context, _roomId, (bag) {
-                  if (mounted) setState(() => _newLuckBag = bag);
+                  _service.enrichRoomLuckBag(bag).then((enriched) {
+                    if (mounted) setState(() => _newLuckBag = enriched);
+                  });
                 });
               }),
             ],
@@ -3318,6 +3361,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     } catch (e) {
       if (mounted) _messageSnack(e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  Future<void> _goToLuckBag(Map<String, dynamic> bag) async {
+    final targetRoom = (bag['_room'] as Map?)?.cast<String, dynamic>();
+    final targetId = targetRoom?['id']?.toString();
+    if (targetRoom == null || targetId == null || targetId.isEmpty) return;
+    if (targetId == _roomId) {
+      if (mounted) setState(() => _newLuckBag = null);
+      return;
+    }
+    await RoomSessionController.instance.close();
+    if (!mounted) return;
+    setState(() => _newLuckBag = null);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => RoomDetailPage(room: targetRoom)),
+    );
   }
 
   Future<bool> _confirmLeaveSeat() async {
@@ -3595,6 +3654,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomMembersSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
     _luckBagSubscription?.cancel();
+    _globalLuckBagSubscription?.cancel();
+    _luckBagExpiryTimer?.cancel();
     _roomBanSubscription?.cancel();
     for (final timer in _roomEmojiTimers.values) {
       timer.cancel();
@@ -4418,7 +4479,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             if (_newLuckBag != null)
               LuckBagFlyBanner(
                 bag: _newLuckBag!,
-                onGo: () => setState(() => _newLuckBag = null),
+                onGo: () => _goToLuckBag(_newLuckBag!),
+                onDone: () {
+                  if (mounted) setState(() => _newLuckBag = null);
+                },
               ),
             if (_activeGiftMessage != null)
               Positioned.fill(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
+import '../profile/wallet_page.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -123,18 +124,64 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
       _message('حدد مستخدماً واحداً على الأقل من المقاعد');
       return;
     }
+    final price = (gift['price'] as num?)?.toInt() ?? 0;
+    final requiredGold = price * _selectedIds.length;
+    if (_gold < requiredGold) {
+      await _showInsufficientBalance(requiredGold);
+      return;
+    }
     setState(() => _sending = true);
     try {
       for (final recipientId in _selectedIds.toList()) {
         await widget.onSent(recipientId, gift, true);
       }
+      if (mounted) setState(() => _gold -= requiredGold);
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (mounted) {
-        _message(error.toString().replaceFirst('Exception: ', ''));
+        final message = error.toString().replaceFirst('Exception: ', '');
+        if (message.contains('insufficient_gold') || message.contains('رصيد')) {
+          await _showInsufficientBalance(requiredGold);
+        } else {
+          _message(message);
+        }
         setState(() => _sending = false);
       }
     }
+  }
+
+  Future<void> _showInsufficientBalance(int requiredGold) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.account_balance_wallet_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('رصيدك غير كافي'),
+          ],
+        ),
+        content: Text(
+          'رصيدك الحالي $_gold ذهب، وتحتاج إلى $requiredGold ذهب لإرسال الهدية المحددة.',
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const WalletPage()));
+            },
+            icon: const Icon(Icons.add_card_rounded),
+            label: const Text('اذهب للشحن'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _message(String text) {

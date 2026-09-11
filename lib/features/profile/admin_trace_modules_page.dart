@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import '../../core/data/saki_service.dart';
 import 'create_host_agency_page.dart';
 
@@ -79,17 +81,14 @@ class _AdminAgenciesPageState extends State<AdminAgenciesPage> {
         try {
           await SakiService.instance.adminDeleteHostAgency(row['id'] as String);
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم حذف الوكالة فعلياً.')),
-            );
+            CustomToast.show(context, 'تم حذف الوكالة فعلياً.');
           }
           _reload();
         } catch (error) {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(error.toString().replaceFirst('Exception: ', '')),
-              ),
+            CustomToast.show(
+              context,
+              error.toString().replaceFirst('Exception: ', ''),
             );
           }
         }

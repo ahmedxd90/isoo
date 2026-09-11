@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
@@ -16,24 +15,36 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   static const _videoUrl = 'https://f.top4top.io/m_3901fr5rd0.mp4';
-  static const _googleWebClientId =
-      '164807497226-nkgti09lmuin5ekmmlfg0kf7aafcpjic.apps.googleusercontent.com';
   StreamSubscription<AuthState>? _authSubscription;
   VideoPlayerController? _video;
   bool _loading = false;
   bool _routing = false;
-  late final Future<void> _googleInitialization;
 
   @override
   void initState() {
     super.initState();
-    _googleInitialization = GoogleSignIn.instance.initialize(
-      serverClientId: _googleWebClientId,
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (event) {
+        if (event.session != null) _routeAfterAuth();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!mounted) return;
+        _showError(
+          'فشل استلام جلسة Google\n\n'
+          'النوع: ${error.runtimeType}\n'
+          'التفاصيل: $error\n\n'
+          'الخطأ الكامل:\n$stackTrace',
+        );
+      },
     );
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
-      event,
-    ) {
-      if (event.session != null) _routeAfterAuth();
+    // When OAuth returns from Chrome, Supabase may restore the session before
+    // this page's auth-state listener is attached. Check the current session
+    // as well so the user is not left on the login screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (Supabase.instance.client.auth.currentSession != null) {
+        _routeAfterAuth();
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -67,25 +78,23 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _googleLogin() async {
     setState(() => _loading = true);
     try {
-      await _googleInitialization;
-      final account = await GoogleSignIn.instance.authenticate();
-      final idToken = account.authentication.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw const AuthException(
-          'لم يرجع Google رمز التحقق المطلوب. تأكد من إعداد OAuth Client.',
-        );
-      }
-      await Supabase.instance.client.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: idToken,
+      // Use the system browser so Google authenticates independently of the
+      // Play-signed APK certificate. Supabase handles the callback and
+      // restores the session through the registered Android deep link.
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.saki://login-callback/',
+        authScreenLaunchMode: LaunchMode.externalApplication,
       );
-    } on GoogleSignInException catch (e) {
-      if (mounted) _showError(_friendlyGoogleSignInException(e));
     } on AuthException catch (e) {
-      if (mounted) _showError(_friendlyAuthError(e.message));
+      if (mounted) _showError(_authDiagnosticMessage(e));
     } catch (error) {
       if (mounted) {
-        _showError(_friendlyGoogleError(error));
+        _showError(
+          'فشل تسجيل Google داخل التطبيق.\n\n'
+          'النوع: ${error.runtimeType}\n'
+          'التفاصيل: $error',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -131,28 +140,12 @@ class _LoginPageState extends State<LoginPage> {
 
   String _friendlyOAuthError(String error) => _friendlyAuthError(error);
 
-  String _friendlyGoogleSignInException(GoogleSignInException error) {
-    if (error.code == GoogleSignInExceptionCode.canceled) {
-      return 'تم إغلاق اختيار الحساب أو رفض Google الطلب. تأكد من اسم الحزمة saki.chat.co وبصمة SHA-1 الخاصة بنسخة التطبيق.';
-    }
-    if (error.code == GoogleSignInExceptionCode.clientConfigurationError) {
-      return 'إعداد Google OAuth غير صحيح لهذا التطبيق. راجع اسم الحزمة saki.chat.co وبصمة SHA-1 وWeb OAuth Client ID.';
-    }
-    return _friendlyGoogleError(error);
-  }
-
-  String _friendlyGoogleError(Object error) {
-    final text = error.toString().toLowerCase();
-    if (text.contains('canceled') || text.contains('cancelled')) {
-      return 'تم إلغاء اختيار حساب Google.';
-    }
-    if (text.contains('network') || text.contains('socket')) {
-      return 'لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى.';
-    }
-    if (text.contains('developer_error') || text.contains('sign_in_failed')) {
-      return 'إعداد Google OAuth غير مكتمل لهذا التطبيق. تحقق من OAuth Client وبصمة SHA-1.';
-    }
-    return 'تعذر تسجيل الدخول بحساب Google داخل التطبيق. حاول مرة أخرى.\n$error';
+  String _authDiagnosticMessage(AuthException error) {
+    return 'وصل الطلب إلى Supabase لكن تم رفضه\n\n'
+        'الرسالة: ${error.message}\n'
+        'كود HTTP: ${error.statusCode ?? 'غير متوفر'}\n'
+        'كود Supabase: ${error.code ?? 'غير متوفر'}\n\n'
+        'الخطأ الخام:\n$error';
   }
 
   Future<void> _showError(String text) async {

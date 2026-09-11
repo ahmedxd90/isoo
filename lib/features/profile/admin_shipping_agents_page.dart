@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/widgets/custom_toast.dart';
+
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 
@@ -34,9 +36,7 @@ class _AdminShippingAgentsPageState extends State<AdminShippingAgentsPage> {
       setState(_reload);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        CustomToast.show(context, e.toString().replaceFirst('Exception: ', ''));
       }
     }
   }
@@ -75,9 +75,7 @@ class _AdminShippingAgentsPageState extends State<AdminShippingAgentsPage> {
       setState(_reload);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        CustomToast.show(context, e.toString().replaceFirst('Exception: ', ''));
       }
     }
   }
