@@ -75,9 +75,12 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
           showFullscreenButton: false,
         ),
       );
-      await _controller!.loadVideoById(videoId: id, startSeconds: _position);
-      await _controller!.setVolume((_volume * 100).round());
       _initialised = true;
+      if (mounted) setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAndStartVideo(id, _position, _playing);
+      });
+      return;
     } else if (!_applyingRemote && _controller != null) {
       _applyingRemote = true;
       await _controller!.seekTo(seconds: _position, allowSeekAhead: true);
@@ -90,7 +93,43 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       _applyingRemote = false;
     }
     if (_playing && _controller != null) {
-      await _controller!.playVideo();
+      await _playWithAutoplayFallback();
+    }
+  }
+
+  Future<void> _loadAndStartVideo(
+    String id,
+    double position,
+    bool shouldPlay,
+  ) async {
+    final controller = _controller;
+    if (controller == null || _videoId != id) return;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await controller.loadVideoById(videoId: id, startSeconds: position);
+      await controller.setVolume((_volume * 100).round());
+      if (shouldPlay) await _playWithAutoplayFallback();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تعذر تشغيل هذا الفيديو داخل المشغل')),
+        );
+      }
+    }
+  }
+
+  Future<void> _playWithAutoplayFallback() async {
+    final controller = _controller;
+    if (controller == null) return;
+    try {
+      // Android WebView blocks unmuted autoplay. Start muted, then restore volume.
+      await controller.mute();
+      await controller.playVideo();
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await controller.setVolume((_volume * 100).round());
+      if (_volume > 0) await controller.unMute();
+    } catch (_) {
+      // The user can still start playback with the visible play button.
     }
   }
 
