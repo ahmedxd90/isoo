@@ -18,6 +18,7 @@ import '../../core/room_session.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
 import 'room_settings_page.dart';
+import 'cinema_player.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'luck_bag_widgets.dart';
@@ -1367,6 +1368,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _lastGift;
   final Set<int> _remoteUsers = <int>{};
   late int _liveSeatCount;
+  String _liveThemeKey = 'default';
   String? _liveImageUrl;
   String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
@@ -1431,6 +1433,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _seatStream = _service.roomSeatsStream(_roomId);
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
+    _liveThemeKey = widget.room['theme_key']?.toString() ?? 'default';
     _liveImageUrl = widget.room['image_url'] as String?;
     _liveBackgroundUrl = widget.room['background_url'] as String?;
     _micPermission = widget.room['mic_permission'] as String? ?? 'everyone';
@@ -1440,6 +1443,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       setState(() {
         _liveSeatCount =
             (updated['seat_count'] as num?)?.toInt() ?? _liveSeatCount;
+        _liveThemeKey = updated['theme_key']?.toString() ?? _liveThemeKey;
         _liveImageUrl = updated['image_url'] as String?;
         _liveBackgroundUrl = updated['background_url'] as String?;
         _micPermission = updated['mic_permission'] as String? ?? _micPermission;
@@ -3727,7 +3731,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   end: Alignment.bottomRight,
                   colors: backgroundColors,
                 ),
-                image: backgroundUrl == null
+                image: _liveThemeKey == 'cinema'
+                    ? const DecorationImage(
+                        image: AssetImage('assets/rooms/cinema_background.png'),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black45,
+                          BlendMode.darken,
+                        ),
+                      )
+                    : backgroundUrl == null
                     ? const DecorationImage(
                         image: AssetImage(
                           'assets/trace_home/images/audio_room_background.png',
@@ -3861,6 +3874,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                         ),
                       ),
                     ),
+                    if (_liveThemeKey == 'cinema')
+                      CinemaPlayer(
+                        roomId: _roomId,
+                        service: _service,
+                        canControl: _isRoomOwner || _isModerator,
+                      ),
                     StreamBuilder<List<Map<String, dynamic>>>(
                       stream: _seatStream,
                       builder: (_, snap) {
@@ -4029,6 +4048,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     ),
                                                   ),
                                               ],
+                                            )
+                                          : _liveThemeKey == 'cinema'
+                                          ? Image.asset(
+                                              'assets/rooms/cinema_seat_icon.png',
+                                              width: 46,
+                                              height: 46,
+                                              fit: BoxFit.contain,
                                             )
                                           : const Icon(
                                               Icons.mic_none_rounded,

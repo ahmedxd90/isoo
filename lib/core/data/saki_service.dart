@@ -1766,6 +1766,44 @@ class SakiService {
   Stream<List<Map<String, dynamic>>> roomSettingsStream(String roomId) =>
       client.from('rooms').stream(primaryKey: ['id']).eq('id', roomId).limit(1);
 
+  Stream<List<Map<String, dynamic>>> roomCinemaStateStream(String roomId) =>
+      client
+          .from('room_cinema_state')
+          .stream(primaryKey: ['room_id'])
+          .eq('room_id', roomId)
+          .limit(1);
+
+  Future<Map<String, dynamic>?> roomCinemaState(String roomId) async {
+    final row = await client
+        .from('room_cinema_state')
+        .select()
+        .eq('room_id', roomId)
+        .maybeSingle();
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
+  Future<Map<String, dynamic>> setRoomCinemaState(
+    String roomId, {
+    required String videoId,
+    required String videoTitle,
+    required bool isPlaying,
+    required double positionSeconds,
+    required double volume,
+  }) async {
+    final row = await client.rpc(
+      'set_room_cinema_state',
+      params: {
+        'p_room_id': roomId,
+        'p_video_id': videoId,
+        'p_video_title': videoTitle,
+        'p_is_playing': isPlaying,
+        'p_position_seconds': positionSeconds,
+        'p_volume': volume,
+      },
+    );
+    return Map<String, dynamic>.from(row as Map);
+  }
+
   Future<void> sendRoomMessage(
     String roomId,
     String body, {
@@ -2051,7 +2089,7 @@ class SakiService {
     if (name != null) values['name'] = name.trim();
     if (announcement != null) values['announcement'] = announcement.trim();
     if (category != null) values['category'] = category;
-    values['theme_key'] = 'default';
+    if (themeKey != null) values['theme_key'] = themeKey;
     values['membership_fee'] = 0;
     values['reward_rate'] = 0;
     if (micPermission != null) values['mic_permission'] = micPermission;

@@ -29,6 +29,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
   late String _announcement;
   late String _category;
   late String _micPermission;
+  late String _themeKey;
   bool _saving = false;
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     _announcement = widget.room['announcement'] as String? ?? '';
     _category = widget.room['category'] as String? ?? 'عام';
     _micPermission = widget.room['mic_permission'] as String? ?? 'everyone';
+    _themeKey = widget.room['theme_key'] as String? ?? 'default';
   }
 
   Future<void> _save() async {
@@ -47,13 +49,13 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     try {
       await widget.service.updateRoomSettings(
         widget.room['id'] as String,
-        seatCount: _seatCount,
+        seatCount: _themeKey == 'cinema' ? 10 : _seatCount,
         imageUrl: _imageUrl,
         backgroundUrl: _background,
         name: _name,
         announcement: _announcement,
         category: _category,
-        themeKey: 'default',
+        themeKey: _themeKey,
         membershipFee: 0,
         rewardRate: 0,
         micPermission: _micPermission,
@@ -231,8 +233,21 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                 ),
                 _HtmlSettingRow(
                   title: 'الثيم',
-                  value: 'الافتراضي فقط',
-                  onTap: () {},
+                  value: _themeKey == 'cinema' ? 'سينما YouTube' : 'الافتراضي',
+                  onTap: () async {
+                    final value = await Navigator.push<String>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RoomThemesPage(selected: _themeKey),
+                      ),
+                    );
+                    if (value == null) return;
+                    setState(() {
+                      _themeKey = value;
+                      if (value == 'cinema') _seatCount = 10;
+                    });
+                    await _save();
+                  },
                 ),
                 _HtmlSettingRow(
                   title: 'خلفية الغرفة',
@@ -258,7 +273,9 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
             color: Colors.white,
             child: _HtmlSettingRow(
               title: 'عدد المقاعد',
-              value: '$_seatCount مقاعد',
+              value: _themeKey == 'cinema'
+                  ? '10 مقاعد (سينما)'
+                  : '$_seatCount مقاعد',
               onTap: () async {
                 final value = await Navigator.push<int>(
                   context,
@@ -266,7 +283,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                     builder: (_) => SeatCountPage(selected: _seatCount),
                   ),
                 );
-                if (value != null) {
+                if (value != null && _themeKey != 'cinema') {
                   setState(() => _seatCount = value);
                   await _save();
                 }
@@ -761,9 +778,7 @@ class RoomThemesPage extends StatelessWidget {
   final String selected;
   static const themes = <String, List<Color>>{
     'default': [Color(0xFF1E293B), Color(0xFF312E81)],
-    'ocean': [Color(0xFF0891B2), Color(0xFF1D4ED8)],
-    'sunset': [Color(0xFFF97316), Color(0xFFDB2777)],
-    'aurora': [Color(0xFF059669), Color(0xFF7C3AED)],
+    'cinema': [Color(0xFF240609), Color(0xFF9F1239)],
   };
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -799,7 +814,12 @@ class RoomThemesPage extends StatelessWidget {
                   ),
                 ),
               ),
-              const Text('🎙️   🎬   🍿   🎙️', style: TextStyle(fontSize: 24)),
+              Text(
+                selected == 'cinema'
+                    ? '🎬   🍿   🎞️   🎬'
+                    : '🎙️   🎬   🍿   🎙️',
+                style: const TextStyle(fontSize: 24),
+              ),
               const Text(
                 'مظهر الغرفة للزوار والأعضاء',
                 style: TextStyle(color: Colors.white70, fontSize: 11),
@@ -841,7 +861,7 @@ class RoomThemesPage extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text(
-                        entry.key == 'default' ? 'الافتراضي' : entry.key,
+                        entry.key == 'default' ? 'الافتراضي' : 'سينما YouTube',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 3.0.7+109
+version: 3.1.0+110
 
 environment:
   sdk: ^3.13.2
@@ -44,6 +44,7 @@ dependencies:
   file_picker: ^12.2.0
   cached_network_image: ^4.0.0
   video_player: ^2.14.0
+  youtube_player_iframe: ^5.2.1
   just_audio: ^0.10.5
   flutter_svga: ^0.0.13
   flutter_local_notifications: ^22.3.0
@@ -71,6 +72,9 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/rooms/cinema_background.png
+    - assets/rooms/cinema_seat_icon.png
+    - assets/rooms/cinema_bottom_bar.png
     - assets/saki_login_background.jpg
     - assets/games/buffet_game_cover.png
     - assets/vip/
