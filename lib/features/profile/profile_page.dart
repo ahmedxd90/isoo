@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,22 +16,18 @@ import 'super_admin_page.dart';
 import 'role_admin_page.dart';
 import 'host_agency_page.dart';
 import 'shipping_agent_page.dart';
-import 'vip_widgets.dart';
 import 'store_pages.dart';
 import 'trace_profile_features_page.dart';
 import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
-import '../../shared/widgets/saki_widgets.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/vip_identity.dart';
+import 'user_profile_page.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
 const _orange = Color(0xFFFF6B35);
 const _orangeSoft = Color(0x14FF6B35);
 const _cyan = Color(0xFF06B6D4);
-const _cyanSoft = Color(0x1406B6D4);
 const _ink = Color(0xFF111827);
 const _muted = Color(0xFF64748B);
 const _line = Color(0xFFE2E8F0);
@@ -235,372 +233,252 @@ class _ProfilePageState extends State<ProfilePage> {
     final charmLevel = (_modules['charm_level'] as num? ?? 0).toInt();
     final followers = _stats['followers'] ?? 0;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        leading: IconButton(
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.pop(context);
-          },
-          icon: const FaIcon(
-            FontAwesomeIcons.arrowRight,
-            size: 17,
-            color: _ink,
-          ),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'الملف الشخصي',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: _ink,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 14),
-            child: TextButton.icon(
-              onPressed: _edit,
-              style: TextButton.styleFrom(
-                backgroundColor: _orangeSoft,
-                foregroundColor: _orange,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              icon: const FaIcon(FontAwesomeIcons.penToSquare, size: 13),
-              label: const Text(
-                'تعديل',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-        ],
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textTheme: GoogleFonts.tajawalTextTheme(Theme.of(context).textTheme),
       ),
-      body: RefreshIndicator(
-        color: _orange,
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-          children: [
-            _ProfileCard(
-              profile: profile,
-              username: username,
-              familyBadge: profile['family_badge'] is Map
-                  ? Map<String, dynamic>.from(profile['family_badge'])
-                  : null,
-              vipLevel: vipLevel,
-              wealthLevel: wealthLevel,
-              charmLevel: charmLevel,
-              followers: followers,
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.wallet,
-                    label: 'المحفظة',
-                    color: _orange,
-                    background: _orangeSoft,
-                    onTap: () => _openModule('wallet'),
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.crown,
-                    label: 'VIP',
-                    color: const Color(0xFFD97706),
-                    background: const Color(0xFFFFFBEB),
-                    onTap: () => _openModule('vip'),
-                  ),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: _ActionTile(
-                    icon: FontAwesomeIcons.store,
-                    label: 'المتجر',
-                    color: const Color(0xFF2563EB),
-                    background: const Color(0xFFEFF6FF),
-                    onTap: () => _openModule('store'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 9),
-            if (profile['host_agency_member'] == true)
-              Row(
-                children: [
-                  Expanded(
-                    child: _ActionTile(
-                      icon: FontAwesomeIcons.building,
-                      label: 'وكالة المضيفين',
-                      color: _cyan,
-                      background: _cyanSoft,
-                      onTap: () => _openModule('host_agency'),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F6FA),
+        body: RefreshIndicator(
+          color: const Color(0xFF7B2CBF),
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 120),
+            children: [
+              _HtmlProfileHeader(
+                profile: profile,
+                username: username,
+                onEdit: _edit,
+                onAvatarTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => UserProfilePage(
+                      userId: SakiService.instance.uid,
                     ),
                   ),
-                  const SizedBox(width: 9),
-                  const Expanded(child: SizedBox()),
-                  const SizedBox(width: 9),
-                  const Expanded(child: SizedBox()),
-                ],
+                ),
               ),
-            if (profile['shipping_agent'] == true) ...[
-              const SizedBox(height: 9),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ActionTile(
-                      icon: FontAwesomeIcons.coins,
-                      label: 'وكيل شحن',
-                      color: const Color(0xFF2563EB),
-                      background: const Color(0xFFEFF6FF),
-                      onTap: () => _openModule('shipping_agent'),
-                    ),
-                  ),
-                  const Expanded(child: SizedBox()),
-                  const Expanded(child: SizedBox()),
-                ],
+              _HtmlStatsBar(
+                followers: followers,
+                following: _stats['following'] ?? 0,
+                charisma: charmLevel,
               ),
-            ],
-            if (_adminRole != 'user') ...[
-              const SizedBox(height: 14),
-              InkWell(
-                onTap: () {
-                  if (_adminRole == 'super_admin') {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SuperAdminPage()),
-                    );
-                  } else {
-                    Navigator.of(context).push(
+              _HtmlWalletBanner(onTap: () => _openModule('wallet')),
+              _HtmlLevelBanners(
+                wealthLevel: wealthLevel,
+                vipLevel: vipLevel,
+                onWealthTap: () => _openModule('level'),
+                onVipTap: () => _openModule('vip'),
+              ),
+              if (_adminRole != 'user')
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => RoleAdminPage(role: _adminRole),
+                        builder: (_) => _adminRole == 'super_admin'
+                            ? const SuperAdminPage()
+                            : RoleAdminPage(role: _adminRole),
                       ),
-                    );
-                  }
-                },
-                borderRadius: BorderRadius.circular(18),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    gradient: SakiTheme.gradient,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _adminRole == 'bd'
-                            ? Icons.handshake_rounded
-                            : Icons.admin_panel_settings_rounded,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _adminRole == 'super_admin'
-                              ? 'لوحة Super Admin'
-                              : 'لوحة ${_adminRole.toUpperCase()}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6C1EB2), Color(0xFFA83AF0)],
                         ),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      RoleBadge(role: _adminRole, light: true),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.chevron_left_rounded,
-                        color: Colors.white,
+                      child: Row(
+                        children: [
+                          const FaIcon(
+                            FontAwesomeIcons.gaugeHigh,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _adminRole == 'super_admin'
+                                  ? 'لوحة Super Admin'
+                                  : 'لوحة ${_adminRole.toUpperCase()}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          RoleBadge(role: _adminRole, light: true),
+                          const SizedBox(width: 6),
+                          const FaIcon(
+                            FontAwesomeIcons.chevronLeft,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
+                  ),
+                ),
+              _HtmlFeatureMenus(
+                profile: profile,
+                isSuperAdmin: _isSuperAdmin,
+                onTap: _openMenu,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+                child: OutlinedButton.icon(
+                  onPressed: _logout,
+                  icon: const FaIcon(FontAwesomeIcons.rightFromBracket, size: 14),
+                  label: const Text('تسجيل الخروج'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Color(0xFFFECACA)),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  width: 128,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1D5DB),
+                    borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
             ],
-            const SizedBox(height: 14),
-            _MenuCard(onTap: _openMenu, isSuperAdmin: _isSuperAdmin),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _logout,
-              icon: const FaIcon(FontAwesomeIcons.rightFromBracket, size: 14),
-              label: const Text('تسجيل الخروج'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.redAccent,
-                side: const BorderSide(color: Color(0xFFFECACA)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({
+class _HtmlProfileHeader extends StatelessWidget {
+  const _HtmlProfileHeader({
     required this.profile,
     required this.username,
-    required this.familyBadge,
-    required this.vipLevel,
-    required this.wealthLevel,
-    required this.charmLevel,
-    required this.followers,
+    required this.onEdit,
+    required this.onAvatarTap,
   });
   final Map<String, dynamic> profile;
   final String username;
-  final Map<String, dynamic>? familyBadge;
-  final int vipLevel;
-  final int wealthLevel;
-  final int charmLevel;
-  final int followers;
+  final VoidCallback onEdit;
+  final VoidCallback onAvatarTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _line),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 16,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
+    final uid = profile['saki_id']?.toString() ?? '—';
+    final vip = (profile['vip_level'] as num?)?.toInt() ?? 0;
+    return SizedBox(
+      height: 218,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 68,
-                height: 68,
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [_orange, Color(0xFFEC4899)],
-                  ),
-                ),
-                child: ClipOval(
-                  child: _AvatarImage(
-                    url: profile['avatar_url'] as String?,
-                    label: username,
-                  ),
-                ),
+          Container(
+            height: 176,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF6C1EB2),
+                  Color(0xFFA83AF0),
+                  Color(0xFFCA68FF),
+                  Color(0x00F5F6FA),
+                ],
+                stops: [0, .43, .72, 1],
               ),
-              Positioned(
-                bottom: -1,
-                right: -1,
-                child: Container(
-                  width: 23,
-                  height: 23,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF59E0B),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const FaIcon(
-                    FontAwesomeIcons.crown,
-                    size: 10,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            child: Stack(
               children: [
-                VipUsername(
-                  profile: profile,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: _ink,
-                  ),
-                ),
-                if (familyBadge != null) ...[
-                  const SizedBox(height: 6),
-                  FamilyTitleBadge(family: familyBadge, compact: true),
-                ],
-                if ((profile['admin_role']?.toString() ?? 'user') != 'user' ||
-                    profile['is_super_admin'] == true) ...[
-                  const SizedBox(height: 6),
-                  RoleBadge(
-                    role: profile['is_super_admin'] == true
-                        ? 'super_admin'
-                        : profile['admin_role']?.toString() ?? 'user',
-                    compact: true,
-                  ),
-                ],
-                if (profile['host_agency_member'] == true) ...[
-                  const SizedBox(height: 6),
-                  HostAgencyTitleBadge(
-                    compact: true,
-                    label: profile['host_agency_owner'] == true
-                        ? 'وكيل'
-                        : 'مضيف',
-                  ),
-                ],
-                if (profile['shipping_agent'] == true) ...[
-                  const SizedBox(height: 6),
-                  const HostAgencyTitleBadge(label: 'وكيل شحن', compact: true),
-                ],
-                const SizedBox(height: 2),
-                Text(
-                  'ID: ${profile['saki_id'] ?? '—'}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: _muted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 9),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    if (vipLevel > 0)
-                      VipTitleBadge(
-                        profile: {...profile, 'vip_level': vipLevel},
-                        compact: true,
+                Positioned.fill(child: CustomPaint(painter: _HeaderPatternPainter())),
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  child: TextButton.icon(
+                    onPressed: onEdit,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: .20),
+                      foregroundColor: const Color(0xFFFFE36E),
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: const Color(0xFFFFE36E).withValues(alpha: .55)),
                       ),
-                    _LevelChip(
-                      label: 'ثروة LV $wealthLevel',
-                      color: const Color(0xFF22C55E),
                     ),
-                    _LevelChip(
-                      label: 'سحر LV $charmLevel',
-                      color: const Color(0xFFA855F7),
-                    ),
-                  ],
+                    icon: const FaIcon(FontAwesomeIcons.userPen, size: 12),
+                    label: const Text('تعديل الملف الشخصي', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                  ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '$followers متابع',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: _muted,
-                    fontWeight: FontWeight.w700,
+              ],
+            ),
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 0,
+            child: Row(
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                GestureDetector(
+                  onTap: onAvatarTap,
+                  child: Container(
+                    width: 86,
+                    height: 86,
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [Color(0xFFE6A836), Color(0xFFFFF0A8), Color(0xFFD88B0A)]),
+                      boxShadow: [BoxShadow(color: Color(0x55000000), blurRadius: 14, offset: Offset(0, 6))],
+                    ),
+                    child: ClipOval(child: _AvatarImage(url: profile['avatar_url'] as String?, label: username)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _ink, letterSpacing: .5)),
+                            const SizedBox(width: 7),
+                            Container(width: 24, height: 16, decoration: BoxDecoration(color: const Color(0xFFCE1126), borderRadius: BorderRadius.circular(3)), child: const Center(child: Text('★', style: TextStyle(color: Colors.white, fontSize: 10)))),
+                          ],
+                        ),
+                        const SizedBox(height: 7),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: const Color(0xFF9CA3AF), borderRadius: BorderRadius.circular(20)),
+                              child: Row(children: [const FaIcon(FontAwesomeIcons.gem, size: 10, color: Colors.white), const SizedBox(width: 4), Text('$vip', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900))]),
+                            ),
+                            const SizedBox(width: 7),
+                            Text('UID: $uid', style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w800)),
+                            IconButton(
+                              onPressed: () async {
+                                await Clipboard.setData(ClipboardData(text: uid));
+                                if (context.mounted) CustomToast.show(context, 'تم نسخ UID');
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints.tightFor(width: 25, height: 25),
+                              icon: const FaIcon(FontAwesomeIcons.copy, size: 11, color: Color(0xFF9CA3AF)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -612,23 +490,179 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _LevelChip extends StatelessWidget {
-  const _LevelChip({required this.label, required this.color});
-  final String label;
-  final Color color;
+class _HtmlStatsBar extends StatelessWidget {
+  const _HtmlStatsBar({required this.followers, required this.following, required this.charisma});
+  final int followers;
+  final int following;
+  final int charisma;
+
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .10),
-      borderRadius: BorderRadius.circular(9),
-      border: Border.all(color: color.withValues(alpha: .35)),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900),
+    margin: const EdgeInsets.fromLTRB(16, 12, 16, 15),
+    padding: const EdgeInsets.symmetric(vertical: 13),
+    decoration: BoxDecoration(color: Colors.white.withValues(alpha: .78), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB)), boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3))]),
+    child: Row(
+      children: [
+        _StatCell(value: following, label: 'متابعة'),
+        const _StatDivider(),
+        _StatCell(value: followers, label: 'معجبين'),
+        const _StatDivider(),
+        _StatCell(value: charisma, label: 'كاريزما'),
+      ],
     ),
   );
+}
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.value, required this.label});
+  final int value;
+  final String label;
+  @override
+  Widget build(BuildContext context) => Expanded(child: Column(children: [Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _ink)), const SizedBox(height: 3), Text(label, style: const TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w700))]));
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+  @override
+  Widget build(BuildContext context) => Container(width: 1, height: 26, color: const Color(0xFFE5E7EB));
+}
+
+class _HtmlWalletBanner extends StatelessWidget {
+  const _HtmlWalletBanner({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 86,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFFFFCA36), Color(0xFFF7AB00), Color(0xFFE08B00)]),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE6A836), width: 3),
+              boxShadow: const [BoxShadow(color: Color(0x40D48C0A), blurRadius: 15, offset: Offset(0, 7))],
+            ),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text('محفظة', style: TextStyle(fontSize: 31, fontWeight: FontWeight.w900, color: Color(0xFFFFF3A1), shadows: [Shadow(color: Color(0x995A2600), offset: Offset(0, 2), blurRadius: 2)])),
+              Row(children: [const Text('💵', style: TextStyle(fontSize: 25)), const SizedBox(width: 4), const Text('💳', style: TextStyle(fontSize: 29)), const SizedBox(width: 2), const Text('🪙', style: TextStyle(fontSize: 28))]),
+            ]),
+          ),
+        ),
+        Positioned(top: -12, right: 16, child: Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF59E0B)]), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFFFF0A8)), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 7)]), child: const Row(children: [Text('اشحن لأول مرة', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)), SizedBox(width: 5), Text('🪙', style: TextStyle(fontSize: 11))]))),
+      ],
+    ),
+  );
+}
+
+class _HtmlLevelBanners extends StatelessWidget {
+  const _HtmlLevelBanners({required this.wealthLevel, required this.vipLevel, required this.onWealthTap, required this.onVipTap});
+  final int wealthLevel;
+  final int vipLevel;
+  final VoidCallback onWealthTap;
+  final VoidCallback onVipTap;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+    child: Row(children: [
+      Expanded(child: _GradientMiniCard(title: 'المستوى', subtitle: 'LV.$wealthLevel', icon: FontAwesomeIcons.shieldHalved, colors: const [Color(0xFF29B6F6), Color(0xFF0288D1)], onTap: onWealthTap)),
+      const SizedBox(width: 10),
+      Expanded(child: _GradientMiniCard(title: 'VIP', subtitle: 'VIP$vipLevel', icon: FontAwesomeIcons.crown, colors: const [Color(0xFF66BB6A), Color(0xFF2E7D32)], onTap: onVipTap)),
+    ]),
+  );
+}
+
+class _GradientMiniCard extends StatelessWidget {
+  const _GradientMiniCard({required this.title, required this.subtitle, required this.icon, required this.colors, required this.onTap});
+  final String title;
+  final String subtitle;
+  final FaIconData icon;
+  final List<Color> colors;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 62,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: colors), borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.first.withValues(alpha: .65), width: 2), boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 6, offset: Offset(0, 3))]),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)), Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic))]), FaIcon(icon, color: Colors.white, size: 28)]),
+    ),
+  );
+}
+
+class _HtmlFeatureMenus extends StatelessWidget {
+  const _HtmlFeatureMenus({required this.profile, required this.isSuperAdmin, required this.onTap});
+  final Map<String, dynamic> profile;
+  final bool isSuperAdmin;
+  final Future<void> Function(String) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = <(String, FaIconData, Color, Color)>[
+      ('لوحة تحكم', FontAwesomeIcons.gaugeHigh, const Color(0xFF3B82F6), const Color(0xFFEFF6FF)),
+    ];
+    final second = <(String, FaIconData, Color, Color)>[
+      if (profile['host_agency_member'] == true) ('وكالة المضيفين', FontAwesomeIcons.buildingUser, const Color(0xFFF59E0B), const Color(0xFFFFFBEB)),
+      ('المهام', FontAwesomeIcons.listCheck, const Color(0xFF06B6D4), const Color(0xFFECFEFF)),
+      ('المتجر', FontAwesomeIcons.bagShopping, const Color(0xFF9333EA), const Color(0xFFFAF5FF)),
+      if (profile['shipping_agent'] == true) ('وكالة الشحن', FontAwesomeIcons.buildingColumns, const Color(0xFF10B981), const Color(0xFFECFDF5)),
+    ];
+    final third = <(String, FaIconData, Color, Color)>[
+      ('العائلة', FontAwesomeIcons.houseChimneyWindow, const Color(0xFF6366F1), const Color(0xFFEEF2FF)),
+      ('كود الاسترداد', FontAwesomeIcons.ticket, const Color(0xFFF43F5E), const Color(0xFFFFF1F2)),
+    ];
+    final fourth = <(String, FaIconData, Color, Color)>[
+      ('الإعدادات', FontAwesomeIcons.gear, const Color(0xFF14B8A6), const Color(0xFFF0FDFA)),
+    ];
+    return Column(children: [
+      _HtmlMenuGroup(rows: first, onTap: onTap),
+      _HtmlMenuGroup(rows: second, onTap: onTap),
+      _HtmlMenuGroup(rows: third, onTap: onTap),
+      _HtmlMenuGroup(rows: fourth, onTap: onTap),
+      if (isSuperAdmin) _HtmlMenuGroup(rows: [('لوحة تحكم سوبر أدمن', FontAwesomeIcons.userGear, const Color(0xFF4F46E5), const Color(0xFFEEF2FF))], onTap: onTap),
+    ]);
+  }
+}
+
+class _HtmlMenuGroup extends StatelessWidget {
+  const _HtmlMenuGroup({required this.rows, required this.onTap});
+  final List<(String, FaIconData, Color, Color)> rows;
+  final Future<void> Function(String) onTap;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    child: Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB)), boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 9, offset: Offset(0, 3))]),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(children: [for (var i = 0; i < rows.length; i++) ...[
+          InkWell(onTap: () => onTap(rows[i].$1), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13), child: Row(children: [Container(width: 34, height: 34, decoration: BoxDecoration(color: rows[i].$4, borderRadius: BorderRadius.circular(11)), child: Center(child: FaIcon(rows[i].$2, color: rows[i].$3, size: 15))), const SizedBox(width: 11), Expanded(child: Text(rows[i].$1, style: const TextStyle(color: Color(0xFF1F2937), fontSize: 13, fontWeight: FontWeight.w900))), const FaIcon(FontAwesomeIcons.chevronLeft, color: Color(0xFFD1D5DB), size: 11)]))),
+          if (i != rows.length - 1) const Divider(height: 1, color: Color(0xFFF3F4F6)),
+        ]]),
+      ),
+    ),
+  );
+}
+
+class _HeaderPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: .12);
+    for (var x = 20.0; x < size.width; x += 40) {
+      for (var y = 8.0; y < 150; y += 40) {
+        canvas.drawCircle(Offset(x, y), 2, paint);
+        canvas.drawCircle(Offset(x, y + 20), 12, paint..style = PaintingStyle.stroke..strokeWidth = 1);
+        paint.style = PaintingStyle.fill;
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _AvatarImage extends StatelessWidget {
@@ -640,13 +674,13 @@ class _AvatarImage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (url == null || url!.isEmpty) {
       return Container(
-        color: _orangeSoft,
+        color: const Color(0x33E6A836),
         alignment: Alignment.center,
         child: Text(
           label.characters.first.toUpperCase(),
           style: const TextStyle(
-            color: _orange,
-            fontSize: 24,
+            color: Color(0xFFD88B0A),
+            fontSize: 27,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -656,182 +690,16 @@ class _AvatarImage extends StatelessWidget {
       url!,
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => Container(
-        color: _orangeSoft,
+        color: const Color(0x33E6A836),
         alignment: Alignment.center,
         child: Text(
           label.characters.first.toUpperCase(),
           style: const TextStyle(
-            color: _orange,
-            fontSize: 24,
+            color: Color(0xFFD88B0A),
+            fontSize: 27,
             fontWeight: FontWeight.w900,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.background,
-    required this.onTap,
-  });
-  final FaIconData icon;
-  final String label;
-  final Color color;
-  final Color background;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _line),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(child: FaIcon(icon, size: 16, color: color)),
-              ),
-              const SizedBox(height: 7),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: _ink,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MenuCard extends StatelessWidget {
-  const _MenuCard({required this.onTap, required this.isSuperAdmin});
-  final Future<void> Function(String) onTap;
-  final bool isSuperAdmin;
-
-  @override
-  Widget build(BuildContext context) {
-    const rows = [
-      (
-        'المستوى',
-        FontAwesomeIcons.chartLine,
-        Color(0xFFDC2626),
-        Color(0xFFFEF2F2),
-      ),
-      (
-        'المهام',
-        FontAwesomeIcons.listCheck,
-        Color(0xFF16A34A),
-        Color(0xFFF0FDF4),
-      ),
-      (
-        'العائلة',
-        FontAwesomeIcons.peopleGroup,
-        Color(0xFF7C3AED),
-        Color(0xFFF5F3FF),
-      ),
-      (
-        'لوحة تحكم سوبر أدمن',
-        FontAwesomeIcons.userGear,
-        Color(0xFF4F46E5),
-        Color(0xFFEEF2FF),
-      ),
-      ('كود الاسترداد', FontAwesomeIcons.ticket, _cyan, _cyanSoft),
-      (
-        'الإعدادات',
-        FontAwesomeIcons.gear,
-        Color(0xFF4B5563),
-        Color(0xFFF3F4F6),
-      ),
-    ];
-    final visibleRows = rows
-        .where((row) => row.$1 != 'لوحة تحكم سوبر أدمن' || isSuperAdmin)
-        .toList();
-    final children = <Widget>[];
-    for (var i = 0; i < visibleRows.length; i++) {
-      final row = visibleRows[i];
-      children.add(
-        InkWell(
-          onTap: () => onTap(row.$1),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: row.$4,
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                  child: Center(child: FaIcon(row.$2, size: 14, color: row.$3)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    row.$1,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: _ink,
-                    ),
-                  ),
-                ),
-                const FaIcon(
-                  FontAwesomeIcons.chevronLeft,
-                  size: 11,
-                  color: Color(0xFFD1D5DB),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      if (i != rows.length - 1) {
-        children.add(const Divider(height: 1, color: _line));
-      }
-    }
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _line),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 14,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(children: children),
       ),
     );
   }
