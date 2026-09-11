@@ -1804,6 +1804,15 @@ class SakiService {
     return Map<String, dynamic>.from(row as Map);
   }
 
+  Future<List<Map<String, dynamic>>> searchYouTube(String query) async {
+    final response = await client.functions.invoke(
+      'youtube-search',
+      body: {'query': query.trim(), 'maxResults': 8},
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    return List<Map<String, dynamic>>.from(data['items'] ?? const []);
+  }
+
   Future<void> sendRoomMessage(
     String roomId,
     String body, {

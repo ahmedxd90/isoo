@@ -3981,8 +3981,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                               GlobalKey.new,
                                             )
                                           : null,
-                                      width: 52,
-                                      height: 52,
+                                      width: _liveThemeKey == 'cinema'
+                                          ? 42
+                                          : 52,
+                                      height: _liveThemeKey == 'cinema'
+                                          ? 42
+                                          : 52,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         color: occupied
@@ -4020,7 +4024,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     label:
                                                         profile['username']
                                                             as String?,
-                                                    radius: 25,
+                                                    radius:
+                                                        _liveThemeKey ==
+                                                            'cinema'
+                                                        ? 20
+                                                        : 25,
                                                     profile: profile,
                                                   ),
                                                 ),

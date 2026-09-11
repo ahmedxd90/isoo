@@ -149,7 +149,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       builder: (_) => const _YoutubeSearchSheet(),
     );
     if (result == null) return;
-    final id = _extractVideoId(result['url'] ?? '');
+    final id = result['videoId'] ?? _extractVideoId(result['url'] ?? '');
     if (id == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -198,7 +198,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       );
     }
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 2),
       decoration: BoxDecoration(
         color: const Color(0xFF240609),
         borderRadius: BorderRadius.circular(18),
@@ -207,8 +207,8 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
+          SizedBox(
+            height: 132,
             child: _controller == null || !_initialised
                 ? const Center(
                     child: Icon(
@@ -220,15 +220,15 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
                 : YoutubePlayer(controller: _controller!),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
             child: Column(
               children: [
                 Row(
                   children: [
                     const Icon(
-                      Icons.local_movies,
+                      Icons.movie_filter_rounded,
                       color: Colors.amber,
-                      size: 18,
+                      size: 17,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -244,17 +244,26 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
                     ),
                     if (widget.canControl)
                       IconButton(
+                        visualDensity: VisualDensity.compact,
                         onPressed: _openSearch,
-                        icon: const Icon(Icons.search, color: Colors.white),
+                        icon: const Icon(
+                          Icons.manage_search_rounded,
+                          color: Colors.white,
+                        ),
                       ),
                   ],
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton(
                       onPressed: widget.canControl ? () => _seekBy(-10) : null,
-                      icon: const Icon(Icons.replay_10, color: Colors.white),
+                      icon: const Icon(
+                        Icons.replay_10_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                     IconButton(
                       onPressed: widget.canControl ? _togglePlay : null,
@@ -263,36 +272,27 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
                             ? Icons.pause_circle_filled
                             : Icons.play_circle_fill,
                         color: Colors.amber,
-                        size: 36,
+                        size: 30,
                       ),
                     ),
                     IconButton(
                       onPressed: widget.canControl ? () => _seekBy(10) : null,
-                      icon: const Icon(Icons.forward_10, color: Colors.white),
+                      icon: const Icon(
+                        Icons.forward_10_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ],
                 ),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.volume_down,
-                      color: Colors.white70,
-                      size: 17,
-                    ),
-                    Expanded(
-                      child: Slider(
-                        value: _volume.clamp(0, 1),
-                        onChanged: widget.canControl ? _changeVolume : null,
-                        activeColor: Colors.amber,
-                        inactiveColor: Colors.white24,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.volume_up,
-                      color: Colors.white70,
-                      size: 17,
-                    ),
-                  ],
+                SizedBox(
+                  height: 22,
+                  child: Slider(
+                    value: _volume.clamp(0, 1),
+                    onChanged: widget.canControl ? _changeVolume : null,
+                    activeColor: Colors.amber,
+                    inactiveColor: Colors.white24,
+                  ),
                 ),
               ],
             ),
@@ -310,58 +310,129 @@ class _YoutubeSearchSheet extends StatefulWidget {
 }
 
 class _YoutubeSearchSheetState extends State<_YoutubeSearchSheet> {
-  final _url = TextEditingController();
-  final _title = TextEditingController();
+  final _query = TextEditingController();
+  List<Map<String, dynamic>> _results = [];
+  bool _loading = false;
+  String? _error;
+
   @override
   void dispose() {
-    _url.dispose();
-    _title.dispose();
+    _query.dispose();
     super.dispose();
   }
 
+  Future<void> _search() async {
+    final query = _query.text.trim();
+    if (query.isEmpty) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await SakiService.instance.searchYouTube(query);
+      if (mounted) setState(() => _results = results);
+    } catch (error) {
+      if (mounted) setState(() => _error = 'تعذر البحث: $error');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.only(
-      left: 18,
-      right: 18,
-      top: 18,
-      bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
-    ),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          'بحث عن فيديو من YouTube',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        MediaQuery.viewInsetsOf(context).bottom + 12,
+      ),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * .72,
+        child: Column(
+          children: [
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'ابحث عن فيديو بالاسم',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _query,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _search(),
+                    decoration: const InputDecoration(
+                      hintText: 'مثال: أغنية أو فيلم',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _loading ? null : _search,
+                  icon: const Icon(Icons.search),
+                ),
+              ],
+            ),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(18),
+                child: CircularProgressIndicator(),
+              ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+              ),
+            Expanded(
+              child: ListView.separated(
+                itemCount: _results.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, index) {
+                  final item = _results[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                    leading: item['thumbnail'] == null
+                        ? const Icon(Icons.movie)
+                        : Image.network(
+                            item['thumbnail'].toString(),
+                            width: 96,
+                            height: 54,
+                            fit: BoxFit.cover,
+                          ),
+                    title: Text(
+                      item['title']?.toString() ?? 'YouTube',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(item['channelTitle']?.toString() ?? ''),
+                    trailing: const Icon(
+                      Icons.play_circle_fill,
+                      color: Colors.redAccent,
+                    ),
+                    onTap: () => Navigator.pop(context, {
+                      'videoId': item['videoId'].toString(),
+                      'title': item['title'].toString(),
+                    }),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'الصق رابط الفيديو. البحث بالكلمات يحتاج مفتاح YouTube Data API.',
-          style: TextStyle(color: Colors.black54, fontSize: 12),
-          textAlign: TextAlign.center,
-        ),
-        TextField(
-          controller: _url,
-          decoration: const InputDecoration(
-            labelText: 'رابط YouTube أو Video ID',
-            prefixIcon: Icon(Icons.link),
-          ),
-        ),
-        TextField(
-          controller: _title,
-          decoration: const InputDecoration(
-            labelText: 'اسم الفيديو (اختياري)',
-            prefixIcon: Icon(Icons.title),
-          ),
-        ),
-        const SizedBox(height: 12),
-        FilledButton.icon(
-          onPressed: () =>
-              Navigator.pop(context, {'url': _url.text, 'title': _title.text}),
-          icon: const Icon(Icons.play_arrow),
-          label: const Text('تشغيل للجميع'),
-        ),
-      ],
+      ),
     ),
   );
 }
