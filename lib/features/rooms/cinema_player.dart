@@ -103,15 +103,15 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     }
   }
 
-  Future<void> _publish({
+  Future<Map<String, dynamic>?> _publish({
     String? videoId,
     String? title,
     bool? playing,
     double? position,
     double? volume,
   }) async {
-    if (!widget.canControl || _applyingRemote) return;
-    await widget.service.setRoomCinemaState(
+    if (!widget.canControl || _applyingRemote) return null;
+    return widget.service.setRoomCinemaState(
       widget.roomId,
       videoId: videoId ?? _videoId ?? '',
       videoTitle: title ?? _title,
@@ -158,12 +158,15 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       }
       return;
     }
-    await _publish(
+    final state = await _publish(
       videoId: id,
       title: result['title']?.trim().isEmpty == true
           ? 'YouTube'
           : result['title'],
+      playing: true,
+      position: 0,
     );
+    if (state != null) await _applyStateRows([state]);
   }
 
   String? _extractVideoId(String value) {
@@ -198,7 +201,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       );
     }
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+      margin: const EdgeInsets.fromLTRB(12, 2, 12, 1),
       decoration: BoxDecoration(
         color: const Color(0xFF240609),
         borderRadius: BorderRadius.circular(18),
@@ -208,7 +211,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       child: Column(
         children: [
           SizedBox(
-            height: 132,
+            height: 106,
             child: _controller == null || !_initialised
                 ? const Center(
                     child: Icon(
