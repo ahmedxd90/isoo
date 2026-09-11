@@ -23,26 +23,22 @@ class RoomSettingsPage extends StatefulWidget {
 
 class _RoomSettingsPageState extends State<RoomSettingsPage> {
   late int _seatCount;
+  String? _imageUrl;
   String? _background;
   late String _name;
   late String _announcement;
   late String _category;
-  late String _themeKey;
-  late int _membershipFee;
-  late double _rewardRate;
   late String _micPermission;
   bool _saving = false;
   @override
   void initState() {
     super.initState();
-    _seatCount = (widget.room['seat_count'] as int?) ?? 10;
+    _seatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
+    _imageUrl = widget.room['image_url'] as String?;
     _background = widget.room['background_url'] as String?;
     _name = widget.room['name'] as String? ?? 'غرفتي';
     _announcement = widget.room['announcement'] as String? ?? '';
     _category = widget.room['category'] as String? ?? 'عام';
-    _themeKey = widget.room['theme_key'] as String? ?? 'default';
-    _membershipFee = (widget.room['membership_fee'] as num?)?.toInt() ?? 0;
-    _rewardRate = (widget.room['reward_rate'] as num?)?.toDouble() ?? 0;
     _micPermission = widget.room['mic_permission'] as String? ?? 'everyone';
   }
 
@@ -52,13 +48,14 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
       await widget.service.updateRoomSettings(
         widget.room['id'] as String,
         seatCount: _seatCount,
+        imageUrl: _imageUrl,
         backgroundUrl: _background,
         name: _name,
         announcement: _announcement,
         category: _category,
-        themeKey: _themeKey,
-        membershipFee: _membershipFee,
-        rewardRate: _rewardRate,
+        themeKey: 'default',
+        membershipFee: 0,
+        rewardRate: 0,
         micPermission: _micPermission,
       );
       await widget.service.recordRoomActivity(
@@ -123,14 +120,21 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     }
   }
 
-  Future<void> _chooseTheme() async {
-    final value = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(builder: (_) => RoomThemesPage(selected: _themeKey)),
-    );
-    if (value != null) {
-      setState(() => _themeKey = value);
+  Future<void> _chooseRoomImage() async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (file == null) return;
+    setState(() => _saving = true);
+    try {
+      final url = await widget.service.uploadRoomImage(
+        widget.room['id'] as String,
+        file,
+      );
+      setState(() => _imageUrl = url);
       await _save();
+    } catch (error) {
+      if (mounted) CustomToast.show(context, 'تعذر رفع صورة الغرفة: $error');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -155,49 +159,6 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
     }
   }
 
-  Future<void> _membership() async {
-    final c = TextEditingController(text: '$_membershipFee');
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('رسوم العضوية'),
-        content: TextField(
-          controller: c,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(suffixText: 'عملة'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () {
-              setState(() => _membershipFee = int.tryParse(c.text) ?? 0);
-              Navigator.pop(context);
-              _save();
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
-    c.dispose();
-  }
-
-  Future<void> _reward() async {
-    final value = await Navigator.push<double>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RewardSettingsPage(selected: _rewardRate),
-      ),
-    );
-    if (value != null) {
-      setState(() => _rewardRate = value);
-      await _save();
-    }
-  }
-
   String _micLabel() =>
       const {
         'everyone': 'الجميع',
@@ -209,7 +170,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final image = widget.room['image_url'] as String?;
+    final image = _imageUrl;
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F9),
       appBar: AppBar(
@@ -237,6 +198,13 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
               children: [
                 _ProfileRow(image: image, name: _name),
                 _HtmlSettingRow(
+                  title: 'صورة الغرفة',
+                  value: image == null
+                      ? 'اختر صورة من الجهاز'
+                      : 'تم تحديث الصورة',
+                  onTap: _chooseRoomImage,
+                ),
+                _HtmlSettingRow(
                   title: 'اسم الغرفة',
                   value: _name,
                   onTap: () => _editText(
@@ -263,9 +231,8 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
                 ),
                 _HtmlSettingRow(
                   title: 'الثيم',
-                  value: _themeKey == 'default' ? 'الافتراضي' : _themeKey,
-                  dot: _themeKey,
-                  onTap: _chooseTheme,
+                  value: 'الافتراضي فقط',
+                  onTap: () {},
                 ),
                 _HtmlSettingRow(
                   title: 'خلفية الغرفة',
@@ -289,21 +256,21 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
           const SizedBox(height: 8),
           Container(
             color: Colors.white,
-            child: Column(
-              children: [
-                _HtmlSettingRow(
-                  title: 'رسوم العضوية',
-                  value: '$_membershipFee عملة',
-                  valueColor: Colors.amber.shade700,
-                  onTap: _membership,
-                ),
-                _HtmlSettingRow(
-                  title: 'المكافأة',
-                  value: '${_rewardRate.toStringAsFixed(0)}% من النقاط',
-                  valueColor: Colors.amber.shade700,
-                  onTap: _reward,
-                ),
-              ],
+            child: _HtmlSettingRow(
+              title: 'عدد المقاعد',
+              value: '$_seatCount مقاعد',
+              onTap: () async {
+                final value = await Navigator.push<int>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SeatCountPage(selected: _seatCount),
+                  ),
+                );
+                if (value != null) {
+                  setState(() => _seatCount = value);
+                  await _save();
+                }
+              },
             ),
           ),
           const SizedBox(height: 8),
@@ -667,7 +634,7 @@ class _ProfileRow extends StatelessWidget {
         ),
         const Spacer(),
         const Text(
-          'صورة الملف الشخصي',
+          'صورة الغرفة',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             color: Color(0xFF303039),
@@ -684,13 +651,11 @@ class _HtmlSettingRow extends StatelessWidget {
     required this.value,
     required this.onTap,
     this.valueColor,
-    this.dot,
   });
   final String title;
   final String value;
   final VoidCallback onTap;
   final Color? valueColor;
-  final String? dot;
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
@@ -710,18 +675,6 @@ class _HtmlSettingRow extends StatelessWidget {
           Expanded(
             child: Row(
               children: [
-                if (dot != null)
-                  Container(
-                    width: 14,
-                    height: 14,
-                    margin: const EdgeInsets.only(right: 6),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF06B6D4), Color(0xFF2563EB)],
-                      ),
-                    ),
-                  ),
                 Flexible(
                   child: Text(
                     value,

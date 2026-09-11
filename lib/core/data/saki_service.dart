@@ -2034,6 +2034,7 @@ class SakiService {
   Future<void> updateRoomSettings(
     String roomId, {
     int? seatCount,
+    String? imageUrl,
     String? backgroundUrl,
     String? name,
     String? announcement,
@@ -2045,19 +2046,43 @@ class SakiService {
   }) async {
     final values = <String, dynamic>{};
     if (seatCount != null) values['seat_count'] = seatCount;
+    if (imageUrl != null) values['image_url'] = imageUrl;
     if (backgroundUrl != null) values['background_url'] = backgroundUrl;
     if (name != null) values['name'] = name.trim();
     if (announcement != null) values['announcement'] = announcement.trim();
     if (category != null) values['category'] = category;
-    if (themeKey != null) values['theme_key'] = themeKey;
-    if (membershipFee != null) values['membership_fee'] = membershipFee;
-    if (rewardRate != null) values['reward_rate'] = rewardRate;
+    values['theme_key'] = 'default';
+    values['membership_fee'] = 0;
+    values['reward_rate'] = 0;
     if (micPermission != null) values['mic_permission'] = micPermission;
     await client
         .from('rooms')
         .update(values)
         .eq('id', roomId)
         .eq('owner_id', uid);
+  }
+
+  Future<String> uploadRoomImage(String roomId, XFile image) async {
+    final bytes = await File(image.path).readAsBytes();
+    if (bytes.isEmpty) throw Exception('empty_image');
+    final extension = image.path.split('.').last.toLowerCase();
+    final safeExtension =
+        const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension)
+        ? extension
+        : 'jpg';
+    final path =
+        '$uid/$roomId-cover-${DateTime.now().millisecondsSinceEpoch}.$safeExtension';
+    await client.storage
+        .from('rooms')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: 'image/$safeExtension',
+          ),
+        );
+    return client.storage.from('rooms').getPublicUrl(path);
   }
 
   Future<List<Map<String, dynamic>>> roomModeratorsForOwner(

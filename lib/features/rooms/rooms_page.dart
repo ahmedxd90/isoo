@@ -1367,6 +1367,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _lastGift;
   final Set<int> _remoteUsers = <int>{};
   late int _liveSeatCount;
+  String? _liveImageUrl;
   String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
@@ -1430,6 +1431,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _seatStream = _service.roomSeatsStream(_roomId);
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
+    _liveImageUrl = widget.room['image_url'] as String?;
     _liveBackgroundUrl = widget.room['background_url'] as String?;
     _micPermission = widget.room['mic_permission'] as String? ?? 'everyone';
     _roomSettingsSubscription = _roomSettingsStream.listen((rows) {
@@ -1438,6 +1440,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       setState(() {
         _liveSeatCount =
             (updated['seat_count'] as num?)?.toInt() ?? _liveSeatCount;
+        _liveImageUrl = updated['image_url'] as String?;
         _liveBackgroundUrl = updated['background_url'] as String?;
         _micPermission = updated['mic_permission'] as String? ?? _micPermission;
       });
@@ -2208,7 +2211,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _showRoomInfo() async {
-    final image = widget.room['image_url'] as String?;
+    final image = _liveImageUrl;
     final title = widget.room['name'] as String? ?? 'الغرفة';
     final owner = widget.room['owner_id'] == _service.uid;
     showModalBottomSheet<void>(
@@ -2259,18 +2262,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               const SizedBox(height: 18),
               Row(
                 children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        await _service.toggleRoomFollow(_roomId, _followed);
-                        if (!mounted) return;
-                        setState(() => _followed = !_followed);
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(_followed ? Icons.check : Icons.add),
-                      label: Text(_followed ? 'متابَع' : 'متابعة الغرفة'),
+                  if (!owner)
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: () async {
+                          await _service.toggleRoomFollow(_roomId, _followed);
+                          if (!mounted) return;
+                          setState(() => _followed = !_followed);
+                          Navigator.pop(context);
+                        },
+                        icon: Icon(_followed ? Icons.check : Icons.add),
+                        label: Text(_followed ? 'متابَع' : 'متابعة الغرفة'),
+                      ),
                     ),
-                  ),
                   if (owner) ...[
                     const SizedBox(width: 10),
                     Expanded(
@@ -3695,7 +3699,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final image = widget.room['image_url'] as String?;
+    final image = _liveImageUrl;
     final title = widget.room['name'] as String? ?? 'غرفة SAKI';
     final roomNumber = widget.room['room_id'] as String? ?? '';
     final backgroundUrl = _liveBackgroundUrl;
