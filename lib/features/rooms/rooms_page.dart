@@ -1370,6 +1370,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
   String? _shownGiftMessageId;
+  Map<String, dynamic>? _activeBuffetWin;
+  String? _shownBuffetWinId;
   List<Map<String, dynamic>> _roomMembers = [];
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
@@ -4131,6 +4133,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               latestMessage['message_type'] == 'gift'
                               ? latestMessage
                               : const <String, dynamic>{};
+                          final latestBuffetWin =
+                              latestMessage['message_type'] == 'buffet_big_win'
+                              ? latestMessage
+                              : const <String, dynamic>{};
                           if (latestGift.isNotEmpty &&
                               latestGift['id'] != _shownGiftMessageId) {
                             final gift = Map<String, dynamic>.from(latestGift);
@@ -4142,6 +4148,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               setState(() {
                                 _shownGiftMessageId = gift['id']?.toString();
                                 _activeGiftMessage = gift;
+                              });
+                            });
+                          }
+                          if (latestBuffetWin.isNotEmpty &&
+                              latestBuffetWin['id'] != _shownBuffetWinId) {
+                            final win = Map<String, dynamic>.from(
+                              latestBuffetWin,
+                            );
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted || win['id'] == _shownBuffetWinId) {
+                                return;
+                              }
+                              setState(() {
+                                _shownBuffetWinId = win['id']?.toString();
+                                _activeBuffetWin = win;
                               });
                             });
                           }
@@ -4189,6 +4210,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       );
                                       final displayBody = messageType == 'gift'
                                           ? 'أرسل هدية ${payload['name'] ?? 'هدية'}'
+                                          : messageType == 'buffet_big_win'
+                                          ? 'فوز كبير: ${payload['profit'] ?? 0} عملة ذهبية'
                                           : body;
                                       final giftThumbnail =
                                           payload['thumbnail_url'] as String? ??
@@ -4196,6 +4219,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       final isSpecial =
                                           messageType == 'join' ||
                                           messageType == 'seat';
+                                      final isBuffetWin =
+                                          messageType == 'buffet_big_win';
                                       final isEmoji = messageType == 'emoji';
                                       return Container(
                                         margin: const EdgeInsets.only(
@@ -4203,14 +4228,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                         ),
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: Colors.black26,
+                                          color: isBuffetWin
+                                              ? const Color(0xFF129447)
+                                                    .withValues(alpha: .88)
+                                              : Colors.black26,
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),
-                                          border: isSpecial
+                                          border: isSpecial || isBuffetWin
                                               ? Border.all(
-                                                  color: Colors.amber
-                                                      .withValues(alpha: .35),
+                                                  color:
+                                                      (isBuffetWin
+                                                              ? Colors
+                                                                    .greenAccent
+                                                              : Colors.amber)
+                                                          .withValues(
+                                                            alpha: .35,
+                                                          ),
                                                 )
                                               : null,
                                         ),
@@ -4510,6 +4544,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   seatKey: _seatKeyForGift(_activeGiftMessage!),
                   onClose: () {
                     if (mounted) setState(() => _activeGiftMessage = null);
+                  },
+                ),
+              ),
+            if (_activeBuffetWin != null)
+              Positioned(
+                top: 112,
+                left: 12,
+                right: 12,
+                child: BuffetBigWinBanner(
+                  key: ValueKey(_activeBuffetWin!['id']),
+                  message: _activeBuffetWin!,
+                  onGo: () {
+                    if (mounted) setState(() => _activeBuffetWin = null);
+                    _showGamesSheet();
+                  },
+                  onClose: () {
+                    if (mounted) setState(() => _activeBuffetWin = null);
                   },
                 ),
               ),
@@ -6416,6 +6467,140 @@ class _RoomMusicSearchDelegate extends SearchDelegate<void> {
         leading: const CircleAvatar(child: Icon(Icons.music_note)),
         title: Text(result[index]['title']?.toString() ?? 'موسيقى'),
         subtitle: Text(result[index]['artist']?.toString() ?? 'SAKI Creator'),
+      ),
+    );
+  }
+}
+
+class BuffetBigWinBanner extends StatefulWidget {
+  const BuffetBigWinBanner({
+    super.key,
+    required this.message,
+    required this.onGo,
+    required this.onClose,
+  });
+
+  final Map<String, dynamic> message;
+  final VoidCallback onGo;
+  final VoidCallback onClose;
+
+  @override
+  State<BuffetBigWinBanner> createState() => _BuffetBigWinBannerState();
+}
+
+class _BuffetBigWinBannerState extends State<BuffetBigWinBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final payload = Map<String, dynamic>.from(
+      widget.message['payload'] ?? const {},
+    );
+    final avatar = payload['avatar_url']?.toString() ?? '';
+    final username = payload['username']?.toString() ?? 'مستخدم';
+    final profit = (payload['profit'] as num?)?.toInt() ?? 0;
+    final amount = profit >= 1000000000000
+        ? '${(profit / 1000000000000).toStringAsFixed(1)}T'
+        : profit >= 1000000000
+        ? '${(profit / 1000000000).toStringAsFixed(1)}B'
+        : '${(profit / 1000000).toStringAsFixed(1)}M';
+    return AnimatedBuilder(
+      animation: _pulse,
+      builder: (_, child) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.lerp(
+                const Color(0xFF087F23),
+                const Color(0xFF35D45A),
+                _pulse.value,
+              )!,
+              const Color(0xFF0A9F35),
+              Color.lerp(
+                const Color(0xFF35D45A),
+                const Color(0xFF087F23),
+                _pulse.value,
+              )!,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: .85),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.greenAccent.withValues(alpha: .45),
+              blurRadius: 18,
+            ),
+          ],
+        ),
+        child: child,
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 23,
+            backgroundImage: avatar.startsWith('http')
+                ? NetworkImage(avatar)
+                : null,
+            child: avatar.startsWith('http')
+                ? null
+                : const Icon(Icons.person, color: Colors.white),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'مبروك $username',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  'ربح $amount عملة ذهبية',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: widget.onGo,
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF087F23),
+              shape: const StadiumBorder(),
+            ),
+            child: const Text(
+              'GO',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+          ),
+          IconButton(
+            onPressed: widget.onClose,
+            icon: const Icon(Icons.close, color: Colors.white, size: 18),
+          ),
+        ],
       ),
     );
   }

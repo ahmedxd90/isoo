@@ -2792,8 +2792,24 @@ class SakiService {
         .eq('room_id', roomId)
         .eq('status', 'finished')
         .order('id', ascending: false)
-        .limit(12);
+        .limit(10);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<int> buffetTodayProfit() async {
+    final start = DateTime.now().toUtc();
+    final dayStart = DateTime.utc(start.year, start.month, start.day);
+    final rows = await client
+        .from('saki_buffet_bets')
+        .select('payout')
+        .eq('user_id', uid)
+        .gt('payout', 0)
+        .gte('created_at', dayStart.toIso8601String())
+        .limit(1000);
+    return rows.fold<int>(
+      0,
+      (sum, row) => sum + ((row['payout'] as num?)?.toInt() ?? 0),
+    );
   }
 
   Future<List<Map<String, dynamic>>> familySquare({String? query}) async {

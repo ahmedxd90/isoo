@@ -160,13 +160,14 @@ class BuffetGameSheet extends StatefulWidget {
 class _BuffetGameSheetState extends State<BuffetGameSheet> {
   final _service = SakiService.instance;
   StreamSubscription<List<Map<String, dynamic>>>? _roundSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _walletSubscription;
   Timer? _timer;
   Timer? _spinTimer;
   Map<String, dynamic>? _round;
   final Map<int, int> _myBets = {};
   final List<String> _history = [];
   int _balance = 0;
-  final int _todayProfit = 0;
+  int _todayProfit = 0;
   int _currentBet = 100;
   int _seconds = 30;
   int? _winnerId;
@@ -191,6 +192,21 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         .listen((rows) {
           if (rows.isNotEmpty && mounted) _applyRound(rows.first);
         });
+    _walletSubscription = _service.client
+        .from('saki_account_modules')
+        .stream(primaryKey: ['user_id'])
+        .eq('user_id', _service.uid)
+        .listen((rows) async {
+          if (!mounted || rows.isEmpty) return;
+          final balance = (rows.first['gold_coins'] as num?)?.toInt() ?? 0;
+          final profit = await _service.buffetTodayProfit();
+          if (mounted) {
+            setState(() {
+              _balance = balance;
+              _todayProfit = profit;
+            });
+          }
+        });
   }
 
   Future<void> _load() async {
@@ -199,11 +215,13 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         _service.buffetGetRound(widget.roomId),
         _service.accountModules(),
         _service.buffetHistory(widget.roomId),
+        _service.buffetTodayProfit(),
       ]);
       if (!mounted) return;
       _applyRound(Map<String, dynamic>.from(values[0] as Map));
       setState(() {
         _balance = ((values[1] as Map)['gold_coins'] as num?)?.toInt() ?? 0;
+        _todayProfit = values[3] as int;
         _history
           ..clear()
           ..addAll(
@@ -520,6 +538,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   void dispose() {
     _timer?.cancel();
     _roundSubscription?.cancel();
+    _walletSubscription?.cancel();
     _spinTimer?.cancel();
     super.dispose();
   }
@@ -580,8 +599,6 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _floatingFood('🥗'),
-                  const SizedBox(width: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -603,8 +620,6 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  _floatingFood('🍕'),
                 ],
               ),
               const SizedBox(height: 8),
@@ -642,19 +657,6 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
       minimumSize: const Size(34, 34),
     ),
   );
-  Widget _floatingFood(String emoji) => Container(
-    width: 42,
-    height: 42,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .9),
-      shape: BoxShape.circle,
-      border: Border.all(color: Colors.white, width: 2),
-      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 5)],
-    ),
-    child: Text(emoji, style: const TextStyle(fontSize: 23)),
-  );
-
   Widget _yellowBoard() => Container(
     padding: const EdgeInsets.fromLTRB(10, 22, 10, 10),
     decoration: BoxDecoration(
@@ -881,7 +883,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
             Padding(
               padding: const EdgeInsets.all(3),
               child: Text(
-                '+$_todayProfit',
+                '+${_compact(_todayProfit)}',
                 style: const TextStyle(
                   color: Color(0xFFFF8F00),
                   fontWeight: FontWeight.w900,
@@ -912,12 +914,14 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
           ),
         ),
         const SizedBox(width: 10),
-        ..._history.map(
-          (e) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(e, style: const TextStyle(fontSize: 21)),
-          ),
-        ),
+        ..._history
+            .take(10)
+            .map(
+              (e) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(e, style: const TextStyle(fontSize: 21)),
+              ),
+            ),
       ],
     ),
   );
@@ -937,9 +941,20 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
       ],
     ),
   );
-  String _compact(int value) => value >= 1000000
-      ? '${(value / 1000000).toStringAsFixed(1)}M'
-      : value >= 1000
-      ? '${(value / 1000).toStringAsFixed(0)}K'
-      : '$value';
+  String _compact(int value) {
+    final absolute = value.abs();
+    if (absolute >= 1000000000000) {
+      return '${(value / 1000000000000).toStringAsFixed(1)}T';
+    }
+    if (absolute >= 1000000000) {
+      return '${(value / 1000000000).toStringAsFixed(1)}B';
+    }
+    if (absolute >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    }
+    if (absolute >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}K';
+    }
+    return '$value';
+  }
 }
