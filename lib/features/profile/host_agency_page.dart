@@ -32,7 +32,10 @@ class _HostAgencyPageState extends State<HostAgencyPage> {
       _error = null;
     });
     try {
-      try {
+      final isAgencyHost = await SakiService.instance.isHostAgencyMember(
+        SakiService.instance.uid,
+      );
+      if (isAgencyHost) {
         final result = await Future.wait<dynamic>([
           SakiService.instance.hostAgencyHostDashboard(),
           SakiService.instance.hostAgencyWalletDashboard(),
@@ -44,7 +47,7 @@ class _HostAgencyPageState extends State<HostAgencyPage> {
           _wallet = Map<String, dynamic>.from(result[1] as Map);
           _withdrawals = List<Map<String, dynamic>>.from(result[2] as List);
         });
-      } catch (_) {
+      } else {
         final result = await Future.wait<dynamic>([
           SakiService.instance.hostAgencyDashboard(),
           SakiService.instance.hostAgencyHosts(),

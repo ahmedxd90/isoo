@@ -10,6 +10,7 @@ import 'features/auth/complete_profile_page.dart';
 import 'features/home/home_page.dart';
 import 'core/data/saki_service.dart';
 import 'core/notifications/notification_service.dart';
+import 'core/permissions/saki_permission_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -85,6 +86,7 @@ class _SplashPageState extends State<SplashPage>
   @override
   void initState() {
     super.initState();
+    SakiPermissionService.requestOnFirstLaunch();
     Future<void>.delayed(const Duration(milliseconds: 1500), () async {
       if (!mounted) return;
       final session = Supabase.instance.client.auth.currentSession;

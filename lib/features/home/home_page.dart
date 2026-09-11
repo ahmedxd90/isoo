@@ -280,29 +280,34 @@ class _RoomMiniBubbleState extends State<RoomMiniBubble>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _session.addListener(_changed);
+    RoomBackgroundBridge.registerRoomActionHandler(_handleNativeAction);
     WidgetsBinding.instance.addPostFrameCallback((_) => _consumeNativeAction());
   }
 
-  Future<void> _consumeNativeAction() async {
-    final pending = await RoomBackgroundBridge.consumePendingRoom();
-    if (!mounted || pending == null) return;
+  Future<void> _handleNativeAction(Map<String, dynamic> pending) async {
+    if (!mounted) return;
     final action = pending['action']?.toString();
     if (action == 'exit') {
       final callback = _session.onExitRequested;
       if (callback != null) await callback();
       return;
     }
-    if (action == 'return') {
-      final roomId = pending['roomId']?.toString() ?? '';
-      final current = _session.room;
-      if (current == null || !_session.isSameRoom(roomId) || _opening) return;
-      _openRoom(current);
-    }
+    if (action != 'return') return;
+    final roomId = pending['roomId']?.toString() ?? '';
+    final current = _session.room;
+    if (current == null || !_session.isSameRoom(roomId) || _opening) return;
+    await _openRoom(current);
+  }
+
+  Future<void> _consumeNativeAction() async {
+    final pending = await RoomBackgroundBridge.consumePendingRoom();
+    if (pending != null) await _handleNativeAction(pending);
   }
 
   Future<void> _openRoom(Map<String, dynamic> current) async {
     if (_opening || !mounted) return;
     setState(() => _opening = true);
+    _session.hideBubble();
     await _session.setOverlayVisible(false);
     if (!mounted) return;
     try {

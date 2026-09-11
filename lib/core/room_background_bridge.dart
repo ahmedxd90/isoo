@@ -3,6 +3,19 @@ import 'package:flutter/services.dart';
 class RoomBackgroundBridge {
   RoomBackgroundBridge._();
   static const _channel = MethodChannel('saki/room_background');
+  static Future<void> Function(Map<String, dynamic>)? _roomActionHandler;
+
+  static void registerRoomActionHandler(
+    Future<void> Function(Map<String, dynamic>) handler,
+  ) {
+    _roomActionHandler = handler;
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'roomAction' || call.arguments is! Map) return;
+      await _roomActionHandler?.call(
+        Map<String, dynamic>.from(call.arguments as Map),
+      );
+    });
+  }
 
   static Future<void> start({
     required String roomId,

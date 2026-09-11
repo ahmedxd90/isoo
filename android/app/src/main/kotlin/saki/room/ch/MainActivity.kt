@@ -15,6 +15,7 @@ class MainActivity : FlutterActivity() {
     private val channelName = "saki/room_background"
     private var pendingRoom: HashMap<String, String>? = null
     private var pipEligible = false
+    private var methodChannel: MethodChannel? = null
 
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
@@ -35,6 +36,7 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         rememberPendingRoom(intent)
+        pendingRoom?.let { methodChannel?.invokeMethod("roomAction", it) }
     }
 
     private fun rememberPendingRoom(intent: Intent?) {
@@ -50,7 +52,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        methodChannel!!
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "start" -> {

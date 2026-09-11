@@ -603,9 +603,6 @@ class _HtmlFeatureMenus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final first = <(String, FaIconData, Color, Color)>[
-      ('لوحة تحكم', FontAwesomeIcons.gaugeHigh, const Color(0xFF3B82F6), const Color(0xFFEFF6FF)),
-    ];
     final second = <(String, FaIconData, Color, Color)>[
       if (profile['host_agency_member'] == true) ('وكالة المضيفين', FontAwesomeIcons.buildingUser, const Color(0xFFF59E0B), const Color(0xFFFFFBEB)),
       ('المهام', FontAwesomeIcons.listCheck, const Color(0xFF06B6D4), const Color(0xFFECFEFF)),
@@ -620,7 +617,6 @@ class _HtmlFeatureMenus extends StatelessWidget {
       ('الإعدادات', FontAwesomeIcons.gear, const Color(0xFF14B8A6), const Color(0xFFF0FDFA)),
     ];
     return Column(children: [
-      _HtmlMenuGroup(rows: first, onTap: onTap),
       _HtmlMenuGroup(rows: second, onTap: onTap),
       _HtmlMenuGroup(rows: third, onTap: onTap),
       _HtmlMenuGroup(rows: fourth, onTap: onTap),
