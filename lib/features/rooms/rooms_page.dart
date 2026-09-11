@@ -21,6 +21,7 @@ import 'room_settings_page.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'luck_bag_widgets.dart';
+import 'buffet_game_sheet.dart';
 import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
 import '../messages/messages_page.dart';
@@ -3339,16 +3340,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => _RoomGamesSheet(
-        onGameSelected: (game) {
-          Navigator.of(sheetContext).pop();
-          if (!mounted) return;
-          CustomToast.show(context, 'سيتم فتح $game قريباً داخل الغرفة');
-        },
-      ),
+      builder: (_) => BuffetGameSheet(roomId: _roomId),
     );
   }
-
 
   Widget _toolButton(IconData icon, String label, VoidCallback onTap) =>
       InkWell(
@@ -4524,172 +4518,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
   }
-}
-
-class _RoomGamesSheet extends StatelessWidget {
-  const _RoomGamesSheet({required this.onGameSelected});
-  final void Function(String game) onGameSelected;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      color: Color(0xFF260A18),
-      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-    ),
-    child: SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 46,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFFD166), Color(0xFFFF7A59)],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.sports_esports_rounded,
-                    color: Color(0xFF3D0B12),
-                    size: 25,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ألعاب الغرفة',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: 3),
-                      Text(
-                        'اختر لعبة وشارك أصدقاءك داخل الغرفة',
-                        style: TextStyle(color: Colors.white60, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, color: Colors.white70),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.75,
-              children: [
-                _gameCard(
-                  icon: Icons.casino_rounded,
-                  title: 'النرد',
-                  subtitle: 'ارمِ النرد مع الأصدقاء',
-                  colors: const [Color(0xFF7C3AED), Color(0xFF4F46E5)],
-                  onTap: () => onGameSelected('لعبة النرد'),
-                ),
-                _gameCard(
-                  icon: Icons.quiz_rounded,
-                  title: 'مسابقة',
-                  subtitle: 'أسئلة وتحديات سريعة',
-                  colors: const [Color(0xFF0891B2), Color(0xFF2563EB)],
-                  onTap: () => onGameSelected('المسابقة'),
-                ),
-                _gameCard(
-                  icon: Icons.extension_rounded,
-                  title: 'ألغاز',
-                  subtitle: 'اختبر ذكاءك',
-                  colors: const [Color(0xFFDB2777), Color(0xFF9333EA)],
-                  onTap: () => onGameSelected('لعبة الألغاز'),
-                ),
-                _gameCard(
-                  icon: Icons.emoji_events_rounded,
-                  title: 'التحديات',
-                  subtitle: 'نافس لاعبي الغرفة',
-                  colors: const [Color(0xFFF59E0B), Color(0xFFEA580C)],
-                  onTap: () => onGameSelected('التحديات'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-
-  Widget _gameCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required List<Color> colors,
-    required VoidCallback onTap,
-  }) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(18),
-    child: Ink(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 9, offset: Offset(0, 4)),
-        ],
-      ),
-      padding: const EdgeInsets.all(13),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 27),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 9),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class GiftFullScreenOverlay extends StatefulWidget {

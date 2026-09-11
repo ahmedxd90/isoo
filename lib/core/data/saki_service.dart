@@ -2726,6 +2726,46 @@ class SakiService {
     return Map<String, dynamic>.from(created);
   }
 
+  Future<Map<String, dynamic>> buffetGetRound(String roomId) async {
+    final result = await client.rpc(
+      'saki_buffet_get_round',
+      params: {'p_room_id': roomId},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> buffetPlaceBet({
+    required String roomId,
+    required int roundId,
+    required int foodId,
+    required int amount,
+  }) async {
+    final result = await client.rpc(
+      'saki_buffet_place_bet',
+      params: {
+        'p_room_id': roomId,
+        'p_round_id': roundId,
+        'p_food_id': foodId,
+        'p_amount': amount,
+      },
+    );
+    final rows = result is List ? result : [result];
+    return rows.isEmpty
+        ? const {}
+        : Map<String, dynamic>.from(rows.first as Map);
+  }
+
+  Future<Map<String, dynamic>> buffetResolveRound({
+    required String roomId,
+    required int roundId,
+  }) async {
+    final result = await client.rpc(
+      'saki_buffet_resolve_round',
+      params: {'p_room_id': roomId, 'p_round_id': roundId},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
   Future<List<Map<String, dynamic>>> familySquare({String? query}) async {
     var request = client.from('family_square').select();
     if (query != null && query.trim().isNotEmpty) {
