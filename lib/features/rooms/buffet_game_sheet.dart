@@ -615,7 +615,6 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
               _balanceRow(),
               const SizedBox(height: 8),
               _historyRow(),
-              if (_revealing && _winnerId != null) _resultCard(),
             ],
           ),
         ),
@@ -922,45 +921,6 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
       ],
     ),
   );
-
-  Widget _resultCard() {
-    final food = _foods.firstWhere((item) => item.id == _winnerId);
-    final myWin = (_myBets[food.id] ?? 0) * food.multiplier;
-    return Container(
-      margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFFFC107), width: 3),
-      ),
-      child: Column(
-        children: [
-          const Text(
-            '✨ نتيجة الجولة الحالية ✨',
-            style: TextStyle(
-              color: Color(0xFFFF8F00),
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Text(food.emoji, style: const TextStyle(fontSize: 48)),
-          Text(
-            '${food.name} — فوز ${food.multiplier}',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-          Text(
-            myWin > 0
-                ? 'مبروك! ربحت +${_compact(myWin)} 🪙'
-                : 'لم تصب الخيار الفائز في هذه الجولة',
-            style: TextStyle(
-              color: myWin > 0 ? Colors.green : Colors.red,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showRules() => showDialog<void>(
     context: context,
