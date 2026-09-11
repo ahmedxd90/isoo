@@ -13,6 +13,18 @@ class BuffetFood {
   final String emoji;
 }
 
+class _BuffetHistoryItem {
+  const _BuffetHistoryItem({
+    required this.roundId,
+    required this.emoji,
+    this.isNew = false,
+  });
+
+  final int roundId;
+  final String emoji;
+  final bool isNew;
+}
+
 const _foods = <BuffetFood>[
   BuffetFood(1, 'نقانق', 10, '🌭'),
   BuffetFood(2, 'دجاج', 15, '🍗'),
@@ -160,13 +172,14 @@ class BuffetGameSheet extends StatefulWidget {
 class _BuffetGameSheetState extends State<BuffetGameSheet> {
   final _service = SakiService.instance;
   StreamSubscription<List<Map<String, dynamic>>>? _roundSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _historySubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _walletSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _profitSubscription;
   Timer? _timer;
   Timer? _spinTimer;
   Map<String, dynamic>? _round;
   final Map<int, int> _myBets = {};
-  final List<String> _history = [];
+  final List<_BuffetHistoryItem> _history = [];
   int _balance = 0;
   int _todayProfit = 0;
   int _currentBet = 100;
@@ -193,6 +206,14 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         .listen((rows) {
           if (rows.isNotEmpty && mounted) _applyRound(rows.first);
         });
+    _historySubscription = _service.client
+        .from('saki_buffet_rounds')
+        .stream(primaryKey: ['id'])
+        .eq('room_id', widget.roomId)
+        .eq('status', 'finished')
+        .order('id', ascending: false)
+        .limit(10)
+        .listen(_applyHistoryRows);
     _walletSubscription = _service.client
         .from('saki_account_modules')
         .stream(primaryKey: ['user_id'])
@@ -248,14 +269,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         _todayProfit = values[3] as int;
         _history
           ..clear()
-          ..addAll(
-            (values[2] as List).map((row) {
-              final winner = (row['winner_food_id'] as num?)?.toInt();
-              return winner == null
-                  ? '•'
-                  : _foods.firstWhere((food) => food.id == winner).emoji;
-            }),
-          );
+          ..addAll(_historyItemsFromRows(values[2] as List));
         _loading = false;
       });
     } catch (error) {
@@ -264,6 +278,36 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         _toast(_friendlyError(error));
       }
     }
+  }
+
+  List<_BuffetHistoryItem> _historyItemsFromRows(List rows) {
+    return rows.map((raw) {
+      final row = Map<String, dynamic>.from(raw as Map);
+      final winner = (row['winner_food_id'] as num?)?.toInt();
+      final food = _foods.where((item) => item.id == winner).toList();
+      return _BuffetHistoryItem(
+        roundId: int.tryParse(row['id']?.toString() ?? '') ?? 0,
+        emoji: food.isEmpty ? '•' : food.first.emoji,
+      );
+    }).where((item) => item.roundId > 0).take(10).toList();
+  }
+
+  void _applyHistoryRows(List<Map<String, dynamic>> rows) {
+    if (!mounted || rows.isEmpty) return;
+    final previousIds = _history.map((item) => item.roundId).toSet();
+    final incoming = _historyItemsFromRows(rows);
+    if (incoming.isEmpty) return;
+    final newest = incoming.first;
+    final isNew = previousIds.isNotEmpty && !previousIds.contains(newest.roundId);
+    setState(() {
+      _history
+        ..clear()
+        ..addAll(incoming.map((item) => _BuffetHistoryItem(
+              roundId: item.roundId,
+              emoji: item.emoji,
+              isNew: isNew && item.roundId == newest.roundId,
+            )));
+    });
   }
 
   void _applyRound(Map<String, dynamic> next) {
@@ -280,8 +324,11 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
       final matches = _foods.where((item) => item.id == nextWinner).toList();
       if (matches.isNotEmpty) {
         final food = matches.first;
-        _history.remove(food.emoji);
-        _history.insert(0, food.emoji);
+        _history.removeWhere((item) => item.roundId == id);
+        _history.insert(
+          0,
+          _BuffetHistoryItem(roundId: id, emoji: food.emoji, isNew: true),
+        );
         if (_history.length > 10) _history.removeRange(10, _history.length);
       }
     }
@@ -577,6 +624,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   void dispose() {
     _timer?.cancel();
     _roundSubscription?.cancel();
+    _historySubscription?.cancel();
     _walletSubscription?.cancel();
     _profitSubscription?.cancel();
     _spinTimer?.cancel();
@@ -954,14 +1002,37 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
           ),
         ),
         const SizedBox(width: 10),
-        ..._history
-            .take(10)
-            .map(
-              (e) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text(e, style: const TextStyle(fontSize: 21)),
-              ),
+        ..._history.take(10).map(
+          (item) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Text(item.emoji, style: const TextStyle(fontSize: 21)),
+                if (item.isNew)
+                  Positioned(
+                    top: -10,
+                    right: -8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'جديد',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 7,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
+          ),
+        ),
       ],
     ),
   );
