@@ -161,6 +161,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   final _service = SakiService.instance;
   StreamSubscription<List<Map<String, dynamic>>>? _roundSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _walletSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _profitSubscription;
   Timer? _timer;
   Timer? _spinTimer;
   Map<String, dynamic>? _round;
@@ -207,6 +208,29 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
             });
           }
         });
+    _profitSubscription = _service.client
+        .from('saki_buffet_bets')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', _service.uid)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .listen((_) => _refreshWalletSnapshot());
+  }
+
+  Future<void> _refreshWalletSnapshot() async {
+    try {
+      final values = await Future.wait<dynamic>([
+        _service.accountModules(),
+        _service.buffetTodayProfit(),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _balance = ((values[0] as Map)['gold_coins'] as num?)?.toInt() ?? 0;
+        _todayProfit = values[1] as int;
+      });
+    } catch (_) {
+      // Keep the last known values during transient realtime reconnects.
+    }
   }
 
   Future<void> _load() async {
@@ -246,6 +270,21 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
     final id = int.tryParse(next['id']?.toString() ?? '');
     if (id == null) return;
     final changed = _round?['id']?.toString() != next['id']?.toString();
+    final nextWinner = (next['winner_food_id'] as num?)?.toInt();
+    final winnerChanged =
+        _round?['winner_food_id']?.toString() !=
+        next['winner_food_id']?.toString();
+    if (next['status'] == 'finished' &&
+        nextWinner != null &&
+        (changed || winnerChanged)) {
+      final matches = _foods.where((item) => item.id == nextWinner).toList();
+      if (matches.isNotEmpty) {
+        final food = matches.first;
+        _history.remove(food.emoji);
+        _history.insert(0, food.emoji);
+        if (_history.length > 10) _history.removeRange(10, _history.length);
+      }
+    }
     if (changed) {
       _myBets.clear();
       _winnerId = null;
@@ -539,6 +578,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
     _timer?.cancel();
     _roundSubscription?.cancel();
     _walletSubscription?.cancel();
+    _profitSubscription?.cancel();
     _spinTimer?.cancel();
     super.dispose();
   }
@@ -944,17 +984,22 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   String _compact(int value) {
     final absolute = value.abs();
     if (absolute >= 1000000000000) {
-      return '${(value / 1000000000000).toStringAsFixed(1)}T';
+      return '${_trimDecimal(value / 1000000000000)}T';
     }
     if (absolute >= 1000000000) {
-      return '${(value / 1000000000).toStringAsFixed(1)}B';
+      return '${_trimDecimal(value / 1000000000)}b';
     }
     if (absolute >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
+      return '${_trimDecimal(value / 1000000)}m';
     }
     if (absolute >= 1000) {
-      return '${(value / 1000).toStringAsFixed(1)}K';
+      return '${_trimDecimal(value / 1000)}k';
     }
     return '$value';
+  }
+
+  String _trimDecimal(num value) {
+    final text = value.toStringAsFixed(1);
+    return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
   }
 }

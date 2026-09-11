@@ -6509,11 +6509,7 @@ class _BuffetBigWinBannerState extends State<BuffetBigWinBanner>
     final avatar = payload['avatar_url']?.toString() ?? '';
     final username = payload['username']?.toString() ?? 'مستخدم';
     final profit = (payload['profit'] as num?)?.toInt() ?? 0;
-    final amount = profit >= 1000000000000
-        ? '${(profit / 1000000000000).toStringAsFixed(1)}T'
-        : profit >= 1000000000
-        ? '${(profit / 1000000000).toStringAsFixed(1)}B'
-        : '${(profit / 1000000).toStringAsFixed(1)}M';
+    final amount = _compactBuffetAmount(profit);
     return AnimatedBuilder(
       animation: _pulse,
       builder: (_, child) => Container(
@@ -6604,4 +6600,18 @@ class _BuffetBigWinBannerState extends State<BuffetBigWinBanner>
       ),
     );
   }
+}
+
+String _compactBuffetAmount(int value) {
+  final absolute = value.abs();
+  String trim(num number) {
+    final text = number.toStringAsFixed(1);
+    return text.endsWith('.0') ? text.substring(0, text.length - 2) : text;
+  }
+
+  if (absolute >= 1000000000000) return '${trim(value / 1000000000000)}T';
+  if (absolute >= 1000000000) return '${trim(value / 1000000000)}b';
+  if (absolute >= 1000000) return '${trim(value / 1000000)}m';
+  if (absolute >= 1000) return '${trim(value / 1000)}k';
+  return '$value';
 }
