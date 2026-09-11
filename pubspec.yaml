@@ -72,6 +72,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/saki_login_background.jpg
+    - assets/games/buffet_game_cover.png
     - assets/vip/
     - assets/vip/profile_cards/
     - assets/messages/icons/

@@ -3340,7 +3340,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => BuffetGameSheet(roomId: _roomId),
+      builder: (_) => BuffetGameCatalogSheet(roomId: _roomId),
     );
   }
 

@@ -23,6 +23,131 @@ const _foods = <BuffetFood>[
   BuffetFood(8, 'ذرة', 5, '🌽'),
 ];
 
+class BuffetGameCatalogSheet extends StatelessWidget {
+  const BuffetGameCatalogSheet({super.key, required this.roomId});
+  final String roomId;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: BoxConstraints(
+      maxHeight: MediaQuery.sizeOf(context).height * .72,
+    ),
+    decoration: const BoxDecoration(
+      color: Color(0xFF176B37),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+    ),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 6,
+              decoration: BoxDecoration(
+                color: Colors.white70,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                'الألعاب',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                Future<void>.delayed(Duration.zero, () {
+                  if (!context.mounted) return;
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => BuffetGameSheet(roomId: roomId),
+                  );
+                });
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFFFD166), width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black38,
+                      blurRadius: 16,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 4 / 3,
+                      child: Image.asset(
+                        'assets/games/buffet_game_cover.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 13),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'لعبة بوفيه الأطعمة',
+                              style: TextStyle(
+                                color: Color(0xFF14532D),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFC83B), Color(0xFFFF8C00)],
+                              ),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                            child: const Text(
+                              'العب الآن',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class BuffetGameSheet extends StatefulWidget {
   const BuffetGameSheet({super.key, required this.roomId});
   final String roomId;
@@ -47,6 +172,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   bool _busy = false;
   bool _revealing = false;
   bool _soundEnabled = true;
+  String? _resultShownRound;
 
   @override
   void initState() {
@@ -104,6 +230,11 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
       }
     });
     _startTimer();
+    if (next['status'] == 'finished') {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _showRoundResult(next),
+      );
+    }
   }
 
   void _startTimer() {
@@ -143,11 +274,9 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
           if (_history.length > 12) _history.removeLast();
         }
       });
-      await Future<void>.delayed(const Duration(seconds: 5));
-      if (mounted) {
-        final next = await _service.buffetGetRound(widget.roomId);
-        _applyRound(next);
-      }
+      await _showRoundResult(result);
+      if (!mounted) return;
+      _applyRound(await _service.buffetGetRound(widget.roomId));
     } catch (error) {
       if (mounted) {
         setState(() => _revealing = false);
@@ -156,6 +285,68 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         }
       }
     }
+  }
+
+  Future<void> _showRoundResult(Map<String, dynamic> result) async {
+    final roundKey = result['id']?.toString();
+    final winner = (result['winner_food_id'] as num?)?.toInt();
+    if (!mounted ||
+        roundKey == null ||
+        winner == null ||
+        _resultShownRound == roundKey) {
+      return;
+    }
+    _resultShownRound = roundKey;
+    final food = _foods.firstWhere((item) => item.id == winner);
+    final win = (_myBets[winner] ?? 0) * food.multiplier;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        Future<void>.delayed(const Duration(seconds: 5), () {
+          if (dialogContext.mounted && Navigator.of(dialogContext).canPop()) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          title: const Text(
+            '✨ نتيجة الجولة الحالية ✨',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFFFF8F00),
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(food.emoji, style: const TextStyle(fontSize: 58)),
+              Text(
+                '${food.name} — فوز ${food.multiplier}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                win > 0
+                    ? 'مبروك! ربحت +${_compact(win)} 🪙'
+                    : 'لم تصب الخيار الفائز في هذه الجولة',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: win > 0 ? Colors.green : Colors.red,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _placeBet(BuffetFood food) async {
