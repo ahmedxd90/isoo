@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
+import '../../shared/widgets/custom_toast.dart';
 
 class BuffetFood {
   const BuffetFood(this.id, this.name, this.multiplier, this.emoji);
@@ -197,11 +198,22 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
       final values = await Future.wait<dynamic>([
         _service.buffetGetRound(widget.roomId),
         _service.accountModules(),
+        _service.buffetHistory(widget.roomId),
       ]);
       if (!mounted) return;
       _applyRound(Map<String, dynamic>.from(values[0] as Map));
       setState(() {
         _balance = ((values[1] as Map)['gold_coins'] as num?)?.toInt() ?? 0;
+        _history
+          ..clear()
+          ..addAll(
+            (values[2] as List).map((row) {
+              final winner = (row['winner_food_id'] as num?)?.toInt();
+              return winner == null
+                  ? '•'
+                  : _foods.firstWhere((food) => food.id == winner).emoji;
+            }),
+          );
         _loading = false;
       });
     } catch (error) {
@@ -496,11 +508,12 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   }
 
   void _toast(String text) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
-      );
+    CustomToast.show(
+      context,
+      text,
+      icon: Icons.casino_rounded,
+      accent: const Color(0xFFFFC83B),
+    );
   }
 
   @override

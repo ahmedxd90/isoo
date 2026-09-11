@@ -2785,6 +2785,17 @@ class SakiService {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
+  Future<List<Map<String, dynamic>>> buffetHistory(String roomId) async {
+    final rows = await client
+        .from('saki_buffet_rounds')
+        .select('id,winner_food_id,round_number,result_shown_at')
+        .eq('room_id', roomId)
+        .eq('status', 'finished')
+        .order('id', ascending: false)
+        .limit(12);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<List<Map<String, dynamic>>> familySquare({String? query}) async {
     var request = client.from('family_square').select();
     if (query != null && query.trim().isNotEmpty) {
