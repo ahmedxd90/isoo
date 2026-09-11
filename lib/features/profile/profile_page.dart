@@ -183,6 +183,18 @@ class _ProfilePageState extends State<ProfilePage> {
       await _openModule('family');
       return;
     }
+    if (title == 'وكالة المضيفين') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const HostAgencyPage()));
+      if (mounted) _load();
+      return;
+    }
+    if (title == 'وكالة الشحن') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const ShippingAgentPage()));
+      if (mounted) _load();
+      return;
+    }
     if (title == 'لوحة تحكم سوبر أدمن') {
       try {
         if (await SakiService.instance.isSuperAdmin() && mounted) {
@@ -251,9 +263,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 onEdit: _edit,
                 onAvatarTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => UserProfilePage(
-                      userId: SakiService.instance.uid,
-                    ),
+                    builder: (_) =>
+                        UserProfilePage(userId: SakiService.instance.uid),
                   ),
                 ),
               ),
@@ -329,7 +340,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
                 child: OutlinedButton.icon(
                   onPressed: _logout,
-                  icon: const FaIcon(FontAwesomeIcons.rightFromBracket, size: 14),
+                  icon: const FaIcon(
+                    FontAwesomeIcons.rightFromBracket,
+                    size: 14,
+                  ),
                   label: const Text('تسجيل الخروج'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.redAccent,
@@ -398,7 +412,9 @@ class _HtmlProfileHeader extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                Positioned.fill(child: CustomPaint(painter: _HeaderPatternPainter())),
+                Positioned.fill(
+                  child: CustomPaint(painter: _HeaderPatternPainter()),
+                ),
                 Positioned(
                   top: 16,
                   left: 16,
@@ -407,14 +423,25 @@ class _HtmlProfileHeader extends StatelessWidget {
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.white.withValues(alpha: .20),
                       foregroundColor: const Color(0xFFFFE36E),
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: const Color(0xFFFFE36E).withValues(alpha: .55)),
+                        side: BorderSide(
+                          color: const Color(0xFFFFE36E).withValues(alpha: .55),
+                        ),
                       ),
                     ),
                     icon: const FaIcon(FontAwesomeIcons.userPen, size: 12),
-                    label: const Text('تعديل الملف الشخصي', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900)),
+                    label: const Text(
+                      'تعديل الملف الشخصي',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -436,10 +463,27 @@ class _HtmlProfileHeader extends StatelessWidget {
                     padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: [Color(0xFFE6A836), Color(0xFFFFF0A8), Color(0xFFD88B0A)]),
-                      boxShadow: [BoxShadow(color: Color(0x55000000), blurRadius: 14, offset: Offset(0, 6))],
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFFE6A836),
+                          Color(0xFFFFF0A8),
+                          Color(0xFFD88B0A),
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x55000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    child: ClipOval(child: _AvatarImage(url: profile['avatar_url'] as String?, label: username)),
+                    child: ClipOval(
+                      child: _AvatarImage(
+                        url: profile['avatar_url'] as String?,
+                        label: username,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -451,29 +495,94 @@ class _HtmlProfileHeader extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _ink, letterSpacing: .5)),
+                            Text(
+                              username,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: _ink,
+                                letterSpacing: .5,
+                              ),
+                            ),
                             const SizedBox(width: 7),
-                            Container(width: 24, height: 16, decoration: BoxDecoration(color: const Color(0xFFCE1126), borderRadius: BorderRadius.circular(3)), child: const Center(child: Text('★', style: TextStyle(color: Colors.white, fontSize: 10)))),
+                            Container(
+                              width: 24,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFCE1126),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  '★',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 7),
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: const Color(0xFF9CA3AF), borderRadius: BorderRadius.circular(20)),
-                              child: Row(children: [const FaIcon(FontAwesomeIcons.gem, size: 10, color: Colors.white), const SizedBox(width: 4), Text('$vip', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900))]),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF9CA3AF),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  const FaIcon(
+                                    FontAwesomeIcons.gem,
+                                    size: 10,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '$vip',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(width: 7),
-                            Text('UID: $uid', style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w800)),
+                            Text(
+                              'UID: $uid',
+                              style: const TextStyle(
+                                color: _muted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                             IconButton(
                               onPressed: () async {
-                                await Clipboard.setData(ClipboardData(text: uid));
-                                if (context.mounted) CustomToast.show(context, 'تم نسخ UID');
+                                await Clipboard.setData(
+                                  ClipboardData(text: uid),
+                                );
+                                if (context.mounted) {
+                                  CustomToast.show(context, 'تم نسخ UID');
+                                }
                               },
                               padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints.tightFor(width: 25, height: 25),
-                              icon: const FaIcon(FontAwesomeIcons.copy, size: 11, color: Color(0xFF9CA3AF)),
+                              constraints: const BoxConstraints.tightFor(
+                                width: 25,
+                                height: 25,
+                              ),
+                              icon: const FaIcon(
+                                FontAwesomeIcons.copy,
+                                size: 11,
+                                color: Color(0xFF9CA3AF),
+                              ),
                             ),
                           ],
                         ),
@@ -491,7 +600,11 @@ class _HtmlProfileHeader extends StatelessWidget {
 }
 
 class _HtmlStatsBar extends StatelessWidget {
-  const _HtmlStatsBar({required this.followers, required this.following, required this.charisma});
+  const _HtmlStatsBar({
+    required this.followers,
+    required this.following,
+    required this.charisma,
+  });
   final int followers;
   final int following;
   final int charisma;
@@ -500,7 +613,18 @@ class _HtmlStatsBar extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.fromLTRB(16, 12, 16, 15),
     padding: const EdgeInsets.symmetric(vertical: 13),
-    decoration: BoxDecoration(color: Colors.white.withValues(alpha: .78), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB)), boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 10, offset: Offset(0, 3))]),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: .78),
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(color: const Color(0xFFE5E7EB)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x08000000),
+          blurRadius: 10,
+          offset: Offset(0, 3),
+        ),
+      ],
+    ),
     child: Row(
       children: [
         _StatCell(value: following, label: 'متابعة'),
@@ -518,13 +642,36 @@ class _StatCell extends StatelessWidget {
   final int value;
   final String label;
   @override
-  Widget build(BuildContext context) => Expanded(child: Column(children: [Text('$value', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _ink)), const SizedBox(height: 3), Text(label, style: const TextStyle(fontSize: 11, color: _muted, fontWeight: FontWeight.w700))]));
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          '$value',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: _ink,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: _muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _StatDivider extends StatelessWidget {
   const _StatDivider();
   @override
-  Widget build(BuildContext context) => Container(width: 1, height: 26, color: const Color(0xFFE5E7EB));
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 26, color: const Color(0xFFE5E7EB));
 }
 
 class _HtmlWalletBanner extends StatelessWidget {
@@ -542,25 +689,97 @@ class _HtmlWalletBanner extends StatelessWidget {
             height: 86,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFFCA36), Color(0xFFF7AB00), Color(0xFFE08B00)]),
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFFFCA36),
+                  Color(0xFFF7AB00),
+                  Color(0xFFE08B00),
+                ],
+              ),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFFE6A836), width: 3),
-              boxShadow: const [BoxShadow(color: Color(0x40D48C0A), blurRadius: 15, offset: Offset(0, 7))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x40D48C0A),
+                  blurRadius: 15,
+                  offset: Offset(0, 7),
+                ),
+              ],
             ),
-            child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              const Text('محفظة', style: TextStyle(fontSize: 31, fontWeight: FontWeight.w900, color: Color(0xFFFFF3A1), shadows: [Shadow(color: Color(0x995A2600), offset: Offset(0, 2), blurRadius: 2)])),
-              Row(children: [const Text('💵', style: TextStyle(fontSize: 25)), const SizedBox(width: 4), const Text('💳', style: TextStyle(fontSize: 29)), const SizedBox(width: 2), const Text('🪙', style: TextStyle(fontSize: 28))]),
-            ]),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'محفظة',
+                  style: TextStyle(
+                    fontSize: 31,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFFFFF3A1),
+                    shadows: [
+                      Shadow(
+                        color: Color(0x995A2600),
+                        offset: Offset(0, 2),
+                        blurRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Text('💵', style: TextStyle(fontSize: 25)),
+                    const SizedBox(width: 4),
+                    const Text('💳', style: TextStyle(fontSize: 29)),
+                    const SizedBox(width: 2),
+                    const Text('🪙', style: TextStyle(fontSize: 28)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-        Positioned(top: -12, right: 16, child: Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFDC2626), Color(0xFFF59E0B)]), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFFFF0A8)), boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 7)]), child: const Row(children: [Text('اشحن لأول مرة', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)), SizedBox(width: 5), Text('🪙', style: TextStyle(fontSize: 11))]))),
+        Positioned(
+          top: -12,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFDC2626), Color(0xFFF59E0B)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFFF0A8)),
+              boxShadow: const [
+                BoxShadow(color: Color(0x33000000), blurRadius: 7),
+              ],
+            ),
+            child: const Row(
+              children: [
+                Text(
+                  'اشحن لأول مرة',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(width: 5),
+                Text('🪙', style: TextStyle(fontSize: 11)),
+              ],
+            ),
+          ),
+        ),
       ],
     ),
   );
 }
 
 class _HtmlLevelBanners extends StatelessWidget {
-  const _HtmlLevelBanners({required this.wealthLevel, required this.vipLevel, required this.onWealthTap, required this.onVipTap});
+  const _HtmlLevelBanners({
+    required this.wealthLevel,
+    required this.vipLevel,
+    required this.onWealthTap,
+    required this.onVipTap,
+  });
   final int wealthLevel;
   final int vipLevel;
   final VoidCallback onWealthTap;
@@ -568,16 +787,40 @@ class _HtmlLevelBanners extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-    child: Row(children: [
-      Expanded(child: _GradientMiniCard(title: 'المستوى', subtitle: 'LV.$wealthLevel', icon: FontAwesomeIcons.shieldHalved, colors: const [Color(0xFF29B6F6), Color(0xFF0288D1)], onTap: onWealthTap)),
-      const SizedBox(width: 10),
-      Expanded(child: _GradientMiniCard(title: 'VIP', subtitle: 'VIP$vipLevel', icon: FontAwesomeIcons.crown, colors: const [Color(0xFF66BB6A), Color(0xFF2E7D32)], onTap: onVipTap)),
-    ]),
+    child: Row(
+      children: [
+        Expanded(
+          child: _GradientMiniCard(
+            title: 'المستوى',
+            subtitle: 'LV.$wealthLevel',
+            icon: FontAwesomeIcons.shieldHalved,
+            colors: const [Color(0xFF29B6F6), Color(0xFF0288D1)],
+            onTap: onWealthTap,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _GradientMiniCard(
+            title: 'VIP',
+            subtitle: 'VIP$vipLevel',
+            icon: FontAwesomeIcons.crown,
+            colors: const [Color(0xFF66BB6A), Color(0xFF2E7D32)],
+            onTap: onVipTap,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
 class _GradientMiniCard extends StatelessWidget {
-  const _GradientMiniCard({required this.title, required this.subtitle, required this.icon, required this.colors, required this.onTap});
+  const _GradientMiniCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.colors,
+    required this.onTap,
+  });
   final String title;
   final String subtitle;
   final FaIconData icon;
@@ -589,14 +832,60 @@ class _GradientMiniCard extends StatelessWidget {
     child: Container(
       height: 62,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(gradient: LinearGradient(colors: colors), borderRadius: BorderRadius.circular(14), border: Border.all(color: colors.first.withValues(alpha: .65), width: 2), boxShadow: const [BoxShadow(color: Color(0x18000000), blurRadius: 6, offset: Offset(0, 3))]),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)), Text(subtitle, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic))]), FaIcon(icon, color: Colors.white, size: 28)]),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colors.first.withValues(alpha: .65),
+          width: 2,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          FaIcon(icon, color: Colors.white, size: 28),
+        ],
+      ),
     ),
   );
 }
 
 class _HtmlFeatureMenus extends StatelessWidget {
-  const _HtmlFeatureMenus({required this.profile, required this.isSuperAdmin, required this.onTap});
+  const _HtmlFeatureMenus({
+    required this.profile,
+    required this.isSuperAdmin,
+    required this.onTap,
+  });
   final Map<String, dynamic> profile;
   final bool isSuperAdmin;
   final Future<void> Function(String) onTap;
@@ -604,24 +893,74 @@ class _HtmlFeatureMenus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final second = <(String, FaIconData, Color, Color)>[
-      if (profile['host_agency_member'] == true) ('وكالة المضيفين', FontAwesomeIcons.buildingUser, const Color(0xFFF59E0B), const Color(0xFFFFFBEB)),
-      ('المهام', FontAwesomeIcons.listCheck, const Color(0xFF06B6D4), const Color(0xFFECFEFF)),
-      ('المتجر', FontAwesomeIcons.bagShopping, const Color(0xFF9333EA), const Color(0xFFFAF5FF)),
-      if (profile['shipping_agent'] == true) ('وكالة الشحن', FontAwesomeIcons.buildingColumns, const Color(0xFF10B981), const Color(0xFFECFDF5)),
+      if (profile['host_agency_member'] == true)
+        (
+          'وكالة المضيفين',
+          FontAwesomeIcons.buildingUser,
+          const Color(0xFFF59E0B),
+          const Color(0xFFFFFBEB),
+        ),
+      (
+        'المهام',
+        FontAwesomeIcons.listCheck,
+        const Color(0xFF06B6D4),
+        const Color(0xFFECFEFF),
+      ),
+      (
+        'المتجر',
+        FontAwesomeIcons.bagShopping,
+        const Color(0xFF9333EA),
+        const Color(0xFFFAF5FF),
+      ),
+      if (profile['shipping_agent'] == true)
+        (
+          'وكالة الشحن',
+          FontAwesomeIcons.buildingColumns,
+          const Color(0xFF10B981),
+          const Color(0xFFECFDF5),
+        ),
     ];
     final third = <(String, FaIconData, Color, Color)>[
-      ('العائلة', FontAwesomeIcons.houseChimneyWindow, const Color(0xFF6366F1), const Color(0xFFEEF2FF)),
-      ('كود الاسترداد', FontAwesomeIcons.ticket, const Color(0xFFF43F5E), const Color(0xFFFFF1F2)),
+      (
+        'العائلة',
+        FontAwesomeIcons.houseChimneyWindow,
+        const Color(0xFF6366F1),
+        const Color(0xFFEEF2FF),
+      ),
+      (
+        'كود الاسترداد',
+        FontAwesomeIcons.ticket,
+        const Color(0xFFF43F5E),
+        const Color(0xFFFFF1F2),
+      ),
     ];
     final fourth = <(String, FaIconData, Color, Color)>[
-      ('الإعدادات', FontAwesomeIcons.gear, const Color(0xFF14B8A6), const Color(0xFFF0FDFA)),
+      (
+        'الإعدادات',
+        FontAwesomeIcons.gear,
+        const Color(0xFF14B8A6),
+        const Color(0xFFF0FDFA),
+      ),
     ];
-    return Column(children: [
-      _HtmlMenuGroup(rows: second, onTap: onTap),
-      _HtmlMenuGroup(rows: third, onTap: onTap),
-      _HtmlMenuGroup(rows: fourth, onTap: onTap),
-      if (isSuperAdmin) _HtmlMenuGroup(rows: [('لوحة تحكم سوبر أدمن', FontAwesomeIcons.userGear, const Color(0xFF4F46E5), const Color(0xFFEEF2FF))], onTap: onTap),
-    ]);
+    return Column(
+      children: [
+        _HtmlMenuGroup(rows: second, onTap: onTap),
+        _HtmlMenuGroup(rows: third, onTap: onTap),
+        _HtmlMenuGroup(rows: fourth, onTap: onTap),
+        if (isSuperAdmin)
+          _HtmlMenuGroup(
+            rows: [
+              (
+                'لوحة تحكم سوبر أدمن',
+                FontAwesomeIcons.userGear,
+                const Color(0xFF4F46E5),
+                const Color(0xFFEEF2FF),
+              ),
+            ],
+            onTap: onTap,
+          ),
+      ],
+    );
   }
 }
 
@@ -633,13 +972,72 @@ class _HtmlMenuGroup extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
     child: Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB)), boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 9, offset: Offset(0, 3))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x08000000),
+            blurRadius: 9,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
-        child: Column(children: [for (var i = 0; i < rows.length; i++) ...[
-          InkWell(onTap: () => onTap(rows[i].$1), child: Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13), child: Row(children: [Container(width: 34, height: 34, decoration: BoxDecoration(color: rows[i].$4, borderRadius: BorderRadius.circular(11)), child: Center(child: FaIcon(rows[i].$2, color: rows[i].$3, size: 15))), const SizedBox(width: 11), Expanded(child: Text(rows[i].$1, style: const TextStyle(color: Color(0xFF1F2937), fontSize: 13, fontWeight: FontWeight.w900))), const FaIcon(FontAwesomeIcons.chevronLeft, color: Color(0xFFD1D5DB), size: 11)]))),
-          if (i != rows.length - 1) const Divider(height: 1, color: Color(0xFFF3F4F6)),
-        ]]),
+        child: Column(
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              InkWell(
+                onTap: () => onTap(rows[i].$1),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 13,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: rows[i].$4,
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Center(
+                          child: FaIcon(
+                            rows[i].$2,
+                            color: rows[i].$3,
+                            size: 15,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Text(
+                          rows[i].$1,
+                          style: const TextStyle(
+                            color: Color(0xFF1F2937),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const FaIcon(
+                        FontAwesomeIcons.chevronLeft,
+                        color: Color(0xFFD1D5DB),
+                        size: 11,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (i != rows.length - 1)
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+            ],
+          ],
+        ),
       ),
     ),
   );
@@ -652,11 +1050,18 @@ class _HeaderPatternPainter extends CustomPainter {
     for (var x = 20.0; x < size.width; x += 40) {
       for (var y = 8.0; y < 150; y += 40) {
         canvas.drawCircle(Offset(x, y), 2, paint);
-        canvas.drawCircle(Offset(x, y + 20), 12, paint..style = PaintingStyle.stroke..strokeWidth = 1);
+        canvas.drawCircle(
+          Offset(x, y + 20),
+          12,
+          paint
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1,
+        );
         paint.style = PaintingStyle.fill;
       }
     }
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
@@ -762,7 +1167,7 @@ class MenuActionSheet extends StatelessWidget {
       'المهام' => 'لا توجد مهام مكتملة مسجلة لهذا الحساب حاليًا.',
       'وكالة الشحن' => 'لا توجد وكالة شحن مرتبطة بالحساب حاليًا.',
       'لوحة تحكم سوبر أدمن' => 'صلاحيات الإدارة تتحقق من بيانات الحساب. الوصول غير متاح لهذا المستخدم حاليًا.',
-      _ => 'أدخل كودًا صالحًا من لوحة الإدارة لاسترداد الرصيد.',
+      _ => 'هذه الميزة غير متاحة لهذا الحساب حاليًا.',
     };
     return _SheetShell(
       title: title,

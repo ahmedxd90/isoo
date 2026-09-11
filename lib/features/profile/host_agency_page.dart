@@ -32,9 +32,14 @@ class _HostAgencyPageState extends State<HostAgencyPage> {
       _error = null;
     });
     try {
-      final isAgencyHost = await SakiService.instance.isHostAgencyMember(
+      final isAgencyOwner = await SakiService.instance.isHostAgencyOwner(
         SakiService.instance.uid,
       );
+      final isAgencyHost =
+          !isAgencyOwner &&
+          await SakiService.instance.isHostAgencyMember(
+            SakiService.instance.uid,
+          );
       if (isAgencyHost) {
         final result = await Future.wait<dynamic>([
           SakiService.instance.hostAgencyHostDashboard(),
