@@ -75,8 +75,8 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
         videoId: id,
         params: const YoutubePlayerParams(
           mute: true,
-          showControls: true,
-          showFullscreenButton: true,
+          showControls: false,
+          showFullscreenButton: false,
           interfaceLanguage: 'ar',
           origin: 'https://www.youtube-nocookie.com',
         ),
@@ -106,7 +106,12 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       } else {
         await _controller!.pauseVideo();
       }
-      await _controller!.setVolume((_volume * 100).round());
+      if (_volume <= 0) {
+        await _controller!.mute();
+      } else {
+        await _controller!.setVolume((_volume * 100).round());
+        await _controller!.unMute();
+      }
       _applyingRemote = false;
     }
     if (_playing && _controller != null) {
@@ -181,6 +186,11 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     if (_videoId == null) return;
     final next = !_playing;
     setState(() => _playing = next);
+    if (next) {
+      await _playWithAutoplayFallback();
+    } else {
+      await _controller?.pauseVideo();
+    }
     await _publish(playing: next, position: await _currentPosition());
   }
 
@@ -194,9 +204,20 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
 
   Future<void> _changeVolume(double value) async {
     setState(() => _volume = value);
-    await _controller?.setVolume((value * 100).round());
+    if (value <= 0) {
+      await _controller?.mute();
+    } else {
+      await _controller?.setVolume((value * 100).round());
+      await _controller?.unMute();
+    }
     await _publish(volume: value);
   }
+
+  Future<void> _increaseVolume() =>
+      _changeVolume((_volume + .1).clamp(0, 1).toDouble());
+
+  Future<void> _decreaseVolume() =>
+      _changeVolume((_volume - .1).clamp(0, 1).toDouble());
 
   Future<void> _openSearch() async {
     final result = await showModalBottomSheet<Map<String, String>>(
@@ -230,7 +251,9 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     if (_controller?.value.hasError == true) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('هذا الفيديو لا يسمح بالتضمين داخل الغرفة')),
+          const SnackBar(
+            content: Text('هذا الفيديو لا يسمح بالتضمين داخل الغرفة'),
+          ),
         );
       }
       return;
@@ -329,11 +352,9 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
                     ),
                     const SizedBox(width: 6),
                     Expanded(
-                      child: Text(
-                        _title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                      child: const Text(
+                        'مشغل السينما',
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -390,6 +411,36 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
                     activeColor: Colors.amber,
                     inactiveColor: Colors.white24,
                   ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: widget.canControl ? _decreaseVolume : null,
+                      icon: const Icon(
+                        Icons.volume_down_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                    Text(
+                      '${(_volume * 100).round()}%',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: widget.canControl ? _increaseVolume : null,
+                      icon: const Icon(
+                        Icons.volume_up_rounded,
+                        color: Colors.amber,
+                        size: 20,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
