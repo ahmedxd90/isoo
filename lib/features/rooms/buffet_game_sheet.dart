@@ -160,6 +160,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   final _service = SakiService.instance;
   StreamSubscription<List<Map<String, dynamic>>>? _roundSubscription;
   Timer? _timer;
+  Timer? _spinTimer;
   Map<String, dynamic>? _round;
   final Map<int, int> _myBets = {};
   final List<String> _history = [];
@@ -173,6 +174,8 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   bool _revealing = false;
   bool _soundEnabled = true;
   String? _resultShownRound;
+  int? _flashFoodId;
+  List<Map<String, dynamic>> _leaders = [];
 
   @override
   void initState() {
@@ -216,7 +219,9 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
     if (changed) {
       _myBets.clear();
       _winnerId = null;
+      _flashFoodId = null;
       _revealing = false;
+      _leaders = [];
     }
     setState(() {
       _round = next;
@@ -226,14 +231,63 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
           : end.difference(DateTime.now().toUtc()).inSeconds.clamp(0, 30);
       if (next['status'] == 'finished') {
         _winnerId = (next['winner_food_id'] as num?)?.toInt();
+        _flashFoodId = _winnerId;
         _revealing = true;
       }
     });
     _startTimer();
-    if (next['status'] == 'finished') {
+    if (next['status'] == 'spinning') {
+      _beginSpin(next);
+    } else if (next['status'] == 'finished') {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _showRoundResult(next),
       );
+    }
+  }
+
+  void _beginSpin(Map<String, dynamic> round) {
+    _spinTimer?.cancel();
+    final winner = (round['winner_food_id'] as num?)?.toInt();
+    final started =
+        DateTime.tryParse(round['spinning_started_at']?.toString() ?? '') ??
+        DateTime.now().toUtc();
+    final elapsed = DateTime.now()
+        .toUtc()
+        .difference(started)
+        .inMilliseconds
+        .clamp(0, 5000);
+    var index = (elapsed ~/ 80) % _foods.length;
+    setState(() => _revealing = true);
+    _spinTimer = Timer.periodic(const Duration(milliseconds: 80), (_) async {
+      if (!mounted) return;
+      final current = DateTime.now().toUtc().difference(started).inMilliseconds;
+      if (current >= 5000) {
+        _spinTimer?.cancel();
+        setState(() {
+          _flashFoodId = winner;
+          _winnerId = winner;
+        });
+        await _finishSpinning(round);
+      } else {
+        index = (index + 1) % _foods.length;
+        setState(() => _flashFoodId = _foods[index].id);
+      }
+    });
+  }
+
+  Future<void> _finishSpinning(Map<String, dynamic> round) async {
+    final id = int.tryParse(round['id']?.toString() ?? '');
+    if (id == null) return;
+    try {
+      final finished = await _service.buffetFinishRound(
+        roomId: widget.roomId,
+        roundId: id,
+      );
+      if (mounted) _applyRound(finished);
+    } catch (error) {
+      if (mounted && !_friendlyError(error).contains('result_not_ready')) {
+        _toast(_friendlyError(error));
+      }
     }
   }
 
@@ -260,29 +314,14 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
     final id = int.tryParse(_round?['id']?.toString() ?? '');
     if (id == null) return;
     try {
-      final result = await _service.buffetResolveRound(
+      final spinning = await _service.buffetResolveRound(
         roomId: widget.roomId,
         roundId: id,
       );
-      if (!mounted) return;
-      final winner = (result['winner_food_id'] as num?)?.toInt();
-      setState(() {
-        _winnerId = winner;
-        if (winner != null) {
-          final food = _foods.firstWhere((item) => item.id == winner);
-          _history.insert(0, food.emoji);
-          if (_history.length > 12) _history.removeLast();
-        }
-      });
-      await _showRoundResult(result);
-      if (!mounted) return;
-      _applyRound(await _service.buffetGetRound(widget.roomId));
+      if (mounted) _applyRound(spinning);
     } catch (error) {
-      if (mounted) {
-        setState(() => _revealing = false);
-        if (!_friendlyError(error).contains('round_not_ready')) {
-          _toast(_friendlyError(error));
-        }
+      if (mounted && !_friendlyError(error).contains('round_not_ready')) {
+        _toast(_friendlyError(error));
       }
     }
   }
@@ -299,6 +338,12 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
     _resultShownRound = roundKey;
     final food = _foods.firstWhere((item) => item.id == winner);
     final win = (_myBets[winner] ?? 0) * food.multiplier;
+    try {
+      _leaders = await _service.buffetLeaderboard(int.parse(roundKey));
+    } catch (_) {
+      _leaders = [];
+    }
+    if (!mounted) return;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -342,11 +387,67 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
                   fontWeight: FontWeight.w900,
                 ),
               ),
+              if (_leaders.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'أفضل 3 فائزين في الجولة',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF14532D),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 94,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(_leaders.length, (index) {
+                      final leader = _leaders[index];
+                      final avatar = leader['avatar_url']?.toString() ?? '';
+                      return Expanded(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 23,
+                              backgroundImage: avatar.startsWith('http')
+                                  ? NetworkImage(avatar)
+                                  : null,
+                              child: avatar.startsWith('http')
+                                  ? null
+                                  : const Icon(Icons.person),
+                            ),
+                            Text(
+                              leader['username']?.toString() ?? 'مستخدم',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              '+${_compact((leader['profit'] as num?)?.toInt() ?? 0)} 🪙',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFFFF8F00),
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
             ],
           ),
         );
       },
     );
+    if (mounted && _round?['id']?.toString() == roundKey) {
+      _applyRound(await _service.buffetGetRound(widget.roomId));
+    }
   }
 
   Future<void> _placeBet(BuffetFood food) async {
@@ -406,6 +507,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   void dispose() {
     _timer?.cancel();
     _roundSubscription?.cancel();
+    _spinTimer?.cancel();
     super.dispose();
   }
 
@@ -565,6 +667,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
         final food = _foods[index];
         final selected = _myBets.containsKey(food.id);
         final winner = _winnerId == food.id;
+        final flashing = _flashFoodId == food.id && _revealing;
         return GestureDetector(
           onTap: () => _placeBet(food),
           child: Column(
@@ -581,7 +684,9 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
                       color: Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: winner
+                        color: flashing
+                            ? Colors.red
+                            : winner
                             ? Colors.red
                             : selected
                             ? const Color(0xFFFF9800)
@@ -589,7 +694,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
                         width: winner ? 5 : 3,
                       ),
                       boxShadow: [
-                        if (selected || winner)
+                        if (selected || winner || flashing)
                           const BoxShadow(
                             color: Colors.orangeAccent,
                             blurRadius: 12,
