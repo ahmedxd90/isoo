@@ -78,7 +78,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
           showControls: true,
           showFullscreenButton: true,
           interfaceLanguage: 'ar',
-          origin: 'https://www.youtube.com',
+          origin: 'https://www.youtube-nocookie.com',
         ),
       );
       _playerSubscription = _controller!.listen((value) {
@@ -214,13 +214,32 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       }
       return;
     }
+    final title = result['title']?.trim().isEmpty == true
+        ? 'YouTube'
+        : result['title']!;
+    final localRow = <String, dynamic>{
+      'video_id': id,
+      'video_title': title,
+      'is_playing': true,
+      'position_seconds': 0,
+      'volume': _volume,
+      'changed_at': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _applyStateRows([localRow]);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    if (_controller?.value.hasError == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('هذا الفيديو لا يسمح بالتضمين داخل الغرفة')),
+        );
+      }
+      return;
+    }
     final state = await _publish(
       videoId: id,
-      title: result['title']?.trim().isEmpty == true
-          ? 'YouTube'
-          : result['title'],
+      title: title,
       playing: true,
-      position: 0,
+      position: await _currentPosition(),
     );
     if (state != null) await _applyStateRows([state]);
   }
@@ -268,21 +287,22 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       child: Column(
         children: [
           SizedBox(
-            height: 150,
-            child: _controller == null || !_initialised
-                ? const Center(
-                    child: Icon(
-                      Icons.movie_creation_outlined,
-                      color: Colors.amber,
-                      size: 46,
-                    ),
-                  )
-                : LayoutBuilder(
-                    builder: (context, constraints) => YoutubePlayer(
+            width: double.infinity,
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: _controller == null || !_initialised
+                  ? const Center(
+                      child: Icon(
+                        Icons.movie_creation_outlined,
+                        color: Colors.amber,
+                        size: 46,
+                      ),
+                    )
+                  : YoutubePlayer(
                       controller: _controller!,
-                      aspectRatio: constraints.maxWidth / 150,
+                      aspectRatio: 16 / 9,
                     ),
-                  ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
