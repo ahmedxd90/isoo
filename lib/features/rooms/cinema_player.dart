@@ -33,6 +33,8 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
   bool _applyingRemote = false;
   bool _initialised = false;
   String? _playerError;
+  String? _pendingVideoId;
+  int _stateGeneration = 0;
 
   @override
   void initState() {
@@ -53,6 +55,10 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     final row = rows.last;
     final id = row['video_id']?.toString();
     if (id == null || id.isEmpty) return;
+    // While a new selection is being tested locally, an older Realtime
+    // snapshot must not put the previous video back into the player.
+    if (_pendingVideoId != null && id != _pendingVideoId) return;
+    final generation = ++_stateGeneration;
     final changedAt = DateTime.tryParse(row['changed_at']?.toString() ?? '');
     var position = (row['position_seconds'] as num?)?.toDouble() ?? 0;
     final playing = row['is_playing'] == true;
@@ -99,6 +105,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       });
       return;
     } else if (!_applyingRemote && _controller != null) {
+      if (generation != _stateGeneration) return;
       _applyingRemote = true;
       await _controller!.seekTo(seconds: _position, allowSeekAhead: true);
       if (_playing) {
@@ -238,6 +245,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     final title = result['title']?.trim().isEmpty == true
         ? 'YouTube'
         : result['title']!;
+    _pendingVideoId = id;
     final localRow = <String, dynamic>{
       'video_id': id,
       'video_title': title,
@@ -249,6 +257,9 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     await _applyStateRows([localRow]);
     await Future<void>.delayed(const Duration(milliseconds: 1200));
     if (_controller?.value.hasError == true) {
+      _pendingVideoId = null;
+      final current = await widget.service.roomCinemaState(widget.roomId);
+      if (current != null) await _applyStateRows([current]);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -258,12 +269,14 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
       }
       return;
     }
+    if (_pendingVideoId != id) return;
     final state = await _publish(
       videoId: id,
       title: title,
       playing: true,
       position: await _currentPosition(),
     );
+    _pendingVideoId = null;
     if (state != null) await _applyStateRows([state]);
   }
 
