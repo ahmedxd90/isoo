@@ -25,12 +25,25 @@ serve(async (req) => {
     const result = await fetch(url);
     const json = await result.json();
     if (!result.ok) throw new Error(json?.error?.message ?? "YouTube search failed");
-    const items = (json.items ?? []).map((item: any) => ({
+    const candidates = (json.items ?? []).map((item: any) => ({
       videoId: item.id?.videoId,
       title: item.snippet?.title ?? "YouTube",
       channelTitle: item.snippet?.channelTitle ?? "",
       thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url,
     })).filter((item: any) => item.videoId);
+    if (candidates.length === 0) {
+      return new Response(JSON.stringify({ items: [] }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+    detailsUrl.searchParams.set("part", "status");
+    detailsUrl.searchParams.set("id", candidates.map((item: any) => item.videoId).join(","));
+    detailsUrl.searchParams.set("key", key);
+    const detailsResponse = await fetch(detailsUrl);
+    const detailsJson = await detailsResponse.json();
+    const allowed = new Set((detailsJson.items ?? [])
+      .filter((item: any) => item.status?.privacyStatus === "public" && item.status?.uploadStatus === "processed" && item.status?.embeddable === true)
+      .map((item: any) => item.id));
+    const items = candidates.filter((item: any) => allowed.has(item.videoId));
     return new Response(JSON.stringify({ items }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (error) {
     return new Response(JSON.stringify({ error: String(error?.message ?? error) }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });

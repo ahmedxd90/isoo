@@ -23,6 +23,7 @@ class CinemaPlayer extends StatefulWidget {
 class _CinemaPlayerState extends State<CinemaPlayer> {
   YoutubePlayerController? _controller;
   StreamSubscription<List<Map<String, dynamic>>>? _stateSubscription;
+  StreamSubscription<YoutubePlayerValue>? _playerSubscription;
   Timer? _heartbeat;
   String? _videoId;
   String _title = 'اختر فيلمًا أو فيديو من YouTube';
@@ -31,6 +32,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
   double _position = 0;
   bool _applyingRemote = false;
   bool _initialised = false;
+  String? _playerError;
 
   @override
   void initState() {
@@ -67,6 +69,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
     setState(() {});
     if (_videoId != id) {
       _videoId = id;
+      await _playerSubscription?.cancel();
       _controller?.close();
       _controller = YoutubePlayerController.fromVideoId(
         videoId: id,
@@ -78,6 +81,17 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
           origin: 'https://www.youtube.com',
         ),
       );
+      _playerSubscription = _controller!.listen((value) {
+        if (!mounted) return;
+        if (value.hasError) {
+          setState(() {
+            _playerError = 'هذا الفيديو غير متاح للتضمين في YouTube';
+            _playing = false;
+          });
+        } else if (_playerError != null) {
+          setState(() => _playerError = null);
+        }
+      });
       _initialised = true;
       if (mounted) setState(() {});
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -230,6 +244,7 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
   void dispose() {
     _heartbeat?.cancel();
     _stateSubscription?.cancel();
+    _playerSubscription?.cancel();
     _controller?.close();
     super.dispose();
   }
@@ -273,6 +288,18 @@ class _CinemaPlayerState extends State<CinemaPlayer> {
             padding: const EdgeInsets.fromLTRB(8, 2, 8, 4),
             child: Column(
               children: [
+                if (_playerError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      _playerError!,
+                      style: const TextStyle(
+                        color: Colors.orangeAccent,
+                        fontSize: 11,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 Row(
                   children: [
                     const Icon(
