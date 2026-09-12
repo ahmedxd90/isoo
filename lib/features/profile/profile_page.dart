@@ -72,7 +72,7 @@ class _ProfilePageState extends State<ProfilePage> {
             : {
                 ...base,
                 'family_badge': results[5] as Map<String, dynamic>?,
-                'shipping_agent': results[8] == true,
+                'shipping_agent': results[6] == true,
               };
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
