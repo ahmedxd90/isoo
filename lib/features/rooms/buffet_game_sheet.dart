@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/custom_toast.dart';
-import 'lion_party_game_sheet.dart';
 
 class BuffetFood {
   const BuffetFood(this.id, this.name, this.multiplier, this.emoji);
@@ -149,77 +148,6 @@ class BuffetGameCatalogSheet extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                Future<void>.delayed(Duration.zero, () {
-                  if (!context.mounted) return;
-                  showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => LionPartyGameSheet(roomId: roomId),
-                  );
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1024),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFFFB52E), width: 3),
-                ),
-                child: Row(
-                  children: [
-                    const Text('🦁', style: TextStyle(fontSize: 48)),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'حفلة الأسد',
-                            style: TextStyle(
-                              color: Colors.amber,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'عجلة ذهبية • جولات ورهانات حقيقية',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFFFD54F), Color(0xFFFF8F00)],
-                        ),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: const Text(
-                        'العب الآن',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w900,
-                        ),
                       ),
                     ),
                   ],
