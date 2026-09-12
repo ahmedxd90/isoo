@@ -419,135 +419,311 @@ class _GlobalGiftBanner extends StatefulWidget {
   State<_GlobalGiftBanner> createState() => _GlobalGiftBannerState();
 }
 
-class _GlobalGiftBannerState extends State<_GlobalGiftBanner> {
-  String? _activeId;
+class _GlobalGiftBannerState extends State<_GlobalGiftBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
   String? _shownId;
-  Timer? _hideTimer;
+  Map<String, dynamic>? _active;
+  Timer? _nextTimer;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 4400),
+        )..addStatusListener((status) {
+          if (status == AnimationStatus.completed && mounted) {
+            setState(() => _active = null);
+          }
+        });
+  }
+
   @override
   void dispose() {
-    _hideTimer?.cancel();
+    _nextTimer?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   Future<Map<String, dynamic>?> _load(Map<String, dynamic> row) async {
-    final sender = await SakiService.instance.client
-        .from('profiles')
-        .select('username,avatar_url')
-        .eq('id', row['sender_id'])
-        .maybeSingle();
-    final recipient = await SakiService.instance.client
-        .from('profiles')
-        .select('username,avatar_url')
-        .eq('id', row['recipient_id'])
-        .maybeSingle();
-    final gift = await SakiService.instance.client
-        .from('room_gift_catalog')
-        .select('name,icon')
-        .eq('id', row['gift_id'])
-        .maybeSingle();
-    return {'sender': sender, 'recipient': recipient, 'gift': gift};
+    final client = SakiService.instance.client;
+    final results = await Future.wait<dynamic>([
+      client
+          .from('profiles')
+          .select('username,display_name,avatar_url')
+          .eq('id', row['sender_id'])
+          .maybeSingle(),
+      client
+          .from('profiles')
+          .select('username,display_name,avatar_url')
+          .eq('id', row['recipient_id'])
+          .maybeSingle(),
+      client
+          .from('room_gift_catalog')
+          .select('name,icon,media_url,media_type')
+          .eq('id', row['gift_id'])
+          .maybeSingle(),
+      client
+          .from('rooms')
+          .select('id,name,room_id,image_url')
+          .eq('id', row['room_id'])
+          .maybeSingle(),
+    ]);
+    return {
+      'row': row,
+      'sender': results[0],
+      'recipient': results[1],
+      'gift': results[2],
+      'room': results[3],
+    };
+  }
+
+  Future<void> _showNewest(Map<String, dynamic> row) async {
+    final id = row['id']?.toString();
+    if (id == null || id == _shownId || _loading) return;
+    _shownId = id;
+    _loading = true;
+    _controller.stop();
+    _controller.reset();
+    try {
+      final info = await _load(row);
+      if (!mounted || info == null || _shownId != id) return;
+      setState(() => _active = info);
+      _controller.forward();
+    } catch (_) {
+      // A missing profile or deleted gift must not interrupt the global feed.
+    } finally {
+      _loading = false;
+    }
+  }
+
+  String _name(Map<String, dynamic> profile) =>
+      (profile['display_name'] ?? profile['username'] ?? 'مستخدم').toString();
+
+  Future<void> _openRoom() async {
+    final info = _active;
+    if (info == null || !mounted) return;
+    final room = info['room'];
+    if (room is! Map) return;
+    final roomMap = Map<String, dynamic>.from(room);
+    final activeRoom = RoomSessionController.instance.room;
+    if (activeRoom != null && activeRoom['id'] != roomMap['id']) {
+      final move = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF161126),
+          title: const Text(
+            'انتقال إلى الغرفة؟',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'أنت الآن في غرفة أخرى. هل تريد الانتقال إلى غرفة ${roomMap['name'] ?? 'الهدية'}؟',
+            textAlign: TextAlign.right,
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('موافق'),
+            ),
+          ],
+        ),
+      );
+      if (move != true) return;
+      await RoomSessionController.instance.close();
+    }
+    if (!mounted) return;
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: roomMap)));
+  }
+
+  Widget _giftImage(Map<String, dynamic> gift) {
+    final media = (gift['media_url'] ?? gift['icon'])?.toString() ?? '';
+    if (media.startsWith('http')) {
+      return Image.network(
+        media,
+        width: 38,
+        height: 38,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) =>
+            const Text('🎁', style: TextStyle(fontSize: 28)),
+      );
+    }
+    if (media.startsWith('assets/')) {
+      return Image.asset(media, width: 38, height: 38, fit: BoxFit.cover);
+    }
+    return Text(
+      media.isEmpty ? '🎁' : media,
+      style: const TextStyle(fontSize: 28),
+    );
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) => StreamBuilder<List<Map<String, dynamic>>>(
-    stream: SakiService.instance.giftAnnouncementsStream(),
-    builder: (_, snapshot) {
-      final rows = (snapshot.data ?? const [])
-          .where((r) => ((r['total_price'] as num?)?.toInt() ?? 0) >= 100000)
-          .toList();
-      if (rows.isEmpty) return const SizedBox.shrink();
-      final newestId = rows.first['id']?.toString();
-      if (newestId != null && newestId != _shownId) {
-        _shownId = newestId;
-        _activeId = newestId;
-        _hideTimer?.cancel();
-        _hideTimer = Timer(const Duration(seconds: 2), () {
-          if (mounted) setState(() => _activeId = null);
-        });
-      }
-      if (_activeId != newestId) return const SizedBox.shrink();
-      return Positioned(
-        top: 72,
-        left: 0,
-        right: 0,
-        child: FutureBuilder<Map<String, dynamic>?>(
-          future: _load(rows.first),
-          builder: (_, data) {
-            final info = data.data;
-            if (info == null) return const SizedBox.shrink();
-            final sender = Map<String, dynamic>.from(info['sender'] ?? {}),
-                recipient = Map<String, dynamic>.from(info['recipient'] ?? {}),
-                gift = Map<String, dynamic>.from(info['gift'] ?? {});
-            return TweenAnimationBuilder<Offset>(
-              tween: Tween(begin: const Offset(1, 0), end: Offset.zero),
-              duration: const Duration(milliseconds: 650),
-              builder: (_, offset, child) =>
-                  FractionalTranslation(translation: offset, child: child),
-              child: Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 14),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: .88),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.amberAccent),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SakiAvatar(
-                        url: sender['avatar_url'] as String?,
-                        label: sender['username'] as String?,
-                        radius: 17,
+  Widget build(BuildContext context) =>
+      StreamBuilder<List<Map<String, dynamic>>>(
+        stream: SakiService.instance.giftAnnouncementsStream(),
+        builder: (_, snapshot) {
+          final rows = (snapshot.data ?? const [])
+              .where((r) => ((r['total_price'] as num?)?.toInt() ?? 0) >= 50000)
+              .toList();
+          if (rows.isNotEmpty) {
+            _nextTimer ??= Timer(const Duration(milliseconds: 1), () {
+              _nextTimer = null;
+              _showNewest(rows.first);
+            });
+          }
+          final info = _active;
+          if (info == null) return const SizedBox.shrink();
+          final row = Map<String, dynamic>.from(info['row'] as Map);
+          final sender = Map<String, dynamic>.from(info['sender'] ?? {});
+          final recipient = Map<String, dynamic>.from(info['recipient'] ?? {});
+          final gift = Map<String, dynamic>.from(info['gift'] ?? {});
+          final room = Map<String, dynamic>.from(info['room'] ?? {});
+          final amount = row['total_price']?.toString() ?? '0';
+          return Positioned(
+            top: 68,
+            left: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: _openRoom,
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (_, child) {
+                  final t = _controller.value;
+                  final double x = t < .16
+                      ? -1 + (t / .16)
+                      : t > .84
+                      ? (t - .84) / .16
+                      : 0;
+                  return FractionalTranslation(
+                    translation: Offset(x, 0),
+                    child: child,
+                  );
+                },
+                child: Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF24103F),
+                          Color(0xFF6E1FA8),
+                          Color(0xFF24103F),
+                        ],
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        sender['username'] as String? ?? 'مستخدم',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color(0xFFFFD76A),
+                        width: 1.4,
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 5),
                         ),
-                      ),
-                      const Text(
-                        ' أرسل ',
-                        style: TextStyle(color: Colors.amberAccent),
-                      ),
-                      Text(
-                        gift['icon'] as String? ?? '🎁',
-                        style: const TextStyle(fontSize: 22),
-                      ),
-                      const Text(
-                        ' إلى ',
-                        style: TextStyle(color: Colors.amberAccent),
-                      ),
-                      SakiAvatar(
-                        url: recipient['avatar_url'] as String?,
-                        label: recipient['username'] as String?,
-                        radius: 17,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        recipient['username'] as String? ?? 'مستخدم',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SakiAvatar(
+                          url: sender['avatar_url'] as String?,
+                          label: _name(sender),
+                          radius: 18,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            _name(sender),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const Text(
+                          ' أرسل هدية ',
+                          style: TextStyle(
+                            color: Color(0xFFFFD76A),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          padding: const EdgeInsets.all(1),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _giftImage(gift),
+                        ),
+                        const SizedBox(width: 5),
+                        SakiAvatar(
+                          url: recipient['avatar_url'] as String?,
+                          label: _name(recipient),
+                          radius: 18,
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            _name(recipient),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '$amount ذهب',
+                              style: const TextStyle(
+                                color: Color(0xFFFFE6A0),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            Text(
+                              room['name']?.toString() ?? 'غرفة مباشرة',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 9,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       );
-    },
-  );
 }
 
 class SakiHtmlBottomNav extends StatelessWidget {

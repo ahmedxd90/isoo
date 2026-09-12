@@ -21,6 +21,7 @@ import 'room_settings_page.dart';
 import 'cinema_player.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
+import 'room_global_gift_banner.dart';
 import 'luck_bag_widgets.dart';
 import 'buffet_game_sheet.dart';
 import '../profile/store_pages.dart';
@@ -1407,6 +1408,45 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _musicOwnerId;
   Set<String> _previousSeatUserIds = <String>{};
   bool _seatStopPending = false;
+
+  Future<void> _openGlobalGiftRoom(Map<String, dynamic> room) async {
+    if (!mounted || room['id'] == null) return;
+    final current = RoomSessionController.instance.room;
+    if (current != null && current['id'] != room['id']) {
+      final move = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF161126),
+          title: const Text(
+            'انتقال إلى الغرفة؟',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'أنت الآن في غرفة أخرى. هل تريد الانتقال إلى غرفة ${room['name'] ?? 'الهدية'}؟',
+            textAlign: TextAlign.right,
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('موافق'),
+            ),
+          ],
+        ),
+      );
+      if (move != true) return;
+      await _confirmExit();
+    }
+    if (!mounted) return;
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
+  }
+
   Timer? _seatTaskTimer;
   Map<String, dynamic>? _optimisticSeatRow;
   List<Map<String, dynamic>> _luckBags = [];
@@ -4598,6 +4638,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   },
                 ),
               ),
+            RoomGlobalGiftBanner(onOpenRoom: _openGlobalGiftRoom),
           ],
         ),
       ),
