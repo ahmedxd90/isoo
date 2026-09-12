@@ -1412,6 +1412,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _openGlobalGiftRoom(Map<String, dynamic> room) async {
     if (!mounted || room['id'] == null) return;
     final current = RoomSessionController.instance.room;
+    if (current != null && current['id'] == room['id']) return;
     if (current != null && current['id'] != room['id']) {
       final move = await showDialog<bool>(
         context: context,
@@ -1440,7 +1441,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         ),
       );
       if (move != true) return;
-      await _confirmExit();
+      await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
+      await _service.leaveRoomSeat(_roomId).catchError((_) {});
+      await _service.leaveRoom(_roomId).catchError((_) {});
+      await RoomSessionController.instance.close().catchError((_) {});
+      if (!mounted) return;
+      await Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
+        (route) => route.isFirst,
+      );
+      return;
     }
     if (!mounted) return;
     await Navigator.of(context)
