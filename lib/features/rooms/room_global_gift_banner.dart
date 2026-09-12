@@ -58,6 +58,7 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
           .select('id,name,room_id')
           .eq('id', row['room_id'])
           .maybeSingle(),
+      SakiService.instance.sentLuckGiftCount(row['sender_id'].toString()),
     ]);
     return {
       'row': row,
@@ -65,6 +66,7 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
       'recipient': r[1],
       'gift': r[2],
       'room': r[3],
+      'sent_luck_count': r[4],
     };
   }
 
@@ -132,138 +134,150 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
           final recipient = Map<String, dynamic>.from(event['recipient'] ?? {});
           final gift = Map<String, dynamic>.from(event['gift'] ?? {});
           final room = Map<String, dynamic>.from(event['room'] ?? {});
+          final sentLuckCount = event['sent_luck_count'] as int? ?? 0;
           return Positioned(
             top: 72,
-            left: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: () => widget.onOpenRoom(room),
-              child: AnimatedBuilder(
-                animation: _animation,
-                builder: (_, child) {
-                  final t = _animation.value;
-                  final double x = t < .16
-                      ? -1 + t / .16
-                      : t > .84
-                      ? (t - .84) / .16
-                      : 0;
-                  return FractionalTranslation(
-                    translation: Offset(x, 0),
-                    child: child,
-                  );
-                },
-                child: Center(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 11,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF24103F),
-                          Color(0xFF6E1FA8),
-                          Color(0xFF24103F),
-                        ],
+            right: 10,
+            width: 340,
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: GestureDetector(
+                onTap: () => widget.onOpenRoom(room),
+                child: AnimatedBuilder(
+                  animation: _animation,
+                  builder: (_, child) {
+                    final t = _animation.value;
+                    final double x = t < .16
+                        ? -1 + t / .16
+                        : t > .84
+                        ? (t - .84) / .16
+                        : 0;
+                    return FractionalTranslation(
+                      translation: Offset(x, 0),
+                      child: child,
+                    );
+                  },
+                  child: Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 8,
                       ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: const Color(0xFFFFD76A),
-                        width: 1.4,
-                      ),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x66000000),
-                          blurRadius: 14,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SakiAvatar(
-                          url: sender['avatar_url'] as String?,
-                          label: _name(sender),
-                          radius: 18,
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            _name(sender),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          row['event_type'] == 'luck_multiplier'
-                              ? ' حصل على ضعف ×${row['multiplier'] ?? 1} '
-                              : ' أرسل هدية ',
-                          style: const TextStyle(
-                            color: Color(0xFFFFD76A),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                          ),
-                        ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          padding: const EdgeInsets.all(1),
-                          decoration: BoxDecoration(
-                            color: Colors.black26,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: _gift(gift),
-                        ),
-                        const SizedBox(width: 5),
-                        SakiAvatar(
-                          url: recipient['avatar_url'] as String?,
-                          label: _name(recipient),
-                          radius: 18,
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            _name(recipient),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              row['event_type'] == 'luck_multiplier'
-                                  ? '${row['reward_gold']} ذهب'
-                                  : '${row['total_price']} ذهب',
-                              style: const TextStyle(
-                                color: Color(0xFFFFE6A0),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            Text(
-                              room['name']?.toString() ?? 'غرفة',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 9,
-                              ),
-                            ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF24103F),
+                            Color(0xFF6E1FA8),
+                            Color(0xFF24103F),
                           ],
                         ),
-                      ],
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color(0xFFFFD76A),
+                          width: 1.4,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x66000000),
+                            blurRadius: 14,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SakiAvatar(
+                            url: sender['avatar_url'] as String?,
+                            label: _name(sender),
+                            radius: 18,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              _name(sender),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            row['event_type'] == 'luck_multiplier'
+                                ? ' حصل على ضعف ×${row['multiplier'] ?? 1} '
+                                : ' أرسل هدية ',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD76A),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                            ),
+                          ),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            padding: const EdgeInsets.all(1),
+                            decoration: BoxDecoration(
+                              color: Colors.black26,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: _gift(gift),
+                          ),
+                          const SizedBox(width: 5),
+                          SakiAvatar(
+                            url: recipient['avatar_url'] as String?,
+                            label: _name(recipient),
+                            radius: 18,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              _name(recipient),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                row['event_type'] == 'luck_multiplier'
+                                    ? '${row['reward_gold']} ذهب'
+                                    : '${row['total_price']} ذهب',
+                                style: const TextStyle(
+                                  color: Color(0xFFFFE6A0),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              Text(
+                                room['name']?.toString() ?? 'غرفة',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 9,
+                                ),
+                              ),
+                              if (row['event_type'] == 'luck_multiplier')
+                                Text(
+                                  'أرسل هدايا حظ: $sentLuckCount مرة',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD76A),
+                                    fontSize: 8,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -4652,6 +4652,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   if (mounted) setState(() => _newLuckBag = null);
                 },
               ),
+            if (_activeGiftMessage != null)
+              GiftFullScreenOverlay(
+                message: _activeGiftMessage!,
+                seatKey: _seatKeyForGift(_activeGiftMessage!),
+                onClose: () {
+                  if (mounted) setState(() => _activeGiftMessage = null);
+                },
+              ),
             if (_activeGiftMessage != null &&
                 ((Map<String, dynamic>.from(
                                   _activeGiftMessage!['payload'] ?? const {},

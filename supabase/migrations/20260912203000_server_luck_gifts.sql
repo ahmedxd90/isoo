@@ -87,7 +87,7 @@ begin
     on conflict(user_id,gift_id) do update set quantity=public.room_gift_inventory.quantity+excluded.quantity;
 
   v_payload := jsonb_build_object(
-    'event_type','luck_multiplier', 'gift_id',g.id, 'icon',g.icon, 'name',g.name,
+    'event_type','luck_multiplier', 'gift_id',g.id, 'icon',g.icon, 'thumbnail_url',g.icon, 'media_url',g.media_url, 'media_type',g.media_type, 'name',g.name,
     'category','luck', 'recipient_id',p_recipient_id, 'sender_id',auth.uid(),
     'sender_username',sender_profile.username, 'sender_avatar_url',sender_profile.avatar_url,
     'recipient_username',recipient_profile.username, 'recipient_avatar_url',recipient_profile.avatar_url,

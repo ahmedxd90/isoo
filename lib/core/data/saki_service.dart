@@ -3070,6 +3070,34 @@ class SakiService {
     return list.first;
   }
 
+  Future<int> luckDailyPercent() async {
+    final row = await client
+        .from('luck_daily_settings')
+        .select('win_percent')
+        .eq('luck_date', DateTime.now().toIso8601String().substring(0, 10))
+        .maybeSingle();
+    return (row?['win_percent'] as num?)?.toInt() ?? 38;
+  }
+
+  Future<int> setLuckDailyPercent(int percent) async {
+    final rows = await client.rpc(
+      'set_luck_daily_percent',
+      params: {'p_percent': percent},
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    if (list.isEmpty) throw Exception('تعذر تعديل نسبة الحظ');
+    return (list.first['win_percent'] as num?)?.toInt() ?? percent;
+  }
+
+  Future<int> sentLuckGiftCount(String userId) async {
+    final rows = await client
+        .from('room_gifts')
+        .select('id,room_gift_catalog:gift_id!inner(category)')
+        .eq('sender_id', userId)
+        .eq('room_gift_catalog.category', 'luck');
+    return (rows as List).length;
+  }
+
   Future<Map<String, dynamic>> redeemSakiCode(String code) async {
     try {
       final result = await client.rpc(
