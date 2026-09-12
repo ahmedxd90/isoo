@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/profile_post_card.dart';
 import '../../shared/widgets/vip_identity.dart';
 import '../messages/messages_page.dart';
 import '../rooms/rooms_page.dart';
@@ -1784,14 +1785,7 @@ class _HtmlMomentsState extends State<_HtmlMoments> {
     }
     return Column(
       children: widget.posts
-          .map(
-            (post) => _MomentCard(
-              post: post,
-              accent: widget.accent,
-              onComment: () => _comment(post),
-              onChanged: () => setState(() {}),
-            ),
-          )
+          .map((post) => ProfilePostCard(post: post))
           .toList(),
     );
   }

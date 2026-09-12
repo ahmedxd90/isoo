@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/profile_post_card.dart';
 import 'wallet_page.dart';
 import 'vip_page.dart';
 import 'user_settings_page.dart';
@@ -1279,41 +1280,7 @@ class _MyMomentTile extends StatelessWidget {
   const _MyMomentTile({required this.post});
   final Map<String, dynamic> post;
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    margin: const EdgeInsets.only(bottom: 9),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFC),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFE5E7EB)),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.image_rounded, color: Color(0xFF10B981)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            post['content']?.toString().isNotEmpty == true
-                ? post['content'].toString()
-                : 'لحظة مصورة',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              color: Color(0xFF374151),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Text(
-          post['created_at']?.toString().substring(0, 10) ?? '',
-          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 9),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context) => ProfilePostCard(post: post);
 }
 
 class _HtmlProfileHeader extends StatelessWidget {

@@ -705,7 +705,7 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> feed({bool followingOnly = false}) async {
     final selection =
-        'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
+        'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at,wealth_level),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
     final data = followingOnly
         ? await _followingPosts(selection)
         : await client
@@ -2514,7 +2514,7 @@ class SakiService {
     final data = await client
         .from('posts')
         .select(
-          'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)',
+          'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at,wealth_level),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)',
         )
         .eq('author_id', userId)
         .order('created_at', ascending: false)
