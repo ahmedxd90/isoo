@@ -21,6 +21,7 @@ import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import 'user_profile_page.dart';
+import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
@@ -107,8 +108,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _openModule(String type) async {
     if (type == 'store') {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const StorePage()));
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => DraggableScrollableSheet(
+          initialChildSize: .92,
+          minChildSize: .60,
+          maxChildSize: .98,
+          expand: false,
+          builder: (context, _) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: const StorePage(),
+          ),
+        ),
+      );
       if (mounted) _load();
       return;
     }
@@ -372,7 +386,7 @@ class _HtmlProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = profile['saki_id']?.toString() ?? '—';
-    final vip = (profile['vip_level'] as num?)?.toInt() ?? 0;
+    final vip = activeVipLevel(profile);
     return SizedBox(
       height: 218,
       child: Stack(
@@ -478,14 +492,10 @@ class _HtmlProfileHeader extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              username,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: _ink,
-                                letterSpacing: .5,
-                              ),
+                            VipNameText(
+                              profile: profile,
+                              fontSize: 20,
+                              maxLines: 1,
                             ),
                             const SizedBox(width: 7),
                             Container(

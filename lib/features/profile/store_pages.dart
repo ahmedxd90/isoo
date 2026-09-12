@@ -644,12 +644,8 @@ class _StorePageState extends State<StorePage> {
               if (snap.hasError) {
                 return Center(child: Text('تعذر تحميل المتجر: ${snap.error}'));
               }
-              final items = (snap.data ?? const <Map<String, dynamic>>[]).where(
-                (product) {
-                  final name = product['name']?.toString() ?? '';
-                  return !name.startsWith('إطار VIP ');
-                },
-              ).toList();
+              final items = (snap.data ?? const <Map<String, dynamic>>[])
+                  .toList();
               if (items.isEmpty) {
                 return Center(
                   child: Column(
