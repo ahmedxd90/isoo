@@ -1259,9 +1259,6 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (_, index) {
               final row = _rows[index];
-              if (row['type']?.toString() == 'agency_invite') {
-                return _SystemAgencyInviteBubble(row: row);
-              }
               return _SystemMessageBubble(row: row);
             },
           ),
@@ -1426,127 +1423,6 @@ class _SystemMessageBubble extends StatelessWidget {
       onTap: () =>
           SakiService.instance.markNotificationRead(row['id'].toString()),
       accent: _blue,
-    );
-  }
-}
-
-class _SystemAgencyInviteBubble extends StatefulWidget {
-  const _SystemAgencyInviteBubble({required this.row});
-  final Map<String, dynamic> row;
-
-  @override
-  State<_SystemAgencyInviteBubble> createState() =>
-      _SystemAgencyInviteBubbleState();
-}
-
-class _SystemAgencyInviteBubbleState extends State<_SystemAgencyInviteBubble> {
-  bool _working = false;
-  String? _response;
-
-  Future<void> _respond(bool accept) async {
-    final inviteId = widget.row['entity_id']?.toString();
-    if (inviteId == null || inviteId.isEmpty) return;
-    final data = Map<String, dynamic>.from(widget.row['data'] ?? const {});
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(accept ? 'تأكيد الانضمام' : 'تأكيد إلغاء الدعوة'),
-        content: Text(
-          accept
-              ? 'هل تريد الانضمام إلى وكالة ${data['agency_name'] ?? 'المضيفين'} كمضيف؟'
-              : 'هل تريد إلغاء دعوة الانضمام إلى وكالة ${data['agency_name'] ?? 'المضيفين'}؟',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('رجوع'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(accept ? 'تأكيد وموافقة' : 'تأكيد الإلغاء'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    setState(() => _working = true);
-    try {
-      if (accept) {
-        await SakiService.instance.hostAgencyAcceptInvite(inviteId);
-      } else {
-        await SakiService.instance.hostAgencyDeclineInvite(inviteId);
-      }
-      if (!mounted) return;
-      setState(() {
-        _working = false;
-        _response = accept ? 'accepted' : 'declined';
-      });
-      CustomToast.show(
-        context,
-        accept ? 'تم الانضمام إلى الوكالة.' : 'تم إلغاء الدعوة.',
-      );
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _working = false);
-      CustomToast.show(
-        context,
-        error.toString().replaceFirst('Exception: ', ''),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final data = Map<String, dynamic>.from(widget.row['data'] ?? const {});
-    final response = _response ?? data['response']?.toString();
-    final agency = data['agency_name']?.toString() ?? 'وكالة المضيفين';
-    final agent = data['agent_name']?.toString() ?? 'الوكيل';
-    final completed = response == 'accepted' || response == 'declined';
-    return _NotificationBubble(
-      unread: !completed && widget.row['is_read'] != true,
-      leading: const CircleAvatar(
-        radius: 22,
-        backgroundColor: _violet,
-        child: Icon(Icons.business_center_rounded, color: Colors.white),
-      ),
-      title: 'دعوة وكالة مضيفين',
-      text: completed
-          ? (response == 'accepted'
-                ? 'تم قبول الدعوة والانضمام إلى $agency.'
-                : 'تم إلغاء دعوة وكالة $agency.')
-          : 'دعوة من $agent للانضمام إلى وكالة $agency كمضيف.',
-      time: _messageTime(widget.row['created_at']),
-      onTap: () => SakiService.instance.markNotificationRead(
-        widget.row['id'].toString(),
-      ),
-      accent: _violet,
-      trailing: completed
-          ? null
-          : SizedBox(
-              width: 94,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FilledButton(
-                    onPressed: _working ? null : () => _respond(true),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(32),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Text('موافق', style: TextStyle(fontSize: 11)),
-                  ),
-                  const SizedBox(height: 5),
-                  OutlinedButton(
-                    onPressed: _working ? null : () => _respond(false),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(30),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Text('إلغاء', style: TextStyle(fontSize: 11)),
-                  ),
-                ],
-              ),
-            ),
     );
   }
 }

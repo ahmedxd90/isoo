@@ -153,17 +153,6 @@ class SuperAdminPage extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.business_rounded),
-              title: const Text('إدارة الوكالات'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminAgenciesPage()),
-                );
-              },
-            ),
-            ListTile(
               leading: const Icon(Icons.groups_rounded),
               title: const Text('إدارة العائلات'),
               onTap: () {
@@ -349,15 +338,6 @@ class SuperAdminPage extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AdminRoomsPage()),
-          ),
-        ),
-        _AdminCard(
-          icon: Icons.business_rounded,
-          title: 'إدارة الوكالات',
-          subtitle: 'عرض الوكالات وتفعيلها أو تعليقها أو إغلاقها',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AdminAgenciesPage()),
           ),
         ),
         _AdminCard(

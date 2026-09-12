@@ -53,7 +53,6 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
     final title =
         {
           'store': 'المتجر',
-          'agency': 'الوكالة',
           'family': 'العائلة',
           'level': 'المستوى',
         }[widget.feature] ??
@@ -103,8 +102,6 @@ class _TraceProfileFeaturesPageState extends State<TraceProfileFeaturesPage> {
           children: [
             if (widget.feature == 'store')
               StoreFeature(settings: settings, onSave: save),
-            if (widget.feature == 'agency')
-              AgencyFeature(settings: settings, onSave: save),
             if (widget.feature == 'family')
               FamilyFeature(settings: settings, onSave: save),
             if (widget.feature == 'level') LevelFeature(settings: modules),
@@ -300,82 +297,6 @@ class StoreGrid extends StatelessWidget {
         ),
       );
     },
-  );
-}
-
-class AgencyFeature extends StatefulWidget {
-  const AgencyFeature({
-    super.key,
-    required this.settings,
-    required this.onSave,
-  });
-  final Map<String, dynamic> settings;
-  final Future<void> Function(Map<String, dynamic>) onSave;
-  @override
-  State<AgencyFeature> createState() => _AgencyFeatureState();
-}
-
-class _AgencyFeatureState extends State<AgencyFeature> {
-  final controller = TextEditingController();
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      const TraceBanner(
-        image: '${_asset}agency_bg.png',
-        title: 'الوكالة',
-        subtitle: 'انضم إلى وكالة أو تابع طلبك',
-      ),
-      const SizedBox(height: 14),
-      FeatureCard(
-        icon: '${_asset}ic_tab_profile_agency.png',
-        title: 'الانضمام إلى وكالة',
-        subtitle: 'أدخل رمز الوكيل لحفظ طلبك في حسابك',
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: 'رمز الوكيل',
-                  filled: true,
-                  fillColor: _bg,
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: () async {
-                if (controller.text.trim().isEmpty) return;
-                await widget.onSave({
-                  'agency_agent_id': controller.text.trim(),
-                  'agency_status': 'pending',
-                });
-                if (!context.mounted) return;
-                CustomToast.show(context, 'تم حفظ طلب الوكالة');
-              },
-              child: const Text('إرسال'),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 12),
-      const InfoList(
-        title: 'مميزات الوكالة',
-        items: [
-          'مكافآت البث والتفاعل',
-          'إدارة الدعوات',
-          'متابعة المهام والأرباح',
-        ],
-      ),
-    ],
   );
 }
 

@@ -583,12 +583,8 @@ String formatVipPrice(int value) => value >= 1000000
     ? '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K'
     : '$value';
 
-class HostAgencyTitleBadge extends StatelessWidget {
-  const HostAgencyTitleBadge({
-    super.key,
-    this.compact = false,
-    this.label = 'مضيف',
-  });
+class RoleTitleBadge extends StatelessWidget {
+  const RoleTitleBadge({super.key, this.compact = false, this.label = 'مضيف'});
   final bool compact;
   final String label;
 

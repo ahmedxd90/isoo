@@ -57,8 +57,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.userVehicles(widget.userId),
         SakiService.instance.isFollowing(widget.userId),
         SakiService.instance.userBadges(widget.userId),
-        SakiService.instance.isHostAgencyMember(widget.userId),
-        SakiService.instance.isHostAgencyOwner(widget.userId),
         SakiService.instance.isShippingAgent(widget.userId),
       ]);
       if (!mounted) return;
@@ -80,8 +78,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
             : {
                 ...base,
                 'family_badge': family,
-                'host_agency_member': results[8] == true,
-                'host_agency_owner': results[9] == true,
                 'shipping_agent': results[10] == true,
               };
         _stats = Map<String, int>.from(results[2] as Map);
@@ -473,18 +469,9 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
                             const SizedBox(height: 5),
                             const SuperAdminBadge(),
                           ],
-                          if (widget.profile['host_agency_member'] == true) ...[
-                            const SizedBox(height: 5),
-                            HostAgencyTitleBadge(
-                              compact: true,
-                              label: widget.profile['host_agency_owner'] == true
-                                  ? 'وكيل'
-                                  : 'مضيف',
-                            ),
-                          ],
                           if (widget.profile['shipping_agent'] == true) ...[
                             const SizedBox(height: 5),
-                            const HostAgencyTitleBadge(
+                            const RoleTitleBadge(
                               label: 'وكيل شحن',
                               compact: true,
                             ),

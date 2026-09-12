@@ -105,7 +105,7 @@ class _ShippingAgentPageState extends State<ShippingAgentPage> {
                                 style: const TextStyle(color: Colors.blueGrey),
                               ),
                               const SizedBox(height: 6),
-                              const HostAgencyTitleBadge(
+                              const RoleTitleBadge(
                                 label: 'وكيل شحن',
                                 compact: true,
                               ),

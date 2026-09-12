@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/custom_toast.dart';
-
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -15,9 +13,7 @@ class NotificationsPage extends StatelessWidget {
     final type = row['type'] as String? ?? '';
     if (filter == null) return true;
     if (filter == 'system') {
-      return type == 'system' ||
-          type == 'announcement' ||
-          type == 'agency_invite';
+      return type == 'system' || type == 'announcement';
     }
     if (filter == 'follow') return type == 'follow' || type == 'friend_request';
     return type == 'like' ||
@@ -80,17 +76,6 @@ class _NotificationTile extends StatelessWidget {
       _ => 'لديك نشاط جديد من $actor',
     };
     final read = notification['is_read'] == true;
-    final data = notification['data'] is Map
-        ? Map<String, dynamic>.from(notification['data'] as Map)
-        : const <String, dynamic>{};
-    if (type == 'agency_invite') {
-      return _AgencyInviteTile(
-        notification: notification,
-        data: data,
-        actor: actor,
-        read: read,
-      );
-    }
     return Card(
       color: read ? null : SakiColors.darkPurple.withValues(alpha: .35),
       child: ListTile(
@@ -116,159 +101,6 @@ class _NotificationTile extends StatelessWidget {
         trailing: read
             ? null
             : const Icon(Icons.circle, size: 10, color: SakiColors.cyan),
-      ),
-    );
-  }
-}
-
-class _AgencyInviteTile extends StatefulWidget {
-  const _AgencyInviteTile({
-    required this.notification,
-    required this.data,
-    required this.actor,
-    required this.read,
-  });
-  final Map<String, dynamic> notification;
-  final Map<String, dynamic> data;
-  final String actor;
-  final bool read;
-
-  @override
-  State<_AgencyInviteTile> createState() => _AgencyInviteTileState();
-}
-
-class _AgencyInviteTileState extends State<_AgencyInviteTile> {
-  bool _working = false;
-  bool _responded = false;
-
-  Future<void> _respond(bool accept) async {
-    final inviteId = widget.notification['entity_id']?.toString();
-    if (inviteId == null || inviteId.isEmpty) return;
-    final action = accept ? 'قبول دعوة الوكالة' : 'إلغاء دعوة الوكالة';
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(action),
-        content: Text(
-          accept
-              ? 'هل تريد الانضمام إلى وكالة ${widget.data['agency_name'] ?? 'المضيفين'}؟'
-              : 'هل تريد إلغاء الانضمام إلى وكالة ${widget.data['agency_name'] ?? 'المضيفين'}؟',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('رجوع'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(accept ? 'موافق' : 'إلغاء الدعوة'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    setState(() => _working = true);
-    try {
-      if (accept) {
-        await SakiService.instance.hostAgencyAcceptInvite(inviteId);
-      } else {
-        await SakiService.instance.hostAgencyDeclineInvite(inviteId);
-      }
-      if (mounted) {
-        setState(() {
-          _working = false;
-          _responded = true;
-        });
-        CustomToast.show(
-          context,
-          accept ? 'تم قبول الدعوة والانضمام للوكالة.' : 'تم إلغاء الدعوة.',
-        );
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() => _working = false);
-        CustomToast.show(
-          context,
-          error.toString().replaceFirst('Exception: ', ''),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final agency = widget.data['agency_name']?.toString() ?? 'وكالة المضيفين';
-    final agent =
-        widget.data['agent_name']?.toString().trim().isNotEmpty == true
-        ? widget.data['agent_name'].toString()
-        : widget.actor;
-    final response = widget.data['response']?.toString();
-    final completed =
-        _responded || response == 'accepted' || response == 'declined';
-    return Card(
-      color: widget.read ? null : SakiColors.darkPurple.withValues(alpha: .35),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  backgroundColor: SakiColors.orange,
-                  child: Icon(
-                    Icons.business_center_rounded,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'دعوة من $agent للانضمام إلى وكالة $agency',
-                    style: const TextStyle(fontWeight: FontWeight.w900),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (completed)
-              Text(
-                response == 'accepted' || _responded
-                    ? 'تم قبول الدعوة والانضمام إلى الوكالة.'
-                    : 'تم إلغاء دعوة الوكالة.',
-                style: const TextStyle(
-                  color: SakiColors.cyan,
-                  fontWeight: FontWeight.w800,
-                ),
-              )
-            else ...[
-              const Text(
-                'تمت دعوتك كمضيف. اختر موافق للانضمام أو إلغاء لرفض الدعوة.',
-                style: TextStyle(color: SakiColors.muted, fontSize: 12),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _working ? null : () => _respond(true),
-                      icon: const Icon(Icons.check_rounded, size: 17),
-                      label: const Text('موافق'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _working ? null : () => _respond(false),
-                      icon: const Icon(Icons.close_rounded, size: 17),
-                      label: const Text('إلغاء'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

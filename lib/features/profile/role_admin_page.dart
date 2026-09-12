@@ -140,18 +140,6 @@ class _RoleAdminPageState extends State<RoleAdminPage> {
                         ),
                       ),
                     ),
-                  if (_can('manage_agencies'))
-                    _ToolCard(
-                      icon: Icons.business_rounded,
-                      title: 'الوكالات والشراكات',
-                      subtitle: 'متابعة الوكالات وحالاتها وتقارير الأداء',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminAgenciesPage(),
-                        ),
-                      ),
-                    ),
                   if (_can('manage_families'))
                     _ToolCard(
                       icon: Icons.groups_rounded,

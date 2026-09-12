@@ -1,101 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../shared/widgets/custom_toast.dart';
-
 import '../../core/data/saki_service.dart';
-import 'create_host_agency_page.dart';
 
 const _adminBlue = Color(0xFF4F46E5);
 const _adminCyan = Color(0xFF06B6D4);
-
-class AdminAgenciesPage extends StatefulWidget {
-  const AdminAgenciesPage({super.key});
-  @override
-  State<AdminAgenciesPage> createState() => _AdminAgenciesPageState();
-}
-
-class _AdminAgenciesPageState extends State<AdminAgenciesPage> {
-  late Future<List<Map<String, dynamic>>> _future;
-  @override
-  void initState() {
-    super.initState();
-    _future = SakiService.instance.adminAgencies();
-  }
-
-  void _reload() =>
-      setState(() => _future = SakiService.instance.adminAgencies());
-  @override
-  Widget build(BuildContext context) => _AdminRecordsScaffold(
-    title: 'إدارة الوكالات',
-    icon: Icons.business_rounded,
-    future: _future,
-    empty: 'لا توجد وكالات مسجلة حاليًا.',
-    onRefresh: _reload,
-    floatingActionButton: FloatingActionButton.extended(
-      backgroundColor: _adminCyan,
-      onPressed: () async {
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CreateHostAgencyPage()),
-        );
-        _reload();
-      },
-      icon: const Icon(Icons.add_business_rounded, color: Colors.white),
-      label: const Text('إضافة وكالة', style: TextStyle(color: Colors.white)),
-    ),
-    itemBuilder: (row) => _AdminRecordCard(
-      icon: Icons.business_rounded,
-      title: row['name'] as String? ?? 'وكالة',
-      subtitle:
-          'المالك: ${row['owner_username'] ?? '—'} (SAKI ID: ${row['owner_saki_id'] ?? '—'})\nالدولة: ${row['country'] ?? '—'} • المضيفون: ${row['host_count'] ?? 0}\nكود الوكالة: ${row['agent_code'] ?? '—'}\nالحالة: ${row['status'] ?? '—'}',
-      status: row['status'] as String?,
-      onStatus: (status) async {
-        await SakiService.instance.adminSetAgencyStatus(
-          row['id'] as String,
-          status,
-        );
-        _reload();
-      },
-      onDelete: () async {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('حذف الوكالة نهائياً'),
-            content: Text(
-              'سيتم حذف وكالة ${row['name'] ?? 'هذه الوكالة'} وكل عضوياتها وطلبات السحب التابعة لها. لا يمكن التراجع عن العملية.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('إلغاء'),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('حذف نهائياً'),
-              ),
-            ],
-          ),
-        );
-        if (confirmed != true) return;
-        try {
-          await SakiService.instance.adminDeleteHostAgency(row['id'] as String);
-          if (context.mounted) {
-            CustomToast.show(context, 'تم حذف الوكالة فعلياً.');
-          }
-          _reload();
-        } catch (error) {
-          if (context.mounted) {
-            CustomToast.show(
-              context,
-              error.toString().replaceFirst('Exception: ', ''),
-            );
-          }
-        }
-      },
-    ),
-  );
-}
 
 class AdminFamiliesPage extends StatefulWidget {
   const AdminFamiliesPage({super.key});
@@ -177,14 +85,12 @@ class _AdminRecordsScaffold extends StatelessWidget {
     required this.empty,
     required this.itemBuilder,
     required this.onRefresh,
-    this.floatingActionButton,
   });
   final String title, empty;
   final IconData icon;
   final Future<List<Map<String, dynamic>>> future;
   final Widget Function(Map<String, dynamic>) itemBuilder;
   final VoidCallback onRefresh;
-  final Widget? floatingActionButton;
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -196,7 +102,6 @@ class _AdminRecordsScaffold extends StatelessWidget {
         ),
       ],
     ),
-    floatingActionButton: floatingActionButton,
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: future,
       builder: (_, snapshot) {
@@ -231,13 +136,11 @@ class _AdminRecordCard extends StatelessWidget {
     required this.subtitle,
     this.status,
     this.onStatus,
-    this.onDelete,
   });
   final IconData icon;
   final String title, subtitle;
   final String? status;
   final Future<void> Function(String status)? onStatus;
-  final Future<void> Function()? onDelete;
   @override
   Widget build(BuildContext context) => Card(
     elevation: 0,
@@ -266,27 +169,15 @@ class _AdminRecordCard extends StatelessWidget {
               ],
             ),
           ),
-          if (onStatus != null || onDelete != null)
+          if (onStatus != null)
             PopupMenuButton<String>(
               onSelected: (value) async {
-                if (value == 'delete') {
-                  await onDelete?.call();
-                } else {
-                  await onStatus?.call(value);
-                }
+                await onStatus?.call(value);
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'active', child: Text('تفعيل')),
                 const PopupMenuItem(value: 'suspended', child: Text('تعليق')),
                 const PopupMenuItem(value: 'closed', child: Text('إغلاق')),
-                if (onDelete != null)
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Text(
-                      'حذف نهائي',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ),
               ],
             ),
         ],
