@@ -113,7 +113,11 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
         stream: SakiService.instance.giftAnnouncementsStream(),
         builder: (_, snap) {
           final rows = (snap.data ?? const [])
-              .where((r) => ((r['total_price'] as num?)?.toInt() ?? 0) >= 50000)
+              .where(
+                (r) =>
+                    r['event_type'] == 'luck_multiplier' ||
+                    ((r['total_price'] as num?)?.toInt() ?? 0) >= 50000,
+              )
               .toList();
           if (rows.isNotEmpty) {
             _queue ??= Timer(const Duration(milliseconds: 1), () {
@@ -197,9 +201,11 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
                             ),
                           ),
                         ),
-                        const Text(
-                          ' أرسل هدية ',
-                          style: TextStyle(
+                        Text(
+                          row['event_type'] == 'luck_multiplier'
+                              ? ' حصل على ضعف ×${row['multiplier'] ?? 1} '
+                              : ' أرسل هدية ',
+                          style: const TextStyle(
                             color: Color(0xFFFFD76A),
                             fontWeight: FontWeight.w800,
                             fontSize: 11,
@@ -239,7 +245,9 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '${row['total_price']} ذهب',
+                              row['event_type'] == 'luck_multiplier'
+                                  ? '${row['reward_gold']} ذهب'
+                                  : '${row['total_price']} ذهب',
                               style: const TextStyle(
                                 color: Color(0xFFFFE6A0),
                                 fontSize: 9,

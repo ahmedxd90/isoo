@@ -1891,6 +1891,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             'recipient_id': recipientId,
             'flying_banner': flyingBanner,
           };
+          if (_isLuckGift(gift)) {
+            await _service.sendRoomLuckGift(
+              roomId: _roomId,
+              recipientId: recipientId,
+              giftId: gift['id'] as String,
+            );
+            return;
+          }
           final optimistic = _queueOptimisticMessage(
             body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
             type: 'gift',
@@ -4217,13 +4225,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               latestMessage['message_type'] == 'gift'
                               ? latestMessage
                               : const <String, dynamic>{};
+                          final latestLuck =
+                              latestMessage['message_type'] == 'luck_multiplier'
+                              ? latestMessage
+                              : const <String, dynamic>{};
                           final latestBuffetWin =
                               latestMessage['message_type'] == 'buffet_big_win'
                               ? latestMessage
                               : const <String, dynamic>{};
-                          if (latestGift.isNotEmpty &&
-                              latestGift['id'] != _shownGiftMessageId) {
-                            final gift = Map<String, dynamic>.from(latestGift);
+                          final latestGiftEvent = latestLuck.isNotEmpty
+                              ? latestLuck
+                              : latestGift;
+                          if (latestGiftEvent.isNotEmpty &&
+                              latestGiftEvent['id'] != _shownGiftMessageId) {
+                            final gift = Map<String, dynamic>.from(
+                              latestGiftEvent,
+                            );
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (!mounted ||
                                   gift['id'] == _shownGiftMessageId) {
@@ -4294,6 +4311,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       );
                                       final displayBody = messageType == 'gift'
                                           ? 'أرسل هدية ${payload['name'] ?? 'هدية'}'
+                                          : messageType == 'luck_multiplier'
+                                          ? '${payload['recipient_username'] ?? username} حصل على ضعف ×${payload['multiplier'] ?? 1} وحصل على ${payload['reward_gold'] ?? 0} عملة ذهبية'
                                           : messageType == 'buffet_big_win'
                                           ? 'فوز كبير: ${payload['profit'] ?? 0} عملة ذهبية'
                                           : body;
@@ -4305,6 +4324,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                           messageType == 'seat';
                                       final isBuffetWin =
                                           messageType == 'buffet_big_win';
+                                      final isLuckWin =
+                                          messageType == 'luck_multiplier';
                                       final isEmoji = messageType == 'emoji';
                                       return Container(
                                         margin: const EdgeInsets.only(
@@ -4312,17 +4333,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                         ),
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
-                                          color: isBuffetWin
+                                          color: isLuckWin
+                                              ? const Color(0xFFD88A00)
+                                                    .withValues(alpha: .92)
+                                              : isBuffetWin
                                               ? const Color(0xFF129447)
                                                     .withValues(alpha: .88)
                                               : Colors.black26,
                                           borderRadius: BorderRadius.circular(
                                             14,
                                           ),
-                                          border: isSpecial || isBuffetWin
+                                          border:
+                                              isSpecial ||
+                                                  isBuffetWin ||
+                                                  isLuckWin
                                               ? Border.all(
                                                   color:
-                                                      (isBuffetWin
+                                                      (isLuckWin
+                                                              ? Colors
+                                                                    .amberAccent
+                                                              : isBuffetWin
                                                               ? Colors
                                                                     .greenAccent
                                                               : Colors.amber)
@@ -4373,7 +4403,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     ),
                                                   ),
                                                   const SizedBox(height: 3),
-                                                  if (messageType == 'gift' &&
+                                                  if ((messageType == 'gift' ||
+                                                          messageType ==
+                                                              'luck_multiplier') &&
                                                       giftThumbnail != null &&
                                                       giftThumbnail.startsWith(
                                                         'http',
@@ -4620,6 +4652,20 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   if (mounted) setState(() => _newLuckBag = null);
                 },
               ),
+            if (_activeGiftMessage != null &&
+                ((Map<String, dynamic>.from(
+                                  _activeGiftMessage!['payload'] ?? const {},
+                                )['multiplier']
+                                as num?)
+                            ?.toInt() ??
+                        0) >=
+                    500)
+              LuckMultiplierOverlay(
+                message: _activeGiftMessage!,
+                onClose: () {
+                  if (mounted) setState(() => _activeGiftMessage = null);
+                },
+              ),
             if (_activeBuffetWin != null)
               Positioned(
                 top: 112,
@@ -4643,6 +4689,119 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
   }
+}
+
+class LuckMultiplierOverlay extends StatefulWidget {
+  const LuckMultiplierOverlay({
+    super.key,
+    required this.message,
+    required this.onClose,
+  });
+  final Map<String, dynamic> message;
+  final VoidCallback onClose;
+  @override
+  State<LuckMultiplierOverlay> createState() => _LuckMultiplierOverlayState();
+}
+
+class _LuckMultiplierOverlayState extends State<LuckMultiplierOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 3),
+  )..forward();
+  Map<String, dynamic> get payload =>
+      Map<String, dynamic>.from(widget.message['payload'] ?? const {});
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.delayed(const Duration(seconds: 3), widget.onClose);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Positioned.fill(
+    child: IgnorePointer(
+      child: Container(
+        color: Colors.black.withValues(alpha: .88),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (_, child) => Opacity(
+            opacity: (1 - _controller.value).clamp(.25, 1),
+            child: Transform.scale(
+              scale: .82 + _controller.value * .22,
+              child: child,
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              for (var i = 0; i < 18; i++)
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment((i % 6) / 2.5 - 1, (i % 3) / 1.8 - .8),
+                    child: Text(
+                      i.isEven ? '✦' : '•',
+                      style: TextStyle(
+                        color: [
+                          Colors.amberAccent,
+                          Colors.orangeAccent,
+                          Colors.pinkAccent,
+                          Colors.cyanAccent,
+                        ][i % 4],
+                        fontSize: 18 + (i % 4) * 8,
+                      ),
+                    ),
+                  ),
+                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'مبروك!',
+                    style: TextStyle(
+                      color: Colors.amberAccent,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  SakiAvatar(
+                    url: payload['recipient_avatar_url']?.toString(),
+                    label: payload['recipient_username']?.toString(),
+                    radius: 42,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'لقد حصل ${payload['recipient_username'] ?? 'المستخدم'} على ضعف',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '×${payload['multiplier']}  •  ${payload['reward_gold']} عملة ذهبية',
+                    style: const TextStyle(
+                      color: Colors.amberAccent,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class GiftFullScreenOverlay extends StatefulWidget {

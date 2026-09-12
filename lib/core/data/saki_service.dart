@@ -3050,6 +3050,26 @@ class SakiService {
     return list.first;
   }
 
+  Future<Map<String, dynamic>> sendRoomLuckGift({
+    required String roomId,
+    required String recipientId,
+    required String giftId,
+    int quantity = 1,
+  }) async {
+    final rows = await client.rpc(
+      'send_room_luck_gift',
+      params: {
+        'p_room_id': roomId,
+        'p_recipient_id': recipientId,
+        'p_gift_id': giftId,
+        'p_quantity': quantity,
+      },
+    );
+    final list = List<Map<String, dynamic>>.from(rows as List);
+    if (list.isEmpty) throw Exception('تعذر إرسال هدية الحظ');
+    return list.first;
+  }
+
   Future<Map<String, dynamic>> redeemSakiCode(String code) async {
     try {
       final result = await client.rpc(
