@@ -3691,7 +3691,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   style: const TextStyle(color: Colors.white),
                 ),
                 subtitle: Text(
-                  'ثروة LV${profile['wealth_level'] ?? 0}  •  سحر LV${profile['charm_level'] ?? 0}',
+                  'ثروة LV${profile['wealth_level'] ?? 0}',
                   style: const TextStyle(color: Colors.white54, fontSize: 10),
                 ),
                 trailing: const Icon(
@@ -4364,7 +4364,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                   ),
                                                   const SizedBox(height: 2),
                                                   Text(
-                                                    'ثروة LV${profile['wealth_level'] ?? 0}  •  سحر LV${profile['charm_level'] ?? 0}',
+                                                    'ثروة LV${profile['wealth_level'] ?? 0}',
                                                     style: const TextStyle(
                                                       color: Colors.white54,
                                                       fontSize: 9,
@@ -5957,7 +5957,6 @@ class _RoomMiniProfileSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVip = vip > 0;
     final wealth = modules['wealth_level'] ?? profile['wealth_level'] ?? 0;
-    final charm = modules['charm_level'] ?? profile['charm_level'] ?? 0;
     final isAdmin =
         profile['is_super_admin'] == true ||
         (profile['saki_id'] as num?)?.toInt() == 1000;
@@ -6067,11 +6066,6 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                       icon: Icons.diamond_rounded,
                       label: '$wealth',
                       color: const Color(0xFF00C853),
-                    ),
-                    _RoomProfileBadge(
-                      icon: Icons.star_rounded,
-                      label: '$charm',
-                      color: const Color(0xFFAA00FF),
                     ),
                     if (familyBadge != null)
                       _RoomProfileBadge(

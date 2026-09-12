@@ -417,36 +417,24 @@ class _LevelFeatureState extends State<LevelFeature> {
 
   @override
   Widget build(BuildContext context) {
-    final wealth = tab == 0;
-    final xp = (widget.settings[wealth ? 'wealth_xp' : 'charm_xp'] as num? ?? 0)
-        .toInt();
+    final xp = (widget.settings['wealth_xp'] as num? ?? 0).toInt();
     final level =
-        (widget.settings[wealth ? 'wealth_level' : 'charm_level'] as num?)
-            ?.toInt() ??
-        _levelFor(xp, wealth);
-    final current = _required(level, wealth);
-    final next = level >= 500 ? current : _required(level + 1, wealth);
+        (widget.settings['wealth_level'] as num?)?.toInt() ??
+        _levelFor(xp, true);
+    final current = _required(level, true);
+    final next = level >= 500 ? current : _required(level + 1, true);
     final progress = level >= 500
         ? 1.0
         : ((xp - current).clamp(0, next - current) / (next - current));
-    final accent = wealth ? const Color(0xFFFF8A3D) : const Color(0xFF20C5D5);
-    final features = wealth
-        ? const [
-            ('إرسال الهدايا', 'كل عملة = خبرة', Icons.card_giftcard_rounded),
-            ('شارة الثروة', 'تظهر في ملفك', Icons.workspace_premium_rounded),
-            ('ترتيب المتصدرين', 'تقدم في القائمة', Icons.leaderboard_rounded),
-            ('مؤثرات الغرفة', 'تتطور مع المستوى', Icons.auto_awesome_rounded),
-            ('إطارات خاصة', 'تفتح تدريجيًا', Icons.crop_square_rounded),
-            ('هدايا المستوى', 'مكافآت حقيقية', Icons.redeem_rounded),
-          ]
-        : const [
-            ('استقبال الهدايا', 'كل عملة = خبرة', Icons.card_giftcard_rounded),
-            ('شارة السحر', 'تظهر في ملفك', Icons.auto_awesome_rounded),
-            ('ترتيب السحر', 'تقدم في القائمة', Icons.leaderboard_rounded),
-            ('تأثيرات الدخول', 'تتطور مع المستوى', Icons.bolt_rounded),
-            ('مظهر الملف', 'مزايا VIP', Icons.badge_rounded),
-            ('مكافآت التفاعل', 'تفتح تدريجيًا', Icons.stars_rounded),
-          ];
+    const accent = Color(0xFFFF8A3D);
+    const features = [
+      ('إرسال الهدايا', 'كل عملة = خبرة ثروة', Icons.card_giftcard_rounded),
+      ('شارة الثروة', 'تظهر في ملفك', Icons.workspace_premium_rounded),
+      ('ترتيب المتصدرين', 'تقدم في القائمة', Icons.leaderboard_rounded),
+      ('مؤثرات الغرفة', 'تتطور مع المستوى', Icons.auto_awesome_rounded),
+      ('إطارات خاصة', 'تفتح تدريجيًا', Icons.crop_square_rounded),
+      ('هدايا المستوى', 'مكافآت حقيقية', Icons.redeem_rounded),
+    ];
     return Column(
       children: [
         _LevelHero(
@@ -460,10 +448,7 @@ class _LevelFeatureState extends State<LevelFeature> {
           onTab: (v) => setState(() => tab = v),
         ),
         const SizedBox(height: 16),
-        _LevelSectionTitle(
-          title: wealth ? 'مميزات مستوى الثروة' : 'مميزات مستوى السحر',
-          accent: accent,
-        ),
+        _LevelSectionTitle(title: 'مميزات مستوى الثروة', accent: accent),
         const SizedBox(height: 10),
         GridView.builder(
           shrinkWrap: true,
@@ -485,11 +470,7 @@ class _LevelFeatureState extends State<LevelFeature> {
         _LevelSectionTitle(title: 'المكافآت والمزايا', accent: accent),
         const SizedBox(height: 10),
         for (final item in [
-          (
-            wealth ? 'أرسل الهدايا في الغرف' : 'استقبل الهدايا في الغرف',
-            wealth ? 'يرفع خبرة الثروة' : 'يرفع خبرة السحر',
-            Icons.stars_rounded,
-          ),
+          ('أرسل الهدايا في الغرف', 'يرفع خبرة الثروة', Icons.stars_rounded),
           (
             'كل مستوى يفتح ميزة جديدة',
             'المكافأة مرتبطة بمستواك الحقيقي',
@@ -548,11 +529,16 @@ class _LevelHero extends StatelessWidget {
     ),
     child: Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: _levelTab('الثروة', 0)),
-            Expanded(child: _levelTab('السحر', 1)),
-          ],
+        const Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            'مستوى الثروة',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
         ),
         const SizedBox(height: 18),
         Row(

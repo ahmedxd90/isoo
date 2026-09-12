@@ -45,7 +45,6 @@ class _RankingPageState extends State<RankingPage> {
 
   Future<Object> _load() {
     if (_tab == 0) return SakiService.instance.globalWealthRanking(_period);
-    if (_tab == 1) return SakiService.instance.globalCharmRanking(_period);
     return SakiService.instance.globalRoomRanking(_period);
   }
 
@@ -167,7 +166,6 @@ class _CustomTabs extends StatelessWidget {
   final ValueChanged<int> onSelected;
   static const _items = [
     ('الثروة', Icons.bolt_rounded, _gold),
-    ('السحر', Icons.favorite_rounded, _pink),
     ('الغرف', Icons.mic_external_on_rounded, _cyan),
   ];
   @override

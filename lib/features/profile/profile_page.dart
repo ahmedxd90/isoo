@@ -239,7 +239,6 @@ class _ProfilePageState extends State<ProfilePage> {
         ? storedVipLevel
         : 0;
     final wealthLevel = (_modules['wealth_level'] as num? ?? 0).toInt();
-    final charmLevel = (_modules['charm_level'] as num? ?? 0).toInt();
     final followers = _stats['followers'] ?? 0;
 
     return Theme(
@@ -268,7 +267,6 @@ class _ProfilePageState extends State<ProfilePage> {
               _HtmlStatsBar(
                 followers: followers,
                 following: _stats['following'] ?? 0,
-                charisma: charmLevel,
               ),
               _HtmlWalletBanner(onTap: () => _openModule('wallet')),
               _HtmlLevelBanners(
@@ -593,14 +591,9 @@ class _HtmlProfileHeader extends StatelessWidget {
 }
 
 class _HtmlStatsBar extends StatelessWidget {
-  const _HtmlStatsBar({
-    required this.followers,
-    required this.following,
-    required this.charisma,
-  });
+  const _HtmlStatsBar({required this.followers, required this.following});
   final int followers;
   final int following;
-  final int charisma;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -623,8 +616,6 @@ class _HtmlStatsBar extends StatelessWidget {
         _StatCell(value: following, label: 'متابعة'),
         const _StatDivider(),
         _StatCell(value: followers, label: 'معجبين'),
-        const _StatDivider(),
-        _StatCell(value: charisma, label: 'كاريزما'),
       ],
     ),
   );
