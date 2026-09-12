@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "saki.room.ch"
-    // permission_handler 13 requires Android SDK 37 or newer.
+    // Android SDK 37 is required by permission_handler_android.
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
@@ -50,7 +50,13 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("releaseSaki")
+            // Use the supplied production key when available; otherwise use the
+            // standard debug keystore so local release APKs remain installable.
+            signingConfig = if (signingPropertiesFile.exists()) {
+                signingConfigs.getByName("releaseSaki")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
