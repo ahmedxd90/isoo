@@ -2031,31 +2031,17 @@ class SakiService {
   }
 
   Future<void> roomBan(String roomId, String userId, Duration? duration) async {
-    final target = await client
-        .from('profiles')
-        .select('is_super_admin')
-        .eq('id', userId)
-        .maybeSingle();
-    if (target?['is_super_admin'] == true) return;
-    await client.from('room_bans').upsert({
-      'room_id': roomId,
-      'user_id': userId,
-      'banned_by': uid,
-      'expires_at': duration == null
-          ? null
-          : DateTime.now().add(duration).toIso8601String(),
-    });
-    await client
-        .from('room_members')
-        .delete()
-        .eq('room_id', roomId)
-        .eq('user_id', userId);
-    await client
-        .from('room_seats')
-        .delete()
-        .eq('room_id', roomId)
-        .eq('user_id', userId);
-    await recordRoomActivity(roomId, 'user_banned', targetUserId: userId);
+    final expiresAt = duration == null
+        ? null
+        : DateTime.now().toUtc().add(duration).toIso8601String();
+    await client.rpc(
+      'saki_room_ban_and_remove',
+      params: {
+        'p_room_id': roomId,
+        'p_user_id': userId,
+        'p_expires_at': expiresAt,
+      },
+    );
   }
 
   Future<List<Map<String, dynamic>>> roomBansForOwner(String roomId) async {
