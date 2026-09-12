@@ -620,23 +620,6 @@ class _MyProfileCover extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  _MiniCoverBadge(
-                    label: 'LV.$wealthLevel',
-                    icon: Icons.diamond_rounded,
-                    colors: const [Color(0xFFB7791F), Color(0xFFF6E05E)],
-                  ),
-                  const SizedBox(width: 6),
-                  if (vipLevel > 0)
-                    _MiniCoverBadge(
-                      label: 'VIP$vipLevel',
-                      icon: Icons.workspace_premium_rounded,
-                      colors: const [Color(0xFF7C3AED), Color(0xFFE879F9)],
-                    ),
-                ],
-              ),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -681,40 +664,6 @@ class _GlassIcon extends StatelessWidget {
         border: Border.all(color: Colors.white24),
       ),
       child: Icon(icon, color: Colors.white, size: 18),
-    ),
-  );
-}
-
-class _MiniCoverBadge extends StatelessWidget {
-  const _MiniCoverBadge({
-    required this.label,
-    required this.icon,
-    required this.colors,
-  });
-  final String label;
-  final IconData icon;
-  final List<Color> colors;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(colors: colors),
-      borderRadius: BorderRadius.circular(99),
-      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-    ),
-    child: Row(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Icon(icon, color: Colors.white, size: 11),
-      ],
     ),
   );
 }
@@ -848,12 +797,12 @@ class _ShortcutItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(13),
     child: Column(
       children: [
         Container(
-          width: 50,
-          height: 50,
+          width: 43,
+          height: 43,
           decoration: BoxDecoration(
             color: color.withValues(alpha: .09),
             borderRadius: BorderRadius.circular(16),
@@ -862,16 +811,16 @@ class _ShortcutItem extends StatelessWidget {
               BoxShadow(color: color.withValues(alpha: .08), blurRadius: 7),
             ],
           ),
-          child: Icon(icon, color: color, size: 23),
+          child: Icon(icon, color: color, size: 19),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Color(0xFF374151),
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1208,7 +1157,7 @@ class _MyCollectionContent extends StatelessWidget {
             crossAxisCount: 4,
             crossAxisSpacing: 8,
             mainAxisSpacing: 9,
-            childAspectRatio: .78,
+            childAspectRatio: .92,
           ),
           itemBuilder: (_, i) => _MyCollectionTile(item: items[i], kind: kind),
         ),
@@ -1774,7 +1723,7 @@ class _HtmlLevelBanners extends StatelessWidget {
         Expanded(
           child: _GradientMiniCard(
             title: 'المستوى',
-            subtitle: 'LV.$wealthLevel',
+            subtitle: 'مستوى $wealthLevel',
             icon: FontAwesomeIcons.shieldHalved,
             colors: const [Color(0xFF29B6F6), Color(0xFF0288D1)],
             onTap: onWealthTap,

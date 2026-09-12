@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'dart:developer' as developer;
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -549,163 +548,6 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
   }
 }
 
-enum _WealthTier { plain, cyan, violet, gold, rainbow, grand, royal }
-
-class _WealthTitleBadge extends StatelessWidget {
-  const _WealthTitleBadge({required this.level});
-  final int level;
-
-  _WealthTier get tier {
-    if (level < 20) return _WealthTier.plain;
-    if (level < 40) return _WealthTier.cyan;
-    if (level < 60) return _WealthTier.violet;
-    if (level < 80) return _WealthTier.gold;
-    if (level <= 100) return _WealthTier.rainbow;
-    if (level <= 120) return _WealthTier.grand;
-    return _WealthTier.royal;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = tier;
-    final plain = t == _WealthTier.plain;
-    final large = t.index >= _WealthTier.grand.index;
-    final colors = switch (t) {
-      _WealthTier.plain => const [Color(0xFF4B5563), Color(0xFF9CA3AF)],
-      _WealthTier.cyan => const [
-        Color(0xFF0891B2),
-        Color(0xFF67E8F9),
-        Color(0xFF2563EB),
-      ],
-      _WealthTier.violet => const [
-        Color(0xFF7C3AED),
-        Color(0xFFF0ABFC),
-        Color(0xFFDB2777),
-      ],
-      _WealthTier.gold => const [
-        Color(0xFFB45309),
-        Color(0xFFFDE68A),
-        Color(0xFFF59E0B),
-      ],
-      _WealthTier.rainbow => const [
-        Color(0xFF2563EB),
-        Color(0xFF22D3EE),
-        Color(0xFFA855F7),
-        Color(0xFFF43F5E),
-      ],
-      _WealthTier.grand => const [
-        Color(0xFF0E7490),
-        Color(0xFF67E8F9),
-        Color(0xFF8B5CF6),
-        Color(0xFFFDE68A),
-      ],
-      _WealthTier.royal => const [
-        Color(0xFF312E81),
-        Color(0xFFC084FC),
-        Color(0xFFFDE68A),
-        Color(0xFFF9A8D4),
-      ],
-    };
-    final height = large ? 58.0 : 46.0;
-    final badgeSize = large ? 50.0 : 38.0;
-    return Container(
-      height: height,
-      constraints: BoxConstraints(minWidth: large ? 178 : 145, maxWidth: 270),
-      padding: EdgeInsets.only(left: large ? 6 : 4, right: large ? 18 : 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: colors),
-        borderRadius: BorderRadius.circular(large ? 18 : 14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: plain ? .32 : .8),
-          width: large ? 1.5 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.last.withValues(alpha: plain ? .18 : .55),
-            blurRadius: large ? 24 : 12,
-            spreadRadius: large ? 2 : 0,
-          ),
-          if (!plain)
-            BoxShadow(
-              color: colors.first.withValues(alpha: .35),
-              blurRadius: 5,
-            ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: badgeSize,
-            height: badgeSize,
-            child: CustomPaint(
-              painter: _WealthEmblemPainter(colors: colors, tier: t),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'LV$level',
-            style: TextStyle(
-              color: plain ? Colors.white : Colors.white,
-              fontSize: large ? 23 : 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: .6,
-              shadows: [
-                if (!plain) const Shadow(color: Colors.white70, blurRadius: 7),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WealthEmblemPainter extends CustomPainter {
-  const _WealthEmblemPainter({required this.colors, required this.tier});
-  final List<Color> colors;
-  final _WealthTier tier;
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.shortestSide * .42;
-    final ring = Paint()
-      ..shader = SweepGradient(colors: [...colors, colors.first])
-          .createShader(Offset.zero & size)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * .085;
-    canvas.drawCircle(center, radius, ring);
-    final shield = Path()
-      ..moveTo(center.dx, center.dy - radius * .62)
-      ..lineTo(center.dx + radius * .62, center.dy - radius * .24)
-      ..lineTo(center.dx + radius * .43, center.dy + radius * .52)
-      ..lineTo(center.dx, center.dy + radius * .82)
-      ..lineTo(center.dx - radius * .43, center.dy + radius * .52)
-      ..lineTo(center.dx - radius * .62, center.dy - radius * .24)
-      ..close();
-    final fill = Paint()
-      ..shader = LinearGradient(colors: colors.reversed.toList())
-          .createShader(Offset.zero & size);
-    canvas.drawPath(shield, fill);
-    final star = Paint()
-      ..color = Colors.white.withValues(
-        alpha: tier == _WealthTier.plain ? .75 : .95,
-      );
-    final points = <Offset>[];
-    for (var i = 0; i < 10; i++) {
-      final a = -3.14159 / 2 + i * 3.14159 / 5;
-      final r = i.isEven ? radius * .34 : radius * .15;
-      points.add(center + Offset(math.cos(a) * r, math.sin(a) * r));
-    }
-    final starPath = Path()..addPolygon(points, true);
-    canvas.drawPath(starPath, star);
-  }
-
-  @override
-  bool shouldRepaint(covariant _WealthEmblemPainter oldDelegate) =>
-      oldDelegate.tier != tier || oldDelegate.colors != colors;
-}
-
 class _ReferenceProfileHero extends StatelessWidget {
   const _ReferenceProfileHero({
     required this.username,
@@ -731,6 +573,9 @@ class _ReferenceProfileHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = cover == null || cover!.isEmpty ? null : NetworkImage(cover!);
+    final isSuperAdmin =
+        profile['is_super_admin'] == true ||
+        profile['admin_role']?.toString() == 'super_admin';
     return Container(
       constraints: const BoxConstraints(minHeight: 330),
       decoration: BoxDecoration(
@@ -805,6 +650,30 @@ class _ReferenceProfileHero extends StatelessWidget {
                     profile: {...profile, 'display_name': username},
                     compact: true,
                   ),
+                  if (isSuperAdmin) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
+                        ),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: Colors.white54),
+                      ),
+                      child: const Text(
+                        'Super Admin',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (gender.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -846,10 +715,6 @@ class _ReferenceProfileHero extends StatelessWidget {
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              _WealthTitleBadge(
-                level: (profile['wealth_level'] as num? ?? 0).toInt(),
               ),
               const SizedBox(height: 10),
               Row(
