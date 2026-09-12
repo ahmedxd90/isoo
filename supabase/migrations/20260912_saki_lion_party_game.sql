@@ -27,7 +27,6 @@ create table if not exists public.saki_lion_party_bets (
 create index if not exists saki_lion_rounds_room_status_idx on public.saki_lion_party_rounds(room_id,status,betting_ends_at desc);
 create index if not exists saki_lion_bets_round_item_idx on public.saki_lion_party_bets(round_id,item_id);
 create index if not exists saki_lion_bets_user_created_idx on public.saki_lion_party_bets(user_id,created_at desc);
-create unique index if not exists saki_lion_bets_once_per_item_idx on public.saki_lion_party_bets(round_id,user_id,item_id);
 
 alter table public.saki_lion_party_rounds enable row level security;
 alter table public.saki_lion_party_bets enable row level security;
@@ -67,12 +66,7 @@ begin
   if v_round.status <> 'open' or v_round.betting_ends_at <= now() then raise exception 'betting_closed'; end if;
   update public.saki_account_modules set gold_coins=gold_coins-p_amount,updated_at=now() where user_id=auth.uid() and gold_coins>=p_amount returning gold_coins into v_balance;
   if not found then raise exception 'insufficient_gold'; end if;
-  begin
-    insert into public.saki_lion_party_bets(round_id,room_id,user_id,item_id,amount) values(p_round_id,p_room_id,auth.uid(),p_item_id,p_amount) returning id into v_bet_id;
-  exception when unique_violation then
-    update public.saki_account_modules set gold_coins=gold_coins+p_amount,updated_at=now() where user_id=auth.uid();
-    raise exception 'duplicate_item_bet';
-  end;
+  insert into public.saki_lion_party_bets(round_id,room_id,user_id,item_id,amount) values(p_round_id,p_room_id,auth.uid(),p_item_id,p_amount) returning id into v_bet_id;
   select coalesce(sum(amount),0) into v_total from public.saki_lion_party_bets where round_id=p_round_id and user_id=auth.uid() and item_id=p_item_id;
   return query select v_bet_id,v_balance,v_total;
 end; $$;
