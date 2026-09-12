@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/custom_toast.dart';
+import 'lion_party_game_sheet.dart';
 
 class BuffetFood {
   const BuffetFood(this.id, this.name, this.multiplier, this.emoji);
@@ -154,6 +155,77 @@ class BuffetGameCatalogSheet extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                Navigator.pop(context);
+                Future<void>.delayed(Duration.zero, () {
+                  if (!context.mounted) return;
+                  showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => LionPartyGameSheet(roomId: roomId),
+                  );
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1024),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: const Color(0xFFFFB52E), width: 3),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🦁', style: TextStyle(fontSize: 48)),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'حفلة الأسد',
+                            style: TextStyle(
+                              color: Colors.amber,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'عجلة ذهبية • جولات ورهانات حقيقية',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD54F), Color(0xFFFF8F00)],
+                        ),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: const Text(
+                        'العب الآن',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -281,15 +353,19 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   }
 
   List<_BuffetHistoryItem> _historyItemsFromRows(List rows) {
-    return rows.map((raw) {
-      final row = Map<String, dynamic>.from(raw as Map);
-      final winner = (row['winner_food_id'] as num?)?.toInt();
-      final food = _foods.where((item) => item.id == winner).toList();
-      return _BuffetHistoryItem(
-        roundId: int.tryParse(row['id']?.toString() ?? '') ?? 0,
-        emoji: food.isEmpty ? '•' : food.first.emoji,
-      );
-    }).where((item) => item.roundId > 0).take(10).toList();
+    return rows
+        .map((raw) {
+          final row = Map<String, dynamic>.from(raw as Map);
+          final winner = (row['winner_food_id'] as num?)?.toInt();
+          final food = _foods.where((item) => item.id == winner).toList();
+          return _BuffetHistoryItem(
+            roundId: int.tryParse(row['id']?.toString() ?? '') ?? 0,
+            emoji: food.isEmpty ? '•' : food.first.emoji,
+          );
+        })
+        .where((item) => item.roundId > 0)
+        .take(10)
+        .toList();
   }
 
   void _applyHistoryRows(List<Map<String, dynamic>> rows) {
@@ -298,15 +374,20 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
     final incoming = _historyItemsFromRows(rows);
     if (incoming.isEmpty) return;
     final newest = incoming.first;
-    final isNew = previousIds.isNotEmpty && !previousIds.contains(newest.roundId);
+    final isNew =
+        previousIds.isNotEmpty && !previousIds.contains(newest.roundId);
     setState(() {
       _history
         ..clear()
-        ..addAll(incoming.map((item) => _BuffetHistoryItem(
+        ..addAll(
+          incoming.map(
+            (item) => _BuffetHistoryItem(
               roundId: item.roundId,
               emoji: item.emoji,
               isNew: isNew && item.roundId == newest.roundId,
-            )));
+            ),
+          ),
+        );
     });
   }
 
@@ -1002,37 +1083,39 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
           ),
         ),
         const SizedBox(width: 10),
-        ..._history.take(10).map(
-          (item) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Text(item.emoji, style: const TextStyle(fontSize: 21)),
-                if (item.isNew)
-                  Positioned(
-                    top: -10,
-                    right: -8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'جديد',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 7,
-                          fontWeight: FontWeight.w900,
+        ..._history
+            .take(10)
+            .map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Text(item.emoji, style: const TextStyle(fontSize: 21)),
+                    if (item.isNew)
+                      Positioned(
+                        top: -10,
+                        right: -8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'جديد',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 7,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-              ],
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
       ],
     ),
   );

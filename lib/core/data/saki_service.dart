@@ -2884,6 +2884,70 @@ class SakiService {
     );
   }
 
+  Future<Map<String, dynamic>> lionPartyGetRound(String roomId) async {
+    final result = await client.rpc(
+      'saki_lion_party_get_round',
+      params: {'p_room_id': roomId},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> lionPartyPlaceBet({
+    required String roomId,
+    required int roundId,
+    required int itemId,
+    required int amount,
+  }) async {
+    final result = await client.rpc(
+      'saki_lion_party_place_bet',
+      params: {
+        'p_room_id': roomId,
+        'p_round_id': roundId,
+        'p_item_id': itemId,
+        'p_amount': amount,
+      },
+    );
+    final rows = result is List ? result : [result];
+    return rows.isEmpty
+        ? const {}
+        : Map<String, dynamic>.from(rows.first as Map);
+  }
+
+  Future<Map<String, dynamic>> lionPartyResolveRound({
+    required String roomId,
+    required int roundId,
+  }) async {
+    final result = await client.rpc(
+      'saki_lion_party_resolve_round',
+      params: {'p_room_id': roomId, 'p_round_id': roundId},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> lionPartyHistory(String roomId) async {
+    final rows = await client
+        .from('saki_lion_party_rounds')
+        .select('id,winner_item_id,round_number,result_shown_at')
+        .eq('room_id', roomId)
+        .eq('status', 'finished')
+        .order('id', ascending: false)
+        .limit(10);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<List<Map<String, dynamic>>> lionPartyLeaderboard(int roundId) async {
+    final rows = await client
+        .from('saki_lion_party_bets')
+        .select(
+          'user_id,payout,amount,profiles:user_id(username,display_name,avatar_url)',
+        )
+        .eq('round_id', roundId)
+        .gt('payout', 0)
+        .order('payout', ascending: false)
+        .limit(3);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<List<Map<String, dynamic>>> familySquare({String? query}) async {
     var request = client.from('family_square').select();
     if (query != null && query.trim().isNotEmpty) {
