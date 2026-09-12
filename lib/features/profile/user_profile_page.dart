@@ -78,7 +78,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
             : {
                 ...base,
                 'family_badge': family,
-                'shipping_agent': results[10] == true,
+                'shipping_agent': results[8] == true,
               };
         _stats = Map<String, int>.from(results[2] as Map);
         _posts = List<Map<String, dynamic>>.from(results[3] as List);
