@@ -302,3 +302,23 @@ class _VipSakiIdState extends State<VipSakiId>
     );
   }
 }
+
+class WealthVipLabels extends StatelessWidget {
+  const WealthVipLabels({
+    super.key,
+    required this.profile,
+    this.compact = true,
+  });
+  final Map<String, dynamic> profile;
+  final bool compact;
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: 4,
+    runSpacing: 3,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      WealthLevelBadge(profile: profile, compact: compact),
+      VipTitleBadge(profile: profile, compact: compact),
+    ],
+  );
+}

@@ -573,6 +573,8 @@ class _MyProfileCover extends StatelessWidget {
                       textAlign: TextAlign.start,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  WealthVipLabels(profile: profile, compact: true),
                   if (gender.isNotEmpty) ...[
                     const SizedBox(width: 7),
                     Container(

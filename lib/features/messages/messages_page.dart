@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
+import '../../shared/widgets/vip_identity.dart';
 import '../profile/user_profile_page.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -199,6 +200,8 @@ class _ConversationTile extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  WealthVipLabels(profile: user, compact: true),
                   const SizedBox(height: 4),
                   const Text(
                     'محادثة خاصة • اضغط للفتح',

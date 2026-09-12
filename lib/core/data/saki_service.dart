@@ -1010,7 +1010,7 @@ class SakiService {
     final data = await client
         .from('conversations')
         .select(
-          'id,created_at,conversation_members(user_id,profiles:user_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at))',
+          'id,created_at,conversation_members(user_id,profiles:user_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at,wealth_level))',
         )
         .inFilter('id', ids)
         .order('updated_at', ascending: false);

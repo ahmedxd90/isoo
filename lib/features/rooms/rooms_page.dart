@@ -6036,6 +6036,7 @@ class _RoomMiniProfileSheet extends StatelessWidget {
                 VipSakiId(profile: {...profile, 'vip_level': vip}),
                 const SizedBox(height: 5),
                 VipTitleBadge(profile: {...profile, 'vip_level': vip}),
+                WealthLevelBadge(profile: profile, compact: true),
                 if (isShippingAgent) ...[
                   const SizedBox(height: 5),
                   const RoleTitleBadge(label: 'وكيل شحن', compact: true),

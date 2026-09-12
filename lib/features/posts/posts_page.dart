@@ -572,6 +572,7 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
                                 color: _slate,
                               ),
                             ),
+                            WealthLevelBadge(profile: profile, compact: true),
                             VipTitleBadge(profile: profile, compact: true),
                             const SizedBox(width: 5),
                             TextButton.icon(

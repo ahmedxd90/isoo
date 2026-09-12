@@ -800,6 +800,11 @@ class _ReferenceProfileHero extends StatelessWidget {
                       textAlign: TextAlign.start,
                     ),
                   ),
+                  const SizedBox(width: 5),
+                  WealthVipLabels(
+                    profile: {...profile, 'display_name': username},
+                    compact: true,
+                  ),
                   if (gender.isNotEmpty) ...[
                     const SizedBox(width: 6),
                     Container(

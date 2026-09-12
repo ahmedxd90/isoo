@@ -1,7 +1,117 @@
 import 'package:cached_network_image/cached_network_image.dart';
+
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+
+class WealthLevelBadge extends StatelessWidget {
+  const WealthLevelBadge({
+    super.key,
+    required this.profile,
+    this.compact = true,
+  });
+  final Map<String, dynamic> profile;
+  final bool compact;
+  int get level => (profile['wealth_level'] as num? ?? 0).toInt().clamp(0, 500);
+  int get tier => (level ~/ 20).clamp(0, 7);
+  List<Color> get colors => switch (tier) {
+    0 => const [Color(0xFF64748B), Color(0xFF94A3B8)],
+    1 => const [Color(0xFF0891B2), Color(0xFF67E8F9)],
+    2 => const [Color(0xFF7C3AED), Color(0xFFE879F9)],
+    3 => const [Color(0xFFB45309), Color(0xFFFDE68A)],
+    4 => const [Color(0xFF2563EB), Color(0xFFA855F7)],
+    5 => const [Color(0xFF0E7490), Color(0xFF8B5CF6)],
+    6 => const [Color(0xFFDB2777), Color(0xFFFDE68A)],
+    _ => const [Color(0xFF312E81), Color(0xFFF9A8D4)],
+  };
+  @override
+  Widget build(BuildContext context) {
+    final size = compact ? 22.0 : 28.0;
+    return Container(
+      height: size,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: .72),
+          width: .7,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.last.withValues(alpha: .38),
+            blurRadius: compact ? 5 : 8,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CustomPaint(
+            size: Size(compact ? 14 : 18, compact ? 14 : 18),
+            painter: _WealthMiniEmblemPainter(colors: colors, tier: tier),
+          ),
+          const SizedBox(width: 3),
+          Text(
+            'LV$level',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: compact ? 9 : 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WealthMiniEmblemPainter extends CustomPainter {
+  const _WealthMiniEmblemPainter({required this.colors, required this.tier});
+  final List<Color> colors;
+  final int tier;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.shortestSide * .42;
+    final ring = Paint()
+      ..shader = SweepGradient(colors: [...colors, colors.first])
+          .createShader(Offset.zero & size)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawCircle(c, r, ring);
+    final p = Path()
+      ..moveTo(c.dx, c.dy - r * .7)
+      ..lineTo(c.dx + r * .7, c.dy - r * .2)
+      ..lineTo(c.dx + r * .45, c.dy + r * .55)
+      ..lineTo(c.dx, c.dy + r * .8)
+      ..lineTo(c.dx - r * .45, c.dy + r * .55)
+      ..lineTo(c.dx - r * .7, c.dy - r * .2)
+      ..close();
+    canvas.drawPath(
+      p,
+      Paint()
+        ..shader = LinearGradient(colors: colors.reversed.toList())
+            .createShader(Offset.zero & size),
+    );
+    final star = <Offset>[];
+    for (var i = 0; i < 10; i++) {
+      final a = -math.pi / 2 + i * math.pi / 5;
+      final rr = i.isEven ? r * .35 : r * .15;
+      star.add(c + Offset(math.cos(a) * rr, math.sin(a) * rr));
+    }
+    canvas.drawPath(
+      Path()..addPolygon(star, true),
+      Paint()..color = Colors.white.withValues(alpha: tier == 0 ? .75 : .95),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _WealthMiniEmblemPainter oldDelegate) =>
+      oldDelegate.tier != tier;
+}
 
 class SakiAvatar extends StatelessWidget {
   const SakiAvatar({

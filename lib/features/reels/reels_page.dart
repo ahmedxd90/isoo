@@ -510,6 +510,8 @@ class _ReelCardState extends State<ReelCard> {
                   radius: 22,
                 ),
               ),
+              WealthLevelBadge(profile: profile, compact: true),
+              VipTitleBadge(profile: profile, compact: true),
               const SizedBox(height: 16),
               _ReelAction(
                 icon: FontAwesomeIcons.fire,
