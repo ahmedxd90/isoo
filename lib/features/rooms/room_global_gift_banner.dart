@@ -50,7 +50,7 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
           .maybeSingle(),
       c
           .from('room_gift_catalog')
-          .select('name,icon,media_url')
+          .select('name,icon')
           .eq('id', row['gift_id'])
           .maybeSingle(),
       c

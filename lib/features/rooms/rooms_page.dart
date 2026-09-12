@@ -4620,17 +4620,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   if (mounted) setState(() => _newLuckBag = null);
                 },
               ),
-            if (_activeGiftMessage != null)
-              Positioned.fill(
-                child: GiftFullScreenOverlay(
-                  key: ValueKey(_activeGiftMessage!['id']),
-                  message: _activeGiftMessage!,
-                  seatKey: _seatKeyForGift(_activeGiftMessage!),
-                  onClose: () {
-                    if (mounted) setState(() => _activeGiftMessage = null);
-                  },
-                ),
-              ),
             if (_activeBuffetWin != null)
               Positioned(
                 top: 112,

@@ -2560,7 +2560,7 @@ class SakiService {
     final rows = await client
         .from('room_gifts')
         .select(
-          'gift_id,quantity,total_price,created_at,room_gift_catalog:gift_id(id,name,icon,media_url,price)',
+          'gift_id,quantity,total_price,created_at,room_id,room_gift_catalog:gift_id(id,name,icon,price),rooms:room_id(id,name,room_id)',
         )
         .eq('recipient_id', userId)
         .order('created_at', ascending: false)
@@ -2572,6 +2572,9 @@ class SakiService {
       final catalog = row['room_gift_catalog'] is Map
           ? Map<String, dynamic>.from(row['room_gift_catalog'] as Map)
           : <String, dynamic>{};
+      final room = row['rooms'] is Map
+          ? Map<String, dynamic>.from(row['rooms'] as Map)
+          : <String, dynamic>{};
       final current = grouped.putIfAbsent(
         giftId,
         () => {
@@ -2580,6 +2583,7 @@ class SakiService {
           'received_count': 0,
           'received_value': 0,
           'last_received_at': row['created_at'],
+          'room_name': room['name']?.toString() ?? 'غرفة SAKI',
         },
       );
       current['received_count'] =
@@ -2588,6 +2592,7 @@ class SakiService {
       current['received_value'] =
           (current['received_value'] as int) +
           ((row['total_price'] as num?)?.toInt() ?? 0);
+      current['room_name'] = room['name']?.toString() ?? current['room_name'];
     }
     return grouped.values.toList();
   }

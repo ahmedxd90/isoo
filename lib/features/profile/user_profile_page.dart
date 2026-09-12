@@ -1053,7 +1053,12 @@ class _ReferenceMiniItem extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: image == null
+            child: kind == 'gift' && (image == null || image.isEmpty)
+                ? Text(
+                    item['icon']?.toString() ?? '🎁',
+                    style: const TextStyle(fontSize: 29),
+                  )
+                : image == null
                 ? Icon(
                     kind == 'gift'
                         ? Icons.card_giftcard_rounded
@@ -1079,6 +1084,17 @@ class _ReferenceMiniItem extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
+          if (kind == 'gift')
+            Text(
+              item['room_name']?.toString() ?? 'غرفة SAKI',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           if (kind == 'gift')
             Text(
               '×${item['received_count'] ?? 0}',
