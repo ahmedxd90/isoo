@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
+import '../../shared/widgets/saki_widgets.dart';
 import 'wallet_page.dart';
 import 'vip_page.dart';
 import 'user_settings_page.dart';
@@ -43,6 +44,10 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _profile;
   Map<String, int> _stats = {};
   Map<String, dynamic> _modules = {};
+  List<Map<String, dynamic>> _posts = [];
+  List<Map<String, dynamic>> _reels = [];
+  List<Map<String, dynamic>> _gifts = [];
+  List<Map<String, dynamic>> _badges = [];
   bool _loading = true;
   bool _isSuperAdmin = false;
   String _adminRole = 'user';
@@ -64,6 +69,8 @@ class _ProfilePageState extends State<ProfilePage> {
         SakiService.instance.accountModules(),
         SakiService.instance.familyBadgeForUser(SakiService.instance.uid),
         SakiService.instance.isShippingAgent(SakiService.instance.uid),
+        SakiService.instance.userReceivedGifts(SakiService.instance.uid),
+        SakiService.instance.userBadges(SakiService.instance.uid),
       ]);
       if (!mounted) return;
       setState(() {
@@ -77,6 +84,10 @@ class _ProfilePageState extends State<ProfilePage> {
               };
         _stats = results[1] as Map<String, int>;
         _modules = Map<String, dynamic>.from(results[4] as Map);
+        _posts = List<Map<String, dynamic>>.from(results[2] as List);
+        _reels = List<Map<String, dynamic>>.from(results[3] as List);
+        _gifts = List<Map<String, dynamic>>.from(results[7] as List);
+        _badges = List<Map<String, dynamic>>.from(results[8] as List);
         _adminRole = base?['is_super_admin'] == true
             ? 'super_admin'
             : (base?['admin_role']?.toString() ?? 'user');
@@ -243,123 +254,405 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Theme(
       data: Theme.of(context).copyWith(
-        textTheme: GoogleFonts.tajawalTextTheme(Theme.of(context).textTheme),
+        textTheme: GoogleFonts.cairoTextTheme(Theme.of(context).textTheme),
       ),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF5F6FA),
-        body: RefreshIndicator(
-          color: const Color(0xFF7B2CBF),
-          onRefresh: _load,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 120),
-            children: [
-              _HtmlProfileHeader(
-                profile: profile,
+      child: _MyHtmlProfileView(
+        profile: profile,
+        stats: _stats,
+        posts: _posts,
+        reels: _reels,
+        gifts: _gifts,
+        badges: _badges,
+        wealthLevel: wealthLevel,
+        vipLevel: vipLevel,
+        isSuperAdmin: _isSuperAdmin,
+        isShippingAgent: profile['shipping_agent'] == true,
+        onBack: () {
+          if (context.canPop()) context.pop();
+        },
+        onEdit: _edit,
+        onAvatarTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => UserProfilePage(userId: SakiService.instance.uid),
+          ),
+        ),
+        onModule: _openModule,
+        onMenu: _openMenu,
+        onLogout: _logout,
+      ),
+    );
+  }
+}
+
+class _MyHtmlProfileView extends StatefulWidget {
+  const _MyHtmlProfileView({
+    required this.profile,
+    required this.stats,
+    required this.posts,
+    required this.reels,
+    required this.gifts,
+    required this.badges,
+    required this.wealthLevel,
+    required this.vipLevel,
+    required this.isSuperAdmin,
+    required this.isShippingAgent,
+    required this.onBack,
+    required this.onEdit,
+    required this.onAvatarTap,
+    required this.onModule,
+    required this.onMenu,
+    required this.onLogout,
+  });
+  final Map<String, dynamic> profile;
+  final Map<String, int> stats;
+  final List<Map<String, dynamic>> posts, reels, gifts, badges;
+  final int wealthLevel, vipLevel;
+  final bool isSuperAdmin, isShippingAgent;
+  final VoidCallback onBack, onEdit, onAvatarTap, onLogout;
+  final Future<void> Function(String) onModule;
+  final Future<void> Function(String) onMenu;
+
+  @override
+  State<_MyHtmlProfileView> createState() => _MyHtmlProfileViewState();
+}
+
+class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
+  int tab = 0;
+
+  Future<void> _more() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(
+                Icons.settings_rounded,
+                color: Color(0xFF475569),
+              ),
+              title: const Text('الإعدادات'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onMenu('الإعدادات');
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.logout_rounded,
+                color: Colors.redAccent,
+              ),
+              title: const Text('تسجيل الخروج'),
+              onTap: () {
+                Navigator.pop(context);
+                widget.onLogout();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final username = widget.profile['username']?.toString() ?? 'مستخدم SAKI';
+    final avatar = widget.profile['avatar_url']?.toString();
+    final family = widget.profile['family_badge'] is Map
+        ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)
+        : null;
+    final content = switch (tab) {
+      1 => _MyMomentsContent(
+        key: const ValueKey('moments'),
+        posts: widget.posts,
+        reels: widget.reels,
+      ),
+      2 => _MyCollectionContent(
+        key: const ValueKey('badges'),
+        title: 'الأوسمة المكتسبة',
+        items: widget.badges,
+        kind: 'badge',
+      ),
+      3 => _MyCollectionContent(
+        key: const ValueKey('gifts'),
+        title: 'الهدايا المستلمة',
+        items: widget.gifts,
+        kind: 'gift',
+      ),
+      _ => _MyAboutContent(
+        key: const ValueKey('about'),
+        profile: widget.profile,
+        family: family,
+        onEdit: widget.onEdit,
+      ),
+    };
+    return Scaffold(
+      backgroundColor: const Color(0xFFE5E7EB),
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: _MyProfileCover(
+                profile: widget.profile,
                 username: username,
-                onEdit: _edit,
-                onAvatarTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        UserProfilePage(userId: SakiService.instance.uid),
-                  ),
-                ),
+                avatar: avatar,
+                wealthLevel: widget.wealthLevel,
+                vipLevel: widget.vipLevel,
+                stats: widget.stats,
+                onBack: widget.onBack,
+                onEdit: widget.onEdit,
+                onAvatarTap: widget.onAvatarTap,
+                onMore: _more,
+                onAdmin: widget.isSuperAdmin
+                    ? () => widget.onMenu('لوحة تحكم سوبر أدمن')
+                    : null,
+                onShipping: widget.isShippingAgent
+                    ? () => widget.onModule('shipping_agent')
+                    : null,
               ),
-              _HtmlStatsBar(
-                followers: followers,
-                following: _stats['following'] ?? 0,
-              ),
-              _HtmlWalletBanner(onTap: () => _openModule('wallet')),
-              _HtmlLevelBanners(
-                wealthLevel: wealthLevel,
-                vipLevel: vipLevel,
-                onWealthTap: () => _openModule('level'),
-                onVipTap: () => _openModule('vip'),
-              ),
-              if (_adminRole != 'user')
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                  child: InkWell(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => _adminRole == 'super_admin'
-                            ? const SuperAdminPage()
-                            : RoleAdminPage(role: _adminRole),
-                      ),
+            ),
+            SliverToBoxAdapter(
+              child: Transform.translate(
+                offset: const Offset(0, -24),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(26),
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6C1EB2), Color(0xFFA83AF0)],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
+                  child: Column(
+                    children: [
+                      _MyShortcutGrid(
+                        onTap: widget.onModule,
+                        onMenu: widget.onMenu,
                       ),
-                      child: Row(
+                      const SizedBox(height: 22),
+                      Row(
                         children: [
-                          const FaIcon(
-                            FontAwesomeIcons.gaugeHigh,
-                            color: Colors.white,
-                            size: 18,
+                          _MyTab(
+                            label: 'ملف التعريف',
+                            active: tab == 0,
+                            onTap: () => setState(() => tab = 0),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _adminRole == 'super_admin'
-                                  ? 'لوحة Super Admin'
-                                  : 'لوحة ${_adminRole.toUpperCase()}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                          _MyTab(
+                            label: 'اللحظات',
+                            active: tab == 1,
+                            onTap: () => setState(() => tab = 1),
                           ),
-                          RoleBadge(role: _adminRole, light: true),
-                          const SizedBox(width: 6),
-                          const FaIcon(
-                            FontAwesomeIcons.chevronLeft,
-                            color: Colors.white,
-                            size: 12,
+                          _MyTab(
+                            label: 'الأوسمة',
+                            active: tab == 2,
+                            onTap: () => setState(() => tab = 2),
+                          ),
+                          _MyTab(
+                            label: 'الهدايا',
+                            active: tab == 3,
+                            onTap: () => setState(() => tab = 3),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 22),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        child: content,
+                      ),
+                    ],
                   ),
                 ),
-              _HtmlFeatureMenus(
-                profile: profile,
-                isSuperAdmin: _isSuperAdmin,
-                onTap: _openMenu,
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-                child: OutlinedButton.icon(
-                  onPressed: _logout,
-                  icon: const FaIcon(
-                    FontAwesomeIcons.rightFromBracket,
-                    size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MyProfileCover extends StatelessWidget {
+  const _MyProfileCover({
+    required this.profile,
+    required this.username,
+    required this.avatar,
+    required this.wealthLevel,
+    required this.vipLevel,
+    required this.stats,
+    required this.onBack,
+    required this.onEdit,
+    required this.onAvatarTap,
+    required this.onMore,
+    this.onAdmin,
+    this.onShipping,
+  });
+  final Map<String, dynamic> profile;
+  final String username;
+  final String? avatar;
+  final int wealthLevel, vipLevel;
+  final Map<String, int> stats;
+  final VoidCallback onBack, onEdit, onAvatarTap, onMore;
+  final VoidCallback? onAdmin, onShipping;
+  @override
+  Widget build(BuildContext context) {
+    final cover = avatar == null || avatar!.isEmpty
+        ? null
+        : NetworkImage(avatar!);
+    final gender = profile['gender']?.toString() ?? '';
+    return Container(
+      constraints: const BoxConstraints(minHeight: 360),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        image: cover == null
+            ? null
+            : DecorationImage(
+                image: cover,
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomCenter,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: .48),
+                  BlendMode.darken,
+                ),
+              ),
+      ),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Color(0xE6000000)],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 35),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (onAdmin != null)
+                    _GlassIcon(
+                      icon: Icons.admin_panel_settings_rounded,
+                      onTap: onAdmin!,
+                    ),
+                  if (onShipping != null) ...[
+                    const SizedBox(width: 10),
+                    _GlassIcon(
+                      icon: Icons.monetization_on_rounded,
+                      onTap: onShipping!,
+                    ),
+                  ],
+                  const Spacer(),
+                  _GlassIcon(icon: Icons.more_vert_rounded, onTap: onMore),
+                  const SizedBox(width: 8),
+                  _GlassIcon(icon: Icons.chevron_right_rounded, onTap: onBack),
+                ],
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: onAvatarTap,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white38),
                   ),
-                  label: const Text('تسجيل الخروج'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Color(0xFFFECACA)),
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  child: SakiAvatar(url: avatar, label: username, radius: 36),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Flexible(
+                    child: VipNameText(
+                      profile: {...profile, 'display_name': username},
+                      fontSize: 19,
+                      textAlign: TextAlign.start,
                     ),
                   ),
-                ),
+                  if (gender.isNotEmpty) ...[
+                    const SizedBox(width: 7),
+                    Container(
+                      width: 17,
+                      height: 17,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF3B82F6),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        gender == 'أنثى'
+                            ? Icons.female_rounded
+                            : Icons.male_rounded,
+                        color: Colors.white,
+                        size: 11,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    'ID: ${profile['saki_id'] ?? '—'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  IconButton(
+                    onPressed: () async {
+                      await Clipboard.setData(
+                        ClipboardData(text: '${profile['saki_id'] ?? ''}'),
+                      );
+                      if (context.mounted)
+                        CustomToast.show(context, 'تم نسخ SAKI ID');
+                    },
+                    icon: const Icon(
+                      Icons.copy_rounded,
+                      color: Colors.white70,
+                      size: 14,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  _MiniCoverBadge(
+                    label: 'LV.$wealthLevel',
+                    icon: Icons.diamond_rounded,
+                    colors: const [Color(0xFFB7791F), Color(0xFFF6E05E)],
+                  ),
+                  const SizedBox(width: 6),
+                  if (vipLevel > 0)
+                    _MiniCoverBadge(
+                      label: 'VIP$vipLevel',
+                      icon: Icons.workspace_premium_rounded,
+                      colors: const [Color(0xFF7C3AED), Color(0xFFE879F9)],
+                    ),
+                ],
               ),
               const SizedBox(height: 16),
-              Center(
-                child: Container(
-                  width: 128,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
-                    borderRadius: BorderRadius.circular(99),
+              Row(
+                children: [
+                  _MyHeroStat(
+                    value: '${stats['followers'] ?? 0}',
+                    label: 'المتابعون',
                   ),
-                ),
+                  _MyHeroDivider(),
+                  _MyHeroStat(
+                    value: '${stats['following'] ?? 0}',
+                    label: 'الذين تتابعهم',
+                  ),
+                  _MyHeroDivider(),
+                  _MyHeroStat(
+                    value: '${stats['posts'] ?? 0}',
+                    label: 'اللحظات',
+                  ),
+                ],
               ),
             ],
           ),
@@ -367,6 +660,709 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
+}
+
+class _GlassIcon extends StatelessWidget {
+  const _GlassIcon({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(99),
+    child: Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: .32),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Icon(icon, color: Colors.white, size: 18),
+    ),
+  );
+}
+
+class _MiniCoverBadge extends StatelessWidget {
+  const _MiniCoverBadge({
+    required this.label,
+    required this.icon,
+    required this.colors,
+  });
+  final String label;
+  final IconData icon;
+  final List<Color> colors;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(colors: colors),
+      borderRadius: BorderRadius.circular(99),
+      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+    ),
+    child: Row(
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Icon(icon, color: Colors.white, size: 11),
+      ],
+    ),
+  );
+}
+
+class _MyHeroStat extends StatelessWidget {
+  const _MyHeroStat({required this.value, required this.label});
+  final String value, label;
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 19,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 10),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MyHeroDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: 28, width: 1, color: Colors.white38);
+}
+
+class _MyShortcutGrid extends StatelessWidget {
+  const _MyShortcutGrid({required this.onTap, required this.onMenu});
+  final Future<void> Function(String) onTap;
+  final Future<void> Function(String) onMenu;
+  @override
+  Widget build(BuildContext context) {
+    final items = <(String, String, IconData, Color, bool)>[
+      (
+        'المحفظة',
+        'wallet',
+        Icons.account_balance_wallet_rounded,
+        const Color(0xFFF59E0B),
+        true,
+      ),
+      (
+        'VIP',
+        'vip',
+        Icons.workspace_premium_rounded,
+        const Color(0xFF9333EA),
+        true,
+      ),
+      (
+        'المتجر',
+        'store',
+        Icons.shopping_bag_rounded,
+        const Color(0xFF2563EB),
+        true,
+      ),
+      (
+        'العائلة',
+        'family',
+        Icons.groups_rounded,
+        const Color(0xFF4F46E5),
+        true,
+      ),
+      (
+        'المستوى',
+        'level',
+        Icons.show_chart_rounded,
+        const Color(0xFF10B981),
+        true,
+      ),
+      (
+        'المهام',
+        'المهام',
+        Icons.checklist_rounded,
+        const Color(0xFFF97316),
+        false,
+      ),
+      (
+        'كود الاسترداد',
+        'كود الاسترداد',
+        Icons.confirmation_number_rounded,
+        const Color(0xFFF43F5E),
+        false,
+      ),
+      (
+        'الإعدادات',
+        'الإعدادات',
+        Icons.settings_rounded,
+        const Color(0xFF475569),
+        false,
+      ),
+    ];
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 4,
+      mainAxisSpacing: 17,
+      crossAxisSpacing: 8,
+      childAspectRatio: .78,
+      children: items
+          .map(
+            (item) => _ShortcutItem(
+              label: item.$1,
+              icon: item.$3,
+              color: item.$4,
+              onTap: () => item.$5 ? onTap(item.$2) : onMenu(item.$2),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+class _ShortcutItem extends StatelessWidget {
+  const _ShortcutItem({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: Column(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .09),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: .25)),
+            boxShadow: [
+              BoxShadow(color: color.withValues(alpha: .08), blurRadius: 7),
+            ],
+          ),
+          child: Icon(icon, color: color, size: 23),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Color(0xFF374151),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _MyTab extends StatelessWidget {
+  const _MyTab({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? const Color(0xFF10B981) : const Color(0xFFE5E7EB),
+              width: active ? 3 : 1,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? const Color(0xFF111827) : const Color(0xFF6B7280),
+            fontSize: 14,
+            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _MyAboutContent extends StatelessWidget {
+  const _MyAboutContent({
+    super.key,
+    required this.profile,
+    required this.family,
+    required this.onEdit,
+  });
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic>? family;
+  final VoidCallback onEdit;
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      _MySection(
+        title: 'عني',
+        child: InkWell(
+          onTap: onEdit,
+          borderRadius: BorderRadius.circular(99),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F5F7),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    profile['bio']?.toString().isNotEmpty == true
+                        ? profile['bio'].toString()
+                        : 'تحرير',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF4B5563),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.edit_rounded,
+                  color: Color(0xFF10B981),
+                  size: 15,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      _MySection(
+        title: 'عائلة',
+        child: _MyFamilyCard(family: family),
+      ),
+      const _MySection(title: 'CP', child: _MyCpCard()),
+    ],
+  );
+}
+
+class _MySection extends StatelessWidget {
+  const _MySection({required this.title, required this.child});
+  final String title;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 22),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    ),
+  );
+}
+
+class _MyFamilyCard extends StatelessWidget {
+  const _MyFamilyCard({required this.family});
+  final Map<String, dynamic>? family;
+  @override
+  Widget build(BuildContext context) {
+    final image = family?['avatar_url']?.toString();
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF071739), Color(0xFF1868D9), Color(0xFF0A2552)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.blueAccent.withValues(alpha: .35)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x441868D9),
+            blurRadius: 14,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Color(0xFF22D3EE), Color(0xFF6366F1)],
+              ),
+            ),
+            child: ClipOval(
+              child: image == null || image.isEmpty
+                  ? const Icon(Icons.groups_rounded, color: Colors.white)
+                  : Image.network(image, fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  family?['name']?.toString() ?? 'لا توجد عائلة',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  family == null
+                      ? 'لم يتم الانضمام إلى عائلة بعد'
+                      : 'Lv.${family?['level'] ?? 0}  •  ${family?['role'] ?? 'عضو'}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.shield_rounded, color: Color(0xFFFBBF24)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MyCpCard extends StatefulWidget {
+  const _MyCpCard();
+  @override
+  State<_MyCpCard> createState() => _MyCpCardState();
+}
+
+class _MyCpCardState extends State<_MyCpCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (_, __) {
+        final rings = <Widget>[];
+        for (final scale in [.7, 1.0, 1.3]) {
+          rings.add(
+            Transform.scale(
+              scale: scale + controller.value * .35,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.pinkAccent.withValues(
+                      alpha: .28 * (1 - controller.value),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF3B020D), Color(0xFFB91C1C), Color(0xFF4C0519)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0x66FB7185)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0x66F43F5E)
+                    .withValues(alpha: .2 + controller.value * .25),
+                blurRadius: 12 + controller.value * 10,
+              ),
+            ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              ...rings,
+              const Icon(
+                Icons.favorite_rounded,
+                color: Color(0xFFF43F5E),
+                size: 40,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MyCollectionContent extends StatelessWidget {
+  const _MyCollectionContent({
+    super.key,
+    required this.title,
+    required this.items,
+    required this.kind,
+  });
+  final String title, kind;
+  final List<Map<String, dynamic>> items;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(
+          color: Color(0xFF111827),
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      const SizedBox(height: 10),
+      if (items.isEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 48),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4F5F7),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            kind == 'gift'
+                ? 'لم يتم تلقي أي هدايا حتى الآن.'
+                : 'لم يتم الحصول على أي أوسمة بعد.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        )
+      else
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 9,
+            childAspectRatio: .78,
+          ),
+          itemBuilder: (_, i) => _MyCollectionTile(item: items[i], kind: kind),
+        ),
+    ],
+  );
+}
+
+class _MyCollectionTile extends StatelessWidget {
+  const _MyCollectionTile({required this.item, required this.kind});
+  final Map<String, dynamic> item;
+  final String kind;
+  @override
+  Widget build(BuildContext context) {
+    final image = item['media_url']?.toString().isNotEmpty == true
+        ? item['media_url'].toString()
+        : item['asset_path']?.toString();
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: image == null
+                ? Icon(
+                    kind == 'gift'
+                        ? Icons.card_giftcard_rounded
+                        : Icons.workspace_premium_rounded,
+                    color: kind == 'gift'
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFF7C3AED),
+                    size: 30,
+                  )
+                : image.startsWith('assets/')
+                ? Image.asset(image, fit: BoxFit.contain)
+                : Image.network(image, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item['name']?.toString() ?? (kind == 'gift' ? 'هدية' : 'وسام'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Color(0xFF374151),
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (kind == 'gift')
+            Text(
+              '×${item['received_count'] ?? 0}',
+              style: const TextStyle(
+                color: Color(0xFFF59E0B),
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MyMomentsContent extends StatelessWidget {
+  const _MyMomentsContent({
+    super.key,
+    required this.posts,
+    required this.reels,
+  });
+  final List<Map<String, dynamic>> posts, reels;
+  @override
+  Widget build(BuildContext context) {
+    final count = posts.length + reels.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'لحظاتي  •  $count',
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (count == 0)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F5F7),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Text(
+              'لا توجد لحظات مسجلة حتى الآن.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          )
+        else
+          Column(
+            children: [
+              for (final post in posts.take(12)) _MyMomentTile(post: post),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _MyMomentTile extends StatelessWidget {
+  const _MyMomentTile({required this.post});
+  final Map<String, dynamic> post;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    margin: const EdgeInsets.only(bottom: 9),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE5E7EB)),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.image_rounded, color: Color(0xFF10B981)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            post['content']?.toString().isNotEmpty == true
+                ? post['content'].toString()
+                : 'لحظة مصورة',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              color: Color(0xFF374151),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Text(
+          post['created_at']?.toString().substring(0, 10) ?? '',
+          style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 9),
+        ),
+      ],
+    ),
+  );
 }
 
 class _HtmlProfileHeader extends StatelessWidget {
