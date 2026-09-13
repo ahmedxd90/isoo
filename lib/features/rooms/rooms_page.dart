@@ -1956,39 +1956,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (recipient == null || gift == null) return;
     if (!_isLuckGift(gift)) return;
     try {
-      final payload = <String, dynamic>{
-        'gift_id': gift['id'],
-        'icon': gift['icon'],
-        'thumbnail_url': gift['icon'],
-        'name': gift['name'],
-        'media_url': gift['media_url'],
-        'media_type': gift['media_type'],
-        'category': gift['category'],
-        'recipient_id': recipient,
-        'flying_banner': true,
-      };
-      final optimistic = _queueOptimisticMessage(
-        body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
-        type: 'gift',
-        payload: payload,
-      );
-      final giftRequest = _service.sendRoomGift(
+      await _service.sendRoomLuckGift(
         roomId: _roomId,
         recipientId: recipient,
         giftId: gift['id'] as String,
       );
-      final messageRequest = _service.sendRoomMessage(
-        _roomId,
-        'أرسل هدية ${gift['name'] ?? 'هدية'}',
-        type: 'gift',
-        payload: payload,
-      );
-      try {
-        await Future.wait([giftRequest, messageRequest]);
-      } catch (_) {
-        _removeOptimisticMessage(optimistic);
-        rethrow;
-      }
       _startGiftCombo();
     } catch (e) {
       _messageSnack(e.toString().replaceFirst('Exception: ', ''));
@@ -4546,16 +4518,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                             SizedBox(
-                              width: 72,
-                              height: _comboSeconds > 0 ? 98 : 56,
+                              width: _comboSeconds > 0 ? 92 : 72,
+                              height: _comboSeconds > 0 ? 124 : 64,
                               child: Stack(
                                 alignment: AlignmentDirectional.bottomCenter,
                                 children: [
                                   GestureDetector(
                                     onTap: _showGiftPanel,
                                     child: Container(
-                                      width: 54,
-                                      height: 54,
+                                      width: 62,
+                                      height: 62,
                                       alignment: Alignment.center,
                                       decoration: BoxDecoration(
                                         color: Colors.black26,
@@ -4566,8 +4538,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       ),
                                       child: Image.asset(
                                         'assets/saki_gift_box_icon.png',
-                                        width: 31,
-                                        height: 31,
+                                        width: 36,
+                                        height: 36,
                                         fit: BoxFit.contain,
                                       ),
                                     ),
@@ -4577,21 +4549,55 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       top: 0,
                                       child: GestureDetector(
                                         onTap: _sendComboAgain,
-                                        child: Container(
-                                          width: 56,
-                                          height: 56,
-                                          decoration: const BoxDecoration(
-                                            color: Colors.orangeAccent,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '$_comboSeconds',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 19,
-                                              fontWeight: FontWeight.w900,
-                                            ),
+                                        child: SizedBox(
+                                          width: 78,
+                                          height: 78,
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              CircularProgressIndicator(
+                                                value: _comboSeconds / 10,
+                                                strokeWidth: 7,
+                                                backgroundColor: Colors.white24,
+                                                valueColor:
+                                                    const AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(Colors.amberAccent),
+                                              ),
+                                              Container(
+                                                width: 62,
+                                                height: 62,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFE87919),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Column(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const Text(
+                                                      'كومبو',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '$_comboSeconds',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 19,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
