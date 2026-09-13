@@ -383,7 +383,39 @@ class LevelFeature extends StatefulWidget {
 
 class _LevelFeatureState extends State<LevelFeature> {
   int tab = 0;
+  int _wealthCost(int level) {
+    if (level <= 10) return 30000;
+    if (level <= 20) return 50000;
+    if (level <= 30) return 100000;
+    if (level <= 40) return 250000;
+    if (level <= 50) return 500000;
+    if (level <= 60) return 1000000;
+    if (level <= 70) return 2000000;
+    var cost = 2000000;
+    for (var band = 70; level > band; band += 10) {
+      cost *= 2;
+    }
+    return cost;
+  }
+
+  int _wealthXpAtLevelStart(int level) {
+    var total = 0;
+    for (var i = 1; i < level; i++) {
+      total += _wealthCost(i);
+    }
+    return total;
+  }
+
   int _levelFor(int xp, bool wealth) {
+    if (wealth) {
+      var total = 0;
+      for (var i = 1; i <= 500; i++) {
+        final cost = _wealthCost(i);
+        if (xp < total + cost) return i - 1;
+        total += cost;
+      }
+      return 500;
+    }
     var level = 0;
     for (var i = 1; i <= 500; i++) {
       final required = wealth
@@ -401,8 +433,7 @@ class _LevelFeatureState extends State<LevelFeature> {
 
   int _required(int level, bool wealth) {
     if (level <= 0) return 0;
-    if (wealth && level == 1) return 5000;
-    if (wealth && level == 2) return 15000;
+    if (wealth) return _wealthXpAtLevelStart(level) + _wealthCost(level);
     return wealth ? 15000 * (1 << (level - 2)) : 20000 * (1 << (level - 1));
   }
 
