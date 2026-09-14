@@ -4,6 +4,17 @@ import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_aud
 
 import '../../core/data/saki_service.dart';
 
+Widget zegoRoomPageFor(Map<String, dynamic> room) {
+  final roomId = room['room_id']?.toString().trim() ?? '';
+  if (roomId.isEmpty) {
+    return const Scaffold(
+      body: Center(child: Text('معرف الغرفة غير متوفر')),
+    );
+  }
+  final userName = SakiService.instance.currentUser?.email ?? 'SAKI User';
+  return ZegoLiveAudioRoomPage(roomId: roomId, userName: userName);
+}
+
 class ZegoLiveAudioRoomPage extends StatefulWidget {
   const ZegoLiveAudioRoomPage({
     super.key,

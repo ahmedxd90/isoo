@@ -11,7 +11,7 @@ import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/profile_post_card.dart';
 import '../../shared/widgets/vip_identity.dart';
 import '../messages/messages_page.dart';
-import '../rooms/rooms_page.dart';
+import '../rooms/zego_live_audio_room_page.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
@@ -1377,7 +1377,7 @@ class _ProfileBannerCarouselState extends State<_ProfileBannerCarousel> {
       }
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
+        MaterialPageRoute(builder: (_) => zegoRoomPageFor(room)),
       );
     }
   }

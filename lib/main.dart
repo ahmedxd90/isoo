@@ -62,7 +62,6 @@ class SakiApp extends StatelessWidget {
             textDirection: TextDirection.rtl,
             child: child ?? const SizedBox.shrink(),
           ),
-          const RoomMiniBubble(),
         ],
       ),
     );
