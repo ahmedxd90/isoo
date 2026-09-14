@@ -1658,6 +1658,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.16.10"
+  zego_uikit_prebuilt_live_streaming:
+    dependency: "direct main"
+    description:
+      name: zego_uikit_prebuilt_live_streaming
+      sha256: "3ccb371feb644d95231a45261c286ecfc0adeb99c5b43cdf669dddf115b40d13"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.15.6"
   zego_uikit_signaling_plugin:
     dependency: transitive
     description:

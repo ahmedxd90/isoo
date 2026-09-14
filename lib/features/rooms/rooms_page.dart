@@ -12,13 +12,18 @@ import '../search/search_page.dart';
 import 'ranking_page.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'zego_live_audio_room_page.dart';
+import 'zego_live_streaming_page.dart';
 import '../profile/vip_widgets.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
-Widget _zegoRoomDestination(Map<String, dynamic> room) => zegoRoomPageFor(room);
+Widget _zegoRoomDestination(Map<String, dynamic> room) {
+  final type = room['room_type']?.toString() ?? 'audio';
+  if (type == 'live') return zegoLiveStreamingPageFor(room);
+  return zegoRoomPageFor(room);
+}
 
 const _roomPrimary = Color(0xFFFF6B35);
 const _roomSecondary = Color(0xFF06B6D4);
@@ -1840,7 +1845,8 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
   final _picker = ImagePicker();
   XFile? _image;
   String _country = 'جاري التحديد...';
-  String _type = 'public';
+  String _accessType = 'public';
+  String _roomMode = 'audio';
   String _category = 'Cp';
   bool _loading = false;
   String? _error;
@@ -1898,7 +1904,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
         name: _name.text,
         description: _description.text,
         country: _country == 'جاري التحديد...' ? 'الأردن' : _country,
-        type: _type,
+        type: _roomMode,
         image: _image,
       );
       if (mounted) Navigator.of(context).pop(room);
@@ -1911,6 +1917,55 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Widget _modeCard({
+    required String mode,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final selected = _roomMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() => _roomMode = mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 150,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF4C1D95) : const Color(0x66111827),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? const Color(0xFFFED100) : Colors.white24,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              icon,
+              color: selected ? const Color(0xFFFED100) : Colors.white70,
+              size: 28,
+            ),
+            const SizedBox(height: 7),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              subtitle,
+              maxLines: 2,
+              style: const TextStyle(color: Colors.white70, fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   InputDecoration _input(String hint) => InputDecoration(
@@ -1966,6 +2021,40 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                         ),
                       ),
                     ),
+                    const Text(
+                      'نوع البث والغرفة',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _modeCard(
+                          mode: 'audio',
+                          title: 'غرفة صوتية',
+                          subtitle: 'مقاعد ودردشة وهدايا',
+                          icon: Icons.mic_rounded,
+                        ),
+                        _modeCard(
+                          mode: 'party',
+                          title: 'حفلة مباشرة',
+                          subtitle: 'غرفة حفلة متعددة المقاعد',
+                          icon: Icons.celebration_rounded,
+                        ),
+                        _modeCard(
+                          mode: 'live',
+                          title: 'بث مباشر',
+                          subtitle: 'كاميرا وفيديو وهدايا وPK',
+                          icon: Icons.videocam_rounded,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     _glassCard(
                       child: Row(
                         children: [
@@ -2115,7 +2204,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                         ),
                         const Spacer(),
                         DropdownButton<String>(
-                          value: _type,
+                          value: _accessType,
                           dropdownColor: const Color(0xFF292929),
                           underline: const SizedBox.shrink(),
                           style: const TextStyle(color: Colors.white),
@@ -2130,7 +2219,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
                             ),
                           ],
                           onChanged: (value) =>
-                              setState(() => _type = value ?? 'public'),
+                              setState(() => _accessType = value ?? 'public'),
                         ),
                       ],
                     ),

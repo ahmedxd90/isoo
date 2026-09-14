@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_audio_room.dart';
 
 import '../../core/data/saki_service.dart';
+import 'pk_battle_page.dart';
 
 Widget zegoRoomPageFor(Map<String, dynamic> room) {
   final roomId = room['room_id']?.toString().trim() ?? '';
@@ -104,6 +105,19 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
           room: widget.room,
           roomId: dbRoomId,
           isOwner: isOwner,
+        ),
+      ),
+    );
+  }
+
+  Future<void> openPk() async {
+    if (!isOwner || !mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => PkBattlePage(
+          roomId: dbRoomId,
+          channelName: widget.roomId,
+          title: widget.room['name']?.toString() ?? 'PK',
         ),
       ),
     );
@@ -221,6 +235,7 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
             isOwner: canManageRoom,
             onSettings: openSettings,
             onGifts: openGifts,
+            onPk: openPk,
             onExit: () => Navigator.pop(context),
           ),
         ),
@@ -264,6 +279,7 @@ class RoomHeader extends StatelessWidget {
     required this.isOwner,
     required this.onSettings,
     required this.onGifts,
+    required this.onPk,
     required this.onExit,
   });
   final Map<String, dynamic> room;
@@ -271,6 +287,7 @@ class RoomHeader extends StatelessWidget {
   final bool isOwner;
   final VoidCallback onSettings;
   final VoidCallback onGifts;
+  final VoidCallback onPk;
   final VoidCallback onExit;
 
   @override
@@ -326,6 +343,11 @@ class RoomHeader extends StatelessWidget {
             ],
           ),
         ),
+        if (isOwner)
+          TextButton(
+            onPressed: onPk,
+            child: const Text('PK', style: TextStyle(color: Colors.white)),
+          ),
         TextButton(
           onPressed: onGifts,
           child: const Text(
