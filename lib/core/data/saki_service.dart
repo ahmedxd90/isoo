@@ -13,6 +13,17 @@ class SakiService {
   User? get currentUser => client.auth.currentUser;
   String get uid => currentUser!.id;
 
+  String? familyAliasValidationMessage(String alias) {
+    final value = alias.trim();
+    if (value.length < 5) {
+      return 'لقب العائلة يجب أن يتكون من 5 أحرف أو أرقام على الأقل.';
+    }
+    if (!RegExp(r'^[A-Za-z0-9_\u0600-\u06FF]+$').hasMatch(value)) {
+      return 'لقب العائلة يسمح بالأحرف والأرقام والشرطة السفلية فقط، دون مسافات أو رموز.';
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> myProfile() async {
     final data = await client
         .from('profiles')
@@ -455,6 +466,24 @@ class SakiService {
         .order('purchased_at', ascending: false)
         .limit(300);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>?> activeProfileFrame(String userId) async {
+    final rows = await client
+        .from('saki_store_inventory')
+        .select(
+          'expires_at,product:saki_store_products!inner(id,category,media_type,media_url,thumbnail_url)',
+        )
+        .eq('user_id', userId)
+        .eq('equipped', true)
+        .eq('product.category', 'frame')
+        .limit(1);
+    if (rows.isEmpty) return null;
+    final row = Map<String, dynamic>.from(rows.first);
+    final expiresAt = DateTime.tryParse(row['expires_at']?.toString() ?? '');
+    if (expiresAt != null && !expiresAt.isAfter(DateTime.now())) return null;
+    final product = row['product'];
+    return product is Map ? Map<String, dynamic>.from(product) : null;
   }
 
   Future<Map<String, dynamic>> storeBuy(String productId) async {
@@ -943,7 +972,7 @@ class SakiService {
     final data = await client
         .from('profiles')
         .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,is_super_admin,admin_role',
+          'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin,admin_role',
         )
         .eq('id', userId)
         .maybeSingle();
@@ -1555,7 +1584,7 @@ class SakiService {
           final profilesFuture = client
               .from('profiles')
               .select(
-                'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,vip_frame_enabled,wealth_xp,wealth_level,is_super_admin',
+                'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin',
               )
               .inFilter('id', userIds);
           final inventoryFuture = client
@@ -1574,7 +1603,7 @@ class SakiService {
             for (final profile in List<Map<String, dynamic>>.from(loaded[0]))
               profile['id'].toString(): Map<String, dynamic>.from(profile),
           };
-          final frames = <String, String>{};
+          final frames = <String, Map<String, dynamic>>{};
           for (final item in List<Map<String, dynamic>>.from(loaded[1])) {
             final product = item['product'];
             final expiry = DateTime.tryParse(
@@ -1585,18 +1614,23 @@ class SakiService {
                 product is Map &&
                 product['category']?.toString() == 'frame' &&
                 (expiry == null || expiry.isAfter(DateTime.now()))) {
-              frames[userId] =
-                  (product['thumbnail_url'] ?? product['media_url'])
-                      ?.toString() ??
-                  '';
+              frames[userId] = {
+                'active_frame_url':
+                    (product['media_url'] ?? product['thumbnail_url'])
+                        ?.toString() ??
+                    '',
+                'active_frame_media_type': product['media_type']?.toString(),
+              };
             }
           }
           return rows.map((row) {
             final copy = Map<String, dynamic>.from(row);
             final userId = row['user_id']?.toString();
             final profile = userId == null ? null : profiles[userId];
-            if (profile != null && frames[userId]?.isNotEmpty == true) {
-              profile['active_frame_url'] = frames[userId];
+            if (profile != null &&
+                frames[userId]?['active_frame_url']?.toString().isNotEmpty ==
+                    true) {
+              profile.addAll(frames[userId]!);
             }
             copy['profiles'] = profile;
             return copy;
@@ -1652,6 +1686,25 @@ class SakiService {
     );
     final data = Map<String, dynamic>.from(response.data as Map);
     return List<Map<String, dynamic>>.from(data['items'] ?? const []);
+  }
+
+  Future<Map<String, dynamic>> zegoRoomToken(
+    String roomId, {
+    String? userName,
+  }) async {
+    final response = await client.functions.invoke(
+      'zego-token',
+      body: {
+        'roomId': roomId.trim(),
+        if (userName != null && userName.trim().isNotEmpty)
+          'userName': userName.trim(),
+      },
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    if (data['token'] == null || data['appId'] == null) {
+      throw Exception(data['error']?.toString() ?? 'تعذر إنشاء توكن ZEGOCLOUD');
+    }
+    return data;
   }
 
   Future<void> sendRoomMessage(
@@ -2744,6 +2797,8 @@ class SakiService {
     required String description,
     String? avatarUrl,
   }) async {
+    final aliasError = familyAliasValidationMessage(alias);
+    if (aliasError != null) throw Exception(aliasError);
     final result = await client.rpc(
       'create_family',
       params: {
@@ -2787,6 +2842,8 @@ class SakiService {
     required String avatarUrl,
     required String announcement,
   }) async {
+    final aliasError = familyAliasValidationMessage(alias);
+    if (aliasError != null) throw Exception(aliasError);
     final row = await client.rpc(
       'update_family_settings',
       params: {

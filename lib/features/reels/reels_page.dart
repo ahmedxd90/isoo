@@ -508,6 +508,7 @@ class _ReelCardState extends State<ReelCard> {
                   url: profile['avatar_url'] as String?,
                   label: username,
                   radius: 22,
+                  profile: profile,
                 ),
               ),
               WealthLevelBadge(profile: profile, compact: true),

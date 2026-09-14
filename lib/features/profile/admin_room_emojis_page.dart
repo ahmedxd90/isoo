@@ -35,7 +35,8 @@ class _AdminRoomEmojisState extends State<AdminRoomEmojisPage> {
 
   void _snack(String text) => CustomToast.show(context, text);
   Future<XFile?> _pickGif() async {
-    final f = await FilePicker.pickFile(type: FileType.any);
+    final picked = await FilePicker.platform.pickFiles(type: FileType.any);
+    final f = picked?.files.single;
     if (f?.path == null || f?.extension?.toLowerCase() != 'gif') {
       if (f != null) _snack('اختر ملف GIF فقط');
       return null;

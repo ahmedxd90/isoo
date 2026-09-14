@@ -13,7 +13,6 @@ import '../rooms/rooms_page.dart';
 import '../../core/data/saki_service.dart';
 import '../../core/room_session.dart';
 import '../../core/room_background_bridge.dart';
-import '../../shared/widgets/saki_widgets.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

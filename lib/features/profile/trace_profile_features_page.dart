@@ -672,6 +672,7 @@ class _LevelHero extends StatelessWidget {
       ],
     ),
   );
+  // ignore: unused_element, kept for the legacy level-tab layout.
   Widget _levelTab(String text, int value) => GestureDetector(
     onTap: () => onTab(value),
     child: Container(

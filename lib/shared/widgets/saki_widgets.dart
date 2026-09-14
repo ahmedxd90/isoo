@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svga/flutter_svga.dart';
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/data/saki_service.dart';
 
 class WealthLevelBadge extends StatelessWidget {
   const WealthLevelBadge({
@@ -113,7 +115,7 @@ class _WealthMiniEmblemPainter extends CustomPainter {
       oldDelegate.tier != tier;
 }
 
-class SakiAvatar extends StatelessWidget {
+class SakiAvatar extends StatefulWidget {
   const SakiAvatar({
     super.key,
     this.url,
@@ -127,79 +129,131 @@ class SakiAvatar extends StatelessWidget {
   final Map<String, dynamic>? profile;
 
   @override
+  State<SakiAvatar> createState() => _SakiAvatarState();
+}
+
+class _SakiAvatarState extends State<SakiAvatar>
+    with SingleTickerProviderStateMixin {
+  Map<String, dynamic>? _frame;
+  late final SVGAAnimationController _svga = SVGAAnimationController(
+    vsync: this,
+  );
+  String? _loadedUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFrame();
+  }
+
+  @override
+  void didUpdateWidget(covariant SakiAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.profile?['active_frame_url']?.toString() !=
+            widget.profile?['active_frame_url']?.toString() ||
+        oldWidget.profile?['id']?.toString() !=
+            widget.profile?['id']?.toString()) {
+      _loadFrame();
+    }
+  }
+
+  Future<void> _loadFrame() async {
+    final direct = widget.profile?['active_frame_url']?.toString();
+    if (direct != null && direct.isNotEmpty) {
+      if (mounted) {
+        setState(
+          () => _frame = {
+            'media_url': direct,
+            'media_type': widget.profile?['active_frame_media_type'] ?? 'png',
+          },
+        );
+      }
+      return;
+    }
+    final userId = widget.profile?['id']?.toString();
+    if (userId == null || userId.isEmpty) return;
+    final frame = await SakiService.instance.activeProfileFrame(userId);
+    if (!mounted || frame == null) return;
+    setState(() => _frame = frame);
+  }
+
+  @override
+  void dispose() {
+    _svga.dispose();
+    super.dispose();
+  }
+
+  Widget _frameWidget(double size) {
+    final frame = _frame;
+    if (frame == null) return const SizedBox.shrink();
+    final url =
+        frame['media_url']?.toString() ?? frame['thumbnail_url']?.toString();
+    if (url == null || url.isEmpty) return const SizedBox.shrink();
+    final type = frame['media_type']?.toString().toLowerCase();
+    if (type == 'svga') {
+      if (_loadedUrl != url) {
+        _loadedUrl = url;
+        SVGAParser.shared
+            .decodeFromURL(url)
+            .then((movie) {
+              if (!mounted || _loadedUrl != url) return;
+              _svga.videoItem = movie;
+              _svga.forward(from: 0);
+              setState(() {});
+            })
+            .catchError((_) {});
+      }
+      return _svga.videoItem == null
+          ? const SizedBox.shrink()
+          : SVGAImage(_svga, fit: BoxFit.contain);
+    }
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final level = _activeVipLevel(profile);
-    final activeFrameUrl = profile?['active_frame_url']?.toString();
+    final activeFrameUrl = _frame?['media_url']?.toString();
     final avatar = CircleAvatar(
-      radius: radius,
+      radius: widget.radius,
       backgroundColor: SakiColors.royalPurple.withValues(alpha: .25),
-      backgroundImage: url == null || url!.isEmpty
+      backgroundImage: widget.url == null || widget.url!.isEmpty
           ? null
-          : CachedNetworkImageProvider(url!),
-      child: url == null || url!.isEmpty
+          : CachedNetworkImageProvider(widget.url!),
+      child: widget.url == null || widget.url!.isEmpty
           ? Text(
-              (label?.isNotEmpty ?? false) ? label![0].toUpperCase() : 'S',
+              (widget.label?.isNotEmpty ?? false)
+                  ? widget.label![0].toUpperCase()
+                  : 'S',
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                fontSize: radius * .65,
+                fontSize: widget.radius * .65,
               ),
             )
           : null,
     );
     if (activeFrameUrl != null && activeFrameUrl.isNotEmpty) {
+      final frameSize = widget.radius * 2 + 18;
       return SizedBox(
-        width: radius * 2 + 14,
-        height: radius * 2 + 14,
+        width: frameSize,
+        height: frameSize,
         child: Stack(
           alignment: Alignment.center,
           children: [
             avatar,
-            IgnorePointer(
-              child: Image.network(
-                activeFrameUrl,
-                width: radius * 2 + 14,
-                height: radius * 2 + 14,
-                fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            ),
+            IgnorePointer(child: _frameWidget(frameSize)),
           ],
         ),
       );
     }
-    if (level == 0 || profile?['vip_frame_enabled'] == false) return avatar;
-    return SizedBox(
-      width: radius * 2 + 14,
-      height: radius * 2 + 14,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          avatar,
-          IgnorePointer(
-            child: Image.asset(
-              'assets/vip/frame_vip$level.png',
-              width: radius * 2 + 14,
-              height: radius * 2 + 14,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            ),
-          ),
-        ],
-      ),
-    );
+    return avatar;
   }
-}
-
-int _activeVipLevel(Map<String, dynamic>? profile) {
-  if (profile == null) return 0;
-  final level = ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
-  final expires = DateTime.tryParse(
-    profile['vip_expires_at']?.toString() ?? '',
-  );
-  if (level < 1 || expires == null || !expires.isAfter(DateTime.now())) {
-    return 0;
-  }
-  return level;
 }
 
 class GradientIconBadge extends StatelessWidget {

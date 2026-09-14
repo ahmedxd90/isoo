@@ -1085,7 +1085,8 @@ class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
 
   Future<PlatformFile?> _pick(List<String> allowed) async {
     await [Permission.photos, Permission.videos, Permission.storage].request();
-    final file = await FilePicker.pickFile(type: FileType.any);
+    final picked = await FilePicker.platform.pickFiles(type: FileType.any);
+    final file = picked?.files.single;
     if (file == null) return null;
     final ext = file.extension?.toLowerCase();
     if (ext == null || !allowed.contains(ext)) {

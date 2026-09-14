@@ -241,8 +241,13 @@ class _CreateFamilyPageState extends State<CreateFamilyPage> {
   Future<void> _save() async {
     final name = _name.text.trim();
     final alias = _alias.text.trim();
-    if (name.length < 2 || alias.length < 5) {
-      CustomToast.show(context, 'أدخل اسم العائلة ولقباً من 5 أحرف على الأقل');
+    if (name.length < 2) {
+      CustomToast.show(context, 'أدخل اسم عائلة مكوّناً من حرفين على الأقل');
+      return;
+    }
+    final aliasError = _service.familyAliasValidationMessage(alias);
+    if (aliasError != null) {
+      CustomToast.show(context, aliasError);
       return;
     }
     setState(() => _saving = true);

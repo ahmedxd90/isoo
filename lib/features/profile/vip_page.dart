@@ -35,7 +35,6 @@ class _VipPageState extends State<VipPage> {
     VipBenefit(Icons.gif_box_rounded, 'صورة GIF للملف', 7),
     VipBenefit(Icons.graphic_eq_rounded, 'موجة صوت VIP8', 8),
     VipBenefit(Icons.workspace_premium_rounded, 'شارة VIP9 وVIP10', 9),
-    VipBenefit(Icons.card_giftcard_rounded, 'إطار VIP10 المميز', 10),
   ];
 
   final _service = SakiService.instance;

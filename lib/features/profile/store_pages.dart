@@ -367,11 +367,7 @@ class _StorePageState extends State<StorePage> {
       setState(_reload);
     } catch (e) {
       if (mounted) {
-        final raw = e.toString();
-        final message = raw.contains('vip_frame_granted_with_vip_purchase')
-            ? 'إطار VIP يُمنح تلقائيًا عند شراء مستوى VIP ولا يُشترى منفصلًا.'
-            : raw.replaceFirst('Exception: ', '');
-        CustomToast.show(context, message);
+        CustomToast.show(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _buying = false);
@@ -1030,8 +1026,6 @@ class BagPage extends StatefulWidget {
 
 class _BagPageState extends State<BagPage> {
   late Future<List<Map<String, dynamic>>> _future;
-  int _vipLevel = 0;
-  DateTime? _vipExpiresAt;
   @override
   void initState() {
     super.initState();
@@ -1040,20 +1034,6 @@ class _BagPageState extends State<BagPage> {
 
   void _reload() {
     _future = SakiService.instance.storeInventory();
-    _loadVipProfile();
-  }
-
-  Future<void> _loadVipProfile() async {
-    try {
-      final profile = await SakiService.instance.myProfile();
-      if (!mounted || profile == null) return;
-      setState(() {
-        _vipLevel = ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
-        _vipExpiresAt = DateTime.tryParse(
-          profile['vip_expires_at']?.toString() ?? '',
-        );
-      });
-    } catch (_) {}
   }
 
   @override
@@ -1104,8 +1084,7 @@ class _BagPageState extends State<BagPage> {
               final product = r['product'] as Map;
               if (product['category'] != category) return false;
               if (category != 'frame') return true;
-              return _vipLevel > 0 &&
-                  product['name']?.toString() == 'إطار VIP $_vipLevel';
+              return true;
             }).toList();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1128,11 +1107,7 @@ class _BagPageState extends State<BagPage> {
                     child: Text('لا توجد منتجات'),
                   ),
                 ...rows.map(
-                  (row) => BagRow(
-                    row: row,
-                    vipExpiresAt: _vipExpiresAt,
-                    onChanged: () => setState(_reload),
-                  ),
+                  (row) => BagRow(row: row, onChanged: () => setState(_reload)),
                 ),
               ],
             );
@@ -1144,15 +1119,9 @@ class _BagPageState extends State<BagPage> {
 }
 
 class BagRow extends StatelessWidget {
-  const BagRow({
-    super.key,
-    required this.row,
-    required this.onChanged,
-    this.vipExpiresAt,
-  });
+  const BagRow({super.key, required this.row, required this.onChanged});
   final Map<String, dynamic> row;
   final VoidCallback onChanged;
-  final DateTime? vipExpiresAt;
   @override
   Widget build(BuildContext context) {
     final product = Map<String, dynamic>.from(row['product'] as Map);
@@ -1160,9 +1129,9 @@ class BagRow extends StatelessWidget {
     final productExpiry = DateTime.tryParse(
       row['expires_at']?.toString() ?? '',
     );
-    final expiry = productExpiry ?? vipExpiresAt;
+    final expiry = productExpiry;
     final expiryText = expiry == null
-        ? 'المدة مرتبطة بمدة VIP'
+        ? 'إطار مملوك'
         : 'ينتهي ${expiry.toLocal().toString().split('.').first}';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1416,7 +1385,8 @@ class _AdminStorePageState extends State<AdminStorePage> {
   }
 
   Future<XFile?> _pick(String extension) async {
-    final result = await FilePicker.pickFile(type: FileType.any);
+    final picked = await FilePicker.platform.pickFiles(type: FileType.any);
+    final result = picked?.files.single;
     final path = result?.path;
     if (path == null || result?.extension?.toLowerCase() != extension) {
       if (mounted) {
@@ -1431,7 +1401,7 @@ class _AdminStorePageState extends State<AdminStorePage> {
     final name = TextEditingController();
     final price = TextEditingController();
     String category = 'frame';
-    String mediaType = 'mp4';
+    String mediaType = 'png';
     XFile? media;
     XFile? thumbnail;
     await showModalBottomSheet<void>(
@@ -1536,7 +1506,7 @@ class _AdminStorePageState extends State<AdminStorePage> {
                 Wrap(
                   spacing: 7,
                   children: [
-                    for (final type in ['mp4', 'svga', 'gif'])
+                    for (final type in ['png', 'gif', 'svga', 'mp4'])
                       _AdminChoice(
                         label: type.toUpperCase(),
                         selected: mediaType == type,
@@ -1551,7 +1521,7 @@ class _AdminStorePageState extends State<AdminStorePage> {
                 _AdminFileTile(
                   icon: Icons.movie_creation_outlined,
                   label: media == null
-                      ? 'اختيار ملف الحركة .$mediaType'
+                      ? 'اختيار ملف الإطار .$mediaType'
                       : 'تم اختيار ${media!.name}',
                   onTap: () async {
                     final f = await _pick(mediaType);

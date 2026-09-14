@@ -24,6 +24,7 @@ import 'room_gift_ranking_sheet.dart';
 import 'room_global_gift_banner.dart';
 import 'luck_bag_widgets.dart';
 import 'buffet_game_sheet.dart';
+import 'zego_live_audio_room_page.dart';
 import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
 import '../messages/messages_page.dart';
@@ -32,6 +33,12 @@ import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
+
+Widget _zegoRoomDestination(Map<String, dynamic> room) {
+  final roomId = room['room_id']?.toString() ?? '';
+  final userName = SakiService.instance.currentUser?.email ?? 'SAKI User';
+  return ZegoLiveAudioRoomPage(roomId: roomId, userName: userName);
+}
 
 const _roomPrimary = Color(0xFFFF6B35);
 const _roomSecondary = Color(0xFF06B6D4);
@@ -155,7 +162,7 @@ class _RoomsPageState extends State<RoomsPage> {
     if (!mounted) return;
     if (owned != null) {
       await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: owned)));
+          .push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(owned)));
       return;
     }
     final created = await Navigator.of(context).push<Map<String, dynamic>>(
@@ -165,7 +172,7 @@ class _RoomsPageState extends State<RoomsPage> {
     await _load();
     if (!mounted) return;
     await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: created)));
+        .push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(created)));
   }
 
   @override
@@ -739,7 +746,7 @@ class _ReferenceRoomCard extends StatelessWidget {
       }
       if (!context.mounted) return;
       await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
+          .push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(room)));
     }
 
     return GestureDetector(
@@ -1364,6 +1371,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String _micPermission = 'everyone';
   bool _isModerator = false;
   int _comboSeconds = 0;
+  int _comboCount = 0;
   Timer? _comboTimer;
   String? _lastGiftRecipient;
   Map<String, dynamic>? _lastGift;
@@ -1923,11 +1931,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         },
       ),
     );
-    if (sent == true && _isLuckGift(_lastGift)) {
+    if (sent == true && _lastGiftRecipient != null && _lastGift != null) {
       _startGiftCombo();
     } else if (mounted) {
       _comboTimer?.cancel();
-      setState(() => _comboSeconds = 0);
+      setState(() {
+        _comboSeconds = 0;
+        _comboCount = 0;
+      });
     }
   }
 
@@ -1938,17 +1949,30 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   void _startGiftCombo() {
     _comboTimer?.cancel();
-    setState(() => _comboSeconds = 10);
-    _comboTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _comboStartedAt = DateTime.now();
+    setState(() {
+      _comboCount = _comboCount <= 0 ? 1 : _comboCount;
+      _comboSeconds = 3;
+    });
+    _comboTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
       if (!mounted) return timer.cancel();
-      if (_comboSeconds <= 1) {
+      if (_comboSeconds <= 0) {
         timer.cancel();
-        setState(() => _comboSeconds = 0);
+        setState(() {
+          _comboSeconds = 0;
+          _comboCount = 0;
+        });
       } else {
-        setState(() => _comboSeconds--);
+        final elapsed = DateTime.now()
+            .difference(_comboStartedAt)
+            .inMilliseconds;
+        final remaining = 3000 - elapsed;
+        setState(() => _comboSeconds = (remaining / 1000).ceil().clamp(0, 3));
       }
     });
   }
+
+  DateTime _comboStartedAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   Future<void> _sendComboAgain() async {
     final recipient = _lastGiftRecipient;
@@ -1956,11 +1980,48 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (recipient == null || gift == null) return;
     if (!_isLuckGift(gift)) return;
     try {
-      await _service.sendRoomLuckGift(
-        roomId: _roomId,
-        recipientId: recipient,
-        giftId: gift['id'] as String,
-      );
+      _comboStartedAt = DateTime.now();
+      if (_isLuckGift(gift)) {
+        await _service.sendRoomLuckGift(
+          roomId: _roomId,
+          recipientId: recipient,
+          giftId: gift['id'] as String,
+        );
+      } else {
+        final payload = <String, dynamic>{
+          'gift_id': gift['id'],
+          'icon': gift['icon'],
+          'thumbnail_url': gift['icon'],
+          'name': gift['name'],
+          'media_url': gift['media_url'],
+          'media_type': gift['media_type'],
+          'category': gift['category'],
+          'recipient_id': recipient,
+          'flying_banner': true,
+        };
+        final optimistic = _queueOptimisticMessage(
+          body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
+          type: 'gift',
+          payload: payload,
+        );
+        try {
+          await _service.sendRoomGift(
+            roomId: _roomId,
+            recipientId: recipient,
+            giftId: gift['id'] as String,
+          );
+          await _service.sendRoomMessage(
+            _roomId,
+            'أرسل هدية ${gift['name'] ?? 'هدية'}',
+            type: 'gift',
+            payload: payload,
+          );
+        } catch (_) {
+          _removeOptimisticMessage(optimistic);
+          rethrow;
+        }
+      }
+      if (mounted) setState(() => _comboCount++);
       _startGiftCombo();
     } catch (e) {
       _messageSnack(e.toString().replaceFirst('Exception: ', ''));
@@ -3247,9 +3308,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _messageSnack('نحتاج إذن الوصول إلى ملفات الصوت لاختيار الموسيقى.');
       return;
     }
-    final result = await FilePicker.pickFiles(type: FileType.audio);
-    for (final file in result) {
-      final bytes = await file.readAsBytes();
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+      allowMultiple: true,
+    );
+    for (final file in picked?.files ?? const <PlatformFile>[]) {
+      final bytes =
+          file.bytes ??
+          (file.path == null ? <int>[] : await File(file.path!).readAsBytes());
       if (bytes.isEmpty) continue;
       try {
         final uploaded = await _service.uploadRoomMusic(
@@ -4213,6 +4279,40 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             final gift = Map<String, dynamic>.from(
                               latestGiftEvent,
                             );
+                            final latestPayload = Map<String, dynamic>.from(
+                              gift['payload'] ?? const <String, dynamic>{},
+                            );
+                            final senderId = gift['sender_id']?.toString();
+                            final recipientId = latestPayload['recipient_id']
+                                ?.toString();
+                            final giftId = latestPayload['gift_id']?.toString();
+                            var comboCount = 0;
+                            for (final candidate in messages.reversed) {
+                              if (candidate['message_type'] !=
+                                  gift['message_type']) {
+                                break;
+                              }
+                              final candidatePayload =
+                                  Map<String, dynamic>.from(
+                                    candidate['payload'] ??
+                                        const <String, dynamic>{},
+                                  );
+                              if (candidate['sender_id']?.toString() !=
+                                      senderId ||
+                                  candidatePayload['recipient_id']
+                                          ?.toString() !=
+                                      recipientId ||
+                                  candidatePayload['gift_id']?.toString() !=
+                                      giftId) {
+                                break;
+                              }
+                              comboCount++;
+                            }
+                            latestPayload['combo_count'] = comboCount.clamp(
+                              1,
+                              999,
+                            );
+                            gift['payload'] = latestPayload;
                             WidgetsBinding.instance.addPostFrameCallback((_) {
                               if (!mounted ||
                                   gift['id'] == _shownGiftMessageId) {
@@ -4556,7 +4656,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                             alignment: Alignment.center,
                                             children: [
                                               CircularProgressIndicator(
-                                                value: _comboSeconds / 10,
+                                                value: _comboSeconds / 3,
                                                 strokeWidth: 7,
                                                 backgroundColor: Colors.white24,
                                                 valueColor:
@@ -4586,7 +4686,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                       ),
                                                     ),
                                                     Text(
-                                                      '$_comboSeconds',
+                                                      '×$_comboCount',
                                                       style: const TextStyle(
                                                         color: Colors.white,
                                                         fontSize: 19,
@@ -4870,20 +4970,20 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         }
       });
     }
-    _flightTimer = Timer(const Duration(milliseconds: 2100), () {
+    _flightTimer = Timer(const Duration(milliseconds: 180), () {
       if (mounted) setState(() => _flyingToSeat = true);
     });
-    _flightHideTimer = Timer(const Duration(milliseconds: 3300), () {
+    _flightHideTimer = Timer(const Duration(milliseconds: 820), () {
       if (mounted) setState(() => _flightVisible = false);
     });
-    _bannerTimer = Timer(const Duration(milliseconds: 3900), () {
+    _bannerTimer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) setState(() => _bannerLeaving = true);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _bannerEntered = true);
     });
     if (_compactGift) {
-      Future<void>.delayed(const Duration(milliseconds: 3600), _hide);
+      Future<void>.delayed(const Duration(milliseconds: 1900), _hide);
       return;
     }
     final url = _payload['media_url'] as String?;
@@ -4985,7 +5085,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             FractionalTranslation(translation: offset, child: child),
         child: TweenAnimationBuilder<double>(
           tween: Tween(begin: .22, end: _flyingToSeat ? .34 : 1),
-          duration: const Duration(milliseconds: 2000),
+          duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutBack,
           builder: (_, scale, child) =>
               Transform.scale(scale: scale, child: child),
@@ -5066,7 +5166,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             alignment: Alignment.center,
             children: [
               if (immersive) Positioned.fill(child: Center(child: mediaView)),
-              if (immersive && _payload['flying_banner'] != false)
+              if (_payload['flying_banner'] != false)
                 Positioned(
                   top: 34,
                   left: 0,
@@ -5077,7 +5177,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                         : _bannerEntered
                         ? Offset.zero
                         : const Offset(-1.35, 0),
-                    duration: const Duration(milliseconds: 900),
+                    duration: const Duration(milliseconds: 220),
                     curve: Curves.easeInOutCubic,
                     child: Align(
                       alignment: Alignment.centerLeft,
@@ -5095,59 +5195,102 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                           borderRadius: BorderRadius.circular(30),
                           border: Border.all(color: Colors.amberAccent),
                         ),
-                        child: Row(
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            senderAvatar != null &&
-                                    senderAvatar.startsWith('http')
-                                ? ClipOval(
-                                    child: Image.network(
-                                      senderAvatar,
-                                      width: 32,
-                                      height: 32,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    color: Colors.amberAccent,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                senderAvatar != null &&
+                                        senderAvatar.startsWith('http')
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          senderAvatar,
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.person,
+                                        color: Colors.amberAccent,
+                                      ),
+                                const SizedBox(width: 5),
+                                thumbnail != null &&
+                                        thumbnail.startsWith('http')
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          thumbnail,
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.card_giftcard,
+                                        color: Colors.amberAccent,
+                                      ),
+                                const SizedBox(width: 5),
+                                _recipientAvatar != null &&
+                                        _recipientAvatar!.startsWith('http')
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          _recipientAvatar!,
+                                          width: 32,
+                                          height: 32,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.person_pin,
+                                        color: Colors.amberAccent,
+                                      ),
+                                const SizedBox(width: 7),
+                                Text(
+                                  '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
                                   ),
-                            const SizedBox(width: 5),
-                            thumbnail != null && thumbnail.startsWith('http')
-                                ? ClipOval(
-                                    child: Image.network(
-                                      thumbnail,
-                                      width: 32,
-                                      height: 32,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.card_giftcard,
-                                    color: Colors.amberAccent,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '×${(_payload['combo_count'] as num?)?.toInt() ?? 1}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD54F),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w900,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black87,
+                                        blurRadius: 5,
+                                      ),
+                                    ],
                                   ),
-                            const SizedBox(width: 5),
-                            _recipientAvatar != null &&
-                                    _recipientAvatar!.startsWith('http')
-                                ? ClipOval(
-                                    child: Image.network(
-                                      _recipientAvatar!,
-                                      width: 32,
-                                      height: 32,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.person_pin,
-                                    color: Colors.amberAccent,
-                                  ),
-                            const SizedBox(width: 7),
-                            Text(
-                              '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: SizedBox(
+                                width: 190,
+                                height: 4,
+                                child: LinearProgressIndicator(
+                                  value:
+                                      (((_payload['combo_count'] as num?)
+                                                      ?.toDouble() ??
+                                                  1) /
+                                              10)
+                                          .clamp(0.08, 1.0),
+                                  backgroundColor: Colors.white24,
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
+                                        Color(0xFF34D399),
+                                      ),
+                                ),
                               ),
                             ),
                           ],
@@ -6481,7 +6624,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
             url: widget.profile['avatar_url'] as String?,
             label: widget.profile['username'] as String?,
             radius: 42,
-            profile: {...widget.profile, 'vip_frame_enabled': false},
+            profile: widget.profile,
           ),
         ),
         if (_svga.videoItem != null)
