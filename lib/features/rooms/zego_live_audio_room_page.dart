@@ -45,6 +45,7 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
   late final Future<bool> moderator;
   bool sending = false;
   bool showChat = true;
+  bool canManageRoom = false;
 
   String get dbRoomId => widget.room['id']?.toString() ?? '';
   bool get isOwner => widget.room['owner_id']?.toString() == service.uid;
@@ -55,6 +56,9 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
     token = loadRoom();
     chat = service.roomMessagesStream(dbRoomId);
     moderator = service.isRoomModerator(dbRoomId);
+    moderator.then((value) {
+      if (mounted) setState(() => canManageRoom = isOwner || value);
+    });
   }
 
   Future<Map<String, dynamic>> loadRoom() async {
@@ -148,7 +152,8 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
               ? ZegoUIKitPrebuiltLiveAudioRoomConfig.host()
               : ZegoUIKitPrebuiltLiveAudioRoomConfig.audience();
           // الجمهور يدخل صامتًا؛ الصوت يبدأ فقط عند أخذ مقعد حقيقي.
-          config.turnOnMicrophoneWhenJoining = host;
+          config.turnOnMicrophoneWhenJoining = false;
+          if (host) config.seat.takeIndexWhenJoining = -1;
           config.userAvatarUrl = service
               .currentUser
               ?.userMetadata?['avatar_url']
@@ -213,7 +218,7 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
           child: RoomHeader(
             room: widget.room,
             owner: profile,
-            isOwner: isOwner,
+            isOwner: canManageRoom,
             onSettings: openSettings,
             onGifts: openGifts,
             onExit: () => Navigator.pop(context),
