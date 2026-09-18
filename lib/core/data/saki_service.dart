@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -9,6 +10,8 @@ class SakiService {
   SakiService._();
   static final instance = SakiService._();
   final SupabaseClient client = Supabase.instance.client;
+  static const apiBaseUrl = 'https://sakichat.freecpanel.shop/api.php';
+  String? apiToken;
 
   User? get currentUser => client.auth.currentUser;
   String get uid => currentUser!.id;
@@ -25,12 +28,56 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> myProfile() async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.getUrl(
+          Uri.parse('$apiBaseUrl?action=me'),
+        );
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        final response = await request.close();
+        final decoded = jsonDecode(
+          await response.transform(utf8.decoder).join(),
+        );
+        if (response.statusCode >= 400) {
+          throw StateError('API profile request failed: $decoded');
+        }
+        return Map<String, dynamic>.from(decoded['data'] as Map);
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     final data = await client
         .from('profiles')
         .select()
         .eq('id', uid)
         .maybeSingle();
     return data;
+  }
+
+  Future<Map<String, dynamic>> googleLogin(String idToken) async {
+    final httpClient = HttpClient();
+    try {
+      final request = await httpClient.postUrl(
+        Uri.parse('$apiBaseUrl?action=google_login'),
+      );
+      request.headers.contentType = ContentType.json;
+      request.write(
+        jsonEncode({'action': 'google_login', 'id_token': idToken}),
+      );
+      final response = await request.close();
+      final decoded = jsonDecode(await response.transform(utf8.decoder).join());
+      if (response.statusCode >= 400 || decoded['ok'] != true) {
+        throw StateError(decoded['error']?.toString() ?? 'google_login_failed');
+      }
+      apiToken = decoded['token']?.toString();
+      return Map<String, dynamic>.from(decoded['data'] as Map);
+    } finally {
+      httpClient.close(force: true);
+    }
   }
 
   Future<List<Map<String, dynamic>>> userBadges(String userId) async {
@@ -634,6 +681,28 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> countries() async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.getUrl(
+          Uri.parse('$apiBaseUrl?action=countries'),
+        );
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        final response = await request.close();
+        final decoded = jsonDecode(
+          await response.transform(utf8.decoder).join(),
+        );
+        if (response.statusCode >= 400) {
+          throw StateError('countries_api_failed');
+        }
+        return List<Map<String, dynamic>>.from(decoded['data'] as List);
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     final rows = await client
         .from('countries')
         .select('code,name_ar,flag')
@@ -648,6 +717,72 @@ class SakiService {
     required String gender,
     XFile? avatar,
   }) async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        String? avatarUrl;
+        if (avatar != null) {
+          final bytes = await File(avatar.path).readAsBytes();
+          final boundary = 'saki_${DateTime.now().microsecondsSinceEpoch}';
+          final upload = await httpClient.postUrl(
+            Uri.parse(
+              '$apiBaseUrl?action=avatar_upload&access_token=$apiToken',
+            ),
+          );
+          upload.headers.set(
+            HttpHeaders.authorizationHeader,
+            'Bearer $apiToken',
+          );
+          upload.headers.contentType = ContentType(
+            'multipart',
+            'form-data',
+            parameters: {'boundary': boundary},
+          );
+          upload.write(
+            '--$boundary\r\nContent-Disposition: form-data; name="avatar"; filename="avatar.jpg"\r\nContent-Type: image/jpeg\r\n\r\n',
+          );
+          upload.add(bytes);
+          upload.write('\r\n--$boundary--\r\n');
+          final uploadResponse = await upload.close();
+          final uploadData = jsonDecode(
+            await uploadResponse.transform(utf8.decoder).join(),
+          );
+          if (uploadResponse.statusCode >= 400 || uploadData['ok'] != true) {
+            throw StateError('avatar_upload_failed');
+          }
+          avatarUrl = uploadData['data']['avatar_url']?.toString();
+        }
+        final request = await httpClient.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=profile_complete&access_token=$apiToken',
+          ),
+        );
+        request.headers.contentType = ContentType.json;
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        final payload = <String, dynamic>{
+          'username': username.trim(),
+          'country': country,
+          'gender': gender,
+        };
+        if (avatarUrl != null) payload['avatar_url'] = avatarUrl;
+        request.write(jsonEncode(payload));
+        final response = await request.close();
+        final decoded = jsonDecode(
+          await response.transform(utf8.decoder).join(),
+        );
+        if (response.statusCode >= 400 || decoded['ok'] != true) {
+          throw StateError(
+            decoded['error']?.toString() ?? 'profile_complete_failed',
+          );
+        }
+        return;
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     String? avatarUrl;
     if (avatar != null) {
       final bytes = await File(avatar.path).readAsBytes();
@@ -733,6 +868,26 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> feed({bool followingOnly = false}) async {
+    if (apiToken != null && !followingOnly) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.getUrl(
+          Uri.parse('$apiBaseUrl?action=posts_feed&limit=40'),
+        );
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        final response = await request.close();
+        final decoded = jsonDecode(
+          await response.transform(utf8.decoder).join(),
+        );
+        if (response.statusCode >= 400) throw StateError('feed_api_failed');
+        return List<Map<String, dynamic>>.from(decoded['data'] as List);
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     final selection =
         'id,author_id,content,visibility,created_at,profiles:author_id(id,username,display_name,saki_id,avatar_url,vip_level,vip_expires_at,wealth_level),post_media(id,storage_path,sort_order),post_likes(user_id),post_comments(id),post_shares(user_id)';
     final data = followingOnly
@@ -793,6 +948,27 @@ class SakiService {
     required List<XFile> images,
     required String visibility,
   }) async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.postUrl(
+          Uri.parse('$apiBaseUrl?action=post_create'),
+        );
+        request.headers.contentType = ContentType.json;
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        request.write(
+          jsonEncode({'content': content.trim(), 'visibility': visibility}),
+        );
+        final response = await request.close();
+        if (response.statusCode >= 400) throw StateError('post_create_failed');
+        return;
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     final post = await client
         .from('posts')
         .insert({
@@ -827,6 +1003,25 @@ class SakiService {
   }
 
   Future<void> togglePostLike(String postId, bool liked) async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.postUrl(
+          Uri.parse('$apiBaseUrl?action=post_like_toggle'),
+        );
+        request.headers.contentType = ContentType.json;
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        request.write(jsonEncode({'post_id': postId}));
+        final response = await request.close();
+        if (response.statusCode >= 400) throw StateError('post_like_failed');
+        return;
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     if (liked) {
       await client
           .from('post_likes')
@@ -842,6 +1037,26 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> comments(String postId) async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.getUrl(
+          Uri.parse('$apiBaseUrl?action=post_comments&post_id=$postId'),
+        );
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        final response = await request.close();
+        final decoded = jsonDecode(
+          await response.transform(utf8.decoder).join(),
+        );
+        if (response.statusCode >= 400) throw StateError('comments_api_failed');
+        return List<Map<String, dynamic>>.from(decoded['data'] as List);
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     final data = await client
         .from('post_comments')
         .select(
@@ -856,6 +1071,29 @@ class SakiService {
       client.storage.from('posts').getPublicUrl(storagePath);
 
   Future<void> addComment(String postId, String content) async {
+    if (apiToken != null) {
+      final httpClient = HttpClient();
+      try {
+        final request = await httpClient.postUrl(
+          Uri.parse('$apiBaseUrl?action=post_comment_create'),
+        );
+        request.headers.contentType = ContentType.json;
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $apiToken',
+        );
+        request.write(
+          jsonEncode({'post_id': postId, 'content': content.trim()}),
+        );
+        final response = await request.close();
+        if (response.statusCode >= 400) {
+          throw StateError('comment_create_failed');
+        }
+        return;
+      } finally {
+        httpClient.close(force: true);
+      }
+    }
     await client.from('post_comments').insert({
       'post_id': postId,
       'user_id': uid,
@@ -2217,6 +2455,24 @@ class SakiService {
   }
 
   Future<Map<String, int>> profileStats() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=profile_stats&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return Map<String, int>.from(
+          (d['data'] as Map).map(
+            (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+          ),
+        );
+      } finally {
+        c.close(force: true);
+      }
+    }
     final posts = await client.from('posts').select('id').eq('author_id', uid);
     final followers = await client
         .from('follows')
@@ -2283,6 +2539,23 @@ class SakiService {
   }
 
   Future<void> toggleFollow(String otherUserId, bool following) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=follow_toggle&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'user_id': otherUserId}));
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('follow_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     if (following) {
       await client
           .from('follows')
@@ -2298,6 +2571,22 @@ class SakiService {
   }
 
   Future<bool> isFollowing(String otherUserId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=following_check&user_id=$otherUserId&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return d['data']['following'] == true;
+      } finally {
+        c.close(force: true);
+      }
+    }
     final row = await client
         .from('follows')
         .select('follower_id')
@@ -2328,6 +2617,22 @@ class SakiService {
   Future<List<Map<String, dynamic>>> searchAll(String query) async {
     final term = query.trim();
     if (term.isEmpty) return [];
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=search&q=${Uri.encodeQueryComponent(term)}&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final sakiId = int.tryParse(term);
     final profileFilters =
         'username.ilike.%$term%,display_name.ilike.%$term%${sakiId == null ? '' : ',saki_id.eq.$sakiId'}';

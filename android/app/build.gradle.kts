@@ -9,8 +9,8 @@ plugins {
 
 android {
     namespace = "saki.room.ch"
-    // Android SDK 37 is required by permission_handler_android.
-    compileSdk = 37
+    // Use the installed SDK supported by the current Android Gradle Plugin.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
@@ -15,7 +15,9 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   static const _videoUrl = 'https://f.top4top.io/m_3901fr5rd0.mp4';
-  StreamSubscription<AuthState>? _authSubscription;
+  static const _googleWebClientId =
+      '164807497226-k7h6m36u5rphd0th08em1u233nu1hfhq.apps.googleusercontent.com';
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   VideoPlayerController? _video;
   bool _loading = false;
   bool _routing = false;
@@ -23,29 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (event) {
-        if (event.session != null) _routeAfterAuth();
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        if (!mounted) return;
-        _showError(
-          'فشل استلام جلسة Google\n\n'
-          'النوع: ${error.runtimeType}\n'
-          'التفاصيل: $error\n\n'
-          'الخطأ الكامل:\n$stackTrace',
-        );
-      },
-    );
-    // When OAuth returns from Chrome, Supabase may restore the session before
-    // this page's auth-state listener is attached. Check the current session
-    // as well so the user is not left on the login screen.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (Supabase.instance.client.auth.currentSession != null) {
-        _routeAfterAuth();
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final error = GoRouterState.of(context)
@@ -78,16 +57,14 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _googleLogin() async {
     setState(() => _loading = true);
     try {
-      // Use the system browser so Google authenticates independently of the
-      // Play-signed APK certificate. Supabase handles the callback and
-      // restores the session through the registered Android deep link.
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'io.supabase.saki://login-callback/',
-        authScreenLaunchMode: LaunchMode.externalApplication,
-      );
-    } on AuthException catch (e) {
-      if (mounted) _showError(_authDiagnosticMessage(e));
+      await _googleSignIn.initialize(serverClientId: _googleWebClientId);
+      final account = await _googleSignIn.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw StateError('Google لم يعطِ رمز ID صالحًا.');
+      }
+      final profile = await SakiService.instance.googleLogin(idToken);
+      await _routeAfterAuth(profile);
     } catch (error) {
       if (mounted) {
         _showError(
@@ -101,11 +78,11 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _routeAfterAuth() async {
+  Future<void> _routeAfterAuth([Map<String, dynamic>? initialProfile]) async {
     if (_routing || !mounted) return;
     _routing = true;
     try {
-      final profile = await SakiService.instance.myProfile();
+      final profile = initialProfile ?? await SakiService.instance.myProfile();
       final username = profile?['username']?.toString() ?? '';
       final complete =
           username.isNotEmpty &&
@@ -140,14 +117,6 @@ class _LoginPageState extends State<LoginPage> {
 
   String _friendlyOAuthError(String error) => _friendlyAuthError(error);
 
-  String _authDiagnosticMessage(AuthException error) {
-    return 'وصل الطلب إلى Supabase لكن تم رفضه\n\n'
-        'الرسالة: ${error.message}\n'
-        'كود HTTP: ${error.statusCode ?? 'غير متوفر'}\n'
-        'كود Supabase: ${error.code ?? 'غير متوفر'}\n\n'
-        'الخطأ الخام:\n$error';
-  }
-
   Future<void> _showError(String text) async {
     if (!mounted) return;
     await showDialog<void>(
@@ -173,7 +142,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _authSubscription?.cancel();
     _video?.dispose();
     super.dispose();
   }

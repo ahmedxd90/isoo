@@ -36,16 +36,30 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
       final countries = await _service.countries();
       if (mounted) {
         setState(() {
-          _countries = countries;
+          _countries = countries.isEmpty ? _fallbackCountries : countries;
           final existing = profile?['username']?.toString() ?? '';
           _username.text = existing.startsWith('user_') ? '' : existing;
         });
       }
     } catch (_) {
+      if (mounted) setState(() => _countries = _fallbackCountries);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  static const _fallbackCountries = <Map<String, dynamic>>[
+    {'code': 'JO', 'name_ar': 'الأردن', 'flag': '🇯🇴'},
+    {'code': 'SA', 'name_ar': 'السعودية', 'flag': '🇸🇦'},
+    {'code': 'AE', 'name_ar': 'الإمارات العربية المتحدة', 'flag': '🇦🇪'},
+    {'code': 'EG', 'name_ar': 'مصر', 'flag': '🇪🇬'},
+    {'code': 'IQ', 'name_ar': 'العراق', 'flag': '🇮🇶'},
+    {'code': 'SY', 'name_ar': 'سوريا', 'flag': '🇸🇾'},
+    {'code': 'PS', 'name_ar': 'فلسطين', 'flag': '🇵🇸'},
+    {'code': 'LB', 'name_ar': 'لبنان', 'flag': '🇱🇧'},
+    {'code': 'KW', 'name_ar': 'الكويت', 'flag': '🇰🇼'},
+    {'code': 'QA', 'name_ar': 'قطر', 'flag': '🇶🇦'},
+  ];
 
   Future<void> _pickAvatar() async {
     final image = await ImagePicker().pickImage(
@@ -72,9 +86,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
         avatar: _avatar,
       );
       if (mounted) context.go('/home');
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر حفظ معلوماتك. حاول مرة أخرى.');
+        final message = error.toString().replaceFirst('Bad state: ', '');
+        CustomToast.show(context, 'تعذر حفظ معلوماتك: $message');
       }
     } finally {
       if (mounted) setState(() => _saving = false);
