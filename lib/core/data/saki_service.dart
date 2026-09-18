@@ -1251,6 +1251,20 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> reels({bool followingOnly = false}) async {
+    if (apiToken != null && !followingOnly) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=reels_feed&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final selection =
         'id,author_id,video_url,description,visibility,created_at,profiles:author_id(username,avatar_url,saki_id,vip_level,vip_expires_at,wealth_level),reel_likes(user_id),reel_comments(id)';
     final data = followingOnly
@@ -1324,6 +1338,25 @@ class SakiService {
   }
 
   Future<void> toggleReelLike(String reelId, bool liked) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=reel_like_toggle&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'reel_id': reelId}));
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('reel_like_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     if (liked) {
       await client
           .from('reel_likes')
@@ -3045,6 +3078,22 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> reelComments(String reelId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=reel_comments&reel_id=$reelId&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final data = await client
         .from('reel_comments')
         .select(
@@ -3056,6 +3105,25 @@ class SakiService {
   }
 
   Future<void> addReelComment(String reelId, String content) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=reel_comment_create&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'reel_id': reelId, 'content': content.trim()}));
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('reel_comment_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.from('reel_comments').insert({
       'reel_id': reelId,
       'user_id': uid,
