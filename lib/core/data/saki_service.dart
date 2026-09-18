@@ -3186,6 +3186,20 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> accountModules() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=wallet&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final existing = await client
         .from('saki_account_modules')
         .select()
@@ -3587,6 +3601,25 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> roomGiftCatalog({String? category}) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final suffix = category == null || category == 'bag'
+            ? ''
+            : '&category=${Uri.encodeQueryComponent(category)}';
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=gift_catalog$suffix&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     var query = client.from('room_gift_catalog').select().eq('is_active', true);
     if (category != null && category != 'bag') {
       query = query.eq('category', category);
@@ -3610,6 +3643,33 @@ class SakiService {
     required String giftId,
     int quantity = 1,
   }) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=gift_send&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'room_id': roomId,
+            'recipient_id': recipientId,
+            'gift_id': giftId,
+            'quantity': quantity,
+          }),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'gift_send_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client.rpc(
       'send_room_gift',
       params: {
