@@ -3597,6 +3597,20 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> familySquare({String? query}) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=families&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     var request = client.from('family_square').select();
     if (query != null && query.trim().isNotEmpty) {
       request = request.ilike('name', '%${query.trim()}%');
@@ -3626,6 +3640,32 @@ class SakiService {
   }) async {
     final aliasError = familyAliasValidationMessage(alias);
     if (aliasError != null) throw Exception(aliasError);
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=family_create&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'name': name.trim(),
+            'alias': alias.trim(),
+            'description': description.trim(),
+            'avatar_url': avatarUrl,
+          }),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true)
+          throw StateError(d['error']?.toString() ?? 'family_create_failed');
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final result = await client.rpc(
       'create_family',
       params: {
@@ -3642,14 +3682,62 @@ class SakiService {
   }
 
   Future<void> requestFamilyJoin(String familyId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=family_join&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'family_id': familyId}));
+        if ((await r.close()).statusCode >= 400)
+          throw StateError('family_join_failed');
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.rpc('request_family_join', params: {'p_family_id': familyId});
   }
 
   Future<void> leaveFamily(String familyId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=family_leave&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'family_id': familyId}));
+        if ((await r.close()).statusCode >= 400)
+          throw StateError('family_leave_failed');
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.rpc('leave_family', params: {'p_family_id': familyId});
   }
 
   Future<List<Map<String, dynamic>>> familyJoinRequests(String familyId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=family_requests&family_id=$familyId&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client
         .from('family_join_requests')
         .select(
