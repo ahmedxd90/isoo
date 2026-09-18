@@ -581,6 +581,29 @@ class SakiService {
   }
 
   Future<void> storeEquip(String productId, bool equipped) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=store_equip&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'product_id': productId,
+            'equipped': equipped,
+            'category': 'frame',
+          }),
+        );
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('store_equip_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.rpc(
       'saki_store_equip',
       params: {'p_product_id': productId, 'p_equipped': equipped},
@@ -3889,6 +3912,34 @@ class SakiService {
     int totalGold,
     int recipientLimit,
   ) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=luck_bag_create&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'room_id': roomId,
+            'total_gold': totalGold,
+            'recipient_limit': recipientLimit,
+          }),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'luck_bag_create_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final row = await client.rpc(
       'create_room_luck_bag',
       params: {
@@ -3901,6 +3952,26 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> claimRoomLuckBag(String bagId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=luck_bag_claim&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'bag_id': bagId}));
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'luck_bag_claim_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client.rpc(
       'claim_room_luck_bag',
       params: {'p_bag_id': bagId},
