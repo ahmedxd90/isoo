@@ -1266,6 +1266,20 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> conversations() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=conversations&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final memberships = await client
         .from('conversation_members')
         .select('conversation_id')
@@ -1285,6 +1299,30 @@ class SakiService {
   }
 
   Future<String> createConversation(String otherUserId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=conversation_create&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'user_id': otherUserId}));
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(
+            d['error']?.toString() ?? 'conversation_create_failed',
+          );
+        }
+        return d['data']['id'].toString();
+      } finally {
+        c.close(force: true);
+      }
+    }
     try {
       final result = await client.rpc(
         'create_private_conversation',
@@ -1528,6 +1566,24 @@ class SakiService {
   }
 
   Stream<List<Map<String, dynamic>>> messagesStream(String conversationId) {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 2)).asyncMap((_) async {
+        final c = HttpClient();
+        try {
+          final r = await c.getUrl(
+            Uri.parse(
+              '$apiBaseUrl?action=messages&conversation_id=$conversationId&access_token=$apiToken',
+            ),
+          );
+          final d = jsonDecode(
+            await (await r.close()).transform(utf8.decoder).join(),
+          );
+          return List<Map<String, dynamic>>.from(d['data'] as List);
+        } finally {
+          c.close(force: true);
+        }
+      });
+    }
     return client
         .from('messages')
         .stream(primaryKey: ['id'])
@@ -1550,6 +1606,29 @@ class SakiService {
     required String conversationId,
     required String emoji,
   }) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=message_react&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'message_id': messageId,
+            'conversation_id': conversationId,
+            'emoji': emoji,
+          }),
+        );
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('message_react_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.from('message_reactions').upsert({
       'message_id': messageId,
       'conversation_id': conversationId,
@@ -1572,6 +1651,31 @@ class SakiService {
     String? mediaUrl,
     String? mediaName,
   }) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=message_send&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'conversation_id': conversationId,
+            'body': body.trim(),
+            'message_type': messageType,
+            'media_url': mediaUrl,
+            'media_name': mediaName,
+          }),
+        );
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('message_send_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.from('messages').insert({
       'conversation_id': conversationId,
       'sender_id': uid,
