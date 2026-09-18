@@ -114,6 +114,34 @@ class SakiService {
     }
   }
 
+  Future<Map<String, dynamic>> register({
+    required String username,
+    required String email,
+    required String password,
+  }) async {
+    final c = HttpClient();
+    try {
+      final r = await c.postUrl(Uri.parse('$apiBaseUrl?action=register'));
+      r.headers.contentType = ContentType.json;
+      r.write(
+        jsonEncode({
+          'username': username.trim(),
+          'email': email.trim(),
+          'password': password,
+        }),
+      );
+      final d = jsonDecode(
+        await (await r.close()).transform(utf8.decoder).join(),
+      );
+      if (d['ok'] != true) {
+        throw StateError(d['error']?.toString() ?? 'register_failed');
+      }
+      return Map<String, dynamic>.from(d['data'] as Map);
+    } finally {
+      c.close(force: true);
+    }
+  }
+
   Future<List<Map<String, dynamic>>> userBadges(String userId) async {
     final rows = await client.rpc(
       'user_badges_for_profile',

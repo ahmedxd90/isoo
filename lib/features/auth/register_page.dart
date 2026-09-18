@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -43,16 +43,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _loadCountries() async {
     try {
-      final data = await Supabase.instance.client
-          .from('countries')
-          .select('code,name_ar,flag')
-          .order('name_ar');
+      final data = await SakiService.instance.countries();
       if (mounted) {
         setState(() => _countries = List<Map<String, dynamic>>.from(data));
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'تعذر تحميل قائمة الدول من Supabase.');
+        setState(() => _error = 'تعذر تحميل قائمة الدول.');
       }
     } finally {
       if (mounted) setState(() => _loadingCountries = false);
@@ -89,62 +86,28 @@ class _RegisterPageState extends State<RegisterPage> {
         orElse: () => null,
       );
       final countryName = selected?['name_ar'] as String?;
-      final response = await Supabase.instance.client.auth.signUp(
+      await SakiService.instance.register(
+        username: _username.text.trim(),
         email: _email.text.trim(),
         password: _password.text,
-        data: {
-          'username': _username.text.trim(),
-          'display_name': _username.text.trim(),
-          'country': countryName,
-          'gender': _gender,
-        },
       );
-      final user = response.user;
-      if (user != null && _avatar != null && response.session != null) {
-        final bytes = await File(_avatar!.path).readAsBytes();
-        final path =
-            '${user.id}/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        await Supabase.instance.client.storage
-            .from('avatars')
-            .uploadBinary(
-              path,
-              bytes,
-              fileOptions: const FileOptions(
-                upsert: true,
-                contentType: 'image/jpeg',
-              ),
-            );
-        final avatarUrl = Supabase.instance.client.storage
-            .from('avatars')
-            .getPublicUrl(path);
-        await Supabase.instance.client
-            .from('profiles')
-            .update({'avatar_url': avatarUrl})
-            .eq('id', user.id);
-      }
       if (!mounted) return;
-      if (response.session == null) {
-        await showDialog<void>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('تحقق من بريدك'),
-            content: const Text(
-              'تم إنشاء الحساب في Supabase. افتح بريدك الإلكتروني لتأكيد الحساب ثم سجّل الدخول.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('حسنًا'),
-              ),
-            ],
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('تم إنشاء الحساب'),
+          content: Text(
+            'تم إنشاء الحساب بنجاح${countryName == null ? '' : ' في $countryName'}. سجّل الدخول للمتابعة.',
           ),
-        );
-        if (mounted) context.go('/login');
-      } else {
-        context.go('/home');
-      }
-    } on AuthException catch (e) {
-      setState(() => _error = e.message);
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('حسنًا'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) context.go('/login');
     } catch (e) {
       setState(
         () => _error = 'تعذر إنشاء الحساب الآن. تحقق من الاتصال وحاول مجددًا.',
