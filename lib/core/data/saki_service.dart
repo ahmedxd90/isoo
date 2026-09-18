@@ -3659,8 +3659,9 @@ class SakiService {
         final d = jsonDecode(
           await (await r.close()).transform(utf8.decoder).join(),
         );
-        if (d['ok'] != true)
+        if (d['ok'] != true) {
           throw StateError(d['error']?.toString() ?? 'family_create_failed');
+        }
         return Map<String, dynamic>.from(d['data'] as Map);
       } finally {
         c.close(force: true);
@@ -3691,8 +3692,9 @@ class SakiService {
         r.headers.contentType = ContentType.json;
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
         r.write(jsonEncode({'family_id': familyId}));
-        if ((await r.close()).statusCode >= 400)
+        if ((await r.close()).statusCode >= 400) {
           throw StateError('family_join_failed');
+        }
         return;
       } finally {
         c.close(force: true);
@@ -3711,8 +3713,9 @@ class SakiService {
         r.headers.contentType = ContentType.json;
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
         r.write(jsonEncode({'family_id': familyId}));
-        if ((await r.close()).statusCode >= 400)
+        if ((await r.close()).statusCode >= 400) {
           throw StateError('family_leave_failed');
+        }
         return;
       } finally {
         c.close(force: true);
