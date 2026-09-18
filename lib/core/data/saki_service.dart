@@ -1691,6 +1691,20 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> rooms() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=rooms_feed&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final data = await client.rpc('get_trending_rooms');
     return List<Map<String, dynamic>>.from(data).map((room) {
       final owner = <String, dynamic>{
@@ -1708,6 +1722,20 @@ class SakiService {
   }
 
   Future<Set<String>> followedRoomIds() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=room_followed&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return Set<String>.from((d['data'] as List).map((e) => e.toString()));
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client
         .from('room_follows')
         .select('room_id')
@@ -1720,6 +1748,23 @@ class SakiService {
   }
 
   Future<void> joinRoom(String roomId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=room_join&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'room_id': roomId}));
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('room_join_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client.rpc('enter_room', params: {'p_room_id': roomId});
   }
 
@@ -1748,6 +1793,23 @@ class SakiService {
   }
 
   Future<void> leaveRoom(String roomId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=room_leave&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'room_id': roomId}));
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('room_leave_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     try {
       await client.rpc('leave_room', params: {'p_room_id': roomId});
       return;
@@ -2226,6 +2288,25 @@ class SakiService {
   }
 
   Future<void> toggleRoomFollow(String roomId, bool followed) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=room_follow_toggle&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'room_id': roomId}));
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('room_follow_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     if (followed) {
       await client
           .from('room_follows')
@@ -2514,6 +2595,33 @@ class SakiService {
     required String type,
     XFile? image,
   }) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=room_create&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'name': name.trim(),
+            'description': description.trim(),
+            'country': country,
+            'type': type,
+          }),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'room_create_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final owned = await myOwnedRoom();
     if (owned != null) {
       throw Exception('لديك غرفة منشأة مسبقاً.');
