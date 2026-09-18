@@ -2132,6 +2132,24 @@ class SakiService {
     String roomId, {
     DateTime? after,
   }) {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 2)).asyncMap((_) async {
+        final c = HttpClient();
+        try {
+          final r = await c.getUrl(
+            Uri.parse(
+              '$apiBaseUrl?action=room_messages&room_id=$roomId&access_token=$apiToken',
+            ),
+          );
+          final d = jsonDecode(
+            await (await r.close()).transform(utf8.decoder).join(),
+          );
+          return List<Map<String, dynamic>>.from(d['data'] as List);
+        } finally {
+          c.close(force: true);
+        }
+      });
+    }
     return client
         .from('room_messages')
         .stream(primaryKey: ['id'])
@@ -2299,6 +2317,32 @@ class SakiService {
     String type = 'chat',
     Map<String, dynamic> payload = const {},
   }) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=room_message_send&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'room_id': roomId,
+            'body': body,
+            'type': type,
+            'payload': payload,
+          }),
+        );
+        if ((await r.close()).statusCode >= 400) {
+          throw StateError('room_message_send_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     final mute = await client
         .from('room_mutes')
         .select('expires_at,mute_chat')
@@ -3211,6 +3255,20 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> notifications() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=notifications&access_token=$apiToken'),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final data = await client
         .from('notifications')
         .select(
@@ -3223,6 +3281,10 @@ class SakiService {
   }
 
   Stream<List<Map<String, dynamic>>> notificationsStream() {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 4))
+          .asyncMap((_) => notifications());
+    }
     return client
         .from('notifications')
         .stream(primaryKey: ['id'])
@@ -3256,6 +3318,23 @@ class SakiService {
   }
 
   Future<void> markNotificationRead(String id) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=notifications_read&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({}));
+        await r.close();
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     await client
         .from('notifications')
         .update({'is_read': true})
