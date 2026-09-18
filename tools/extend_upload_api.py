@@ -1,0 +1,6 @@
+from pathlib import Path
+p=Path('/tmp/api.php');s=p.read_text();marker="if ($action === 'google_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {"
+block=r'''if ($action === 'upload_asset' && $_SERVER['REQUEST_METHOD'] === 'POST') { $u=currentUser($pdo);if(!$u)respond(['ok'=>false,'error'=>'unauthorized'],401);if(empty($_FILES['file'])||$_FILES['file']['error']!==UPLOAD_ERR_OK)respond(['ok'=>false,'error'=>'file_missing'],422);$kind=preg_replace('/[^a-z0-9_-]/i','',$_POST['kind']??'asset');$ext=strtolower(pathinfo($_FILES['file']['name'],PATHINFO_EXTENSION));if(!in_array($ext,['png','jpg','jpeg','gif','webp','mp4','svga'],true))respond(['ok'=>false,'error'=>'file_type_not_allowed'],422);$dir=__DIR__.'/uploads/'.$kind;if(!is_dir($dir))mkdir($dir,0755,true);$name=$u['id'].'-'.bin2hex(random_bytes(8)).'.'.$ext;$dest=$dir.'/'.$name;if(!move_uploaded_file($_FILES['file']['tmp_name'],$dest))respond(['ok'=>false,'error'=>'file_save_failed'],500);$scheme=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')?'https':'http';respond(['ok'=>true,'data'=>['url'=>$scheme.'://'.$_SERVER['HTTP_HOST'].'/uploads/'.$kind.'/'.$name]]); }
+'''
+if marker not in s:raise SystemExit('marker missing')
+p.write_text(s.replace(marker,block+'\n'+marker,1));print('upload API extended')

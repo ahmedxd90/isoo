@@ -13,6 +13,40 @@ class SakiService {
   static const apiBaseUrl = 'https://sakichat.freecpanel.shop/api.php';
   String? apiToken;
 
+  Future<String> _uploadApi(XFile file, String kind) async {
+    final c = HttpClient();
+    try {
+      final boundary = '----saki${DateTime.now().microsecondsSinceEpoch}';
+      final r = await c.postUrl(
+        Uri.parse('$apiBaseUrl?action=upload_asset&access_token=$apiToken'),
+      );
+      r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+      r.headers.set(
+        HttpHeaders.contentTypeHeader,
+        'multipart/form-data; boundary=$boundary',
+      );
+      final bytes = await file.readAsBytes();
+      final name = file.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      r.write(
+        '--$boundary\r\nContent-Disposition: form-data; name="kind"\r\n\r\n$kind\r\n',
+      );
+      r.write(
+        '--$boundary\r\nContent-Disposition: form-data; name="file"; filename="$name"\r\nContent-Type: application/octet-stream\r\n\r\n',
+      );
+      r.add(bytes);
+      r.write('\r\n--$boundary--\r\n');
+      final d = jsonDecode(
+        await (await r.close()).transform(utf8.decoder).join(),
+      );
+      if (d['ok'] != true) {
+        throw StateError(d['error']?.toString() ?? 'upload_failed');
+      }
+      return d['data']['url'].toString();
+    } finally {
+      c.close(force: true);
+    }
+  }
+
   User? get currentUser => client.auth.currentUser;
   String get uid => currentUser!.id;
 
@@ -240,6 +274,22 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> globalWealthRanking(String period) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=global_rank&period=$period&mode=wealth&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client.rpc(
       'global_gift_user_leaderboard',
       params: {'p_period': period, 'p_mode': 'wealth'},
@@ -248,6 +298,22 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> globalRoomRanking(String period) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=global_rank&period=$period&mode=room&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client.rpc(
       'global_gift_room_leaderboard',
       params: {'p_period': period},
@@ -343,6 +409,7 @@ class SakiService {
   }
 
   Future<String> adminUploadGift(XFile file) async {
+    if (apiToken != null) return _uploadApi(file, 'gifts');
     final bytes = await File(file.path).readAsBytes();
     final extension = file.path.split('.').last.toLowerCase();
     final path =
@@ -365,6 +432,7 @@ class SakiService {
   }
 
   Future<String> adminUploadRoomEmoji(XFile file) async {
+    if (apiToken != null) return _uploadApi(file, 'emojis');
     final bytes = await File(file.path).readAsBytes();
     final extension = file.path.split('.').last.toLowerCase();
     final path =
@@ -438,6 +506,7 @@ class SakiService {
   }
 
   Future<String> adminUploadStoreFile(XFile file) async {
+    if (apiToken != null) return _uploadApi(file, 'store');
     final bytes = await File(file.path).readAsBytes();
     final extension = file.path.split('.').last.toLowerCase();
     final path =
@@ -730,11 +799,29 @@ class SakiService {
     );
   }
 
-  Stream<List<Map<String, dynamic>>> giftAnnouncementsStream() => client
-      .from('gift_announcements')
-      .stream(primaryKey: ['id'])
-      .order('created_at', ascending: false)
-      .limit(20);
+  Stream<List<Map<String, dynamic>>> giftAnnouncementsStream() {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 3)).asyncMap((_) async {
+        final c = HttpClient();
+        try {
+          final r = await c.getUrl(
+            Uri.parse('$apiBaseUrl?action=global_gifts&access_token=$apiToken'),
+          );
+          final d = jsonDecode(
+            await (await r.close()).transform(utf8.decoder).join(),
+          );
+          return List<Map<String, dynamic>>.from(d['data'] as List);
+        } finally {
+          c.close(force: true);
+        }
+      });
+    }
+    return client
+        .from('gift_announcements')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .limit(20);
+  }
 
   Future<String> myCountry() async {
     final profile = await myProfile();
