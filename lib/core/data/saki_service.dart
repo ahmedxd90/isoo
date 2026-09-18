@@ -459,6 +459,25 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> storeProducts({String? category}) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final suffix = category == null
+            ? ''
+            : '&category=${Uri.encodeQueryComponent(category)}';
+        final r = await c.getUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=store_products$suffix&access_token=$apiToken',
+          ),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = category == null
         ? await client
               .from('saki_store_products')
@@ -534,6 +553,26 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> storeBuy(String productId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=store_buy&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'product_id': productId}));
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'store_buy_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map? ?? {});
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client.rpc(
       'saki_store_buy',
       params: {'p_product_id': productId},
@@ -3494,6 +3533,26 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> purchaseVip(int level) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=vip_purchase&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'level': level}));
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'vip_purchase_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     try {
       final rows = await client.rpc('purchase_vip', params: {'p_level': level});
       if (rows is Map) return Map<String, dynamic>.from(rows);
@@ -3519,6 +3578,28 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> convertDiamondsToGold(int amount) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse(
+            '$apiBaseUrl?action=diamonds_convert&access_token=$apiToken',
+          ),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'amount': amount}));
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'diamonds_convert_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final rows = await client.rpc(
       'convert_diamonds_to_gold',
       params: {'amount': amount},
@@ -3733,6 +3814,26 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> redeemSakiCode(String code) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=redeem&access_token=$apiToken'),
+        );
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(jsonEncode({'code': code.trim().toUpperCase()}));
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'redeem_failed');
+        }
+        return Map<String, dynamic>.from(d['data'] as Map? ?? {});
+      } finally {
+        c.close(force: true);
+      }
+    }
     try {
       final result = await client.rpc(
         'redeem_saki_code',
