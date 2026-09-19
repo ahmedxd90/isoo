@@ -270,7 +270,7 @@ class SuperAdminPage extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'صلاحيات الإدارة محمية من Supabase',
+                    'صلاحيات الإدارة محمية عبر MySQL API',
                     style: TextStyle(color: Colors.white70),
                   ),
                 ],

@@ -4,8 +4,6 @@ import 'package:flutter/services.dart';
 import 'dart:developer' as developer;
 import 'dart:async';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/profile_post_card.dart';
@@ -90,7 +88,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       });
     } catch (_) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل بروفايل المستخدم من Supabase');
+        CustomToast.show(context, 'تعذر تحميل بروفايل المستخدم من الخادم');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -228,12 +226,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
       'error_type: ${error.runtimeType}',
       'error: $error',
     ];
-    if (error is PostgrestException) {
-      lines.add('postgrest_code: ${error.code ?? '<null>'}');
-      lines.add('postgrest_message: ${error.message}');
-      lines.add('postgrest_details: ${error.details}');
-      lines.add('postgrest_hint: ${error.hint ?? '<null>'}');
-    }
     lines
       ..add('stack_trace:')
       ..add(stackTrace.toString());

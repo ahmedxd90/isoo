@@ -18,6 +18,7 @@ Future<void> main() async {
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
   );
+  await SakiService.instance.restoreApiSession();
   await SakiNotificationService.instance.initialize();
   runApp(const SakiApp());
 }
@@ -88,8 +89,7 @@ class _SplashPageState extends State<SplashPage>
     SakiPermissionService.requestOnFirstLaunch();
     Future<void>.delayed(const Duration(milliseconds: 1500), () async {
       if (!mounted) return;
-      final session = Supabase.instance.client.auth.currentSession;
-      if (session == null) {
+      if (SakiService.instance.apiToken == null) {
         context.go('/login');
         return;
       }
@@ -173,7 +173,7 @@ class AppBannedPage extends StatelessWidget {
             const SizedBox(height: 24),
             OutlinedButton(
               onPressed: () async {
-                await Supabase.instance.client.auth.signOut();
+                await SakiService.instance.logout();
                 if (context.mounted) context.go('/login');
               },
               child: const Text('تسجيل الخروج'),

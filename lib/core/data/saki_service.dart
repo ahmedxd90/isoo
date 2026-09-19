@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SakiService {
@@ -12,6 +13,28 @@ class SakiService {
   final SupabaseClient client = Supabase.instance.client;
   static const apiBaseUrl = 'https://sakichat.freecpanel.shop/api.php';
   String? apiToken;
+  String? apiUserId;
+
+  Future<void> restoreApiSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    apiToken = prefs.getString('saki_api_token');
+    apiUserId = prefs.getString('saki_api_user_id');
+    if (apiToken == null) return;
+    try {
+      final profile = await myProfile();
+      if (profile == null) {
+        apiToken = null;
+        apiUserId = null;
+        await prefs.remove('saki_api_token');
+        await prefs.remove('saki_api_user_id');
+      }
+    } catch (_) {
+      apiToken = null;
+      apiUserId = null;
+      await prefs.remove('saki_api_token');
+      await prefs.remove('saki_api_user_id');
+    }
+  }
 
   Future<String> _uploadApi(XFile file, String kind) async {
     final c = HttpClient();
@@ -48,7 +71,7 @@ class SakiService {
   }
 
   User? get currentUser => client.auth.currentUser;
-  String get uid => currentUser!.id;
+  String get uid => apiUserId ?? currentUser!.id;
 
   String? familyAliasValidationMessage(String alias) {
     final value = alias.trim();
@@ -108,7 +131,14 @@ class SakiService {
         throw StateError(decoded['error']?.toString() ?? 'google_login_failed');
       }
       apiToken = decoded['token']?.toString();
-      return Map<String, dynamic>.from(decoded['data'] as Map);
+      final prefs = await SharedPreferences.getInstance();
+      if (apiToken != null) await prefs.setString('saki_api_token', apiToken!);
+      final profile = Map<String, dynamic>.from(decoded['data'] as Map);
+      apiUserId = profile['id']?.toString();
+      if (apiUserId != null) {
+        await prefs.setString('saki_api_user_id', apiUserId!);
+      }
+      return profile;
     } finally {
       httpClient.close(force: true);
     }
@@ -153,6 +183,8 @@ class SakiService {
         c.close(force: true);
       }
       apiToken = null;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saki_api_token');
     }
     await client.auth.signOut();
   }

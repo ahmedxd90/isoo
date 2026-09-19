@@ -91,7 +91,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) setState(() => _isSuperAdmin = isSuperAdmin);
     } catch (_) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل بيانات الملف من Supabase');
+        CustomToast.show(context, 'تعذر تحميل بيانات الملف من الخادم');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
