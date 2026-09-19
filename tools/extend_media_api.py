@@ -9,6 +9,12 @@ new="""  $id=bin2hex(random_bytes(16)); $s=$pdo->prepare('INSERT INTO posts (id,
   respond(['ok'=>true,'data'=>['id'=>$id,'author_id'=>$u['id'],'content'=>$content,'visibility'=>$visibility]],201);"""
 if old not in s: raise SystemExit('post block missing')
 s=s.replace(old,new,1)
+old="  if($content==='' || mb_strlen($content)>5000)respond(['ok'=>false,'error'=>'invalid_content'],422);"
+new="  $media=$d['media']??[]; if(!is_array($media))$media=[]; if(($content==='' && count($media)===0) || mb_strlen($content)>5000)respond(['ok'=>false,'error'=>'content_or_media_required'],422);"
+if old in s: s=s.replace(old,new,1)
+old="  $media=$d['media']??[]; if(is_array($media)){"
+new="  if(is_array($media)){"
+s=s.replace(old,new,1)
 old="""  $s=$pdo->prepare($sql); $s->bindValue(':limit',$limit,PDO::PARAM_INT); $s->bindValue(':offset',$offset,PDO::PARAM_INT); $s->execute();
   respond(['ok'=>true,'data'=>$s->fetchAll(),'pagination'=>['limit'=>$limit,'offset'=>$offset]]);"""
 new="""  $s=$pdo->prepare($sql); $s->bindValue(':limit',$limit,PDO::PARAM_INT); $s->bindValue(':offset',$offset,PDO::PARAM_INT); $s->execute(); $rows=$s->fetchAll();
