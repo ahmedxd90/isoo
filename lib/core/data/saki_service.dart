@@ -3486,6 +3486,21 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userPosts(String userId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=profile_posts&user_id=$userId'),
+        );
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final data = await client
         .from('posts')
         .select(
@@ -3522,6 +3537,21 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userReels(String userId) async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.getUrl(
+          Uri.parse('$apiBaseUrl?action=profile_reels&user_id=$userId'),
+        );
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        return List<Map<String, dynamic>>.from(d['data'] as List);
+      } finally {
+        c.close(force: true);
+      }
+    }
     final data = await client
         .from('reels')
         .select('id,video_url,description,created_at')
