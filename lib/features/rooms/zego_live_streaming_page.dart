@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zego_uikit_prebuilt_live_streaming/zego_uikit_prebuilt_live_streaming.dart';
 
 import '../../core/data/saki_service.dart';
@@ -48,8 +47,8 @@ class _ZegoLiveStreamingPageState extends State<ZegoLiveStreamingPage> {
   }
 
   Future<Map<String, dynamic>> _loadToken() async {
-    if (service.client.auth.currentSession == null) {
-      throw const AuthException('يرجى تسجيل الدخول أولًا');
+    if (service.apiToken == null) {
+      throw StateError('يرجى تسجيل الدخول أولًا');
     }
     if (dbRoomId.isNotEmpty) await service.joinRoom(dbRoomId);
     return service.zegoRoomToken(widget.roomId, userName: widget.userName);

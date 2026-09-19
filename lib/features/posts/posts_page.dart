@@ -493,9 +493,9 @@ class _HtmlPostCardState extends State<HtmlPostCard> {
     final content = widget.post['content'] as String? ?? '';
     final mediaUrls = media
         .map(
-          (item) => _service.client.storage
-              .from('posts')
-              .getPublicUrl(item['storage_path'] as String),
+          (item) => _service.postMediaUrl(
+            item['url'] as String? ?? item['storage_path'] as String,
+          ),
         )
         .toList();
     final comments = widget.post['_comments_count'] as int? ?? 0;

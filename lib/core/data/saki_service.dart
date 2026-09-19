@@ -142,6 +142,21 @@ class SakiService {
     }
   }
 
+  Future<void> logout() async {
+    if (apiToken != null) {
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(Uri.parse('$apiBaseUrl?action=logout'));
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        await r.close();
+      } finally {
+        c.close(force: true);
+      }
+      apiToken = null;
+    }
+    await client.auth.signOut();
+  }
+
   Future<List<Map<String, dynamic>>> userBadges(String userId) async {
     final rows = await client.rpc(
       'user_badges_for_profile',
@@ -1045,7 +1060,7 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> feed({bool followingOnly = false}) async {
-    if (apiToken != null && !followingOnly) {
+    if (apiToken != null) {
       final httpClient = HttpClient();
       try {
         final request = await httpClient.getUrl(
@@ -1126,6 +1141,10 @@ class SakiService {
     required String visibility,
   }) async {
     if (apiToken != null) {
+      final media = <String>[];
+      for (final image in images.take(10)) {
+        media.add(await _uploadApi(image, 'posts'));
+      }
       final httpClient = HttpClient();
       try {
         final request = await httpClient.postUrl(
@@ -1137,7 +1156,11 @@ class SakiService {
           'Bearer $apiToken',
         );
         request.write(
-          jsonEncode({'content': content.trim(), 'visibility': visibility}),
+          jsonEncode({
+            'content': content.trim(),
+            'visibility': visibility,
+            'media': media,
+          }),
         );
         final response = await request.close();
         if (response.statusCode >= 400) throw StateError('post_create_failed');
@@ -1244,8 +1267,9 @@ class SakiService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  String postMediaUrl(String storagePath) =>
-      client.storage.from('posts').getPublicUrl(storagePath);
+  String postMediaUrl(String storagePath) => storagePath.startsWith('http')
+      ? storagePath
+      : client.storage.from('posts').getPublicUrl(storagePath);
 
   Future<void> addComment(String postId, String content) async {
     if (apiToken != null) {
@@ -1279,7 +1303,7 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> reels({bool followingOnly = false}) async {
-    if (apiToken != null && !followingOnly) {
+    if (apiToken != null) {
       final c = HttpClient();
       try {
         final r = await c.getUrl(
@@ -1341,6 +1365,31 @@ class SakiService {
     required String description,
     required String visibility,
   }) async {
+    if (apiToken != null) {
+      final url = await _uploadApi(video, 'reels');
+      final c = HttpClient();
+      try {
+        final r = await c.postUrl(Uri.parse('$apiBaseUrl?action=reel_create'));
+        r.headers.contentType = ContentType.json;
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.write(
+          jsonEncode({
+            'video_url': url,
+            'description': description.trim(),
+            'visibility': visibility,
+          }),
+        );
+        final d = jsonDecode(
+          await (await r.close()).transform(utf8.decoder).join(),
+        );
+        if (d['ok'] != true) {
+          throw StateError(d['error']?.toString() ?? 'reel_create_failed');
+        }
+        return;
+      } finally {
+        c.close(force: true);
+      }
+    }
     final id = DateTime.now().millisecondsSinceEpoch.toString();
     final bytes = await File(video.path).readAsBytes();
     final extension = video.path.split('.').last.toLowerCase();

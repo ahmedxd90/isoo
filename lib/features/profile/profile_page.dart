@@ -6,7 +6,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -109,7 +108,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _logout() async {
-    await Supabase.instance.client.auth.signOut();
+    await SakiService.instance.logout();
     if (mounted) context.go('/login');
   }
 

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 
@@ -106,7 +105,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   Future<void> _checkNetwork() async {
     _toast('جارٍ فحص الاتصال...');
     try {
-      await InternetAddress.lookup('supabase.co');
+      await InternetAddress.lookup('sakichat.freecpanel.shop');
       if (mounted) _toast('الاتصال بالخادم يعمل بشكل طبيعي');
     } catch (_) {
       if (mounted) _toast('تعذر الوصول إلى الخادم، تحقق من الإنترنت');
@@ -143,7 +142,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   }
 
   Future<void> _logout() async {
-    await Supabase.instance.client.auth.signOut();
+    await SakiService.instance.logout();
     if (mounted) Navigator.of(context).pop(true);
   }
 
@@ -181,7 +180,7 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
                                   title: 'حسابي',
                                   subtitle: 'البيانات الشخصية والملف العام',
                                   onTap: () => _toast(
-                                    'بيانات الحساب محفوظة في Supabase',
+                                    'بيانات الحساب محفوظة في قاعدة SAKI الجديدة',
                                   ),
                                 ),
                                 _SettingSwitch(

@@ -2,7 +2,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zego_uikit_prebuilt_live_audio_room/zego_uikit_prebuilt_live_audio_room.dart';
 
 import '../../core/data/saki_service.dart';
@@ -63,8 +62,8 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
   }
 
   Future<Map<String, dynamic>> loadRoom() async {
-    if (service.client.auth.currentSession == null) {
-      throw const AuthException('يرجى تسجيل الدخول أولًا');
+    if (service.apiToken == null) {
+      throw StateError('يرجى تسجيل الدخول أولًا');
     }
     await service.joinRoom(dbRoomId);
     return service.zegoRoomToken(widget.roomId, userName: widget.userName);
@@ -724,7 +723,7 @@ class _RoomSettingsPageState extends State<RoomSettingsPage> {
             actionText: 'إضافة موسيقى',
           ),
           const Text(
-            'التشغيل والتحكم متاحان للمالك والمشرف فقط، والحالة تحفظ لحظيًا في Supabase.',
+            'التشغيل والتحكم متاحان للمالك والمشرف فقط، والحالة تحفظ في خادم SAKI.',
             style: TextStyle(color: Colors.white60, fontSize: 12),
           ),
           FutureBuilder<List<Map<String, dynamic>>>(
