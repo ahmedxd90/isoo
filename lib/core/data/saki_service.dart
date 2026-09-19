@@ -44,6 +44,7 @@ class SakiService {
         Uri.parse('$apiBaseUrl?action=upload_asset&access_token=$apiToken'),
       );
       r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+      r.headers.set('X-Access-Token', apiToken ?? '');
       r.headers.set(
         HttpHeaders.contentTypeHeader,
         'multipart/form-data; boundary=$boundary',
@@ -1198,7 +1199,13 @@ class SakiService {
           }),
         );
         final response = await request.close();
-        if (response.statusCode >= 400) throw StateError('post_create_failed');
+        final raw = await response.transform(utf8.decoder).join();
+        final decoded = jsonDecode(raw);
+        if (response.statusCode >= 400 || decoded['ok'] != true) {
+          throw StateError(
+            decoded['error']?.toString() ?? 'post_create_failed',
+          );
+        }
         return;
       } finally {
         httpClient.close(force: true);
@@ -1407,6 +1414,7 @@ class SakiService {
         final r = await c.postUrl(Uri.parse('$apiBaseUrl?action=reel_create'));
         r.headers.contentType = ContentType.json;
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.headers.set('X-Access-Token', apiToken ?? '');
         r.write(
           jsonEncode({
             'video_url': url,
