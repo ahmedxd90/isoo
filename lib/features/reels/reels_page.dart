@@ -757,8 +757,13 @@ class _CreateReelSheetState extends State<CreateReelSheet> {
         visibility: _visibility,
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'تعذر رفع الفيديو إلى Supabase.');
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'تعذر رفع الفيديو: ${e.toString().replaceFirst('Exception: ', '')}',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

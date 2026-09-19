@@ -889,8 +889,13 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
         visibility: _visibility,
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'تعذر نشر المنشور.');
+    } catch (e) {
+      if (mounted) {
+        setState(
+          () => _error =
+              'تعذر نشر المنشور: ${e.toString().replaceFirst('Exception: ', '')}',
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }

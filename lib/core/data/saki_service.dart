@@ -49,7 +49,10 @@ class SakiService {
         'multipart/form-data; boundary=$boundary',
       );
       final bytes = await file.readAsBytes();
-      final name = file.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      var name = file.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+      if (!name.contains('.')) {
+        name = '$name.${kind == 'reels' ? 'mp4' : 'jpg'}';
+      }
       r.write(
         '--$boundary\r\nContent-Disposition: form-data; name="kind"\r\n\r\n$kind\r\n',
       );
@@ -58,11 +61,11 @@ class SakiService {
       );
       r.add(bytes);
       r.write('\r\n--$boundary--\r\n');
-      final d = jsonDecode(
-        await (await r.close()).transform(utf8.decoder).join(),
-      );
+      final response = await r.close();
+      final raw = await response.transform(utf8.decoder).join();
+      final d = jsonDecode(raw);
       if (d['ok'] != true) {
-        throw StateError(d['error']?.toString() ?? 'upload_failed');
+        throw StateError(d['error']?.toString() ?? 'upload_failed ($raw)');
       }
       return d['data']['url'].toString();
     } finally {
