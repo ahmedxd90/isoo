@@ -167,9 +167,7 @@ class _ZegoLiveAudioRoomPageState extends State<ZegoLiveAudioRoomPage> {
           // الجمهور يدخل صامتًا؛ الصوت يبدأ فقط عند أخذ مقعد حقيقي.
           config.turnOnMicrophoneWhenJoining = false;
           if (host) config.seat.takeIndexWhenJoining = -1;
-          config.userAvatarUrl = service
-              .currentUser
-              ?.userMetadata?['avatar_url']
+          config.userAvatarUrl = service.currentUser?.userMetadata['avatar_url']
               ?.toString();
           // إبقاء شريط ZEGOCLOUD الأصلي والدردشة الأصلية كما في التصميم السابق.
           config.inRoomMessage.visible = true;

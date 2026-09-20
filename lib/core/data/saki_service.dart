@@ -56,6 +56,32 @@ class SakiService {
     }
   }
 
+  Future<Map<String, dynamic>> _apiPost(
+    String action,
+    Map<String, dynamic> payload,
+  ) async {
+    if (apiToken == null) throw StateError('unauthorized');
+    final c = HttpClient();
+    try {
+      final r = await c.postUrl(
+        Uri.parse('$apiBaseUrl?action=$action&access_token=$apiToken'),
+      );
+      r.headers.contentType = ContentType.json;
+      r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+      r.headers.set('X-Access-Token', apiToken!);
+      r.write(jsonEncode(payload));
+      final d = jsonDecode(
+        await (await r.close()).transform(utf8.decoder).join(),
+      );
+      if (d['ok'] != true) {
+        throw StateError(d['error']?.toString() ?? 'api_failed');
+      }
+      return Map<String, dynamic>.from(d['data'] as Map? ?? const {});
+    } finally {
+      c.close(force: true);
+    }
+  }
+
   Future<void> restoreApiSession() async {
     final prefs = await SharedPreferences.getInstance();
     apiToken = prefs.getString('saki_api_token');
@@ -2121,6 +2147,10 @@ class SakiService {
   }
 
   Future<bool> isRoomBanned(String roomId) async {
+    if (apiToken != null) {
+      final rows = await _apiList('room_ban_check', query: {'room_id': roomId});
+      return rows.isNotEmpty && rows.first['banned'] == true;
+    }
     final row = await client
         .from('room_bans')
         .select('expires_at')
@@ -2133,6 +2163,16 @@ class SakiService {
   }
 
   Stream<List<Map<String, dynamic>>> roomBanStream(String roomId) {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 5)).asyncMap((_) async {
+        final banned = await isRoomBanned(roomId);
+        return banned
+            ? <Map<String, dynamic>>[
+                {'room_id': roomId},
+              ]
+            : const [];
+      });
+    }
     return client
         .from('room_bans')
         .stream(primaryKey: ['room_id', 'user_id'])
@@ -2141,6 +2181,10 @@ class SakiService {
   }
 
   Future<void> touchRoomPresence(String roomId) async {
+    if (apiToken != null) {
+      await _apiPost('room_presence', {'room_id': roomId});
+      return;
+    }
     await client.rpc('touch_room_presence', params: {'p_room_id': roomId});
   }
 
@@ -2299,6 +2343,10 @@ class SakiService {
   }
 
   Future<void> claimRoomSeat(String roomId, int seatNo) async {
+    if (apiToken != null) {
+      await _apiPost('seat_claim', {'room_id': roomId, 'seat_no': seatNo});
+      return;
+    }
     await client.rpc(
       'claim_room_seat',
       params: {'p_room_id': roomId, 'p_seat_no': seatNo},
@@ -2306,6 +2354,10 @@ class SakiService {
   }
 
   Future<void> leaveRoomSeat(String roomId) async {
+    if (apiToken != null) {
+      await _apiPost('seat_leave', {'room_id': roomId});
+      return;
+    }
     await client.rpc('leave_room_seat', params: {'p_room_id': roomId});
   }
 
@@ -3119,6 +3171,20 @@ class SakiService {
     String? countryCode,
     XFile? avatar,
   }) async {
+    if (apiToken != null) {
+      final avatarUrl = avatar == null
+          ? null
+          : await _uploadApi(avatar, 'avatars');
+      await _apiPost('profile_update', {
+        'username': username.trim(),
+        'bio': bio.trim(),
+        'country': country,
+        'country_code': countryCode,
+        'avatar_url': avatarUrl,
+      });
+      await myProfile();
+      return;
+    }
     String? avatarUrl;
     if (avatar != null) {
       final bytes = await File(avatar.path).readAsBytes();
@@ -3221,6 +3287,13 @@ class SakiService {
 
   Future<String> countryFlag(String? country) async {
     if (country == null || country.trim().isEmpty) return '🌍';
+    if (apiToken != null) {
+      final rows = await _apiList(
+        'country_flag',
+        query: {'value': country.trim()},
+      );
+      return rows.isEmpty ? '🌍' : rows.first['flag']?.toString() ?? '🌍';
+    }
     final row = await client
         .from('countries')
         .select('flag')
@@ -3293,6 +3366,10 @@ class SakiService {
   }
 
   Future<void> sharePost(String postId) async {
+    if (apiToken != null) {
+      await _apiPost('content_share', {'type': 'post', 'id': postId});
+      return;
+    }
     await client.from('post_shares').upsert({
       'post_id': postId,
       'user_id': uid,
@@ -3300,6 +3377,10 @@ class SakiService {
   }
 
   Future<void> shareReel(String reelId) async {
+    if (apiToken != null) {
+      await _apiPost('content_share', {'type': 'reel', 'id': reelId});
+      return;
+    }
     await client.from('reel_shares').upsert({
       'reel_id': reelId,
       'user_id': uid,
@@ -3361,6 +3442,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> roomBanners() async {
+    if (apiToken != null) {
+      return _apiList('room_banners');
+    }
     final data = await client
         .from('room_banners')
         .select(
