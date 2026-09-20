@@ -7,13 +7,54 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+class SakiAuthUser {
+  const SakiAuthUser({
+    required this.id,
+    this.email,
+    this.userMetadata = const {},
+  });
+  final String id;
+  final String? email;
+  final Map<String, dynamic> userMetadata;
+}
+
 class SakiService {
   SakiService._();
   static final instance = SakiService._();
-  final SupabaseClient client = Supabase.instance.client;
   static const apiBaseUrl = 'https://sakichat.freecpanel.shop/api.php';
   String? apiToken;
   String? apiUserId;
+  Map<String, dynamic>? _profileCache;
+
+  Future<List<Map<String, dynamic>>> _apiList(
+    String action, {
+    Map<String, String> query = const {},
+  }) async {
+    if (apiToken == null) throw StateError('unauthorized');
+    final uri = Uri.parse('$apiBaseUrl?action=$action&access_token=$apiToken')
+        .replace(
+          queryParameters: {
+            'action': action,
+            'access_token': apiToken!,
+            ...query,
+          },
+        );
+    final c = HttpClient();
+    try {
+      final r = await c.getUrl(uri);
+      r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+      r.headers.set('X-Access-Token', apiToken!);
+      final d = jsonDecode(
+        await (await r.close()).transform(utf8.decoder).join(),
+      );
+      if (d['ok'] != true) {
+        throw StateError(d['error']?.toString() ?? 'api_failed');
+      }
+      return List<Map<String, dynamic>>.from(d['data'] as List? ?? const []);
+    } finally {
+      c.close(force: true);
+    }
+  }
 
   Future<void> restoreApiSession() async {
     final prefs = await SharedPreferences.getInstance();
@@ -74,8 +115,14 @@ class SakiService {
     }
   }
 
-  User? get currentUser => client.auth.currentUser;
-  String get uid => apiUserId ?? currentUser!.id;
+  SakiAuthUser? get currentUser => apiUserId == null
+      ? null
+      : SakiAuthUser(
+          id: apiUserId!,
+          email: _profileCache?['email']?.toString(),
+          userMetadata: _profileCache ?? const {},
+        );
+  String get uid => apiUserId ?? (throw StateError('unauthorized'));
 
   String? familyAliasValidationMessage(String alias) {
     final value = alias.trim();
@@ -106,7 +153,9 @@ class SakiService {
         if (response.statusCode >= 400) {
           throw StateError('API profile request failed: $decoded');
         }
-        return Map<String, dynamic>.from(decoded['data'] as Map);
+        final profile = Map<String, dynamic>.from(decoded['data'] as Map);
+        _profileCache = profile;
+        return profile;
       } finally {
         httpClient.close(force: true);
       }
@@ -138,6 +187,7 @@ class SakiService {
       final prefs = await SharedPreferences.getInstance();
       if (apiToken != null) await prefs.setString('saki_api_token', apiToken!);
       final profile = Map<String, dynamic>.from(decoded['data'] as Map);
+      _profileCache = profile;
       apiUserId = profile['id']?.toString();
       if (apiUserId != null) {
         await prefs.setString('saki_api_user_id', apiUserId!);
@@ -2143,6 +2193,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> roomSeats(String roomId) async {
+    if (apiToken != null) {
+      return _apiList('room_seats', query: {'room_id': roomId});
+    }
     final data = await client
         .from('room_seats')
         .select(
@@ -2154,6 +2207,10 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> roomMembers(String roomId) async {
+    if (apiToken != null) {
+      final rows = await _apiList('room_members', query: {'room_id': roomId});
+      return rows;
+    }
     final rows = await client
         .from('room_members')
         .select(
@@ -2215,6 +2272,10 @@ class SakiService {
   }
 
   Stream<List<Map<String, dynamic>>> roomMembersStream(String roomId) {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 3))
+          .asyncMap((_) => roomMembers(roomId));
+    }
     return client
         .from('room_members')
         .stream(primaryKey: ['room_id', 'user_id'])
@@ -2293,6 +2354,10 @@ class SakiService {
   }
 
   Stream<List<Map<String, dynamic>>> roomSeatsStream(String roomId) {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 2))
+          .asyncMap((_) => roomSeats(roomId));
+    }
     return client
         .from('room_seats')
         .stream(primaryKey: ['room_id', 'seat_no'])
@@ -4500,3 +4565,5 @@ class RoomGiftRankingResult {
   final List<Map<String, dynamic>> rows;
   final int total;
 }
+
+final SupabaseClient client = Supabase.instance.client;

@@ -49,22 +49,14 @@ class _RoomsPageState extends State<RoomsPage> {
   String _country = 'الترند';
   StreamSubscription<List<Map<String, dynamic>>>? _roomPresenceSubscription;
   Timer? _roomRefreshTimer;
+  Timer? _roomApiPollTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
-    _roomPresenceSubscription = _service.client
-        .from('room_members')
-        .stream(primaryKey: ['room_id', 'user_id'])
-        .listen((_) => _scheduleRoomRefresh());
-  }
-
-  void _scheduleRoomRefresh() {
-    _roomRefreshTimer?.cancel();
-    _roomRefreshTimer = Timer(const Duration(milliseconds: 350), () {
-      if (!mounted) return;
-      _refreshRoomsOnly();
+    _roomApiPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) _refreshRoomsOnly();
     });
   }
 
@@ -112,6 +104,7 @@ class _RoomsPageState extends State<RoomsPage> {
   void dispose() {
     _roomPresenceSubscription?.cancel();
     _roomRefreshTimer?.cancel();
+    _roomApiPollTimer?.cancel();
     super.dispose();
   }
 

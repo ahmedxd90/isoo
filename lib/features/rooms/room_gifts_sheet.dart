@@ -59,13 +59,9 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
   Future<void> _load() async {
     try {
       final account = await widget.service.accountModules();
-      final rows = await widget.service.client
-          .from('room_seats')
-          .select('user_id,profiles:user_id(id,username,avatar_url,vip_level)')
-          .eq('room_id', widget.roomId)
-          .limit(20);
-      final recipients = List<Map<String, dynamic>>.from(rows)
-          .map((row) => Map<String, dynamic>.from(row['profiles'] ?? {}))
+      final rows = await widget.service.roomSeats(widget.roomId);
+      final recipients = rows
+          .map((row) => Map<String, dynamic>.from(row))
           .where((profile) => profile['id'] != null)
           .toList();
       final gifts = await widget.service.roomGiftCatalog(category: 'general');

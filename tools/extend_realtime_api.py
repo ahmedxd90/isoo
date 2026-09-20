@@ -1,0 +1,12 @@
+from pathlib import Path
+p=Path('/tmp/api.php');s=p.read_text()
+marker="if ($action === 'global_gifts' && $_SERVER['REQUEST_METHOD'] === 'GET') {"
+block=r'''if ($action === 'room_members' && $_SERVER['REQUEST_METHOD'] === 'GET') { $u=currentUser($pdo);if(!$u)respond(['ok'=>false,'error'=>'unauthorized'],401);$room=trim((string)($_GET['room_id']??''));$q=$pdo->prepare("SELECT rm.user_id,rm.joined_at,pr.id,pr.username,pr.display_name,pr.avatar_url,pr.vip_level,pr.vip_expires_at FROM room_members rm JOIN profiles pr ON pr.id=rm.user_id WHERE rm.room_id=:r AND rm.last_seen>=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 75 SECOND) ORDER BY rm.joined_at DESC LIMIT 100");$q->execute([':r'=>$room]);respond(['ok'=>true,'data'=>$q->fetchAll()]); }
+if ($action === 'room_seats' && $_SERVER['REQUEST_METHOD'] === 'GET') { $u=currentUser($pdo);if(!$u)respond(['ok'=>false,'error'=>'unauthorized'],401);$room=trim((string)($_GET['room_id']??''));$q=$pdo->prepare("SELECT rs.seat_no,rs.user_id,rs.joined_at,rs.is_speaking,pr.id,pr.username,pr.display_name,pr.avatar_url,pr.vip_level FROM room_seats rs LEFT JOIN profiles pr ON pr.id=rs.user_id WHERE rs.room_id=:r ORDER BY rs.seat_no");$q->execute([':r'=>$room]);respond(['ok'=>true,'data'=>$q->fetchAll()]); }
+'''
+if marker not in s: raise SystemExit('global marker missing')
+s=s.replace(marker,block+marker,1)
+old="if ($action === 'global_gifts' && $_SERVER['REQUEST_METHOD'] === 'GET') { $u=currentUser($pdo);if(!$u)respond(['ok'=>false,'error'=>'unauthorized'],401);$q=$pdo->query('SELECT * FROM gift_announcements ORDER BY created_at DESC LIMIT 100');respond(['ok'=>true,'data'=>$q->fetchAll()]); }"
+new="if ($action === 'global_gifts' && $_SERVER['REQUEST_METHOD'] === 'GET') { $u=currentUser($pdo);if(!$u)respond(['ok'=>false,'error'=>'unauthorized'],401);$q=$pdo->query(\"SELECT ga.*,s.username sender_username,s.display_name sender_display_name,s.avatar_url sender_avatar,r.username recipient_username,r.display_name recipient_display_name,r.avatar_url recipient_avatar,g.name gift_name,g.icon gift_icon,rm.name room_name,rm.room_id room_code FROM gift_announcements ga LEFT JOIN profiles s ON s.id=ga.sender_id LEFT JOIN profiles r ON r.id=ga.recipient_id LEFT JOIN room_gift_catalog g ON g.id=ga.gift_id LEFT JOIN rooms rm ON rm.id=ga.room_id ORDER BY ga.created_at DESC LIMIT 100\");respond(['ok'=>true,'data'=>$q->fetchAll()]); }"
+if old in s:s=s.replace(old,new,1)
+p.write_text(s);print('realtime api extended')

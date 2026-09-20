@@ -36,37 +36,23 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
   }
 
   Future<Map<String, dynamic>?> _load(Map<String, dynamic> row) async {
-    final c = SakiService.instance.client;
-    final r = await Future.wait<dynamic>([
-      c
-          .from('profiles')
-          .select('username,display_name,avatar_url')
-          .eq('id', row['sender_id'])
-          .maybeSingle(),
-      c
-          .from('profiles')
-          .select('username,display_name,avatar_url')
-          .eq('id', row['recipient_id'])
-          .maybeSingle(),
-      c
-          .from('room_gift_catalog')
-          .select('name,icon')
-          .eq('id', row['gift_id'])
-          .maybeSingle(),
-      c
-          .from('rooms')
-          .select('id,name,room_id')
-          .eq('id', row['room_id'])
-          .maybeSingle(),
-      SakiService.instance.sentLuckGiftCount(row['sender_id'].toString()),
-    ]);
     return {
       'row': row,
-      'sender': r[0],
-      'recipient': r[1],
-      'gift': r[2],
-      'room': r[3],
-      'sent_luck_count': r[4],
+      'sender': {
+        'username': row['sender_username'],
+        'display_name': row['sender_display_name'],
+        'avatar_url': row['sender_avatar'],
+      },
+      'recipient': {
+        'username': row['recipient_username'],
+        'display_name': row['recipient_display_name'],
+        'avatar_url': row['recipient_avatar'],
+      },
+      'gift': {'name': row['gift_name'], 'icon': row['gift_icon']},
+      'room': {'name': row['room_name'], 'room_id': row['room_code']},
+      'sent_luck_count': await SakiService.instance.sentLuckGiftCount(
+        row['sender_id'].toString(),
+      ),
     };
   }
 

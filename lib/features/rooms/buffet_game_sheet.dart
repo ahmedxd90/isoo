@@ -176,6 +176,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   StreamSubscription<List<Map<String, dynamic>>>? _walletSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _profitSubscription;
   Timer? _timer;
+  Timer? _apiRefreshTimer;
   Timer? _spinTimer;
   Map<String, dynamic>? _round;
   final Map<int, int> _myBets = {};
@@ -197,45 +198,19 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   void initState() {
     super.initState();
     _load();
-    _roundSubscription = _service.client
-        .from('saki_buffet_rounds')
-        .stream(primaryKey: ['id'])
-        .eq('room_id', widget.roomId)
-        .order('id', ascending: false)
-        .limit(1)
-        .listen((rows) {
-          if (rows.isNotEmpty && mounted) _applyRound(rows.first);
-        });
-    _historySubscription = _service.client
-        .from('saki_buffet_rounds')
-        .stream(primaryKey: ['id'])
-        .eq('room_id', widget.roomId)
-        .eq('status', 'finished')
-        .order('id', ascending: false)
-        .limit(10)
-        .listen(_applyHistoryRows);
-    _walletSubscription = _service.client
-        .from('saki_account_modules')
-        .stream(primaryKey: ['user_id'])
-        .eq('user_id', _service.uid)
-        .listen((rows) async {
-          if (!mounted || rows.isEmpty) return;
-          final balance = (rows.first['gold_coins'] as num?)?.toInt() ?? 0;
-          final profit = await _service.buffetTodayProfit();
-          if (mounted) {
-            setState(() {
-              _balance = balance;
-              _todayProfit = profit;
-            });
-          }
-        });
-    _profitSubscription = _service.client
-        .from('saki_buffet_bets')
-        .stream(primaryKey: ['id'])
-        .eq('user_id', _service.uid)
-        .order('created_at', ascending: false)
-        .limit(1)
-        .listen((_) => _refreshWalletSnapshot());
+    _apiRefreshTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) return;
+      try {
+        final values = await Future.wait<dynamic>([
+          _service.buffetGetRound(widget.roomId),
+          _service.buffetHistory(widget.roomId),
+        ]);
+        if (!mounted) return;
+        _applyRound(Map<String, dynamic>.from(values[0] as Map));
+        _applyHistoryRows(List<Map<String, dynamic>>.from(values[1] as List));
+        await _refreshWalletSnapshot();
+      } catch (_) {}
+    });
   }
 
   Future<void> _refreshWalletSnapshot() async {
@@ -632,6 +607,7 @@ class _BuffetGameSheetState extends State<BuffetGameSheet> {
   @override
   void dispose() {
     _timer?.cancel();
+    _apiRefreshTimer?.cancel();
     _roundSubscription?.cancel();
     _historySubscription?.cancel();
     _walletSubscription?.cancel();
