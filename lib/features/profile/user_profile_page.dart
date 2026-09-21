@@ -86,9 +86,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _badges = List<Map<String, dynamic>>.from(results[7] as List);
         _countryFlag = countryFlag;
       });
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل بروفايل المستخدم من الخادم');
+        CustomToast.show(context, 'تعذر تحميل بروفايل المستخدم: $error');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

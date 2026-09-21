@@ -51,9 +51,9 @@ class _PostsPageState extends State<PostsPage> {
     try {
       final posts = await _service.feed(followingOnly: _followingOnly);
       if (mounted) setState(() => _posts = posts);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _error = 'تعذر تحميل المنشورات من خادم MySQL API.');
+        setState(() => _error = 'تعذر تحميل المنشورات: $error');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

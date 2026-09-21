@@ -44,11 +44,14 @@ class SakiService {
       final r = await c.getUrl(uri);
       r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
       r.headers.set('X-Access-Token', apiToken!);
-      final d = jsonDecode(
-        await (await r.close()).transform(utf8.decoder).join(),
-      );
-      if (d['ok'] != true) {
-        throw StateError(d['error']?.toString() ?? 'api_failed');
+      final response = await r.close();
+      final raw = await response.transform(utf8.decoder).join();
+      final d = jsonDecode(raw);
+      if (response.statusCode >= 400 || d['ok'] != true) {
+        throw StateError(
+          'api[$action] http=${response.statusCode} '
+          '${d['error'] ?? raw}',
+        );
       }
       return List<Map<String, dynamic>>.from(d['data'] as List? ?? const []);
     } finally {
@@ -177,8 +180,11 @@ class SakiService {
         final decoded = jsonDecode(
           await response.transform(utf8.decoder).join(),
         );
-        if (response.statusCode >= 400) {
-          throw StateError('API profile request failed: $decoded');
+        if (response.statusCode >= 400 || decoded['ok'] != true) {
+          throw StateError(
+            'api[me] http=${response.statusCode} '
+            '${decoded['error'] ?? decoded}',
+          );
         }
         final profile = Map<String, dynamic>.from(decoded['data'] as Map);
         _profileCache = profile;
@@ -311,6 +317,11 @@ class SakiService {
   }
 
   Future<bool> isSuperAdmin() async {
+    if (apiToken != null) {
+      final profile = await myProfile();
+      return profile?['is_super_admin'] == true ||
+          profile?['is_super_admin']?.toString() == '1';
+    }
     final result = await client.rpc('is_saki_super_admin');
     return result == true;
   }
@@ -1193,7 +1204,12 @@ class SakiService {
         final decoded = jsonDecode(
           await response.transform(utf8.decoder).join(),
         );
-        if (response.statusCode >= 400) throw StateError('feed_api_failed');
+        if (response.statusCode >= 400 || decoded['ok'] != true) {
+          throw StateError(
+            'api[posts_feed] http=${response.statusCode} '
+            '${decoded['error'] ?? decoded}',
+          );
+        }
         return List<Map<String, dynamic>>.from(decoded['data'] as List);
       } finally {
         httpClient.close(force: true);
@@ -2095,18 +2111,7 @@ class SakiService {
 
   Future<List<Map<String, dynamic>>> rooms() async {
     if (apiToken != null) {
-      final c = HttpClient();
-      try {
-        final r = await c.getUrl(
-          Uri.parse('$apiBaseUrl?action=rooms_feed&access_token=$apiToken'),
-        );
-        final d = jsonDecode(
-          await (await r.close()).transform(utf8.decoder).join(),
-        );
-        return List<Map<String, dynamic>>.from(d['data'] as List);
-      } finally {
-        c.close(force: true);
-      }
+      return _apiList('rooms_feed');
     }
     final data = await client.rpc('get_trending_rooms');
     return List<Map<String, dynamic>>.from(data).map((room) {
@@ -3161,9 +3166,17 @@ class SakiService {
         final r = await c.getUrl(
           Uri.parse('$apiBaseUrl?action=profile_stats&access_token=$apiToken'),
         );
-        final d = jsonDecode(
-          await (await r.close()).transform(utf8.decoder).join(),
-        );
+        r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.headers.set('X-Access-Token', apiToken!);
+        final response = await r.close();
+        final raw = await response.transform(utf8.decoder).join();
+        final d = jsonDecode(raw);
+        if (response.statusCode >= 400 || d['ok'] != true) {
+          throw StateError(
+            'api[profile_stats] http=${response.statusCode} '
+            '${d['error'] ?? raw}',
+          );
+        }
         return Map<String, int>.from(
           (d['data'] as Map).map(
             (k, v) => MapEntry(k.toString(), (v as num).toInt()),

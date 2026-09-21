@@ -91,9 +91,9 @@ class _RoomsPageState extends State<RoomsPage> {
           _banners = banners;
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل الغرف من خادم MySQL API');
+        CustomToast.show(context, 'تعذر تحميل الغرف: $error');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

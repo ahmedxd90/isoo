@@ -89,9 +89,9 @@ class _ProfilePageState extends State<ProfilePage> {
       });
       final isSuperAdmin = await SakiService.instance.isSuperAdmin();
       if (mounted) setState(() => _isSuperAdmin = isSuperAdmin);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل بيانات الملف من الخادم');
+        CustomToast.show(context, 'تعذر تحميل بيانات الملف: $error');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
