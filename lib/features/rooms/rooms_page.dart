@@ -93,7 +93,7 @@ class _RoomsPageState extends State<RoomsPage> {
       }
     } catch (_) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل الغرف من Supabase');
+        CustomToast.show(context, 'تعذر تحميل الغرف من خادم MySQL API');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

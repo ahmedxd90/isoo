@@ -166,12 +166,13 @@ class SakiService {
       final httpClient = HttpClient();
       try {
         final request = await httpClient.getUrl(
-          Uri.parse('$apiBaseUrl?action=me'),
+          Uri.parse('$apiBaseUrl?action=me&access_token=$apiToken'),
         );
         request.headers.set(
           HttpHeaders.authorizationHeader,
           'Bearer $apiToken',
         );
+        request.headers.set('X-Access-Token', apiToken!);
         final response = await request.close();
         final decoded = jsonDecode(
           await response.transform(utf8.decoder).join(),
@@ -1260,13 +1261,14 @@ class SakiService {
       final httpClient = HttpClient();
       try {
         final request = await httpClient.postUrl(
-          Uri.parse('$apiBaseUrl?action=post_create'),
+          Uri.parse('$apiBaseUrl?action=post_create&access_token=$apiToken'),
         );
         request.headers.contentType = ContentType.json;
         request.headers.set(
           HttpHeaders.authorizationHeader,
           'Bearer $apiToken',
         );
+        request.headers.set('X-Access-Token', apiToken!);
         request.write(
           jsonEncode({
             'content': content.trim(),
@@ -1487,7 +1489,9 @@ class SakiService {
       final url = await _uploadApi(video, 'reels');
       final c = HttpClient();
       try {
-        final r = await c.postUrl(Uri.parse('$apiBaseUrl?action=reel_create'));
+        final r = await c.postUrl(
+          Uri.parse('$apiBaseUrl?action=reel_create&access_token=$apiToken'),
+        );
         r.headers.contentType = ContentType.json;
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
         r.headers.set('X-Access-Token', apiToken ?? '');

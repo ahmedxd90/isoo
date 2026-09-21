@@ -46,7 +46,7 @@ class _ReelsPageState extends State<ReelsPage> {
       }
     } catch (_) {
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل الريلز من Supabase');
+        CustomToast.show(context, 'تعذر تحميل الريلز من خادم MySQL API');
       }
     } finally {
       if (mounted) setState(() => _loading = false);

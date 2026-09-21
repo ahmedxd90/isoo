@@ -52,7 +52,9 @@ class _PostsPageState extends State<PostsPage> {
       final posts = await _service.feed(followingOnly: _followingOnly);
       if (mounted) setState(() => _posts = posts);
     } catch (_) {
-      if (mounted) setState(() => _error = 'تعذر تحميل المنشورات من Supabase.');
+      if (mounted) {
+        setState(() => _error = 'تعذر تحميل المنشورات من خادم MySQL API.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
