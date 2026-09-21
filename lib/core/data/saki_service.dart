@@ -271,6 +271,7 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userBadges(String userId) async {
+    if (apiToken != null) return const [];
     final rows = await client.rpc(
       'user_badges_for_profile',
       params: {'p_user_id': userId},
@@ -1177,12 +1178,15 @@ class SakiService {
       final httpClient = HttpClient();
       try {
         final request = await httpClient.getUrl(
-          Uri.parse('$apiBaseUrl?action=posts_feed&limit=40'),
+          Uri.parse(
+            '$apiBaseUrl?action=posts_feed&limit=40&access_token=$apiToken',
+          ),
         );
         request.headers.set(
           HttpHeaders.authorizationHeader,
           'Bearer $apiToken',
         );
+        request.headers.set('X-Access-Token', apiToken!);
         final response = await request.close();
         final decoded = jsonDecode(
           await response.transform(utf8.decoder).join(),
@@ -1589,6 +1593,10 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> userProfile(String userId) async {
+    if (apiToken != null) {
+      final rows = await _apiList('user_profile', query: {'user_id': userId});
+      return rows.isEmpty ? null : rows.first;
+    }
     final data = await client
         .from('profiles')
         .select(
@@ -1600,6 +1608,7 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> familyBadgeForUser(String userId) async {
+    if (apiToken != null) return null;
     final rows = await client
         .from('family_members')
         .select(
@@ -1628,6 +1637,16 @@ class SakiService {
   }
 
   Future<Map<String, int>> userProfileStats(String userId) async {
+    if (apiToken != null) {
+      final rows = await _apiList(
+        'user_profile_stats',
+        query: {'user_id': userId},
+      );
+      if (rows.isEmpty) return {'posts': 0, 'followers': 0, 'following': 0};
+      return rows.first.map(
+        (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+      );
+    }
     final followers = await client
         .from('follows')
         .select('follower_id')
@@ -3654,9 +3673,12 @@ class SakiService {
       final c = HttpClient();
       try {
         final r = await c.getUrl(
-          Uri.parse('$apiBaseUrl?action=profile_posts&user_id=$userId'),
+          Uri.parse(
+            '$apiBaseUrl?action=profile_posts&user_id=$userId&access_token=$apiToken',
+          ),
         );
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.headers.set('X-Access-Token', apiToken!);
         final d = jsonDecode(
           await (await r.close()).transform(utf8.decoder).join(),
         );
@@ -3705,9 +3727,12 @@ class SakiService {
       final c = HttpClient();
       try {
         final r = await c.getUrl(
-          Uri.parse('$apiBaseUrl?action=profile_reels&user_id=$userId'),
+          Uri.parse(
+            '$apiBaseUrl?action=profile_reels&user_id=$userId&access_token=$apiToken',
+          ),
         );
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.headers.set('X-Access-Token', apiToken!);
         final d = jsonDecode(
           await (await r.close()).transform(utf8.decoder).join(),
         );
@@ -3726,6 +3751,7 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userReceivedGifts(String userId) async {
+    if (apiToken != null) return const [];
     final rows = await client
         .from('room_gifts')
         .select(
@@ -3767,6 +3793,7 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userVehicles(String userId) async {
+    if (apiToken != null) return const [];
     final rows = await client
         .from('trace_store_inventory')
         .select(
@@ -4261,6 +4288,7 @@ class SakiService {
   }
 
   Future<bool> isShippingAgent(String userId) async {
+    if (apiToken != null) return false;
     final result = await client.rpc(
       'is_shipping_agent',
       params: {'p_user_id': userId},
