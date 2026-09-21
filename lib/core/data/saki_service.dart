@@ -1178,23 +1178,11 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> myOwnedRoom() async {
-    final rows = await client
-        .from('rooms')
-        .select(
-          'id,room_id,owner_id,name,description,country,room_type,image_url,background_url,seat_count,announcement,category,theme_key,membership_fee,reward_rate,mic_permission,is_active,created_at,profiles:owner_id(username,avatar_url,vip_level,vip_expires_at),room_members(user_id)',
-        )
-        .eq('owner_id', uid)
-        .eq('is_active', true)
-        .order('created_at', ascending: false)
-        .limit(1);
-    if (rows.isEmpty) return null;
-    final room = Map<String, dynamic>.from(rows.first);
-    return {
-      ...room,
-      '_members_count': List<Map<String, dynamic>>.from(
-        room['room_members'] ?? const [],
-      ).length,
-    };
+    if (apiToken != null) {
+      final rows = await _apiList('room_owned');
+      return rows.isEmpty ? null : rows.first;
+    }
+    throw StateError('unauthorized');
   }
 
   Future<Map<String, dynamic>> startLiveBroadcast({

@@ -135,21 +135,27 @@ class _RoomsPageState extends State<RoomsPage> {
           .push(MaterialPageRoute(builder: (_) => const SearchPage()));
 
   Future<void> _create() async {
-    final owned = await _service.myOwnedRoom();
-    if (!mounted) return;
-    if (owned != null) {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(owned)));
-      return;
+    try {
+      final owned = await _service.myOwnedRoom();
+      if (!mounted) return;
+      if (owned != null) {
+        await Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(owned)));
+        return;
+      }
+      final created = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(builder: (_) => const CreateRoomPage()),
+      );
+      if (!mounted || created == null) return;
+      await _load();
+      if (!mounted) return;
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(created)));
+    } catch (error) {
+      if (mounted) CustomToast.show(context, 'تعذر فتح إنشاء الغرفة: $error');
     }
-    final created = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(builder: (_) => const CreateRoomPage()),
-    );
-    if (!mounted || created == null) return;
-    await _load();
-    if (!mounted) return;
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => _zegoRoomDestination(created)));
   }
 
   @override
