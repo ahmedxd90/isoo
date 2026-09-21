@@ -72,7 +72,9 @@ class _ProfilePageState extends State<ProfilePage> {
       ]);
       if (!mounted) return;
       setState(() {
-        final base = results[0] as Map<String, dynamic>?;
+        final base = results[0] is Map
+            ? Map<String, dynamic>.from(results[0] as Map)
+            : null;
         _profile = base == null
             ? null
             : {
@@ -80,12 +82,29 @@ class _ProfilePageState extends State<ProfilePage> {
                 'family_badge': results[5] as Map<String, dynamic>?,
                 'shipping_agent': results[6] == true,
               };
-        _stats = results[1] as Map<String, int>;
-        _modules = Map<String, dynamic>.from(results[4] as Map);
-        _posts = List<Map<String, dynamic>>.from(results[2] as List);
-        _reels = List<Map<String, dynamic>>.from(results[3] as List);
-        _gifts = List<Map<String, dynamic>>.from(results[7] as List);
-        _badges = List<Map<String, dynamic>>.from(results[8] as List);
+        _stats = results[1] is Map
+            ? Map<String, int>.from(
+                (results[1] as Map).map(
+                  (key, value) =>
+                      MapEntry(key.toString(), (value as num).toInt()),
+                ),
+              )
+            : <String, int>{};
+        _modules = results[4] is Map
+            ? Map<String, dynamic>.from(results[4] as Map)
+            : <String, dynamic>{};
+        _posts = results[2] is List
+            ? List<Map<String, dynamic>>.from(results[2] as List)
+            : [];
+        _reels = results[3] is List
+            ? List<Map<String, dynamic>>.from(results[3] as List)
+            : [];
+        _gifts = results[7] is List
+            ? List<Map<String, dynamic>>.from(results[7] as List)
+            : [];
+        _badges = results[8] is List
+            ? List<Map<String, dynamic>>.from(results[8] as List)
+            : [];
       });
       final isSuperAdmin = await SakiService.instance.isSuperAdmin();
       if (mounted) setState(() => _isSuperAdmin = isSuperAdmin);

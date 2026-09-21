@@ -46,14 +46,22 @@ class SakiService {
       r.headers.set('X-Access-Token', apiToken!);
       final response = await r.close();
       final raw = await response.transform(utf8.decoder).join();
-      final d = jsonDecode(raw);
+      late final dynamic d;
+      try {
+        d = jsonDecode(raw);
+      } on FormatException catch (error) {
+        throw StateError('api[$action] invalid_json: $error body=$raw');
+      }
       if (response.statusCode >= 400 || d['ok'] != true) {
         throw StateError(
           'api[$action] http=${response.statusCode} '
           '${d['error'] ?? raw}',
         );
       }
-      return List<Map<String, dynamic>>.from(d['data'] as List? ?? const []);
+      final data = d['data'];
+      return data is List
+          ? List<Map<String, dynamic>>.from(data)
+          : <Map<String, dynamic>>[];
     } finally {
       c.close(force: true);
     }
@@ -80,6 +88,44 @@ class SakiService {
         throw StateError(d['error']?.toString() ?? 'api_failed');
       }
       return Map<String, dynamic>.from(d['data'] as Map? ?? const {});
+    } finally {
+      c.close(force: true);
+    }
+  }
+
+  Future<Map<String, dynamic>> _apiMap(
+    String action, {
+    Map<String, String> query = const {},
+  }) async {
+    if (apiToken == null) throw StateError('unauthorized');
+    final uri = Uri.parse('$apiBaseUrl?action=$action&access_token=$apiToken')
+        .replace(
+          queryParameters: {
+            'action': action,
+            'access_token': apiToken!,
+            ...query,
+          },
+        );
+    final c = HttpClient();
+    try {
+      final r = await c.getUrl(uri);
+      r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+      r.headers.set('X-Access-Token', apiToken!);
+      final response = await r.close();
+      final raw = await response.transform(utf8.decoder).join();
+      final d = jsonDecode(raw);
+      if (response.statusCode >= 400 || d['ok'] != true) {
+        throw StateError(
+          'api[$action] http=${response.statusCode} '
+          '${d['error'] ?? raw}',
+        );
+      }
+      final data = d['data'];
+      return data is Map
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{};
+    } on FormatException catch (error) {
+      throw StateError('api[$action] invalid_json: $error');
     } finally {
       c.close(force: true);
     }
@@ -3832,18 +3878,7 @@ class SakiService {
 
   Future<Map<String, dynamic>> accountModules() async {
     if (apiToken != null) {
-      final c = HttpClient();
-      try {
-        final r = await c.getUrl(
-          Uri.parse('$apiBaseUrl?action=wallet&access_token=$apiToken'),
-        );
-        final d = jsonDecode(
-          await (await r.close()).transform(utf8.decoder).join(),
-        );
-        return Map<String, dynamic>.from(d['data'] as Map);
-      } finally {
-        c.close(force: true);
-      }
+      return _apiMap('wallet');
     }
     final existing = await client
         .from('saki_account_modules')

@@ -58,19 +58,26 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.isShippingAgent(widget.userId),
       ]);
       if (!mounted) return;
-      final countryFlag = await SakiService.instance.countryFlag(
-        ((results[0] as Map<String, dynamic>?)?['country']
-                    ?.toString()
-                    .trim()
-                    .isNotEmpty ==
-                true)
-            ? (results[0] as Map<String, dynamic>)['country']?.toString()
-            : (results[0] as Map<String, dynamic>?)?['country_code']
-                  ?.toString(),
-      );
+      var countryFlag = '🌍';
+      try {
+        final profileMap = results[0] is Map
+            ? Map<String, dynamic>.from(results[0] as Map)
+            : <String, dynamic>{};
+        countryFlag = await SakiService.instance.countryFlag(
+          profileMap['country']?.toString().trim().isNotEmpty == true
+              ? profileMap['country']?.toString()
+              : profileMap['country_code']?.toString(),
+        );
+      } catch (_) {
+        countryFlag = '🌍';
+      }
       setState(() {
-        final base = results[0] as Map<String, dynamic>?;
-        final family = results[1] as Map<String, dynamic>?;
+        final base = results[0] is Map
+            ? Map<String, dynamic>.from(results[0] as Map)
+            : null;
+        final family = results[1] is Map
+            ? Map<String, dynamic>.from(results[1] as Map)
+            : null;
         _profile = base == null
             ? null
             : {
@@ -78,12 +85,27 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 'family_badge': family,
                 'shipping_agent': results[8] == true,
               };
-        _stats = Map<String, int>.from(results[2] as Map);
-        _posts = List<Map<String, dynamic>>.from(results[3] as List);
-        _gifts = List<Map<String, dynamic>>.from(results[4] as List);
-        _vehicles = List<Map<String, dynamic>>.from(results[5] as List);
-        _following = results[6] as bool;
-        _badges = List<Map<String, dynamic>>.from(results[7] as List);
+        _stats = results[2] is Map
+            ? Map<String, int>.from(
+                (results[2] as Map).map(
+                  (key, value) =>
+                      MapEntry(key.toString(), (value as num).toInt()),
+                ),
+              )
+            : <String, int>{};
+        _posts = results[3] is List
+            ? List<Map<String, dynamic>>.from(results[3] as List)
+            : [];
+        _gifts = results[4] is List
+            ? List<Map<String, dynamic>>.from(results[4] as List)
+            : [];
+        _vehicles = results[5] is List
+            ? List<Map<String, dynamic>>.from(results[5] as List)
+            : [];
+        _following = results[6] == true;
+        _badges = results[7] is List
+            ? List<Map<String, dynamic>>.from(results[7] as List)
+            : [];
         _countryFlag = countryFlag;
       });
     } catch (error) {
