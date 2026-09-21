@@ -271,7 +271,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userBadges(String userId) async {
-    if (apiToken != null) return const [];
+    if (apiToken != null) {
+      return _apiList('user_badges', query: {'user_id': userId});
+    }
     final rows = await client.rpc(
       'user_badges_for_profile',
       params: {'p_user_id': userId},
@@ -3751,7 +3753,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userReceivedGifts(String userId) async {
-    if (apiToken != null) return const [];
+    if (apiToken != null) {
+      return _apiList('user_received_gifts', query: {'user_id': userId});
+    }
     final rows = await client
         .from('room_gifts')
         .select(
@@ -3793,7 +3797,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> userVehicles(String userId) async {
-    if (apiToken != null) return const [];
+    if (apiToken != null) {
+      return _apiList('user_vehicles', query: {'user_id': userId});
+    }
     final rows = await client
         .from('trace_store_inventory')
         .select(
@@ -3950,6 +3956,10 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> myFamily() async {
+    if (apiToken != null) {
+      final rows = await _apiList('family_me');
+      return rows.isEmpty ? null : rows.first;
+    }
     final member = await client
         .from('family_members')
         .select('family_id,role,status,families(*)')
@@ -4092,6 +4102,17 @@ class SakiService {
   }) async {
     final aliasError = familyAliasValidationMessage(alias);
     if (aliasError != null) throw Exception(aliasError);
+    if (apiToken != null) {
+      await _apiPost('family_update', {
+        'family_id': familyId,
+        'name': name.trim(),
+        'alias': alias.trim(),
+        'avatar_url': avatarUrl,
+        'announcement': announcement,
+      });
+      final family = await myFamily();
+      return family ?? {'id': familyId, 'name': name, 'family_alias': alias};
+    }
     final row = await client.rpc(
       'update_family_settings',
       params: {
@@ -4106,6 +4127,13 @@ class SakiService {
   }
 
   Future<void> approveFamilyJoin(String requestId) async {
+    if (apiToken != null) {
+      await _apiPost('family_request_decide', {
+        'request_id': requestId,
+        'decision': 'approve',
+      });
+      return;
+    }
     await client.rpc(
       'approve_family_join',
       params: {'p_request_id': requestId},
@@ -4113,6 +4141,13 @@ class SakiService {
   }
 
   Future<void> rejectFamilyJoin(String requestId) async {
+    if (apiToken != null) {
+      await _apiPost('family_request_decide', {
+        'request_id': requestId,
+        'decision': 'reject',
+      });
+      return;
+    }
     await client.rpc('reject_family_join', params: {'p_request_id': requestId});
   }
 
@@ -4121,6 +4156,17 @@ class SakiService {
     String taskKey, {
     int increment = 1,
   }) async {
+    if (apiToken != null) {
+      final result = await _apiPost('family_task_complete', {
+        'family_id': familyId,
+        'task_key': taskKey,
+        'increment': increment,
+      });
+      final data = result['data'];
+      return data is List && data.isNotEmpty
+          ? Map<String, dynamic>.from(data.first as Map)
+          : result;
+    }
     final rows = await client.rpc(
       'complete_family_task',
       params: {
@@ -4143,6 +4189,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> familyMembers(String familyId) async {
+    if (apiToken != null) {
+      return _apiList('family_members', query: {'family_id': familyId});
+    }
     final rows = await client
         .from('family_members')
         .select(
@@ -4156,6 +4205,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> familyTasks(String familyId) async {
+    if (apiToken != null) {
+      return _apiList('family_tasks', query: {'family_id': familyId});
+    }
     final rows = await client
         .from('family_tasks')
         .select()
