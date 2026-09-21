@@ -1774,10 +1774,24 @@ class SakiService {
         );
         r.headers.contentType = ContentType.json;
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
+        r.headers.set('X-Access-Token', apiToken!);
         r.write(jsonEncode({'user_id': otherUserId}));
-        final d = jsonDecode(
-          await (await r.close()).transform(utf8.decoder).join(),
-        );
+        final response = await r.close();
+        final raw = await response.transform(utf8.decoder).join();
+        late final dynamic d;
+        try {
+          d = jsonDecode(raw);
+        } on FormatException catch (error) {
+          throw StateError(
+            'api[conversation_create] invalid_json: $error body=$raw',
+          );
+        }
+        if (response.statusCode >= 400) {
+          throw StateError(
+            'api[conversation_create] http=${response.statusCode} '
+            '${d['error'] ?? raw}',
+          );
+        }
         if (d['ok'] != true) {
           throw StateError(
             d['error']?.toString() ?? 'conversation_create_failed',
