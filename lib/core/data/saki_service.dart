@@ -2213,8 +2213,12 @@ class SakiService {
         r.headers.contentType = ContentType.json;
         r.headers.set(HttpHeaders.authorizationHeader, 'Bearer $apiToken');
         r.write(jsonEncode({'room_id': roomId}));
-        if ((await r.close()).statusCode >= 400) {
-          throw StateError('room_join_failed');
+        final response = await r.close();
+        final responseBody = await response.transform(utf8.decoder).join();
+        if (response.statusCode >= 400) {
+          throw StateError(
+            'room_join_failed http=${response.statusCode} ${responseBody.trim()}',
+          );
         }
         return;
       } finally {
