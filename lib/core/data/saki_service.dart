@@ -2611,6 +2611,16 @@ class SakiService {
     return List<Map<String, dynamic>>.from(data['items'] ?? const []);
   }
 
+  Future<Map<String, dynamic>> agoraRoomToken(
+    String channelName,
+    int uid,
+  ) async {
+    return _apiMap(
+      'agora_token',
+      query: {'channel_name': channelName, 'uid': uid.toString()},
+    );
+  }
+
   Future<Map<String, dynamic>> zegoRoomToken(
     String roomId, {
     String? userName,
