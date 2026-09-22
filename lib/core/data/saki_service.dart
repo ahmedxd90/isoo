@@ -2615,17 +2615,18 @@ class SakiService {
     String roomId, {
     String? userName,
   }) async {
-    final response = await client.functions.invoke(
-      'zego-token',
-      body: {
-        'roomId': roomId.trim(),
+    final data = await _apiMap(
+      'zego_token',
+      query: {
+        'room_id': roomId.trim(),
         if (userName != null && userName.trim().isNotEmpty)
-          'userName': userName.trim(),
+          'user_name': userName.trim(),
       },
     );
-    final data = Map<String, dynamic>.from(response.data as Map);
     if (data['token'] == null || data['appId'] == null) {
-      throw Exception(data['error']?.toString() ?? 'تعذر إنشاء توكن ZEGOCLOUD');
+      throw StateError(
+        data['error']?.toString() ?? 'تعذر إنشاء توكن ZEGOCLOUD',
+      );
     }
     return data;
   }
