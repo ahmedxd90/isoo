@@ -2561,8 +2561,23 @@ class SakiService {
         });
   }
 
-  Stream<List<Map<String, dynamic>>> roomSettingsStream(String roomId) =>
-      client.from('rooms').stream(primaryKey: ['id']).eq('id', roomId).limit(1);
+  Stream<List<Map<String, dynamic>>> roomSettingsStream(String roomId) {
+    if (apiToken != null) {
+      return Stream.periodic(const Duration(seconds: 4)).asyncMap((_) async {
+        try {
+          final row = await _apiMap('room_details', query: {'room_id': roomId});
+          return [row];
+        } catch (_) {
+          return const <Map<String, dynamic>>[];
+        }
+      });
+    }
+    return client
+        .from('rooms')
+        .stream(primaryKey: ['id'])
+        .eq('id', roomId)
+        .limit(1);
+  }
 
   Stream<List<Map<String, dynamic>>> roomCinemaStateStream(String roomId) =>
       client
@@ -2665,8 +2680,20 @@ class SakiService {
             'payload': payload,
           }),
         );
-        if ((await r.close()).statusCode >= 400) {
-          throw StateError('room_message_send_failed');
+        final response = await r.close();
+        final raw = await response.transform(utf8.decoder).join();
+        late final dynamic decoded;
+        try {
+          decoded = jsonDecode(raw);
+        } catch (_) {
+          throw StateError(
+            'room_message_send_failed http=${response.statusCode} body=$raw',
+          );
+        }
+        if (response.statusCode >= 400 || decoded['ok'] != true) {
+          throw StateError(
+            'room_message_send_failed http=${response.statusCode} ${decoded['error'] ?? raw}',
+          );
         }
         return;
       } finally {
@@ -2950,6 +2977,23 @@ class SakiService {
     double? rewardRate,
     String? micPermission,
   }) async {
+    if (apiToken != null) {
+      final payload = <String, dynamic>{
+        'room_id': roomId,
+        'membership_fee': 0,
+        'reward_rate': 0,
+      };
+      if (seatCount != null) payload['seat_count'] = seatCount;
+      if (imageUrl != null) payload['image_url'] = imageUrl;
+      if (backgroundUrl != null) payload['background_url'] = backgroundUrl;
+      if (name != null) payload['name'] = name.trim();
+      if (announcement != null) payload['announcement'] = announcement.trim();
+      if (category != null) payload['category'] = category;
+      if (themeKey != null) payload['theme_key'] = themeKey;
+      if (micPermission != null) payload['mic_permission'] = micPermission;
+      await _apiPost('room_settings_update', payload);
+      return;
+    }
     final values = <String, dynamic>{};
     if (seatCount != null) values['seat_count'] = seatCount;
     if (imageUrl != null) values['image_url'] = imageUrl;
@@ -2969,6 +3013,7 @@ class SakiService {
   }
 
   Future<String> uploadRoomImage(String roomId, XFile image) async {
+    if (apiToken != null) return _uploadApi(image, 'rooms');
     final bytes = await File(image.path).readAsBytes();
     if (bytes.isEmpty) throw Exception('empty_image');
     final extension = image.path.split('.').last.toLowerCase();
@@ -3032,6 +3077,7 @@ class SakiService {
   }
 
   Future<String> uploadRoomBackground(String roomId, XFile image) async {
+    if (apiToken != null) return _uploadApi(image, 'room-backgrounds');
     final bytes = await File(image.path).readAsBytes();
     final extension = image.path.split('.').last.toLowerCase();
     final contentType = extension == 'gif' ? 'image/gif' : 'image/$extension';
@@ -3048,6 +3094,9 @@ class SakiService {
   }
 
   Future<List<Map<String, dynamic>>> roomBackgrounds(String roomId) async {
+    if (apiToken != null) {
+      return _apiList('room_backgrounds', query: {'room_id': roomId});
+    }
     final rows = await client
         .from('room_backgrounds')
         .select('id,image_url,created_at')
@@ -3058,6 +3107,13 @@ class SakiService {
   }
 
   Future<void> saveRoomBackground(String roomId, String imageUrl) async {
+    if (apiToken != null) {
+      await _apiPost('room_background_save', {
+        'room_id': roomId,
+        'image_url': imageUrl,
+      });
+      return;
+    }
     await client.from('room_backgrounds').insert({
       'room_id': roomId,
       'owner_id': uid,
@@ -3185,7 +3241,13 @@ class SakiService {
           }
           throw StateError(d['error']?.toString() ?? 'room_create_failed');
         }
-        return Map<String, dynamic>.from(d['data'] as Map);
+        final created = Map<String, dynamic>.from(d['data'] as Map);
+        if (image != null) {
+          final url = await uploadRoomImage(created['id'].toString(), image);
+          await updateRoomSettings(created['id'].toString(), imageUrl: url);
+          created['image_url'] = url;
+        }
+        return created;
       } finally {
         c.close(force: true);
       }
