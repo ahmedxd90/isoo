@@ -161,22 +161,31 @@ class _RoomsPageState extends State<RoomsPage> {
           .push(MaterialPageRoute(builder: (_) => const SearchPage()));
 
   Future<void> _create() async {
-    await RoomSessionController.instance.close();
-    final owned = await _service.myOwnedRoom();
-    if (!mounted) return;
-    if (owned != null) {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: owned)));
-      return;
+    try {
+      await RoomSessionController.instance.close();
+      final owned = await _service.myOwnedRoom();
+      if (!mounted) return;
+      if (owned != null) {
+        await Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: owned)));
+        return;
+      }
+      final created = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(builder: (_) => const CreateRoomPage()),
+      );
+      if (!mounted || created == null) return;
+      await _load();
+      if (!mounted) return;
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: created)));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('تعذر فتح إنشاء الغرفة: $error')));
     }
-    final created = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(builder: (_) => const CreateRoomPage()),
-    );
-    if (!mounted || created == null) return;
-    await _load();
-    if (!mounted) return;
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: created)));
   }
 
   @override
