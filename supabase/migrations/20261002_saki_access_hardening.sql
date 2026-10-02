@@ -155,7 +155,7 @@ create policy saki_host_agency_payout_requests_read
 -- grant only the operations the Flutter client actually uses.
 revoke all privileges on table public.profiles from public, anon, authenticated;
 grant select on table public.profiles to authenticated;
-grant update (username, display_name, bio, country, country_code, avatar_url, updated_at)
+grant update (username, display_name, bio, country, country_code, gender, avatar_url, updated_at)
   on table public.profiles to authenticated;
 
 do $$

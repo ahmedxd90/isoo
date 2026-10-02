@@ -60,10 +60,39 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
     try {
       final account = await widget.service.accountModules();
       final rows = await widget.service.roomSeats(widget.roomId);
-      final recipients = rows
-          .map((row) => Map<String, dynamic>.from(row))
-          .where((profile) => profile['id'] != null)
-          .toList();
+      final ownProfile = await widget.service.myProfile();
+      final recipients = <Map<String, dynamic>>[];
+      for (final row in rows) {
+        final nested = row['profiles'];
+        final profile = nested is Map
+            ? Map<String, dynamic>.from(nested)
+            : <String, dynamic>{};
+        final id = (profile['id'] ?? row['user_id'])?.toString();
+        if (id == null || id.isEmpty) continue;
+        recipients.add({
+          ...profile,
+          'id': id,
+          'user_id': id,
+          'seat_no': row['seat_no'],
+        });
+      }
+      final selfId =
+          ownProfile?['id']?.toString() ?? widget.service.currentUser?.id;
+      if (selfId != null && selfId.isNotEmpty) {
+        final selfIndex = recipients.indexWhere(
+          (profile) => profile['id']?.toString() == selfId,
+        );
+        if (selfIndex < 0) {
+          recipients.insert(0, {
+            ...?ownProfile,
+            'id': selfId,
+            'user_id': selfId,
+            '_is_self': true,
+          });
+        } else {
+          recipients[selfIndex]['_is_self'] = true;
+        }
+      }
       final gifts = await widget.service.roomGiftCatalog(category: 'general');
       if (!mounted) return;
       setState(() {
@@ -289,6 +318,7 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                     itemBuilder: (_, index) {
                       final profile = _recipients[index];
                       final id = profile['id'].toString();
+                      final isSelf = profile['_is_self'] == true;
                       final selected = _selectedIds.contains(id);
                       return GestureDetector(
                         onTap: () => _toggleRecipient(id),
@@ -299,10 +329,22 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                               Stack(
                                 clipBehavior: Clip.none,
                                 children: [
-                                  SakiAvatar(
-                                    url: profile['avatar_url'] as String?,
-                                    label: profile['username'] as String?,
-                                    radius: 25,
+                                  Container(
+                                    padding: EdgeInsets.all(isSelf ? 2 : 0),
+                                    decoration: isSelf
+                                        ? BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: _giftOrange,
+                                              width: 1.5,
+                                            ),
+                                          )
+                                        : null,
+                                    child: SakiAvatar(
+                                      url: profile['avatar_url'] as String?,
+                                      label: profile['username'] as String?,
+                                      radius: 25,
+                                    ),
                                   ),
                                   if (selected)
                                     PositionedDirectional(
@@ -326,11 +368,17 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                profile['username'] as String? ?? 'عضو',
+                                isSelf
+                                    ? 'أنت'
+                                    : profile['username'] as String? ?? 'عضو',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: selected ? _giftCyan : Colors.white70,
+                                  color: selected
+                                      ? _giftCyan
+                                      : isSelf
+                                      ? _giftOrange
+                                      : Colors.white70,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                 ),

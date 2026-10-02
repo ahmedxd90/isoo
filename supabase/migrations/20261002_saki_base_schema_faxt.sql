@@ -197,6 +197,8 @@ alter table public.room_gift_catalog
   add column if not exists media_type text;
 
 alter table public.room_gift_catalog alter column id set default gen_random_uuid();
+alter table public.room_gift_catalog
+  alter column gift_type set default ('custom_' || gen_random_uuid()::text);
 
 -- Preserve the existing system gift catalog by adapting its aliases instead of
 -- discarding it. The seed migration later uses ON CONFLICT DO NOTHING, so this

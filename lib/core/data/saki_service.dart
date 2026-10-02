@@ -647,10 +647,13 @@ class SakiService {
     String mediaType = 'emoji',
   }) async {
     await client.from('room_gift_catalog').insert({
+      'display_name': name,
+      'emoji': '🎁',
       'name': name,
       'icon': icon,
       'category': category,
       'price': price,
+      'asset_url': mediaUrl ?? icon,
       'media_url': mediaUrl,
       'media_type': mediaType,
       'sort_order': 99,
