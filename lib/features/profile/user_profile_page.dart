@@ -46,6 +46,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
+      final viewerId = SakiService.instance.currentUser?.id;
+      if (viewerId != null && viewerId != widget.userId) {
+        unawaited(
+          SakiService.instance
+              .recordProfileVisit(widget.userId)
+              .catchError((_) {}),
+        );
+      }
       final results = await Future.wait<dynamic>([
         SakiService.instance.userProfile(widget.userId),
         SakiService.instance.familyBadgeForUser(widget.userId),

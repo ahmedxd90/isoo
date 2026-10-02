@@ -207,6 +207,7 @@ declare
     'create_private_conversation','create_room_luck_bag','end_live_broadcast',
     'enter_room','family_gift_leaderboard','family_weekly_leaderboard',
     'finish_pk_battle','get_trending_rooms','gift_vip','global_gift_room_leaderboard',
+    'host_agency_dashboard','host_agency_host_dashboard','host_agency_wallet_dashboard',
     'global_gift_user_leaderboard','is_saki_super_admin','is_shipping_agent',
     'leave_family','leave_room','leave_room_seat','purchase_vip',
     'record_user_task_event','redeem_saki_code','reject_family_join',

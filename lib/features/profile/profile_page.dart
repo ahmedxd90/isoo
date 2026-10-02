@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +7,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -21,6 +24,7 @@ import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import 'user_profile_page.dart';
+import 'native_profile_destinations.dart';
 import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -163,7 +167,14 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) _load();
       return;
     }
-    if (type == 'agency' || type == 'level') {
+    if (type == 'agency') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const HostAgencyDashboardPage()),
+      );
+      if (mounted) _load();
+      return;
+    }
+    if (type == 'level') {
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => TraceProfileFeaturesPage(feature: type),
@@ -193,6 +204,22 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _openMenu(String title) async {
+    if (title == 'VIP') {
+      await _openModule('vip');
+      return;
+    }
+    if (title == 'الأرستقراطية') {
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const AristocracyPage()));
+      return;
+    }
+    if (title == 'وكالة مضيفين') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const HostAgencyDashboardPage()),
+      );
+      if (mounted) _load();
+      return;
+    }
     if (title == 'كود الاسترداد') {
       await Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const RedeemCodePage()));
@@ -330,44 +357,139 @@ class _MyHtmlProfileView extends StatefulWidget {
 
 class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
   int tab = 0;
+  String _language = 'العربية';
+  final GlobalKey _activityKey = GlobalKey();
 
-  Future<void> _more() async {
-    await showModalBottomSheet<void>(
+  @override
+  void initState() {
+    super.initState();
+    _restoreLanguage();
+  }
+
+  Future<void> _restoreLanguage() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(
+        () => _language =
+            preferences.getString('saki_profile_language') ?? 'العربية',
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _chooseLanguage() async {
+    final selected = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(
-                Icons.settings_rounded,
-                color: Color(0xFF475569),
+      builder: (sheetContext) => SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 448),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'اختر اللغة',
+                          style: TextStyle(
+                            color: Color(0xFF1E293B),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Color(0xFFF1F5F9)),
+                  for (final language in const ['العربية', 'English', 'Türkçe'])
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                      title: Text(
+                        language,
+                        style: TextStyle(
+                          color: language == _language
+                              ? const Color(0xFF0F766E)
+                              : const Color(0xFF475569),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      trailing: language == _language
+                          ? const Icon(
+                              Icons.check_circle_rounded,
+                              color: Color(0xFF0F9F8D),
+                            )
+                          : null,
+                      onTap: () => Navigator.pop(sheetContext, language),
+                    ),
+                ],
               ),
-              title: const Text('الإعدادات'),
-              onTap: () {
-                Navigator.pop(context);
-                widget.onMenu('الإعدادات');
-              },
             ),
-            ListTile(
-              leading: const Icon(
-                Icons.logout_rounded,
-                color: Colors.redAccent,
-              ),
-              title: const Text('تسجيل الخروج'),
-              onTap: () {
-                Navigator.pop(context);
-                widget.onLogout();
-              },
-            ),
-          ],
+          ),
         ),
       ),
     );
+    if (selected == null || !mounted) return;
+    setState(() => _language = selected);
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString('saki_profile_language', selected);
+    } catch (_) {}
+    if (mounted) CustomToast.show(context, 'تم تغيير اللغة إلى $selected');
+  }
+
+  Future<void> _inviteFriend() async {
+    final name = widget.profile['username']?.toString() ?? 'صديقك';
+    final sakiId = widget.profile['saki_id']?.toString() ?? '';
+    final text = sakiId.isEmpty
+        ? 'انضم إلى SAKI وتواصل معي: $name'
+        : 'انضم إلى SAKI وابحث عني بمعرّف SAKI: $sakiId';
+    await SharePlus.instance.share(ShareParams(text: text));
+  }
+
+  Future<void> _openOption(String title) async {
+    if (title == 'الشارة') {
+      setState(() => tab = 2);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _activityKey.currentContext;
+        if (target != null) {
+          Scrollable.ensureVisible(
+            target,
+            duration: const Duration(milliseconds: 380),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      });
+      return;
+    }
+    if (title == 'دعوة صديق') {
+      await _inviteFriend();
+      return;
+    }
+    if (title == 'اللغة') {
+      await _chooseLanguage();
+      return;
+    }
+    if (title == 'لوحة التحكم') {
+      await widget.onMenu('لوحة تحكم سوبر أدمن');
+      return;
+    }
+    if (title == 'وكالة شحن') {
+      await widget.onMenu('وكالة الشحن');
+      return;
+    }
+    await widget.onMenu(title);
   }
 
   @override
@@ -403,78 +525,196 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
       ),
     };
     return Scaffold(
-      backgroundColor: const Color(0xFFE5E7EB),
+      backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _MyProfileCover(
-                profile: widget.profile,
-                username: username,
-                avatar: avatar,
-                wealthLevel: widget.wealthLevel,
-                vipLevel: widget.vipLevel,
-                stats: widget.stats,
-                onBack: widget.onBack,
-                onEdit: widget.onEdit,
-                onAvatarTap: widget.onAvatarTap,
-                onMore: _more,
-                onAdmin: widget.isSuperAdmin
-                    ? () => widget.onMenu('لوحة تحكم سوبر أدمن')
-                    : null,
-                onShipping: widget.isShippingAgent
-                    ? () => widget.onModule('shipping_agent')
-                    : null,
+        bottom: false,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFFD3F9F2),
+                      Color(0xFFF4FBF9),
+                      Color(0xFFF8FAFC),
+                    ],
+                    stops: [0, .25, 1],
+                  ),
+                ),
               ),
             ),
-            SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(0, -24),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(26),
+            Positioned.fill(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 72, 16, 30),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 448),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _MyProfileCover(
+                          profile: widget.profile,
+                          username: username,
+                          avatar: avatar,
+                          stats: widget.stats,
+                          onAvatarTap: widget.onAvatarTap,
+                          onCopy: () async {
+                            final id =
+                                widget.profile['saki_id']?.toString() ?? '';
+                            await Clipboard.setData(ClipboardData(text: id));
+                            if (context.mounted) {
+                              CustomToast.show(context, 'تم نسخ SAKI ID');
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        _MyShortcutGrid(
+                          onTap: widget.onModule,
+                          onMenu: widget.onMenu,
+                        ),
+                        const SizedBox(height: 12),
+                        _MyProfileOptions(
+                          vipLevel: widget.vipLevel,
+                          badgeCount: widget.badges.length,
+                          isShippingAgent: widget.isShippingAgent,
+                          isSuperAdmin: widget.isSuperAdmin,
+                          language: _language,
+                          onTap: _openOption,
+                        ),
+                        const SizedBox(height: 12),
+                        _MyExtraOptions(
+                          onFamily: () => _openOption('العائلة'),
+                          onRedeem: () => _openOption('كود الاسترداد'),
+                          onLogout: widget.onLogout,
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          key: _activityKey,
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFF1F5F9)),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x0A0F172A),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              const Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  'محتواي',
+                                  style: TextStyle(
+                                    color: Color(0xFF1E293B),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  _MyTab(
+                                    label: 'ملف التعريف',
+                                    active: tab == 0,
+                                    onTap: () => setState(() => tab = 0),
+                                  ),
+                                  _MyTab(
+                                    label: 'اللحظات',
+                                    active: tab == 1,
+                                    onTap: () => setState(() => tab = 1),
+                                  ),
+                                  _MyTab(
+                                    label: 'الأوسمة',
+                                    active: tab == 2,
+                                    onTap: () => setState(() => tab = 2),
+                                  ),
+                                  _MyTab(
+                                    label: 'الهدايا',
+                                    active: tab == 3,
+                                    onTap: () => setState(() => tab = 3),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 18),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                child: content,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 40),
-                  child: Column(
-                    children: [
-                      _MyShortcutGrid(
-                        onTap: widget.onModule,
-                        onMenu: widget.onMenu,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 448),
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      child: Container(
+                        width: double.infinity,
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .85),
+                          border: const Border(
+                            bottom: BorderSide(color: Color(0x80E2E8F0)),
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x080F172A),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              tooltip: 'رجوع',
+                              onPressed: widget.onBack,
+                              icon: const Icon(Icons.chevron_right_rounded),
+                              color: const Color(0xFF475569),
+                            ),
+                            const Expanded(
+                              child: Text(
+                                'الملف الشخصي',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFF1E293B),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: .2,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'تعديل الملف الشخصي',
+                              onPressed: widget.onEdit,
+                              icon: const Icon(Icons.manage_accounts_outlined),
+                              color: const Color(0xFF0F766E),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 22),
-                      Row(
-                        children: [
-                          _MyTab(
-                            label: 'ملف التعريف',
-                            active: tab == 0,
-                            onTap: () => setState(() => tab = 0),
-                          ),
-                          _MyTab(
-                            label: 'اللحظات',
-                            active: tab == 1,
-                            onTap: () => setState(() => tab = 1),
-                          ),
-                          _MyTab(
-                            label: 'الأوسمة',
-                            active: tab == 2,
-                            onTap: () => setState(() => tab = 2),
-                          ),
-                          _MyTab(
-                            label: 'الهدايا',
-                            active: tab == 3,
-                            onTap: () => setState(() => tab = 3),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        child: content,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -491,198 +731,101 @@ class _MyProfileCover extends StatelessWidget {
     required this.profile,
     required this.username,
     required this.avatar,
-    required this.wealthLevel,
-    required this.vipLevel,
     required this.stats,
-    required this.onBack,
-    required this.onEdit,
     required this.onAvatarTap,
-    required this.onMore,
-    this.onAdmin,
-    this.onShipping,
+    required this.onCopy,
   });
   final Map<String, dynamic> profile;
   final String username;
   final String? avatar;
-  final int wealthLevel, vipLevel;
   final Map<String, int> stats;
-  final VoidCallback onBack, onEdit, onAvatarTap, onMore;
-  final VoidCallback? onAdmin, onShipping;
+  final VoidCallback onAvatarTap, onCopy;
+
   @override
-  Widget build(BuildContext context) {
-    final cover = avatar == null || avatar!.isEmpty
-        ? null
-        : NetworkImage(avatar!);
-    final gender = profile['gender']?.toString() ?? '';
-    return Container(
-      constraints: const BoxConstraints(minHeight: 360),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        image: cover == null
-            ? null
-            : DecorationImage(
-                image: cover,
-                fit: BoxFit.cover,
-                alignment: Alignment.bottomCenter,
-                colorFilter: ColorFilter.mode(
-                  Colors.black.withValues(alpha: .48),
-                  BlendMode.darken,
-                ),
+  Widget build(BuildContext context) => Column(
+    children: [
+      GestureDetector(
+        onTap: onAvatarTap,
+        child: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F172A).withValues(alpha: .12),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-      ),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Color(0xE6000000)],
+            ],
+          ),
+          child: SakiAvatar(
+            url: avatar,
+            label: username,
+            radius: 44,
+            profile: profile,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 35),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      const SizedBox(height: 11),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Flexible(
+            child: VipNameText(
+              profile: {...profile, 'display_name': username},
+              fontSize: 20,
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: 5),
+          WealthVipLabels(profile: profile, compact: true),
+        ],
+      ),
+      const SizedBox(height: 7),
+      InkWell(
+        onTap: onCopy,
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .68),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: const Color(0x80E2E8F0)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  if (onAdmin != null)
-                    _GlassIcon(
-                      icon: Icons.admin_panel_settings_rounded,
-                      onTap: onAdmin!,
-                    ),
-                  if (onShipping != null) ...[
-                    const SizedBox(width: 10),
-                    _GlassIcon(
-                      icon: Icons.monetization_on_rounded,
-                      onTap: onShipping!,
-                    ),
-                  ],
-                  const Spacer(),
-                  _GlassIcon(icon: Icons.more_vert_rounded, onTap: onMore),
-                  const SizedBox(width: 8),
-                  _GlassIcon(icon: Icons.chevron_right_rounded, onTap: onBack),
-                ],
+              const Icon(
+                Icons.copy_rounded,
+                size: 14,
+                color: Color(0xFF94A3B8),
               ),
-              const Spacer(),
-              GestureDetector(
-                onTap: onAvatarTap,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white38),
-                  ),
-                  child: SakiAvatar(
-                    url: avatar,
-                    label: username,
-                    radius: 36,
-                    profile: profile,
-                  ),
+              const SizedBox(width: 6),
+              Text(
+                'ID: ${profile['saki_id'] ?? '—'}',
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: .35,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Flexible(
-                    child: VipNameText(
-                      profile: {...profile, 'display_name': username},
-                      fontSize: 19,
-                      textAlign: TextAlign.start,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  WealthVipLabels(profile: profile, compact: true),
-                  if (gender.isNotEmpty) ...[
-                    const SizedBox(width: 7),
-                    Container(
-                      width: 17,
-                      height: 17,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF3B82F6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        gender == 'أنثى'
-                            ? Icons.female_rounded
-                            : Icons.male_rounded,
-                        color: Colors.white,
-                        size: 11,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    'ID: ${profile['saki_id'] ?? '—'}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
-                  IconButton(
-                    onPressed: () async {
-                      await Clipboard.setData(
-                        ClipboardData(text: '${profile['saki_id'] ?? ''}'),
-                      );
-                      if (context.mounted) {
-                        CustomToast.show(context, 'تم نسخ SAKI ID');
-                      }
-                    },
-                    icon: const Icon(
-                      Icons.copy_rounded,
-                      color: Colors.white70,
-                      size: 14,
-                    ),
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _MyHeroStat(
-                    value: '${stats['followers'] ?? 0}',
-                    label: 'المتابعون',
-                  ),
-                  _MyHeroDivider(),
-                  _MyHeroStat(
-                    value: '${stats['following'] ?? 0}',
-                    label: 'الذين تتابعهم',
-                  ),
-                  _MyHeroDivider(),
-                  _MyHeroStat(
-                    value: '${stats['posts'] ?? 0}',
-                    label: 'اللحظات',
-                  ),
-                ],
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _GlassIcon extends StatelessWidget {
-  const _GlassIcon({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(99),
-    child: Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: .32),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white24),
+      const SizedBox(height: 22),
+      Row(
+        children: [
+          _MyHeroStat(value: '${stats['visitors'] ?? 0}', label: 'زائر'),
+          _MyHeroDivider(),
+          _MyHeroStat(value: '${stats['following'] ?? 0}', label: 'متابعة'),
+          _MyHeroDivider(),
+          _MyHeroStat(value: '${stats['followers'] ?? 0}', label: 'متابعين'),
+        ],
       ),
-      child: Icon(icon, color: Colors.white, size: 18),
-    ),
+    ],
   );
 }
 
@@ -696,14 +839,14 @@ class _MyHeroStat extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 19,
+            color: Color(0xFF1E293B),
+            fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
         ),
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 10),
+          style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
         ),
       ],
     ),
@@ -713,7 +856,7 @@ class _MyHeroStat extends StatelessWidget {
 class _MyHeroDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
-      Container(height: 28, width: 1, color: Colors.white38);
+      Container(height: 30, width: 1, color: const Color(0x66CBD5E1));
 }
 
 class _MyShortcutGrid extends StatelessWidget {
@@ -731,72 +874,59 @@ class _MyShortcutGrid extends StatelessWidget {
         true,
       ),
       (
-        'VIP',
-        'vip',
-        Icons.workspace_premium_rounded,
-        const Color(0xFF9333EA),
-        true,
+        'المهام',
+        'المهام',
+        Icons.check_box_outlined,
+        const Color(0xFF0EA5E9),
+        false,
       ),
       (
         'المتجر',
         'store',
-        Icons.shopping_bag_rounded,
-        const Color(0xFF2563EB),
-        true,
-      ),
-      (
-        'العائلة',
-        'family',
-        Icons.groups_rounded,
-        const Color(0xFF4F46E5),
+        Icons.shopping_bag_outlined,
+        const Color(0xFFF43F5E),
         true,
       ),
       (
         'المستوى',
         'level',
-        Icons.show_chart_rounded,
+        Icons.workspace_premium_outlined,
         const Color(0xFF10B981),
         true,
       ),
-      (
-        'المهام',
-        'المهام',
-        Icons.checklist_rounded,
-        const Color(0xFFF97316),
-        false,
-      ),
-      (
-        'كود الاسترداد',
-        'كود الاسترداد',
-        Icons.confirmation_number_rounded,
-        const Color(0xFFF43F5E),
-        false,
-      ),
-      (
-        'الإعدادات',
-        'الإعدادات',
-        Icons.settings_rounded,
-        const Color(0xFF475569),
-        false,
-      ),
     ];
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 4,
-      mainAxisSpacing: 17,
-      crossAxisSpacing: 8,
-      childAspectRatio: .78,
-      children: items
-          .map(
-            (item) => _ShortcutItem(
-              label: item.$1,
-              icon: item.$3,
-              color: item.$4,
-              onTap: () => item.$5 ? onTap(item.$2) : onMenu(item.$2),
-            ),
-          )
-          .toList(),
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 4,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1.08,
+        children: items
+            .map(
+              (item) => _ShortcutItem(
+                label: item.$1,
+                icon: item.$3,
+                color: item.$4,
+                onTap: () => item.$5 ? onTap(item.$2) : onMenu(item.$2),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 }
@@ -815,34 +945,295 @@ class _ShortcutItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
-    borderRadius: BorderRadius.circular(13),
+    borderRadius: BorderRadius.circular(15),
     child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 43,
-          height: 43,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
-            color: color.withValues(alpha: .09),
+            color: color.withValues(alpha: .08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: .25)),
-            boxShadow: [
-              BoxShadow(color: color.withValues(alpha: .08), blurRadius: 7),
-            ],
           ),
-          child: Icon(icon, color: color, size: 19),
+          child: Icon(icon, color: color, size: 23),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 7),
         Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: Color(0xFF374151),
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
+            color: Color(0xFF334155),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _MyProfileOptions extends StatelessWidget {
+  const _MyProfileOptions({
+    required this.vipLevel,
+    required this.badgeCount,
+    required this.isShippingAgent,
+    required this.isSuperAdmin,
+    required this.language,
+    required this.onTap,
+  });
+  final int vipLevel, badgeCount;
+  final bool isShippingAgent, isSuperAdmin;
+  final String language;
+  final Future<void> Function(String) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[
+      _MyOptionRow(
+        title: 'VIP',
+        icon: Icons.workspace_premium_rounded,
+        color: const Color(0xFFD97706),
+        background: const Color(0xFFFFF7E6),
+        trailing: vipLevel > 0 ? 'VIP $vipLevel' : 'انضم الآن',
+        trailingColor: const Color(0xFFD97706),
+        onTap: () => onTap('VIP'),
+      ),
+      _MyOptionRow(
+        title: 'الأرستقراطية',
+        icon: Icons.diamond_outlined,
+        color: const Color(0xFF4F46E5),
+        background: const Color(0xFFEEF2FF),
+        onTap: () => onTap('الأرستقراطية'),
+      ),
+      _MyOptionRow(
+        title: 'الشارة',
+        icon: Icons.verified_user_outlined,
+        color: const Color(0xFF9333EA),
+        background: const Color(0xFFFAF5FF),
+        trailing: badgeCount > 0 ? '$badgeCount' : null,
+        onTap: () => onTap('الشارة'),
+      ),
+      _MyOptionRow(
+        title: 'دعوة صديق',
+        icon: Icons.person_add_alt_1_rounded,
+        color: const Color(0xFFE11D48),
+        background: const Color(0xFFFFF1F2),
+        onTap: () => onTap('دعوة صديق'),
+      ),
+      _MyOptionRow(
+        title: 'وكالة شحن',
+        icon: Icons.credit_card_rounded,
+        color: const Color(0xFF0F9F8D),
+        background: const Color(0xFFE9FBF7),
+        trailing: isShippingAgent ? 'نشطة' : null,
+        onTap: () => onTap('وكالة شحن'),
+      ),
+      _MyOptionRow(
+        title: 'وكالة مضيفين',
+        icon: Icons.mic_none_rounded,
+        color: const Color(0xFF2563EB),
+        background: const Color(0xFFEFF6FF),
+        onTap: () => onTap('وكالة مضيفين'),
+      ),
+      _MyOptionRow(
+        title: 'لوحة التحكم',
+        icon: Icons.dashboard_outlined,
+        color: const Color(0xFFEA580C),
+        background: const Color(0xFFFFF7ED),
+        trailing: isSuperAdmin ? 'مشرف' : null,
+        onTap: () => onTap('لوحة التحكم'),
+      ),
+      _MyOptionRow(
+        title: 'اللغة',
+        icon: Icons.language_rounded,
+        color: const Color(0xFF0F9F8D),
+        background: const Color(0xFFE9FBF7),
+        trailing: language,
+        onTap: () => onTap('اللغة'),
+      ),
+      _MyOptionRow(
+        title: 'الإعدادات',
+        icon: Icons.settings_outlined,
+        color: const Color(0xFF64748B),
+        background: const Color(0xFFF1F5F9),
+        onTap: () => onTap('الإعدادات'),
+      ),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080F172A),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                thickness: .6,
+                color: Color(0xFFF1F5F9),
+                indent: 12,
+                endIndent: 12,
+              ),
+            rows[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MyExtraOptions extends StatelessWidget {
+  const _MyExtraOptions({
+    required this.onFamily,
+    required this.onRedeem,
+    required this.onLogout,
+  });
+  final VoidCallback onFamily, onRedeem, onLogout;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      const Padding(
+        padding: EdgeInsets.fromLTRB(4, 1, 4, 8),
+        child: Text(
+          'خدمات حسابي',
+          style: TextStyle(
+            color: Color(0xFF475569),
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      Container(
+        padding: const EdgeInsets.all(7),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Column(
+          children: [
+            _MyOptionRow(
+              title: 'العائلة',
+              icon: Icons.groups_2_outlined,
+              color: const Color(0xFF4F46E5),
+              background: const Color(0xFFEEF2FF),
+              onTap: onFamily,
+            ),
+            const Divider(
+              height: 1,
+              thickness: .6,
+              color: Color(0xFFF1F5F9),
+              indent: 12,
+              endIndent: 12,
+            ),
+            _MyOptionRow(
+              title: 'كود الاسترداد',
+              icon: Icons.confirmation_number_outlined,
+              color: const Color(0xFFE11D48),
+              background: const Color(0xFFFFF1F2),
+              onTap: onRedeem,
+            ),
+            const Divider(
+              height: 1,
+              thickness: .6,
+              color: Color(0xFFF1F5F9),
+              indent: 12,
+              endIndent: 12,
+            ),
+            _MyOptionRow(
+              title: 'تسجيل الخروج',
+              icon: Icons.logout_rounded,
+              color: const Color(0xFFDC2626),
+              background: const Color(0xFFFEF2F2),
+              onTap: onLogout,
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _MyOptionRow extends StatelessWidget {
+  const _MyOptionRow({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.background,
+    required this.onTap,
+    this.trailing,
+    this.trailingColor = const Color(0xFF64748B),
+  });
+  final String title;
+  final IconData icon;
+  final Color color, background;
+  final String? trailing;
+  final Color trailingColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (trailing != null) ...[
+              Text(
+                trailing!,
+                style: TextStyle(
+                  color: trailingColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            const Icon(
+              Icons.chevron_left_rounded,
+              color: Color(0xFF94A3B8),
+              size: 18,
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

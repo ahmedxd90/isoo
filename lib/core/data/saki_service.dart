@@ -874,36 +874,62 @@ class SakiService {
     required List<XFile> images,
     required String visibility,
   }) async {
-    final post = await client
-        .from('posts')
-        .insert({
-          'author_id': uid,
-          'content': content.trim().isEmpty ? null : content.trim(),
-          'visibility': visibility,
-        })
-        .select('id')
-        .single();
-    final postId = post['id'] as String;
-    for (var i = 0; i < images.length && i < 10; i++) {
-      final file = File(images[i].path);
-      final bytes = await file.readAsBytes();
-      final extension = images[i].path.split('.').last.toLowerCase();
-      final path = '$uid/$postId/$i.$extension';
-      await client.storage
+    String? postId;
+    final uploadedPaths = <String>[];
+    try {
+      final post = await client
           .from('posts')
-          .uploadBinary(
-            path,
-            bytes,
-            fileOptions: FileOptions(
-              upsert: true,
-              contentType: 'image/$extension',
-            ),
-          );
-      await client.from('post_media').insert({
-        'post_id': postId,
-        'storage_path': path,
-        'sort_order': i,
-      });
+          .insert({
+            'author_id': uid,
+            'content': content.trim().isEmpty ? null : content.trim(),
+            'visibility': visibility,
+          })
+          .select('id')
+          .single();
+      postId = post['id'] as String;
+      for (var i = 0; i < images.length && i < 10; i++) {
+        final file = File(images[i].path);
+        final bytes = await file.readAsBytes();
+        final extension = images[i].path.split('.').last.toLowerCase();
+        final path = '$uid/$postId/$i.$extension';
+        final contentType = switch (extension) {
+          'jpg' || 'jpeg' => 'image/jpeg',
+          'png' => 'image/png',
+          'webp' => 'image/webp',
+          'gif' => 'image/gif',
+          'heic' => 'image/heic',
+          _ => 'application/octet-stream',
+        };
+        await client.storage
+            .from('posts')
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: FileOptions(upsert: true, contentType: contentType),
+            );
+        uploadedPaths.add(path);
+        await client.from('post_media').insert({
+          'post_id': postId,
+          'storage_path': path,
+          'sort_order': i,
+        });
+      }
+    } catch (_) {
+      if (uploadedPaths.isNotEmpty) {
+        try {
+          await client.storage.from('posts').remove(uploadedPaths);
+        } catch (_) {}
+      }
+      if (postId != null) {
+        try {
+          await client
+              .from('posts')
+              .delete()
+              .eq('id', postId)
+              .eq('author_id', uid);
+        } catch (_) {}
+      }
+      rethrow;
     }
   }
 
@@ -2311,19 +2337,58 @@ class SakiService {
   }
 
   Future<Map<String, int>> profileStats() async {
-    final posts = await client.from('posts').select('id').eq('author_id', uid);
-    final followers = await client
-        .from('follows')
-        .select('follower_id')
-        .eq('following_id', uid);
-    final following = await client
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', uid);
+    final results = await Future.wait<dynamic>([
+      client.from('posts').select('id').eq('author_id', uid),
+      client.from('follows').select('follower_id').eq('following_id', uid),
+      client.from('follows').select('following_id').eq('follower_id', uid),
+      client.rpc('my_profile_visitor_count'),
+    ]);
+    final posts = results[0];
+    final followers = results[1];
+    final following = results[2];
+    final visitorResult = results[3];
     return {
       'posts': List<Map<String, dynamic>>.from(posts).length,
       'followers': List<Map<String, dynamic>>.from(followers).length,
       'following': List<Map<String, dynamic>>.from(following).length,
+      'visitors': visitorResult is num
+          ? visitorResult.toInt()
+          : int.tryParse(visitorResult.toString()) ?? 0,
+    };
+  }
+
+  Future<void> recordProfileVisit(String profileId) async {
+    await client.rpc(
+      'record_profile_visit',
+      params: {'p_profile_id': profileId},
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> aristocracyLevels() async =>
+      List<Map<String, dynamic>>.from(
+        await client
+            .from('aristocracy_levels')
+            .select(
+              'id,slug,name_ar,color_primary,color_secondary,icon_url,price_gold,duration_days',
+            )
+            .eq('is_active', true)
+            .order('sort_order'),
+      );
+
+  Future<Map<String, dynamic>> hostAgencyOverview() async {
+    try {
+      final result = await client.rpc('host_agency_dashboard');
+      return {'role': 'owner', ...Map<String, dynamic>.from(result as Map)};
+    } catch (error) {
+      if (!error.toString().contains('agency_not_found')) rethrow;
+    }
+
+    final host = await client.rpc('host_agency_host_dashboard');
+    final wallet = await client.rpc('host_agency_wallet_dashboard');
+    return {
+      'role': 'agent',
+      'host': Map<String, dynamic>.from(host as Map),
+      'wallet': Map<String, dynamic>.from(wallet as Map),
     };
   }
 
