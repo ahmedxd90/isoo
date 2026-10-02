@@ -27,7 +27,7 @@ begin
    else 0 end;
   if v_value>=r.target and not exists(select 1 from public.user_badges where user_id=p_user_id and badge_key=r.badge_key) then
    insert into public.user_badges(user_id,badge_key) values(p_user_id,r.badge_key);
-   insert into public.notifications(user_id,actor_id,type,badge_key,badge_asset_path,is_read,data) values(p_user_id,p_user_id,'badge_earned',r.badge_key,r.asset_path,false,jsonb_build_object('badge_key',r.badge_key,'name',r.name,'description',r.description));
+   insert into public.notifications(user_id,actor_id,type,badge_key,badge_asset_path,is_read,data) values(p_user_id,p_user_id,'badge_earned',r.badge_key,r.asset_path,false,jsonb_build_object('badge_key',r.badge_key,'name',r.name,'description',r.description)::text);
   end if;
  end loop;
 end; $$;

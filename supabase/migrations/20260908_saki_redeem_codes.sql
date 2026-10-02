@@ -16,7 +16,7 @@ create table if not exists public.saki_redeem_code_rewards (
   item_id uuid references public.trace_store_catalog(id) on delete restrict,
   quantity bigint not null default 1 check (quantity > 0),
   duration_days integer check (duration_days is null or duration_days > 0),
-  vip_level integer check (vip_level is null or vip_level between 1 and 7),
+  vip_level integer check (vip_level is null or vip_level between 1 and 10),
   wealth_level integer check (wealth_level is null or wealth_level >= 0),
   created_at timestamptz not null default now(),
   constraint saki_redeem_reward_shape check (

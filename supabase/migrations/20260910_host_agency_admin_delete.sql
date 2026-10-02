@@ -20,7 +20,7 @@ begin
   delete from public.host_agency_withdrawal_requests where agency_id=p_agency_id;
   insert into public.admin_audit_log(actor_id,action,target_user_id,metadata)
   values(auth.uid(),'agency_deleted',v_owner_id,jsonb_build_object('agency_id',p_agency_id,'name',v_name));
-  delete from public.notifications where data->>'agency_id'=p_agency_id::text;
+  delete from public.notifications where data::jsonb->>'agency_id'=p_agency_id::text;
   delete from public.trace_agencies where id=p_agency_id;
 end; $$;
 

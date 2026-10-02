@@ -1,2 +1,3 @@
-const supabaseUrl = 'https://vzooppdaqayerpmvdotl.supabase.co';
-const supabasePublishableKey = 'sb_publishable_dpXk7UxyT3BsO0BWTCmQMQ_UBkxiRE4';
+const supabaseUrl = 'https://faxtmvvovorxximsnxzy.supabase.co';
+const supabasePublishableKey = 'sb_publishable_tZvg-hzXKI10JxiHJRht3w_Aa7rFOjN';
+const supabaseOAuthRedirectUrl = 'io.supabase.saki://login-callback';

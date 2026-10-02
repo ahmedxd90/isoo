@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/config/supabase_config.dart';
 import '../../core/data/saki_service.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -105,8 +106,9 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   Future<void> _checkNetwork() async {
     _toast('جارٍ فحص الاتصال...');
     try {
-      await InternetAddress.lookup('sakichat.freecpanel.shop');
-      if (mounted) _toast('الاتصال بالخادم يعمل بشكل طبيعي');
+      final host = Uri.parse(supabaseUrl).host;
+      await InternetAddress.lookup(host);
+      if (mounted) _toast('الاتصال بمشروع Supabase يعمل على مستوى الشبكة');
     } catch (_) {
       if (mounted) _toast('تعذر الوصول إلى الخادم، تحقق من الإنترنت');
     }

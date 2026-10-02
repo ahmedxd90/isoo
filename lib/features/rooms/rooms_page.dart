@@ -17,6 +17,7 @@ import '../../core/room_session.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
 import 'room_settings_page.dart';
+import 'pk_battle_page.dart';
 import 'cinema_player.dart';
 import 'room_gifts_sheet.dart';
 import 'room_gift_ranking_sheet.dart';
@@ -1714,9 +1715,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           },
           onAudioVolumeIndication:
               (connection, speakers, speakerNumber, totalVolume) {
-                // Agora reports the local speaker with uid 0 in this callback.
+                final localUid = _numericUid(_service.uid);
                 final local = speakers
-                    .where((speaker) => speaker.uid == 0)
+                    .where((speaker) => speaker.uid == localUid)
                     .firstOrNull;
                 final speaking =
                     !_micMuted &&
@@ -2388,6 +2389,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       MaterialPageRoute(
         builder: (_) =>
             RoomSettingsPage(room: latest ?? widget.room, service: _service),
+      ),
+    );
+  }
+
+  Future<void> _openPkBattle() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => PkBattlePage(
+          roomId: _roomId,
+          channelName: widget.room['room_id']?.toString() ?? _roomId,
+          title: widget.room['name']?.toString() ?? 'غرفة SAKI',
+        ),
       ),
     );
   }
@@ -3911,6 +3924,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                           ),
+                          if (widget.room['owner_id']?.toString() ==
+                              _service.uid)
+                            IconButton(
+                              onPressed: _openPkBattle,
+                              icon: const Icon(
+                                Icons.flash_on_rounded,
+                                color: Colors.amber,
+                              ),
+                              tooltip: 'تحدي PK',
+                            ),
                           IconButton(
                             onPressed: () async {
                               await _confirmExit();

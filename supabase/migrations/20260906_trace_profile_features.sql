@@ -127,7 +127,7 @@ begin
   select gold_coins into balance from public.saki_account_modules where user_id = auth.uid() for update;
   if coalesce(balance, 0) < item.price_gold_coins then raise exception 'insufficient_gold_coins'; end if;
   expiry := case when item.duration_days is null then null else now() + make_interval(days => item.duration_days) end;
-  update public.saki_account_modules set gold_coins = gold_coins - item.price_gold_coins, updated_at = now() where user_id = auth.uid();
+  update public.saki_account_modules m set gold_coins = m.gold_coins - item.price_gold_coins, updated_at = now() where m.user_id = auth.uid();
   insert into public.trace_store_inventory(user_id, item_id, expires_at, is_active) values (auth.uid(), item.id, expiry, true)
     on conflict (user_id, item_id) do update set purchased_at = now(), expires_at = excluded.expires_at, is_active = true;
   return query select item.id, (select gold_coins from public.saki_account_modules where user_id = auth.uid()), expiry;

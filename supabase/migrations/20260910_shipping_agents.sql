@@ -63,7 +63,7 @@ begin
   insert into public.saki_account_modules(user_id,gold_coins) values(v_recipient.id,v_gold) on conflict(user_id) do update set gold_coins=public.saki_account_modules.gold_coins+v_gold,updated_at=now();
   insert into public.shipping_transactions(agent_id,recipient_id,saki_coins,gold_coins) values(auth.uid(),v_recipient.id,p_saki_coins,v_gold) returning id into v_tx;
   select coalesce(display_name,username,'وكيل الشحن') into v_agent_name from public.profiles where id=auth.uid();
-  insert into public.notifications(user_id,actor_id,type,entity_id,is_read,data) values(v_recipient.id,auth.uid(),'shipping_topup',v_tx,false,jsonb_build_object('agent_name',v_agent_name,'saki_coins',p_saki_coins,'gold_coins',v_gold,'message','تم شحن رصيدك بعملات ذهبية من وكيل الشحن'));
+  insert into public.notifications(user_id,actor_id,type,entity_id,is_read,data) values(v_recipient.id,auth.uid(),'shipping_topup',v_tx,false,jsonb_build_object('agent_name',v_agent_name,'saki_coins',p_saki_coins,'gold_coins',v_gold,'message','تم شحن رصيدك بعملات ذهبية من وكيل الشحن')::text);
   return jsonb_build_object('transaction_id',v_tx,'saki_coins',p_saki_coins,'gold_coins',v_gold);
 end; $$;
 

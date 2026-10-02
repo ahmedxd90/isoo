@@ -13,6 +13,7 @@ alter table public.gift_announcements enable row level security;
 drop policy if exists gift_announcements_read on public.gift_announcements;
 create policy gift_announcements_read on public.gift_announcements for select to authenticated using (true);
 
+drop function if exists public.send_room_gift(uuid, uuid, uuid, integer);
 create or replace function public.send_room_gift(p_room_id uuid, p_recipient_id uuid, p_gift_id uuid, p_quantity integer default 1)
 returns table(gold_coins bigint, gift_name text, total_price bigint, recipient_diamonds bigint)
 language plpgsql security definer set search_path = public as $$

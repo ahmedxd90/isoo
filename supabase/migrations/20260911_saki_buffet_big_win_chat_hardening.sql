@@ -7,7 +7,6 @@ set search_path = public
 as $$
 declare
   v_profile record;
-  v_room record;
 begin
   if new.payout < 1000000 or coalesce(old.payout, 0) >= 1000000 then
     return new;
@@ -18,16 +17,11 @@ begin
   from public.profiles
   where id = new.user_id;
 
-  for v_room in
-    select id, owner_id
-    from public.rooms
-    where coalesce(is_active, true) = true
-  loop
-    insert into public.room_messages(
+  insert into public.room_messages(
       room_id, sender_id, body, message_type, payload
-    ) values (
-      v_room.id,
-      v_room.owner_id,
+    ) select
+      new.room_id,
+      r.owner_id,
       'مبروك لقد ربحت في لعبة بوفيه الأطعمة',
       'buffet_big_win',
       jsonb_build_object(
@@ -39,8 +33,7 @@ begin
         'food_id', new.food_id,
         'chat_only', true
       )
-    );
-  end loop;
+    from public.rooms r where r.id=new.room_id and coalesce(r.is_active,true)=true;
   return new;
 end;
 $$;

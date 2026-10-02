@@ -90,7 +90,7 @@ begin
   insert into public.host_agency_wallet_transactions(user_id,transaction_type,diamonds,usd_amount,metadata)
     values(auth.uid(),'diamonds_to_usd',p_diamonds,v_usd,jsonb_build_object('rates','250k=13;500k=26;1m=52;2m=102'));
   select * into v_wallet from public.host_agency_wallets where user_id=auth.uid();
-  return query select v_wallet.usd_balance,v_wallet.usd_reserved,(select diamonds from public.saki_account_modules where user_id=auth.uid());
+  return query select v_wallet.usd_balance,v_wallet.usd_reserved,(select m.diamonds from public.saki_account_modules m where m.user_id=auth.uid());
 end; $$;
 
 create or replace function public.host_agency_convert_usd_to_gold(p_usd numeric)
@@ -105,11 +105,11 @@ begin
     set usd_balance=usd_balance-p_usd, updated_at=now()
     where user_id=auth.uid() and usd_balance-usd_reserved >= p_usd;
   if not found then raise exception 'insufficient_usd'; end if;
-  update public.saki_account_modules set gold_coins=gold_coins+v_gold,updated_at=now() where user_id=auth.uid();
+  update public.saki_account_modules m set gold_coins=m.gold_coins+v_gold,updated_at=now() where m.user_id=auth.uid();
   insert into public.host_agency_wallet_transactions(user_id,transaction_type,usd_amount,gold_coins,metadata)
     values(auth.uid(),'usd_to_gold',p_usd,v_gold,jsonb_build_object('gold_per_usd',7500));
   select * into v_wallet from public.host_agency_wallets where user_id=auth.uid();
-  return query select v_wallet.usd_balance,v_wallet.usd_reserved,(select gold_coins from public.saki_account_modules where user_id=auth.uid());
+  return query select v_wallet.usd_balance,v_wallet.usd_reserved,(select m.gold_coins from public.saki_account_modules m where m.user_id=auth.uid());
 end; $$;
 
 create or replace function public.host_agency_request_usd_withdrawal(p_usd numeric)

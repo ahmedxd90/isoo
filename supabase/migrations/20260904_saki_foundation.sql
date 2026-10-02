@@ -2,7 +2,11 @@ create extension if not exists pgcrypto;
 
 create sequence if not exists public.saki_id_seq minvalue 964379846 start 964379846;
 alter table public.profiles alter column saki_id set default nextval('public.saki_id_seq'::regclass);
-select setval('public.saki_id_seq', greatest(coalesce((select max(saki_id) from public.profiles), 964379845), 964379845), true);
+select setval(
+  'public.saki_id_seq',
+  coalesce((select max(saki_id) from public.profiles), 964379846),
+  exists (select 1 from public.profiles where saki_id is not null)
+);
 
 alter table public.profiles add column if not exists display_name text;
 alter table public.profiles add column if not exists is_private boolean not null default false;
@@ -191,6 +195,7 @@ create policy "saki_room_messages_insert" on public.room_messages for insert wit
 );
 create policy "saki_room_messages_delete" on public.room_messages for delete using (auth.uid() = sender_id);
 create policy "saki_room_banners_select" on public.room_banners for select using (is_active = true);
+drop policy if exists "saki_countries_select" on public.countries;
 create policy "saki_countries_select" on public.countries for select using (true);
 
 create policy "saki_notifications_select" on public.notifications for select using (auth.uid() = user_id);

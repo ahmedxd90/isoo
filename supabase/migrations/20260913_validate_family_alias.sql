@@ -20,7 +20,7 @@ begin
   end if;
 
   if char_length(normalized_alias) < 5
-     or normalized_alias !~ '^[A-Za-z0-9_\u0600-\u06FF]+$' then
+     or normalized_alias !~ '^[A-Za-z0-9_ء-ي]+$' then
     raise exception 'invalid_family_alias';
   end if;
 
@@ -77,7 +77,7 @@ declare
   normalized_alias text := trim(coalesce(p_alias, ''));
 begin
   if char_length(normalized_alias) < 5
-     or normalized_alias !~ '^[A-Za-z0-9_\u0600-\u06FF]+$' then
+     or normalized_alias !~ '^[A-Za-z0-9_ء-ي]+$' then
     raise exception 'invalid_family_alias';
   end if;
 

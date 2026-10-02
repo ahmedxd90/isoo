@@ -122,7 +122,7 @@ create or replace function public.badge_notification_rows()
 returns table(id uuid,user_id uuid,actor_id uuid,type text,entity_id uuid,is_read boolean,created_at timestamptz,badge_key text,name text,description text,asset_path text,earned_at timestamptz)
 language sql security definer set search_path=public as $$
 select n.id,n.user_id,n.actor_id,n.type,n.entity_id,n.is_read,n.created_at,c.badge_key,c.name,c.description,c.asset_path,u.earned_at
-from public.notifications n join public.user_badges u on u.user_id=n.user_id and n.type='badge_earned' join public.badge_catalog c using(badge_key)
+from public.notifications n join public.user_badges u on u.user_id=n.user_id and u.badge_key=n.badge_key and n.type='badge_earned' join public.badge_catalog c on c.badge_key=u.badge_key
 where n.user_id=auth.uid() order by n.created_at desc limit 100;
 $$;
 

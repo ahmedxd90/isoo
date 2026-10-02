@@ -6,7 +6,7 @@ language plpgsql security definer set search_path=public as $$
 declare result public.families;
 begin
   if exists(select 1 from family_members where user_id=auth.uid() and status='active') then raise exception 'already_in_family'; end if;
-  if char_length(trim(p_alias)) < 5 or trim(p_alias) !~ '^[[:alnum:]_\u0600-\u06FF]+$' then raise exception 'invalid_family_alias'; end if;
+  if char_length(trim(p_alias)) < 5 or trim(p_alias) !~ '^[A-Za-z0-9_ء-ي]+$' then raise exception 'invalid_family_alias'; end if;
   update saki_account_modules set gold_coins=gold_coins-500000,updated_at=now() where user_id=auth.uid() and gold_coins>=500000;
   if not found then raise exception 'insufficient_gold'; end if;
   insert into families(owner_id,name,family_alias,description,avatar_url) values(auth.uid(),trim(p_name),trim(p_alias),trim(coalesce(p_description,'')),nullif(trim(p_avatar_url),'')) returning * into result;

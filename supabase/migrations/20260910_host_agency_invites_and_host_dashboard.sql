@@ -39,7 +39,7 @@ begin
   if exists(select 1 from public.trace_agency_members where user_id=v_host and status='active') then raise exception 'host_already_assigned'; end if;
   insert into public.trace_agency_join_requests(agency_id,user_id,status) values(v_agency.id,v_host,'pending') on conflict(agency_id,user_id,status) do update set created_at=now() returning id into v_invite;
   select coalesce(display_name,username) into v_agent_name from public.profiles where id=auth.uid();
-  insert into public.notifications(user_id,actor_id,type,entity_id,is_read,data) values(v_host,auth.uid(),'agency_invite',v_invite,false,jsonb_build_object('agency_id',v_agency.id,'agency_name',v_agency.name,'agent_name',v_agent_name));
+  insert into public.notifications(user_id,actor_id,type,entity_id,is_read,data) values(v_host,auth.uid(),'agency_invite',v_invite,false,jsonb_build_object('agency_id',v_agency.id,'agency_name',v_agency.name,'agent_name',v_agent_name)::text);
   return v_invite;
 end; $$;
 

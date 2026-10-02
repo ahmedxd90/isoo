@@ -33,13 +33,13 @@ create policy room_gifts_room_read on public.room_gifts for select using (exists
 drop policy if exists room_gift_inventory_own on public.room_gift_inventory;
 create policy room_gift_inventory_own on public.room_gift_inventory for select using (user_id = auth.uid());
 
-insert into public.room_gift_catalog(category,name,icon,price,sort_order) values
-('general','وردة','🌹',100,1),('general','قلب','💖',500,2),('general','تاج','👑',1000,3),
-('luck','حظ سعيد','🍀',250,1),('luck','صندوق الحظ','🎁',2500,2),('luck','نرد ذهبي','🎲',5000,3),
-('famous','نجمة الشهرة','⭐',10000,1),('famous','مايك ذهبي','🎤',25000,2),
-('countries','علم عربي','🏳️',300,1),('countries','كرة العالم','🌍',1500,2),
-('vip','VIP لامع','💎',50000,1),('vip','VIP ملكي','💎',250000,2),
-('cp','CP صغير','🪙',1000,1),('cp','CP ملكي','🪙',10000,2)
+insert into public.room_gift_catalog(gift_type,display_name,category,price,emoji,name,icon,sort_order) values
+('seed_01','وردة','general',100,'🌹','وردة','🌹',1),('seed_02','قلب','general',500,'💖','قلب','💖',2),('seed_03','تاج','general',1000,'👑','تاج','👑',3),
+('seed_04','حظ سعيد','luck',250,'🍀','حظ سعيد','🍀',1),('seed_05','صندوق الحظ','luck',2500,'🎁','صندوق الحظ','🎁',2),('seed_06','نرد ذهبي','luck',5000,'🎲','نرد ذهبي','🎲',3),
+('seed_07','نجمة الشهرة','famous',10000,'⭐','نجمة الشهرة','⭐',1),('seed_08','مايك ذهبي','famous',25000,'🎤','مايك ذهبي','🎤',2),
+('seed_09','علم عربي','countries',300,'🏳️','علم عربي','🏳️',1),('seed_10','كرة العالم','countries',1500,'🌍','كرة العالم','🌍',2),
+('seed_11','VIP لامع','vip',50000,'💎','VIP لامع','💎',1),('seed_12','VIP ملكي','vip',250000,'💎','VIP ملكي','💎',2),
+('seed_13','CP صغير','cp',1000,'🪙','CP صغير','🪙',1),('seed_14','CP ملكي','cp',10000,'🪙','CP ملكي','🪙',2)
 on conflict do nothing;
 
 create or replace function public.send_room_gift(p_room_id uuid, p_recipient_id uuid, p_gift_id uuid, p_quantity integer default 1)

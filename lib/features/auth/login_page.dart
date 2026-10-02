@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
@@ -15,16 +15,21 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   static const _videoUrl = 'https://f.top4top.io/m_3901fr5rd0.mp4';
-  static const _googleWebClientId =
-      '164807497226-k7h6m36u5rphd0th08em1u233nu1hfhq.apps.googleusercontent.com';
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   VideoPlayerController? _video;
+  StreamSubscription? _authSubscription;
   bool _loading = false;
   bool _routing = false;
 
   @override
   void initState() {
     super.initState();
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      data,
+    ) {
+      if (data.event == AuthChangeEvent.signedIn && data.session != null) {
+        _routeAfterAuth();
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final error = GoRouterState.of(context)
@@ -57,32 +62,83 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _googleLogin() async {
     setState(() => _loading = true);
     try {
-      await _googleSignIn.initialize(serverClientId: _googleWebClientId);
-      final account = await _googleSignIn.authenticate();
-      final idToken = account.authentication.idToken;
-      if (idToken == null || idToken.isEmpty) {
-        throw StateError('Google لم يعطِ رمز ID صالحًا.');
-      }
-      final profile = await SakiService.instance.googleLogin(idToken);
-      await _routeAfterAuth(profile);
+      final launched = await SakiService.instance.signInWithGoogle();
+      if (!launched) throw StateError('تعذر فتح صفحة Google.');
     } catch (error) {
       if (mounted) {
-        _showError(
-          'فشل تسجيل Google داخل التطبيق.\n\n'
-          'النوع: ${error.runtimeType}\n'
-          'التفاصيل: $error',
-        );
+        _showError(_friendlyAuthError(error.toString()));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _routeAfterAuth([Map<String, dynamic>? initialProfile]) async {
+  Future<void> _emailLogin() async {
+    final email = TextEditingController();
+    final password = TextEditingController();
+    final credentials = await showDialog<(String, String)?>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تسجيل الدخول بالبريد'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: email,
+              keyboardType: TextInputType.emailAddress,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: password,
+              obscureText: true,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(labelText: 'كلمة المرور'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, (
+              email.text.trim(),
+              password.text,
+            )),
+            child: const Text('دخول'),
+          ),
+        ],
+      ),
+    );
+    email.dispose();
+    password.dispose();
+    if (credentials == null ||
+        credentials.$1.isEmpty ||
+        credentials.$2.isEmpty) {
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await SakiService.instance.signInWithPassword(
+        email: credentials.$1,
+        password: credentials.$2,
+      );
+      await _routeAfterAuth();
+    } catch (error) {
+      if (mounted) _showError(_friendlyAuthError(error.toString()));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _routeAfterAuth() async {
     if (_routing || !mounted) return;
     _routing = true;
     try {
-      final profile = initialProfile ?? await SakiService.instance.myProfile();
+      final profile = await SakiService.instance.myProfile();
       final username = profile?['username']?.toString() ?? '';
       final complete =
           username.isNotEmpty &&
@@ -142,6 +198,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    unawaited(_authSubscription?.cancel());
     _video?.dispose();
     super.dispose();
   }
@@ -241,6 +298,20 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 22),
                   SizedBox(width: 320, height: 56, child: _googleButton()),
+                  TextButton(
+                    onPressed: _loading ? null : _emailLogin,
+                    child: const Text(
+                      'الدخول بالبريد الإلكتروني',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _loading ? null : () => context.go('/register'),
+                    child: const Text(
+                      'إنشاء حساب جديد',
+                      style: TextStyle(color: Color(0xFFFFD700)),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Text.rich(
                     TextSpan(

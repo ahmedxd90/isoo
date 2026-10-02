@@ -16,7 +16,7 @@ begin
   select coalesce(nullif(display_name,''),username,'الوكيل') into v_agent_name from public.profiles where id=auth.uid();
   insert into public.notifications(user_id,actor_id,type,entity_id,is_read,data)
     values(v_host,auth.uid(),'agency_invite',v_invite,false,jsonb_build_object(
-      'agency_id',v_agency.id,'agency_name',v_agency.name,'agent_name',v_agent_name,'response','pending'));
+      'agency_id',v_agency.id,'agency_name',v_agency.name,'agent_name',v_agent_name,'response','pending')::text);
   return v_invite;
 end; $$;
 
@@ -31,7 +31,7 @@ begin
   if exists(select 1 from public.trace_agency_members where user_id=auth.uid() and status='active') then raise exception 'host_already_assigned'; end if;
   update public.trace_agency_join_requests set status='approved',reviewed_at=now() where id=v_request.id;
   insert into public.trace_agency_members(agency_id,user_id,role,status) values(v_agency.id,auth.uid(),'agent','active') on conflict(agency_id,user_id) do update set role='agent',status='active';
-  update public.notifications set is_read=true,data=coalesce(data,'{}'::jsonb)||jsonb_build_object('response','accepted') where entity_id=p_invite_id and user_id=auth.uid() and type='agency_invite';
+  update public.notifications set is_read=true,data=(coalesce(nullif(data,''),'{}')::jsonb||jsonb_build_object('response','accepted'))::text where entity_id=p_invite_id and user_id=auth.uid() and type='agency_invite';
 end; $$;
 
 create or replace function public.host_agency_decline_invite(p_invite_id uuid)
@@ -39,7 +39,7 @@ returns void language plpgsql security definer set search_path=public as $$
 begin
   update public.trace_agency_join_requests set status='rejected',reviewed_at=now() where id=p_invite_id and user_id=auth.uid() and status='pending';
   if not found then raise exception 'invite_not_found'; end if;
-  update public.notifications set is_read=true,data=coalesce(data,'{}'::jsonb)||jsonb_build_object('response','declined') where entity_id=p_invite_id and user_id=auth.uid() and type='agency_invite';
+  update public.notifications set is_read=true,data=(coalesce(nullif(data,''),'{}')::jsonb||jsonb_build_object('response','declined'))::text where entity_id=p_invite_id and user_id=auth.uid() and type='agency_invite';
 end; $$;
 
 revoke all on function public.host_agency_invite_host(bigint),public.host_agency_accept_invite(uuid),public.host_agency_decline_invite(uuid) from anon,public;

@@ -4,10 +4,10 @@ create sequence if not exists public.saki_room_id_seq minvalue 473692816 start 4
 select setval(
   'public.saki_room_id_seq',
   greatest(
-    coalesce((select max(room_id::bigint) from public.rooms where room_id ~ '^[0-9]{9}$'), 473692815),
-    473692815
+    coalesce((select max(room_id::bigint) from public.rooms where room_id ~ '^[0-9]{9}$'), 473692816),
+    473692816
   ),
-  true
+  exists (select 1 from public.rooms where room_id ~ '^[0-9]{9}$')
 );
 
 update public.rooms

@@ -10,6 +10,10 @@ alter table public.saki_redeem_code_rewards add constraint saki_redeem_reward_sh
   or (reward_type = 'wealth' and item_id is null and store_product_id is null and wealth_level is not null)
 );
 
+alter table public.saki_redeem_code_rewards drop constraint if exists saki_redeem_code_rewards_vip_level_check;
+alter table public.saki_redeem_code_rewards add constraint saki_redeem_code_rewards_vip_level_check
+  check (vip_level is null or vip_level between 1 and 10);
+
 create or replace function public.admin_create_redeem_code(p_code text, p_expires_at timestamptz, p_max_uses integer, p_rewards jsonb)
 returns uuid language plpgsql security definer set search_path = public
 as $$

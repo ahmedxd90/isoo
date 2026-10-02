@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -86,18 +87,36 @@ class _RegisterPageState extends State<RegisterPage> {
         orElse: () => null,
       );
       final countryName = selected?['name_ar'] as String?;
+      final genderName = _gender == 'male' ? 'ذكر' : 'أنثى';
       await SakiService.instance.register(
         username: _username.text.trim(),
         email: _email.text.trim(),
         password: _password.text,
+        country: countryName,
+        countryCode: _countryCode,
+        gender: genderName,
       );
+      if (!mounted) return;
+      final hasSession = Supabase.instance.client.auth.currentSession != null;
+      var profileCompleted = false;
+      if (hasSession && countryName != null) {
+        await SakiService.instance.completeProfile(
+          username: _username.text.trim(),
+          country: countryName,
+          gender: genderName,
+          avatar: _avatar,
+        );
+        profileCompleted = true;
+      }
       if (!mounted) return;
       await showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('تم إنشاء الحساب'),
+          title: Text(hasSession ? 'تم إنشاء الحساب' : 'تحقق من بريدك'),
           content: Text(
-            'تم إنشاء الحساب بنجاح${countryName == null ? '' : ' في $countryName'}. سجّل الدخول للمتابعة.',
+            hasSession
+                ? 'تم إنشاء الحساب${countryName == null ? '' : ' في $countryName'} بنجاح.'
+                : 'أرسلنا رسالة تأكيد إلى بريدك الإلكتروني. أكّد البريد ثم سجّل الدخول للمتابعة.',
           ),
           actions: [
             TextButton(
@@ -107,7 +126,15 @@ class _RegisterPageState extends State<RegisterPage> {
           ],
         ),
       );
-      if (mounted) context.go('/login');
+      if (mounted) {
+        context.go(
+          !hasSession
+              ? '/login'
+              : profileCompleted
+              ? '/home'
+              : '/complete-profile',
+        );
+      }
     } catch (e) {
       setState(
         () => _error = 'تعذر إنشاء الحساب الآن. تحقق من الاتصال وحاول مجددًا.',

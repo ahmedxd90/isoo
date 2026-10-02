@@ -18,7 +18,6 @@ Future<void> main() async {
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,
   );
-  await SakiService.instance.restoreApiSession();
   await SakiNotificationService.instance.initialize();
   runApp(const SakiApp());
 }
@@ -85,7 +84,7 @@ class _SplashPageState extends State<SplashPage>
     SakiPermissionService.requestOnFirstLaunch();
     Future<void>.delayed(const Duration(milliseconds: 1500), () async {
       if (!mounted) return;
-      if (SakiService.instance.apiToken == null) {
+      if (Supabase.instance.client.auth.currentSession == null) {
         context.go('/login');
         return;
       }
@@ -98,7 +97,18 @@ class _SplashPageState extends State<SplashPage>
           return;
         }
       } catch (_) {}
-      if (mounted) context.go('/home');
+      if (!mounted) return;
+      try {
+        final profile = await SakiService.instance.myProfile();
+        final username = profile?['username']?.toString() ?? '';
+        final complete = username.isNotEmpty &&
+            !username.startsWith('user_') &&
+            profile?['country'] != null &&
+            profile?['gender'] != null;
+        if (mounted) context.go(complete ? '/home' : '/complete-profile');
+      } catch (_) {
+        if (mounted) context.go('/complete-profile');
+      }
     });
   }
 
