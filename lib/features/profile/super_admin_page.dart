@@ -1100,8 +1100,10 @@ class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
       CustomToast.show(context, value.replaceFirst('Exception: ', ''));
 
   Future<void> _save() async {
-    if (name.text.trim().isEmpty || int.tryParse(price.text) == null) {
-      _message('أدخل اسم الهدية والسعر بشكل صحيح.');
+    final giftName = name.text.trim();
+    final giftPrice = int.tryParse(price.text.trim());
+    if (giftName.isEmpty || giftPrice == null || giftPrice <= 0) {
+      _message('أدخل اسم الهدية وسعر الذهب (أكبر من صفر).');
       return;
     }
     if (thumbnail?.path == null || media?.path == null) {
@@ -1117,10 +1119,10 @@ class _AdminGiftUploadPageState extends State<AdminGiftUploadPage> {
         XFile(media!.path!),
       );
       await SakiService.instance.adminCreateGift(
-        name: name.text.trim(),
+        name: giftName,
         icon: thumbUrl,
         category: category,
-        price: int.parse(price.text),
+        price: giftPrice,
         mediaUrl: mediaUrl,
         mediaType: mediaType,
       );

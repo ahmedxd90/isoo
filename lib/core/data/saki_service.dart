@@ -646,10 +646,15 @@ class SakiService {
     String? mediaUrl,
     String mediaType = 'emoji',
   }) async {
+    final giftName = name.trim();
+    if (giftName.isEmpty) throw Exception('اسم الهدية مطلوب');
+    if (price <= 0) {
+      throw Exception('سعر الهدية بالذهب يجب أن يكون أكبر من صفر');
+    }
     await client.from('room_gift_catalog').insert({
-      'display_name': name,
+      'display_name': giftName,
       'emoji': '🎁',
-      'name': name,
+      'name': giftName,
       'icon': icon,
       'category': category,
       'price': price,
