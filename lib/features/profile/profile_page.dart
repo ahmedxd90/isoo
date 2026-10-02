@@ -162,9 +162,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
     if (type == 'shipping_agent') {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const ShippingAgentPage()));
-      if (mounted) _load();
+      await _openShippingAgency();
       return;
     }
     if (type == 'agency') {
@@ -203,21 +201,33 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Future<void> _openShippingAgency() async {
+    try {
+      final allowed = await SakiService.instance.isShippingAgent(
+        SakiService.instance.uid,
+      );
+      if (!mounted) return;
+      if (!allowed) {
+        CustomToast.show(context, 'وكالة الشحن متاحة لوكلاء الشحن فقط');
+        return;
+      }
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const ShippingAgentPage()));
+      if (mounted) _load();
+    } catch (_) {
+      if (mounted) {
+        CustomToast.show(context, 'تعذر التحقق من صلاحية وكيل الشحن');
+      }
+    }
+  }
+
   Future<void> _openMenu(String title) async {
     if (title == 'VIP') {
       await _openModule('vip');
       return;
     }
-    if (title == 'الأرستقراطية') {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const AristocracyPage()));
-      return;
-    }
-    if (title == 'وكالة مضيفين') {
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const HostAgencyDashboardPage()),
-      );
-      if (mounted) _load();
+    if (title == 'بيت الحب') {
+      CustomToast.show(context, 'ميزة بيت الحب سنعمل عليها لاحقًا');
       return;
     }
     if (title == 'كود الاسترداد') {
@@ -239,9 +249,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
     if (title == 'وكالة الشحن') {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const ShippingAgentPage()));
-      if (mounted) _load();
+      await _openShippingAgency();
       return;
     }
     if (title == 'لوحة تحكم سوبر أدمن') {
@@ -920,11 +928,11 @@ class _MyProfileOptions extends StatelessWidget {
         onTap: () => onTap('VIP'),
       ),
       _MyOptionRow(
-        title: 'الأرستقراطية',
-        icon: Icons.diamond_outlined,
-        color: const Color(0xFF4F46E5),
-        background: const Color(0xFFEEF2FF),
-        onTap: () => onTap('الأرستقراطية'),
+        title: 'بيت الحب',
+        icon: Icons.favorite_rounded,
+        color: const Color(0xFFE11D48),
+        background: const Color(0xFFFFF1F2),
+        onTap: () => onTap('بيت الحب'),
       ),
       _MyOptionRow(
         title: 'الشارة',
@@ -941,29 +949,24 @@ class _MyProfileOptions extends StatelessWidget {
         background: const Color(0xFFFFF1F2),
         onTap: () => onTap('دعوة صديق'),
       ),
-      _MyOptionRow(
-        title: 'وكالة شحن',
-        icon: Icons.credit_card_rounded,
-        color: const Color(0xFF0F9F8D),
-        background: const Color(0xFFE9FBF7),
-        trailing: isShippingAgent ? 'نشطة' : null,
-        onTap: () => onTap('وكالة شحن'),
-      ),
-      _MyOptionRow(
-        title: 'وكالة مضيفين',
-        icon: Icons.mic_none_rounded,
-        color: const Color(0xFF2563EB),
-        background: const Color(0xFFEFF6FF),
-        onTap: () => onTap('وكالة مضيفين'),
-      ),
-      _MyOptionRow(
-        title: 'لوحة التحكم',
-        icon: Icons.dashboard_outlined,
-        color: const Color(0xFFEA580C),
-        background: const Color(0xFFFFF7ED),
-        trailing: isSuperAdmin ? 'مشرف' : null,
-        onTap: () => onTap('لوحة التحكم'),
-      ),
+      if (isShippingAgent)
+        _MyOptionRow(
+          title: 'وكالة شحن',
+          icon: Icons.credit_card_rounded,
+          color: const Color(0xFF0F9F8D),
+          background: const Color(0xFFE9FBF7),
+          trailing: 'نشطة',
+          onTap: () => onTap('وكالة شحن'),
+        ),
+      if (isSuperAdmin)
+        _MyOptionRow(
+          title: 'لوحة التحكم',
+          icon: Icons.dashboard_outlined,
+          color: const Color(0xFFEA580C),
+          background: const Color(0xFFFFF7ED),
+          trailing: 'مشرف',
+          onTap: () => onTap('لوحة التحكم'),
+        ),
       _MyOptionRow(
         title: 'اللغة',
         icon: Icons.language_rounded,
