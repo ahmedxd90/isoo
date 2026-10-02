@@ -20,6 +20,7 @@ import 'room_settings_page.dart';
 import 'pk_battle_page.dart';
 import 'cinema_player.dart';
 import 'room_gifts_sheet.dart';
+import 'room_combo_button.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'room_global_gift_banner.dart';
 import 'luck_bag_widgets.dart';
@@ -1384,9 +1385,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _isComposing = false;
   String _micPermission = 'everyone';
   bool _isModerator = false;
-  int _comboSeconds = 0;
+  bool _comboActive = false;
+  bool _comboSending = false;
   int _comboCount = 0;
-  Timer? _comboTimer;
   String? _lastGiftRecipient;
   Map<String, dynamic>? _lastGift;
   final Set<int> _remoteUsers = <int>{};
@@ -1921,12 +1922,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         },
       ),
     );
-    if (sent == true && _lastGiftRecipient != null && _lastGift != null) {
+    if (sent == true &&
+        _lastGiftRecipient != null &&
+        _lastGift != null &&
+        _isLuckGift(_lastGift)) {
       _startGiftCombo();
     } else if (mounted) {
-      _comboTimer?.cancel();
       setState(() {
-        _comboSeconds = 0;
+        _comboActive = false;
+        _comboSending = false;
         _comboCount = 0;
       });
     }
@@ -1938,83 +1942,46 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   void _startGiftCombo() {
-    _comboTimer?.cancel();
-    _comboStartedAt = DateTime.now();
+    if (!mounted) return;
     setState(() {
-      _comboCount = _comboCount <= 0 ? 1 : _comboCount;
-      _comboSeconds = 3;
-    });
-    _comboTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!mounted) return timer.cancel();
-      if (_comboSeconds <= 0) {
-        timer.cancel();
-        setState(() {
-          _comboSeconds = 0;
-          _comboCount = 0;
-        });
-      } else {
-        final elapsed = DateTime.now()
-            .difference(_comboStartedAt)
-            .inMilliseconds;
-        final remaining = 3000 - elapsed;
-        setState(() => _comboSeconds = (remaining / 1000).ceil().clamp(0, 3));
-      }
+      _comboActive = true;
+      _comboSending = false;
+      _comboCount = 1;
     });
   }
 
-  DateTime _comboStartedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  void _expireGiftCombo() {
+    if (!mounted) return;
+    setState(() {
+      _comboActive = false;
+      _comboSending = false;
+      _comboCount = 0;
+    });
+  }
 
   Future<void> _sendComboAgain() async {
+    if (!_comboActive || _comboSending) return;
     final recipient = _lastGiftRecipient;
     final gift = _lastGift;
-    if (recipient == null || gift == null) return;
-    if (!_isLuckGift(gift)) return;
+    if (recipient == null || gift == null || !_isLuckGift(gift)) return;
+    setState(() => _comboSending = true);
     try {
-      _comboStartedAt = DateTime.now();
-      if (_isLuckGift(gift)) {
-        await _service.sendRoomLuckGift(
-          roomId: _roomId,
-          recipientId: recipient,
-          giftId: gift['id'] as String,
-        );
-      } else {
-        final payload = <String, dynamic>{
-          'gift_id': gift['id'],
-          'icon': gift['icon'],
-          'thumbnail_url': gift['icon'],
-          'name': gift['name'],
-          'media_url': gift['media_url'],
-          'media_type': gift['media_type'],
-          'category': gift['category'],
-          'recipient_id': recipient,
-          'flying_banner': true,
-        };
-        final optimistic = _queueOptimisticMessage(
-          body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
-          type: 'gift',
-          payload: payload,
-        );
-        try {
-          await _service.sendRoomGift(
-            roomId: _roomId,
-            recipientId: recipient,
-            giftId: gift['id'] as String,
-          );
-          await _service.sendRoomMessage(
-            _roomId,
-            'أرسل هدية ${gift['name'] ?? 'هدية'}',
-            type: 'gift',
-            payload: payload,
-          );
-        } catch (_) {
-          _removeOptimisticMessage(optimistic);
-          rethrow;
-        }
+      await _service.sendRoomLuckGift(
+        roomId: _roomId,
+        recipientId: recipient,
+        giftId: gift['id'] as String,
+      );
+      if (mounted) {
+        setState(() {
+          if (_comboActive) _comboCount++;
+          _comboSending = false;
+        });
       }
-      if (mounted) setState(() => _comboCount++);
-      _startGiftCombo();
     } catch (e) {
-      _messageSnack(e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) {
+        setState(() => _comboSending = false);
+        _messageSnack(e.toString().replaceFirst('Exception: ', ''));
+      }
     }
   }
 
@@ -3763,7 +3730,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         RoomSessionController.instance.engine == _engine;
     _message.dispose();
     _messageFocus.dispose();
-    _comboTimer?.cancel();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
@@ -4630,8 +4596,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                             SizedBox(
-                              width: _comboSeconds > 0 ? 92 : 72,
-                              height: _comboSeconds > 0 ? 124 : 64,
+                              width: _comboActive ? 116 : 72,
+                              height: _comboActive ? 140 : 64,
                               child: Stack(
                                 alignment: AlignmentDirectional.bottomCenter,
                                 children: [
@@ -4656,62 +4622,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       ),
                                     ),
                                   ),
-                                  if (_comboSeconds > 0)
+                                  if (_comboActive)
                                     Positioned(
                                       top: 0,
-                                      child: GestureDetector(
+                                      child: RoomComboButton(
+                                        key: const ValueKey('room-gift-combo'),
+                                        count: _comboCount,
+                                        isSending: _comboSending,
+                                        duration: const Duration(seconds: 10),
                                         onTap: _sendComboAgain,
-                                        child: SizedBox(
-                                          width: 78,
-                                          height: 78,
-                                          child: Stack(
-                                            alignment: Alignment.center,
-                                            children: [
-                                              CircularProgressIndicator(
-                                                value: _comboSeconds / 3,
-                                                strokeWidth: 7,
-                                                backgroundColor: Colors.white24,
-                                                valueColor:
-                                                    const AlwaysStoppedAnimation<
-                                                      Color
-                                                    >(Colors.amberAccent),
-                                              ),
-                                              Container(
-                                                width: 62,
-                                                height: 62,
-                                                decoration: const BoxDecoration(
-                                                  color: Color(0xFFE87919),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                alignment: Alignment.center,
-                                                child: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    const Text(
-                                                      'كومبو',
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 10,
-                                                        fontWeight:
-                                                            FontWeight.w900,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      '×$_comboCount',
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 19,
-                                                        fontWeight:
-                                                            FontWeight.w900,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                        onExpired: _expireGiftCombo,
                                       ),
                                     ),
                                 ],
