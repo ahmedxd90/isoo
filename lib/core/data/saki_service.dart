@@ -1222,6 +1222,11 @@ class SakiService {
       'system',
       'announcement',
       'daily_login',
+      'love_partner_invite',
+      'love_partner_accepted',
+      'love_partner_rejected',
+      'love_partner_expired',
+      'love_partner_ended',
       'coin_purchase',
       'vip_purchase',
       'wealth_upgrade',
@@ -1266,6 +1271,50 @@ class SakiService {
       }
       return row;
     }).toList();
+  }
+
+  Future<Map<String, dynamic>> loveHouseState() async {
+    final result = await client.rpc('saki_love_house_state');
+    if (result is Map) return Map<String, dynamic>.from(result);
+    throw const FormatException('Invalid Love House response');
+  }
+
+  Future<List<Map<String, dynamic>>> loveMutualFriends() async {
+    final result = await client.rpc('saki_love_mutual_friends');
+    if (result is List) return List<Map<String, dynamic>>.from(result);
+    return const [];
+  }
+
+  Future<Map<String, dynamic>> sendLovePartnerInvite(String recipientId) async {
+    final result = await client.rpc(
+      'saki_send_love_partner_invite',
+      params: {'p_recipient_id': recipientId},
+    );
+    if (result is Map) return Map<String, dynamic>.from(result);
+    throw const FormatException('Invalid Love House invitation response');
+  }
+
+  Future<Map<String, dynamic>> respondLovePartnerInvite(
+    String inviteId,
+    bool accept,
+  ) async {
+    final result = await client.rpc(
+      'saki_respond_love_partner_invite',
+      params: {'p_invite_id': inviteId, 'p_accept': accept},
+    );
+    if (result is Map) return Map<String, dynamic>.from(result);
+    throw const FormatException('Invalid Love House response');
+  }
+
+  Future<Map<String, dynamic>> endLoveRelationship(
+    String relationshipId,
+  ) async {
+    final result = await client.rpc(
+      'saki_end_love_relationship',
+      params: {'p_relationship_id': relationshipId},
+    );
+    if (result is Map) return Map<String, dynamic>.from(result);
+    throw const FormatException('Invalid Love House response');
   }
 
   Future<void> markNotificationsRead({String? type}) async {

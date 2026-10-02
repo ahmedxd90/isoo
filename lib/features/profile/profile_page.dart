@@ -7,7 +7,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/data/saki_service.dart';
@@ -25,6 +24,7 @@ import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import 'user_profile_page.dart';
 import 'native_profile_destinations.dart';
+import 'love_house_page.dart';
 import '../../shared/widgets/vip_identity.dart';
 
 import '../../shared/widgets/custom_toast.dart';
@@ -227,7 +227,9 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
     if (title == 'بيت الحب') {
-      CustomToast.show(context, 'ميزة بيت الحب سنعمل عليها لاحقًا');
+      await Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const LoveHousePage()));
+      if (mounted) _load();
       return;
     }
     if (title == 'كود الاسترداد') {
@@ -455,15 +457,6 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
     if (mounted) CustomToast.show(context, 'تم تغيير اللغة إلى $selected');
   }
 
-  Future<void> _inviteFriend() async {
-    final name = widget.profile['username']?.toString() ?? 'صديقك';
-    final sakiId = widget.profile['saki_id']?.toString() ?? '';
-    final text = sakiId.isEmpty
-        ? 'انضم إلى SAKI وتواصل معي: $name'
-        : 'انضم إلى SAKI وابحث عني بمعرّف SAKI: $sakiId';
-    await SharePlus.instance.share(ShareParams(text: text));
-  }
-
   Future<void> _openMyContent({int initialTab = 0}) async {
     final family = widget.profile['family_badge'] is Map
         ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)
@@ -488,10 +481,6 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
   Future<void> _openOption(String title) async {
     if (title == 'الشارة') {
       await _openMyContent(initialTab: 2);
-      return;
-    }
-    if (title == 'دعوة صديق') {
-      await _inviteFriend();
       return;
     }
     if (title == 'اللغة') {
@@ -941,13 +930,6 @@ class _MyProfileOptions extends StatelessWidget {
         background: const Color(0xFFFAF5FF),
         trailing: badgeCount > 0 ? '$badgeCount' : null,
         onTap: () => onTap('الشارة'),
-      ),
-      _MyOptionRow(
-        title: 'دعوة صديق',
-        icon: Icons.person_add_alt_1_rounded,
-        color: const Color(0xFFE11D48),
-        background: const Color(0xFFFFF1F2),
-        onTap: () => onTap('دعوة صديق'),
       ),
       if (isShippingAgent)
         _MyOptionRow(

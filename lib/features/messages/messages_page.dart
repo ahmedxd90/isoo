@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -1262,7 +1263,7 @@ class _SystemMessagesPageState extends State<SystemMessagesPage> {
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (_, index) {
               final row = _rows[index];
-              return _SystemMessageBubble(row: row);
+              return _SystemMessageBubble(row: row, onRefresh: _load);
             },
           ),
   );
@@ -1401,15 +1402,63 @@ class _FullMessagesScaffold extends StatelessWidget {
   );
 }
 
-class _SystemMessageBubble extends StatelessWidget {
-  const _SystemMessageBubble({required this.row});
+class _SystemMessageBubble extends StatefulWidget {
+  const _SystemMessageBubble({required this.row, required this.onRefresh});
   final Map<String, dynamic> row;
+  final Future<void> Function() onRefresh;
+
+  @override
+  State<_SystemMessageBubble> createState() => _SystemMessageBubbleState();
+}
+
+class _SystemMessageBubbleState extends State<_SystemMessageBubble> {
+  bool _responding = false;
+
+  Future<void> _respond(bool accept) async {
+    final inviteId = widget.row['entity_id']?.toString();
+    if (inviteId == null || inviteId.isEmpty || _responding) return;
+    setState(() => _responding = true);
+    try {
+      final result = await SakiService.instance.respondLovePartnerInvite(
+        inviteId,
+        accept,
+      );
+      final status = result['status']?.toString();
+      if (!mounted) return;
+      final message = switch (status) {
+        'accepted' => 'تم قبول الدعوة وأصبحتما شريكين في بيت الحب.',
+        'rejected' => 'تم رفض الدعوة وأُعيد الذهب إلى المرسل.',
+        'expired' => 'انتهت مهلة الدعوة وأُعيد الذهب إلى المرسل.',
+        _ => 'سبق الرد على هذه الدعوة.',
+      };
+      CustomToast.show(context, message);
+      await widget.onRefresh();
+    } catch (error) {
+      if (mounted) CustomToast.show(context, _loveInviteMessage(error));
+    } finally {
+      if (mounted) setState(() => _responding = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final row = widget.row;
     final type = row['type']?.toString() ?? 'system';
-    final title = _systemTitle(type);
-    final text = _systemText(row, type);
+    final profile = row['profiles'] is Map
+        ? Map<String, dynamic>.from(row['profiles'] as Map)
+        : <String, dynamic>{};
+    final actorName =
+        profile['display_name']?.toString().trim().isNotEmpty == true
+        ? profile['display_name'].toString()
+        : profile['username']?.toString() ?? 'مستخدم';
+    final isLoveInvite = type == 'love_partner_invite';
+    final rawData = row['data']?.toString() ?? '';
+    final isPendingInvite =
+        isLoveInvite && rawData.contains('تنتهي الدعوة بعد 7 أيام');
+    final title = isLoveInvite ? 'دعوة من $actorName' : _systemTitle(type);
+    final text = isLoveInvite
+        ? 'دعاك $actorName لتكون شريكه في بيت الحب. ${_systemText(row, type)}'
+        : _systemText(row, type);
     final thumb = _notificationImage(row);
     final read = row['is_read'] == true;
     return _NotificationBubble(
@@ -1426,8 +1475,55 @@ class _SystemMessageBubble extends StatelessWidget {
       onTap: () =>
           SakiService.instance.markNotificationRead(row['id'].toString()),
       accent: _blue,
+      trailing: isPendingInvite
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _LoveInviteReplyButton(
+                  label: _responding ? '…' : 'موافق',
+                  color: const Color(0xFF15803D),
+                  onPressed: _responding ? null : () => _respond(true),
+                ),
+                const SizedBox(height: 6),
+                _LoveInviteReplyButton(
+                  label: 'رفض',
+                  color: const Color(0xFFB4234F),
+                  onPressed: _responding ? null : () => _respond(false),
+                ),
+              ],
+            )
+          : null,
     );
   }
+}
+
+class _LoveInviteReplyButton extends StatelessWidget {
+  const _LoveInviteReplyButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  final String label;
+  final Color color;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 62,
+    height: 30,
+    child: FilledButton(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.zero,
+        textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Text(label),
+    ),
+  );
 }
 
 class _FollowingMessageBubble extends StatelessWidget {
@@ -1649,6 +1745,11 @@ class _NotificationThumbnail extends StatelessWidget {
 }
 
 String _systemTitle(String type) => switch (type) {
+  'love_partner_invite' => 'دعوة بيت الحب',
+  'love_partner_accepted' => 'قُبلت دعوة بيت الحب',
+  'love_partner_rejected' => 'ردّ على دعوة بيت الحب',
+  'love_partner_expired' => 'انتهت دعوة بيت الحب',
+  'love_partner_ended' => 'تحديث علاقة بيت الحب',
   'badge_earned' => 'مبروك! حصلت على وسام جديد',
   'daily_login' => 'مكافأة تسجيل الدخول اليومي',
   'coin_purchase' || 'coins_purchase' => 'شراء العملات',
@@ -1676,7 +1777,27 @@ String _systemText(Map<String, dynamic> row, String type) {
       if (value != null && value.isNotEmpty) return value;
     }
   }
+  final rawData = row['data']?.toString().trim();
+  if (rawData != null && rawData.isNotEmpty && rawData != '{}') {
+    try {
+      final decoded = jsonDecode(rawData);
+      if (decoded is Map) {
+        for (final key in ['message', 'body', 'text', 'description']) {
+          final value = decoded[key]?.toString().trim();
+          if (value != null && value.isNotEmpty) return value;
+        }
+      }
+    } on FormatException {
+      return rawData;
+    }
+  }
   return switch (type) {
+    'love_partner_invite' =>
+      'لديك دعوة شريك. تنتهي خلال 7 أيام ويُعاد الذهب عند الرفض أو الانتهاء.',
+    'love_partner_accepted' => 'تم قبول دعوتك إلى بيت الحب.',
+    'love_partner_rejected' => 'تم رفض الدعوة وأُعيد الذهب إلى رصيدك.',
+    'love_partner_expired' => 'انتهت الدعوة وأُعيد الذهب إلى رصيدك.',
+    'love_partner_ended' => 'أنهى شريكك علاقة بيت الحب.',
     'badge_earned' => 'تهانينا، لقد حققت إنجازًا جديدًا وحصلت على هذا الوسام.',
     'daily_login' => 'تم تسجيل دخولك اليومي وإضافة مكافأتك إلى حسابك.',
     'coin_purchase' || 'coins_purchase' => 'تمت إضافة العملات إلى رصيدك بنجاح.',
@@ -1687,6 +1808,17 @@ String _systemText(Map<String, dynamic> row, String type) {
     'room_ban' => 'تم حظرك من الغرفة بواسطة الإدارة.',
     _ => 'لديك تحديث جديد من نظام SAKI.',
   };
+}
+
+String _loveInviteMessage(Object error) {
+  final text = error.toString();
+  if (text.contains('mutual_follow_required')) {
+    return 'يجب أن تتابعا بعضكما قبل قبول الدعوة.';
+  }
+  if (text.contains('love_invitation_not_found')) {
+    return 'تعذر العثور على الدعوة.';
+  }
+  return 'تعذر تسجيل الرد الآن. حدّث الرسائل وحاول مجددًا.';
 }
 
 String? _notificationImage(Map<String, dynamic> row) {
