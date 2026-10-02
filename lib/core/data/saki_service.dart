@@ -1550,12 +1550,43 @@ class SakiService {
   Future<List<Map<String, dynamic>>> roomSeats(String roomId) async {
     final data = await client
         .from('room_seats')
-        .select(
-          'seat_no,user_id,joined_at,is_speaking,profiles:user_id(id,username,avatar_url)',
-        )
+        .select('seat_no,user_id,joined_at,is_speaking')
         .eq('room_id', roomId)
         .order('seat_no');
-    return List<Map<String, dynamic>>.from(data);
+    final seats = List<Map<String, dynamic>>.from(data);
+    if (seats.isEmpty) return seats;
+
+    final userIds = seats
+        .map((seat) => seat['user_id']?.toString())
+        .whereType<String>()
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList();
+    final profilesById = <String, Map<String, dynamic>>{};
+    if (userIds.isNotEmpty) {
+      try {
+        final profiles = await client
+            .from('profiles')
+            .select('id,username,display_name,avatar_url')
+            .inFilter('id', userIds);
+        for (final profile in List<Map<String, dynamic>>.from(profiles)) {
+          final id = profile['id']?.toString();
+          if (id != null && id.isNotEmpty) profilesById[id] = profile;
+        }
+      } catch (_) {
+        // Keep the seat rows visible even if a profile row is unavailable.
+      }
+    }
+
+    return seats
+        .map((seat) {
+          final id = seat['user_id']?.toString() ?? '';
+          return {
+            ...seat,
+            'profiles': profilesById[id] ?? {'id': id},
+          };
+        })
+        .toList(growable: false);
   }
 
   Future<List<Map<String, dynamic>>> roomMembers(String roomId) async {

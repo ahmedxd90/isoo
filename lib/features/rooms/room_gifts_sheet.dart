@@ -58,21 +58,42 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
 
   Future<void> _load() async {
     try {
-      final account = await widget.service.accountModules();
-      final rows = await widget.service.roomSeats(widget.roomId);
-      final ownProfile = await widget.service.myProfile();
+      final results = await Future.wait<dynamic>([
+        widget.service.accountModules().catchError((_) => <String, dynamic>{}),
+        widget.service
+            .roomSeats(widget.roomId)
+            .catchError((_) => <Map<String, dynamic>>[]),
+        widget.service.myProfile().catchError((_) => null),
+        widget.service
+            .roomGiftCatalog(category: 'general')
+            .catchError((_) => <Map<String, dynamic>>[]),
+      ]);
+      final account = Map<String, dynamic>.from(results[0] as Map);
+      final rows = List<Map<String, dynamic>>.from(results[1] as List);
+      final ownProfile = results[2] is Map
+          ? Map<String, dynamic>.from(results[2] as Map)
+          : null;
+      final gifts = List<Map<String, dynamic>>.from(results[3] as List);
       final recipients = <Map<String, dynamic>>[];
+      final recipientIds = <String>{};
       for (final row in rows) {
         final nested = row['profiles'];
         final profile = nested is Map
             ? Map<String, dynamic>.from(nested)
+            : nested is List && nested.isNotEmpty && nested.first is Map
+            ? Map<String, dynamic>.from(nested.first as Map)
             : <String, dynamic>{};
         final id = (profile['id'] ?? row['user_id'])?.toString();
-        if (id == null || id.isEmpty) continue;
+        if (id == null || id.isEmpty || !recipientIds.add(id)) continue;
+        final username = profile['username']?.toString().trim();
+        final displayName = profile['display_name']?.toString().trim();
         recipients.add({
           ...profile,
           'id': id,
           'user_id': id,
+          'username': username != null && username.isNotEmpty
+              ? username
+              : displayName,
           'seat_no': row['seat_no'],
         });
       }
@@ -93,7 +114,6 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
           recipients[selfIndex]['_is_self'] = true;
         }
       }
-      final gifts = await widget.service.roomGiftCatalog(category: 'general');
       if (!mounted) return;
       setState(() {
         _gold = (account['gold_coins'] as num?)?.toInt() ?? 0;

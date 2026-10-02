@@ -356,9 +356,7 @@ class _MyHtmlProfileView extends StatefulWidget {
 }
 
 class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
-  int tab = 0;
   String _language = 'العربية';
-  final GlobalKey _activityKey = GlobalKey();
 
   @override
   void initState() {
@@ -458,19 +456,30 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
     await SharePlus.instance.share(ShareParams(text: text));
   }
 
+  Future<void> _openMyContent({int initialTab = 0}) async {
+    final family = widget.profile['family_badge'] is Map
+        ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)
+        : null;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MyContentSheet(
+        profile: widget.profile,
+        family: family,
+        posts: widget.posts,
+        reels: widget.reels,
+        badges: widget.badges,
+        gifts: widget.gifts,
+        initialTab: initialTab,
+        onEdit: widget.onEdit,
+      ),
+    );
+  }
+
   Future<void> _openOption(String title) async {
     if (title == 'الشارة') {
-      setState(() => tab = 2);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final target = _activityKey.currentContext;
-        if (target != null) {
-          Scrollable.ensureVisible(
-            target,
-            duration: const Duration(milliseconds: 380),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      });
+      await _openMyContent(initialTab: 2);
       return;
     }
     if (title == 'دعوة صديق') {
@@ -496,34 +505,6 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
   Widget build(BuildContext context) {
     final username = widget.profile['username']?.toString() ?? 'مستخدم SAKI';
     final avatar = widget.profile['avatar_url']?.toString();
-    final family = widget.profile['family_badge'] is Map
-        ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)
-        : null;
-    final content = switch (tab) {
-      1 => _MyMomentsContent(
-        key: const ValueKey('moments'),
-        posts: widget.posts,
-        reels: widget.reels,
-      ),
-      2 => _MyCollectionContent(
-        key: const ValueKey('badges'),
-        title: 'الأوسمة المكتسبة',
-        items: widget.badges,
-        kind: 'badge',
-      ),
-      3 => _MyCollectionContent(
-        key: const ValueKey('gifts'),
-        title: 'الهدايا المستلمة',
-        items: widget.gifts,
-        kind: 'gift',
-      ),
-      _ => _MyAboutContent(
-        key: const ValueKey('about'),
-        profile: widget.profile,
-        family: family,
-        onEdit: widget.onEdit,
-      ),
-    };
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
@@ -589,68 +570,6 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
                           onFamily: () => _openOption('العائلة'),
                           onRedeem: () => _openOption('كود الاسترداد'),
                           onLogout: widget.onLogout,
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          key: _activityKey,
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFFF1F5F9)),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x0A0F172A),
-                                blurRadius: 8,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              const Align(
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  'محتواي',
-                                  style: TextStyle(
-                                    color: Color(0xFF1E293B),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Row(
-                                children: [
-                                  _MyTab(
-                                    label: 'ملف التعريف',
-                                    active: tab == 0,
-                                    onTap: () => setState(() => tab = 0),
-                                  ),
-                                  _MyTab(
-                                    label: 'اللحظات',
-                                    active: tab == 1,
-                                    onTap: () => setState(() => tab = 1),
-                                  ),
-                                  _MyTab(
-                                    label: 'الأوسمة',
-                                    active: tab == 2,
-                                    onTap: () => setState(() => tab = 2),
-                                  ),
-                                  _MyTab(
-                                    label: 'الهدايا',
-                                    active: tab == 3,
-                                    onTap: () => setState(() => tab = 3),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 18),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                child: content,
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
@@ -1275,9 +1194,129 @@ class _MyTab extends StatelessWidget {
   );
 }
 
+class _MyContentSheet extends StatefulWidget {
+  const _MyContentSheet({
+    required this.profile,
+    required this.family,
+    required this.posts,
+    required this.reels,
+    required this.badges,
+    required this.gifts,
+    required this.initialTab,
+    required this.onEdit,
+  });
+
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic>? family;
+  final List<Map<String, dynamic>> posts, reels, badges, gifts;
+  final int initialTab;
+  final VoidCallback onEdit;
+
+  @override
+  State<_MyContentSheet> createState() => _MyContentSheetState();
+}
+
+class _MyContentSheetState extends State<_MyContentSheet> {
+  late int _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = widget.initialTab;
+  }
+
+  Widget _content() => switch (_tab) {
+    1 => _MyMomentsContent(posts: widget.posts, reels: widget.reels),
+    2 => _MyCollectionContent(
+      title: 'الأوسمة المكتسبة',
+      items: widget.badges,
+      kind: 'badge',
+    ),
+    3 => _MyCollectionContent(
+      title: 'الهدايا المستلمة',
+      items: widget.gifts,
+      kind: 'gift',
+    ),
+    _ => _MyAboutContent(
+      profile: widget.profile,
+      family: widget.family,
+      onEdit: widget.onEdit,
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: MediaQuery.sizeOf(context).height * .78,
+    decoration: const BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'محتواي',
+                    style: TextStyle(
+                      color: Color(0xFF1E293B),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                _MyTab(
+                  label: 'ملف التعريف',
+                  active: _tab == 0,
+                  onTap: () => setState(() => _tab = 0),
+                ),
+                _MyTab(
+                  label: 'اللحظات',
+                  active: _tab == 1,
+                  onTap: () => setState(() => _tab = 1),
+                ),
+                _MyTab(
+                  label: 'الأوسمة',
+                  active: _tab == 2,
+                  onTap: () => setState(() => _tab = 2),
+                ),
+                _MyTab(
+                  label: 'الهدايا',
+                  active: _tab == 3,
+                  onTap: () => setState(() => _tab = 3),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: SingleChildScrollView(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: _content(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _MyAboutContent extends StatelessWidget {
   const _MyAboutContent({
-    super.key,
     required this.profile,
     required this.family,
     required this.onEdit,
@@ -1517,7 +1556,6 @@ class _MyCpCardState extends State<_MyCpCard>
 
 class _MyCollectionContent extends StatelessWidget {
   const _MyCollectionContent({
-    super.key,
     required this.title,
     required this.items,
     required this.kind,
@@ -1650,11 +1688,7 @@ class _MyCollectionTile extends StatelessWidget {
 }
 
 class _MyMomentsContent extends StatelessWidget {
-  const _MyMomentsContent({
-    super.key,
-    required this.posts,
-    required this.reels,
-  });
+  const _MyMomentsContent({required this.posts, required this.reels});
   final List<Map<String, dynamic>> posts, reels;
   @override
   Widget build(BuildContext context) {

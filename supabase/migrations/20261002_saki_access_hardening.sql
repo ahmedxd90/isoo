@@ -158,6 +158,19 @@ grant select on table public.profiles to authenticated;
 grant update (username, display_name, bio, country, country_code, gender, avatar_url, updated_at)
   on table public.profiles to authenticated;
 
+-- Private-message sends advance only the conversation activity timestamp.
+-- Participants may update that single column; no broader table UPDATE grant.
+alter table public.conversations enable row level security;
+drop policy if exists saki_conversations_update_participant on public.conversations;
+create policy saki_conversations_update_participant
+  on public.conversations for update to authenticated
+  using (private.is_private_conversation_member(id))
+  with check (private.is_private_conversation_member(id));
+revoke update on table public.conversations from public, anon, authenticated;
+revoke update (id, created_at, created_by, updated_at)
+  on table public.conversations from public, anon, authenticated;
+grant update (updated_at) on table public.conversations to authenticated;
+
 do $$
 declare
   t text;
