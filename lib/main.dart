@@ -29,6 +29,18 @@ class SakiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = GoRouter(
       initialLocation: '/splash',
+      overridePlatformDefaultLocation: true,
+      onException: (context, state, router) {
+        final callback = Uri.parse(supabaseOAuthRedirectUrl);
+        if (state.uri.scheme == callback.scheme &&
+            state.uri.host == callback.host) {
+          // Supabase Flutter consumes the OAuth deep link and establishes the
+          // session; GoRouter must return to an in-app route afterwards.
+          router.go('/splash');
+          return;
+        }
+        router.go('/login');
+      },
       redirect: (context, state) {
         return null;
       },
@@ -101,7 +113,8 @@ class _SplashPageState extends State<SplashPage>
       try {
         final profile = await SakiService.instance.myProfile();
         final username = profile?['username']?.toString() ?? '';
-        final complete = username.isNotEmpty &&
+        final complete =
+            username.isNotEmpty &&
             !username.startsWith('user_') &&
             profile?['country'] != null &&
             profile?['gender'] != null;
