@@ -7,6 +7,9 @@ import android.os.Build
 import android.app.PictureInPictureParams
 import android.util.Rational
 import android.provider.Settings
+import android.provider.MediaStore
+import android.content.ContentValues
+import android.os.Environment
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -116,6 +119,38 @@ class MainActivity : FlutterActivity() {
                         val value = pendingRoom
                         pendingRoom = null
                         result.success(value)
+                    }
+                    "saveImage" -> {
+                        val bytes = call.argument<ByteArray>("bytes")
+                        val name = call.argument<String>("name") ?: "saki_image_${System.currentTimeMillis()}"
+                        if (bytes == null || bytes.isEmpty()) {
+                            result.error("invalid_image", "Image bytes are required", null)
+                        } else {
+                            try {
+                                val values = ContentValues().apply {
+                                    put(MediaStore.Images.Media.DISPLAY_NAME, "$name.jpg")
+                                    put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Saki")
+                                        put(MediaStore.Images.Media.IS_PENDING, 1)
+                                    }
+                                }
+                                val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                                if (uri == null) {
+                                    result.error("save_failed", "Could not create gallery item", null)
+                                } else {
+                                    contentResolver.openOutputStream(uri).use { output -> output?.write(bytes) }
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        contentResolver.update(uri, ContentValues().apply {
+                                            put(MediaStore.Images.Media.IS_PENDING, 0)
+                                        }, null, null)
+                                    }
+                                    result.success(true)
+                                }
+                            } catch (error: Exception) {
+                                result.error("save_failed", error.message, null)
+                            }
+                        }
                     }
                     else -> result.notImplemented()
                 }

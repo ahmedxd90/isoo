@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_svga/flutter_svga.dart';
 import 'package:image_picker/image_picker.dart';
@@ -1888,7 +1890,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             'media_type': gift['media_type'],
             'category': gift['category'],
             'recipient_id': recipientId,
-            'flying_banner': flyingBanner,
+            'flying_banner': false,
           };
           if (_isLuckGift(gift)) {
             await _service.sendRoomLuckGift(
@@ -1984,7 +1986,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           'media_type': gift['media_type'],
           'category': gift['category'],
           'recipient_id': recipient,
-          'flying_banner': true,
+          'flying_banner': false,
         };
         await _service.sendRoomMessage(
           _roomId,
@@ -2197,6 +2199,120 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _messageSnack(error.toString().replaceFirst('Exception: ', ''));
       }
     }
+  }
+
+  Future<void> _sendRoomImage() async {
+    try {
+      final profile = await _service.myProfile();
+      final vip = (profile?['vip_level'] as num?)?.toInt() ?? 0;
+      if (vip < 4) {
+        _messageSnack('إرسال الصور متاح للمستخدمين VIP4 أو أعلى فقط');
+        return;
+      }
+      if (!mounted) return;
+      final source = await showModalBottomSheet<String>(
+        context: context,
+        backgroundColor: const Color(0xFF211D27),
+        builder: (sheetContext) => SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.photo_library_rounded,
+                  color: Colors.amber,
+                ),
+                title: const Text(
+                  'اختيار من الاستديو',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'gallery'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.folder_rounded, color: Colors.amber),
+                title: const Text(
+                  'اختيار من الملفات',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'files'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (source == null) return;
+      XFile? file;
+      if (source == 'gallery') {
+        file = await _picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 88,
+        );
+      } else {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+        );
+        final path = result?.files.single.path;
+        if (path != null) file = XFile(path);
+      }
+      if (file == null) return;
+      if (mounted) _messageSnack('جارٍ رفع الصورة...');
+      final url = await _service.uploadRoomChatImage(file);
+      await _service.sendRoomMessage(
+        _roomId,
+        'أرسل صورة',
+        type: 'image',
+        payload: {'image_url': url, 'thumbnail_url': url},
+      );
+    } catch (error) {
+      if (mounted) {
+        _messageSnack(error.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
+
+  Future<void> _openRoomImage(String url) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: .94),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          children: [
+            InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
+            PositionedDirectional(
+              top: 8,
+              end: 8,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: Colors.black87),
+                onPressed: () async {
+                  try {
+                    final request = await HttpClient().getUrl(Uri.parse(url));
+                    final response = await request.close();
+                    final bytes = await consolidateHttpClientResponseBytes(
+                      response,
+                    );
+                    await const MethodChannel(
+                      'saki/media',
+                    ).invokeMethod<bool>('saveImage', {
+                      'bytes': bytes,
+                      'name':
+                          'saki_room_${DateTime.now().millisecondsSinceEpoch}',
+                    });
+                    if (mounted) _messageSnack('تم حفظ الصورة في الاستديو');
+                  } catch (_) {
+                    if (mounted) _messageSnack('تعذر حفظ الصورة');
+                  }
+                },
+                icon: const Icon(Icons.download_rounded),
+                label: const Text('حفظ'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Map<String, dynamic> _queueOptimisticMessage({
@@ -4381,7 +4497,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                   final messageType =
                                       msg['message_type'] as String? ?? 'chat';
                                   return FutureBuilder<Map<String, dynamic>?>(
-                                    future: _service.userProfile(senderId),
+                                    future: _service.roomChatProfile(senderId),
                                     builder: (_, profileSnap) {
                                       final profile =
                                           profileSnap.data ??
@@ -4458,6 +4574,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     profile['avatar_url']
                                                         as String?,
                                                 label: username,
+                                                profile: profile,
                                                 radius: 17,
                                               ),
                                             ),
@@ -4486,6 +4603,89 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                           FontWeight.w700,
                                                     ),
                                                   ),
+                                                  if (profile['is_super_admin'] ==
+                                                          true ||
+                                                      profile['admin_role']
+                                                              ?.toString() ==
+                                                          'super_admin')
+                                                    const Padding(
+                                                      padding: EdgeInsets.only(
+                                                        top: 4,
+                                                      ),
+                                                      child: RoleTitleBadge(
+                                                        label: 'SUPER ADMIN',
+                                                        compact: true,
+                                                      ),
+                                                    )
+                                                  else if (profile['is_shipping_agent'] ==
+                                                      true)
+                                                    const Padding(
+                                                      padding: EdgeInsets.only(
+                                                        top: 4,
+                                                      ),
+                                                      child: RoleTitleBadge(
+                                                        label: 'وكيل شحن',
+                                                        compact: true,
+                                                      ),
+                                                    ),
+                                                  if ((profile['room_badges']
+                                                              as List?)
+                                                          ?.isNotEmpty ==
+                                                      true)
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            top: 4,
+                                                          ),
+                                                      child: Wrap(
+                                                        spacing: 4,
+                                                        children: (profile['room_badges'] as List).take(3).map((
+                                                          raw,
+                                                        ) {
+                                                          final badge =
+                                                              Map<
+                                                                String,
+                                                                dynamic
+                                                              >.from(
+                                                                raw as Map,
+                                                              );
+                                                          final asset =
+                                                              badge['asset_path']
+                                                                  ?.toString();
+                                                          return asset !=
+                                                                      null &&
+                                                                  asset
+                                                                      .isNotEmpty
+                                                              ? Image.asset(
+                                                                  asset,
+                                                                  width: 22,
+                                                                  height: 22,
+                                                                  fit: BoxFit
+                                                                      .contain,
+                                                                  errorBuilder:
+                                                                      (
+                                                                        _,
+                                                                        _,
+                                                                        _,
+                                                                      ) => const Icon(
+                                                                        Icons
+                                                                            .verified_rounded,
+                                                                        color: Colors
+                                                                            .amber,
+                                                                        size:
+                                                                            18,
+                                                                      ),
+                                                                )
+                                                              : const Icon(
+                                                                  Icons
+                                                                      .verified_rounded,
+                                                                  color: Colors
+                                                                      .amber,
+                                                                  size: 18,
+                                                                );
+                                                        }).toList(),
+                                                      ),
+                                                    ),
                                                   const SizedBox(height: 3),
                                                   if ((messageType == 'gift' ||
                                                           messageType ==
@@ -4512,7 +4712,32 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                         ),
                                                       ),
                                                     ),
-                                                  messageType == 'dice'
+                                                  messageType == 'image' &&
+                                                          (payload['image_url'] ??
+                                                                  payload['thumbnail_url'])
+                                                              is String
+                                                      ? GestureDetector(
+                                                          onTap: () => _openRoomImage(
+                                                            (payload['image_url'] ??
+                                                                    payload['thumbnail_url'])
+                                                                .toString(),
+                                                          ),
+                                                          child: ClipRRect(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  12,
+                                                                ),
+                                                            child: Image.network(
+                                                              (payload['thumbnail_url'] ??
+                                                                      payload['image_url'])
+                                                                  .toString(),
+                                                              width: 190,
+                                                              height: 150,
+                                                              fit: BoxFit.cover,
+                                                            ),
+                                                          ),
+                                                        )
+                                                      : messageType == 'dice'
                                                       ? _DiceFace(
                                                           value:
                                                               (payload['value']
@@ -4571,6 +4796,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                             IconButton(
+                              tooltip: 'إرسال صورة VIP4+',
+                              onPressed: _sendRoomImage,
+                              icon: const Icon(
+                                Icons.image_rounded,
+                                color: Colors.lightBlueAccent,
+                              ),
+                            ),
+                            IconButton(
                               onPressed: _send,
                               icon: const Icon(
                                 Icons.send_rounded,
@@ -4605,6 +4838,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               icon: const Icon(
                                 Icons.emoji_emotions_outlined,
                                 color: Colors.amberAccent,
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'إرسال صورة VIP4+',
+                              onPressed: _sendRoomImage,
+                              icon: const Icon(
+                                Icons.image_rounded,
+                                color: Colors.lightBlueAccent,
                               ),
                             ),
                             IconButton(
@@ -5132,7 +5373,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
             alignment: Alignment.center,
             children: [
               if (immersive) Positioned.fill(child: Center(child: mediaView)),
-              if (_payload['flying_banner'] != false)
+              if (_payload['flying_banner'] == true)
                 Positioned(
                   top: 34,
                   left: 0,

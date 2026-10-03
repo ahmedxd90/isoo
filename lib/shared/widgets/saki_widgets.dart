@@ -212,7 +212,7 @@ class _SakiAvatarState extends State<SakiAvatar>
       imageUrl: url,
       width: size,
       height: size,
-      fit: BoxFit.contain,
+      fit: BoxFit.fill,
       memCacheWidth: SakiPerformance.cacheWidthFor(context, size),
       errorWidget: (_, _, _) => const SizedBox.shrink(),
     );
@@ -221,26 +221,30 @@ class _SakiAvatarState extends State<SakiAvatar>
   @override
   Widget build(BuildContext context) {
     final activeFrameUrl = _frame?['media_url']?.toString();
-    final avatar = CircleAvatar(
-      radius: widget.radius,
-      backgroundColor: SakiColors.royalPurple.withValues(alpha: .25),
-      backgroundImage: widget.url == null || widget.url!.isEmpty
-          ? null
-          : CachedNetworkImageProvider(widget.url!),
-      child: widget.url == null || widget.url!.isEmpty
-          ? Text(
-              (widget.label?.isNotEmpty ?? false)
-                  ? widget.label![0].toUpperCase()
-                  : 'S',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: widget.radius * .65,
-              ),
-            )
-          : null,
+    final avatar = SizedBox(
+      width: widget.radius * 2,
+      height: widget.radius * 2,
+      child: CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: SakiColors.royalPurple.withValues(alpha: .25),
+        backgroundImage: widget.url == null || widget.url!.isEmpty
+            ? null
+            : CachedNetworkImageProvider(widget.url!),
+        child: widget.url == null || widget.url!.isEmpty
+            ? Text(
+                (widget.label?.isNotEmpty ?? false)
+                    ? widget.label![0].toUpperCase()
+                    : 'S',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: widget.radius * .65,
+                ),
+              )
+            : null,
+      ),
     );
     if (activeFrameUrl != null && activeFrameUrl.isNotEmpty) {
-      final frameSize = widget.radius * 2 + 18;
+      final frameSize = widget.radius * 2 + 8;
       return SizedBox(
         width: frameSize,
         height: frameSize,

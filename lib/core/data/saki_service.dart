@@ -1118,6 +1118,23 @@ class SakiService {
     return data == null ? null : Map<String, dynamic>.from(data);
   }
 
+  Future<Map<String, dynamic>?> roomChatProfile(String userId) async {
+    final profile = await userProfile(userId);
+    if (profile == null) return null;
+    final extras = await Future.wait<dynamic>([
+      userBadges(userId).catchError((_) => <Map<String, dynamic>>[]),
+      isShippingAgent(userId).catchError((_) => false),
+    ]);
+    return {
+      ...profile,
+      'room_badges': (extras[0] as List)
+          .take(3)
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList(growable: false),
+      'is_shipping_agent': extras[1] == true,
+    };
+  }
+
   Future<Map<String, dynamic>?> familyBadgeForUser(String userId) async {
     final rows = await client
         .from('family_members')
@@ -1965,6 +1982,36 @@ class SakiService {
       'message_type': type,
       'payload': payload,
     });
+  }
+
+  Future<String> uploadRoomChatImage(XFile file) async {
+    final profile = await myProfile();
+    final vip = (profile?['vip_level'] as num?)?.toInt() ?? 0;
+    if (vip < 4) {
+      throw Exception('إرسال الصور متاح للمستخدمين VIP4 أو أعلى فقط');
+    }
+    final extension = file.path.split('.').last.toLowerCase();
+    const allowed = {'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'};
+    if (!allowed.contains(extension)) {
+      throw Exception('صيغة الصورة غير مدعومة');
+    }
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 12 * 1024 * 1024) {
+      throw Exception('حجم الصورة يجب ألا يتجاوز 12 ميغابايت');
+    }
+    final contentType = extension == 'jpg' || extension == 'jpeg'
+        ? 'image/jpeg'
+        : 'image/$extension';
+    final path =
+        '$uid/room_chat/${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await client.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    return client.storage.from('avatars').getPublicUrl(path);
   }
 
   Future<void> clearRoomMessages(String roomId) async {
