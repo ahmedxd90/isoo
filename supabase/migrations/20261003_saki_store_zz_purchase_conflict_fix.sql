@@ -1,5 +1,5 @@
--- Keep store wallet updates column-qualified because gold_coins is also
--- a RETURNS TABLE output variable in this PL/pgSQL function.
+-- RETURNS TABLE exposes product_id as a PL/pgSQL variable. Using a named
+-- constraint avoids the ambiguous ON CONFLICT (user_id, product_id) target.
 create or replace function public.saki_store_buy(p_product_id uuid)
 returns table(product_id uuid, gold_coins bigint, quantity integer)
 language plpgsql
@@ -25,7 +25,6 @@ begin
     raise exception 'store_product_not_found';
   end if;
 
-  -- VIP frames are granted by purchase_vip and must not be bought directly.
   if v_product.name like 'إطار VIP %' then
     raise exception 'vip_frame_granted_with_vip_purchase';
   end if;
@@ -65,14 +64,3 @@ $$;
 
 revoke all on function public.saki_store_buy(uuid) from public;
 grant execute on function public.saki_store_buy(uuid) to authenticated;
-
--- Empty the sellable catalog without deleting product history, uploaded files,
--- or owned inventory. Bundled VIP frames remain active for purchase_vip.
-update public.saki_store_products
-   set is_active = false
- where is_active = true
-   and not (
-     category = 'frame'
-     and name like 'إطار VIP %'
-     and media_url like 'assets/vip/frame_vip%'
-   );
