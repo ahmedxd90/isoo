@@ -501,12 +501,18 @@ class SakiService {
               .from('saki_store_products')
               .select()
               .eq('is_active', true)
+              .order('created_at', ascending: false)
+              .limit(200)
         : await client
               .from('saki_store_products')
               .select()
               .eq('is_active', true)
-              .eq('category', category);
-    return List<Map<String, dynamic>>.from(rows);
+              .eq('category', category)
+              .order('created_at', ascending: false)
+              .limit(200);
+    return List<Map<String, dynamic>>.from(rows)
+        .where((product) => !_isInternalVipStoreProduct(product))
+        .toList();
   }
 
   Future<List<Map<String, dynamic>>> adminStoreProducts() async {
@@ -515,7 +521,17 @@ class SakiService {
         .select()
         .order('created_at', ascending: false)
         .limit(300);
-    return List<Map<String, dynamic>>.from(rows);
+    return List<Map<String, dynamic>>.from(rows)
+        .where((product) => !_isInternalVipStoreProduct(product))
+        .toList();
+  }
+
+  bool _isInternalVipStoreProduct(Map<String, dynamic> product) {
+    final name = product['name']?.toString() ?? '';
+    final mediaUrl = product['media_url']?.toString() ?? '';
+    return product['category'] == 'frame' &&
+        name.startsWith('إطار VIP ') &&
+        mediaUrl.startsWith('assets/vip/frame_vip');
   }
 
   Future<void> adminCreateStoreProduct({

@@ -355,6 +355,14 @@ class _StorePageState extends State<StorePage> {
   void _reload() =>
       _future = SakiService.instance.storeProducts(category: _category);
 
+  Future<void> _openAdminStore() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(builder: (_) => const AdminStorePage()),
+    );
+    if (mounted) setState(_reload);
+  }
+
   Future<void> _buySelected() async {
     final product = _selectedProduct;
     if (product == null || _buying) return;
@@ -539,7 +547,12 @@ class _StorePageState extends State<StorePage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                  IconButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    tooltip: 'رجوع',
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: Colors.white,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'متجر',
@@ -554,12 +567,7 @@ class _StorePageState extends State<StorePage> {
                     _HeaderPill(
                       icon: Icons.add,
                       label: 'إضافة',
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AdminStorePage(),
-                        ),
-                      ),
+                      onTap: _openAdminStore,
                     ),
                   const SizedBox(width: 6),
                   _HeaderPill(
@@ -646,20 +654,41 @@ class _StorePageState extends State<StorePage> {
                 return Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Icon(
+                    children: [
+                      const Icon(
                         Icons.storefront_rounded,
                         size: 58,
                         color: _storeCyan,
                       ),
-                      SizedBox(height: 10),
-                      Text(
-                        'لا توجد منتجات متاحة حاليًا',
+                      const SizedBox(height: 10),
+                      const Text(
+                        'المتجر فارغ حاليًا',
                         style: TextStyle(
                           color: _storeInk,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
+                      const SizedBox(height: 6),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 28),
+                        child: Text(
+                          'ستظهر هنا المنتجات التي ترفعها إدارة SAKI.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.black54, fontSize: 12),
+                        ),
+                      ),
+                      if (_isAdmin) ...[
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: _openAdminStore,
+                          icon: const Icon(Icons.upload_rounded),
+                          label: const Text('رفع أول منتج'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _storeOrange,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 );

@@ -137,21 +137,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _openModule(String type) async {
     if (type == 'store') {
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (_) => DraggableScrollableSheet(
-          initialChildSize: .92,
-          minChildSize: .60,
-          maxChildSize: .98,
-          expand: false,
-          builder: (context, _) => ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            child: const StorePage(),
-          ),
-        ),
-      );
+      await Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => const StorePage()));
       if (mounted) _load();
       return;
     }
