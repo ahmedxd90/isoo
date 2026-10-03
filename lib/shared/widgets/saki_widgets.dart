@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/data/saki_service.dart';
+import '../../core/performance/saki_performance.dart';
 
 class WealthLevelBadge extends StatelessWidget {
   const WealthLevelBadge({
@@ -183,7 +184,7 @@ class _SakiAvatarState extends State<SakiAvatar>
     super.dispose();
   }
 
-  Widget _frameWidget(double size) {
+  Widget _frameWidget(BuildContext context, double size) {
     final frame = _frame;
     if (frame == null) return const SizedBox.shrink();
     final url =
@@ -207,13 +208,13 @@ class _SakiAvatarState extends State<SakiAvatar>
           ? const SizedBox.shrink()
           : SVGAImage(_svga, fit: BoxFit.contain);
     }
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      imageUrl: url,
       width: size,
       height: size,
       fit: BoxFit.contain,
-      gaplessPlayback: true,
-      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      memCacheWidth: SakiPerformance.cacheWidthFor(context, size),
+      errorWidget: (_, _, _) => const SizedBox.shrink(),
     );
   }
 
@@ -247,7 +248,7 @@ class _SakiAvatarState extends State<SakiAvatar>
           alignment: Alignment.center,
           children: [
             avatar,
-            IgnorePointer(child: _frameWidget(frameSize)),
+            IgnorePointer(child: _frameWidget(context, frameSize)),
           ],
         ),
       );

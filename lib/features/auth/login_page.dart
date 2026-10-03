@@ -13,7 +13,7 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   static const _videoUrl = 'https://f.top4top.io/m_3901fr5rd0.mp4';
   VideoPlayerController? _video;
   StreamSubscription? _authSubscription;
@@ -23,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       data,
     ) {
@@ -40,6 +41,19 @@ class _LoginPageState extends State<LoginPage> {
       }
     });
     _prepareVideo();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final video = _video;
+    if (video == null || !video.value.isInitialized) return;
+    if (state == AppLifecycleState.resumed) {
+      video.play();
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      video.pause();
+    }
   }
 
   Future<void> _prepareVideo() async {
@@ -198,6 +212,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_authSubscription?.cancel());
     _video?.dispose();
     super.dispose();

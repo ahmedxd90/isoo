@@ -11,9 +11,11 @@ import 'features/home/home_page.dart';
 import 'core/data/saki_service.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/permissions/saki_permission_service.dart';
+import 'core/performance/saki_performance.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  SakiPerformance.initialize();
   await Supabase.initialize(
     url: supabaseUrl,
     publishableKey: supabasePublishableKey,

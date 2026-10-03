@@ -252,16 +252,18 @@ class ReelCard extends StatefulWidget {
   State<ReelCard> createState() => _ReelCardState();
 }
 
-class _ReelCardState extends State<ReelCard> {
+class _ReelCardState extends State<ReelCard> with WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _liked = false;
   int _likes = 0;
   bool _loading = true;
   bool _showPlay = false;
+  bool _appActive = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _liked = widget.reel['_liked'] as bool? ?? false;
     _likes = widget.reel['_likes_count'] as int? ?? 0;
     _initVideo();
@@ -277,7 +279,7 @@ class _ReelCardState extends State<ReelCard> {
     _controller = controller;
     await controller.initialize();
     await controller.setLooping(true);
-    if (widget.active) await controller.play();
+    if (widget.active && _appActive) await controller.play();
     if (mounted) setState(() => _loading = false);
   }
 
@@ -285,7 +287,7 @@ class _ReelCardState extends State<ReelCard> {
   void didUpdateWidget(covariant ReelCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_controller == null || !_controller!.value.isInitialized) return;
-    if (widget.active) {
+    if (widget.active && _appActive) {
       _controller!.play();
     } else {
       _controller!.pause();
@@ -293,7 +295,20 @@ class _ReelCardState extends State<ReelCard> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appActive = state == AppLifecycleState.resumed;
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    if (_appActive && widget.active) {
+      controller.play();
+    } else {
+      controller.pause();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller?.dispose();
     super.dispose();
   }
