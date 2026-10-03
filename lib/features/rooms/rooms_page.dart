@@ -4081,20 +4081,33 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                           : 52,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        color: occupied
-                                            ? const Color(0xFFEAB308)
-                                            : Colors.white10,
+                                        gradient: occupied
+                                            ? const LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: [
+                                                  Color(0xFF3A2A18),
+                                                  Color(0xFF17151A),
+                                                ],
+                                              )
+                                            : const LinearGradient(
+                                                colors: [
+                                                  Color(0x332B3442),
+                                                  Color(0x22111722),
+                                                ],
+                                              ),
                                         border: Border.all(
                                           color: occupied
-                                              ? Colors.yellowAccent
-                                              : Colors.white24,
-                                          width: 1.5,
+                                              ? const Color(0xFFE7B84B)
+                                              : const Color(0x667B8798),
+                                          width: occupied ? 1.8 : 1.2,
                                         ),
                                         boxShadow: occupied
                                             ? const [
                                                 BoxShadow(
-                                                  color: Colors.amber,
-                                                  blurRadius: 10,
+                                                  color: Color(0x55D69B37),
+                                                  blurRadius: 12,
+                                                  spreadRadius: 1,
                                                 ),
                                               ]
                                             : null,
@@ -4162,24 +4175,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                             ),
                                     ),
                                     const SizedBox(height: 4),
-                                    occupied
-                                        ? Text(
-                                            profile['username'] as String? ??
-                                                'عضو',
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 10,
-                                            ),
-                                          )
-                                        : Text(
-                                            '$seatNo',
-                                            style: const TextStyle(
-                                              color: Colors.white70,
-                                              fontSize: 10,
-                                            ),
-                                          ),
+                                    Text(
+                                      occupied
+                                          ? (profile['username'] as String? ??
+                                                'عضو')
+                                          : 'مقعد $seatNo',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: occupied
+                                            ? const Color(0xFFE7D5AE)
+                                            : Colors.white54,
+                                        fontSize: 9,
+                                        fontWeight: occupied
+                                            ? FontWeight.w800
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               );
