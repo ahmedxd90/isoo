@@ -46,7 +46,11 @@ class BuffetGameCatalogSheet extends StatelessWidget {
       maxHeight: MediaQuery.sizeOf(context).height * .72,
     ),
     decoration: const BoxDecoration(
-      color: Color(0xFF176B37),
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF24202A), Color(0xFF0E0D12)],
+      ),
       borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
     ),
     child: SafeArea(
@@ -68,12 +72,19 @@ class BuffetGameCatalogSheet extends StatelessWidget {
             const Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(
-                'الألعاب',
+                'ألعاب الغرفة',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 21,
                   fontWeight: FontWeight.w900,
                 ),
+              ),
+            ),
+            const Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                'ألعاب تفاعلية مرتبطة بالغرفة والرصيد الحقيقي',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ),
             const SizedBox(height: 12),
@@ -92,9 +103,12 @@ class BuffetGameCatalogSheet extends StatelessWidget {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF17151B),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFFFD166), width: 3),
+                  border: Border.all(
+                    color: const Color(0xFFD7A94B),
+                    width: 1.5,
+                  ),
                   boxShadow: const [
                     BoxShadow(
                       color: Colors.black38,
@@ -122,7 +136,7 @@ class BuffetGameCatalogSheet extends StatelessWidget {
                             child: Text(
                               'لعبة بوفيه الأطعمة',
                               style: TextStyle(
-                                color: Color(0xFF14532D),
+                                color: Color(0xFFF4E5C1),
                                 fontSize: 17,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -140,7 +154,7 @@ class BuffetGameCatalogSheet extends StatelessWidget {
                               borderRadius: BorderRadius.circular(99),
                             ),
                             child: const Text(
-                              'العب الآن',
+                              'العب داخل الغرفة',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
