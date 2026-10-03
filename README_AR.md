@@ -1,13 +1,13 @@
 # SAKI — تطبيق شبكة اجتماعية حقيقي
 
-تم تجهيز هذا المشروع كتطبيق Android حقيقي باستخدام **Flutter/Dart فقط**، مع اتصال مباشر بمشروع Supabase الحقيقي `saki`، ومصادقة Supabase Auth، وPostgreSQL، وStorage، وRealtime. لم يتم بناء الواجهات على React Native أو HTML/CSS، ولم تتم إضافة مستخدمين أو منشورات وهمية من داخل التطبيق.
+تم تجهيز هذا المشروع كتطبيق Android حقيقي باستخدام **Flutter/Dart فقط**، مع اتصال مباشر بمشروع Supabase الحقيقي `Saki chat`، ومصادقة Supabase Auth، وPostgreSQL، وStorage، وRealtime. لم يتم بناء الواجهات على React Native أو HTML/CSS، ولم تتم إضافة مستخدمين أو منشورات وهمية من داخل التطبيق.
 
 ## حالة الاتصال الحقيقية
 
 | العنصر | القيمة |
 |---|---|
-| Supabase URL | `https://vzooppdaqayerpmvdotl.supabase.co` |
-| Supabase project ref | `vzooppdaqayerpmvdotl` |
+| Supabase URL | `https://faxtmvvovorxximsnxzy.supabase.co` |
+| Supabase project ref | `faxtmvvovorxximsnxzy` |
 | Android package | `saki.room.ch` |
 | Flutter | `3.47.2` |
 | Dart | `3.13.2` |
