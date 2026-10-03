@@ -87,18 +87,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _facebookLogin() async {
-    setState(() => _loading = true);
-    try {
-      final launched = await SakiService.instance.signInWithFacebook();
-      if (!launched) throw StateError('تعذر فتح صفحة Facebook.');
-    } catch (error) {
-      if (mounted) _showError(_friendlyAuthError(error.toString()));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   Future<void> _routeAfterAuth() async {
     if (_routing || !mounted) return;
     _routing = true;
@@ -250,13 +238,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                           height: 60,
                           child: _googleButton(),
                         ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: 340,
-                          height: 60,
-                          child: _facebookButton(),
-                        ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 24),
                         Text.rich(
                           TextSpan(
                             children: [
@@ -377,50 +359,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         ),
       ),
     ],
-  );
-
-  Widget _facebookButton() => ElevatedButton(
-    onPressed: _loading ? null : _facebookLogin,
-    style: ElevatedButton.styleFrom(
-      backgroundColor: const Color(0xFF1877F2),
-      foregroundColor: Colors.white,
-      elevation: 12,
-      shadowColor: Colors.black54,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: const Text(
-            'f',
-            style: TextStyle(
-              color: Color(0xFF1877F2),
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            _loading
-                ? 'جارٍ فتح تسجيل الدخول...'
-                : 'المتابعة باستخدام Facebook',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-          ),
-        ),
-        const SizedBox(width: 42),
-      ],
-    ),
   );
 
   Widget _googleButton() => ElevatedButton(

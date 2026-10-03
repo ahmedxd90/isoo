@@ -112,15 +112,6 @@ class SakiService {
     );
   }
 
-  Future<bool> signInWithFacebook() {
-    _profileCache = null;
-    return client.auth.signInWithOAuth(
-      OAuthProvider.facebook,
-      redirectTo: supabaseOAuthRedirectUrl,
-      authScreenLaunchMode: LaunchMode.externalApplication,
-    );
-  }
-
   Future<void> logout() async {
     _profileCache = null;
     await client.auth.signOut();
