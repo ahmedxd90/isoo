@@ -1970,6 +1970,7 @@ class SakiService {
         .select(
           'id,room_id,owner_id,title,artist,cover_url,audio_url,duration_seconds,storage_path,created_at',
         )
+        .eq('room_id', roomId)
         .order('created_at', ascending: false)
         .limit(100);
     return List<Map<String, dynamic>>.from(rows);
@@ -2019,7 +2020,7 @@ class SakiService {
     final row = await client
         .from('room_music')
         .insert({
-          'room_id': null,
+          'room_id': roomId,
           'owner_id': uid,
           'title': title,
           'artist': 'SAKI Creator',

@@ -1922,10 +1922,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         },
       ),
     );
-    if (sent == true &&
-        _lastGiftRecipient != null &&
-        _lastGift != null &&
-        _isLuckGift(_lastGift)) {
+    if (sent == true && _lastGiftRecipient != null && _lastGift != null) {
       _startGiftCombo();
     } else if (mounted) {
       setState(() {
@@ -1963,14 +1960,39 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (!_comboActive || _comboSending) return;
     final recipient = _lastGiftRecipient;
     final gift = _lastGift;
-    if (recipient == null || gift == null || !_isLuckGift(gift)) return;
+    if (recipient == null || gift == null) return;
     setState(() => _comboSending = true);
     try {
-      await _service.sendRoomLuckGift(
-        roomId: _roomId,
-        recipientId: recipient,
-        giftId: gift['id'] as String,
-      );
+      if (_isLuckGift(gift)) {
+        await _service.sendRoomLuckGift(
+          roomId: _roomId,
+          recipientId: recipient,
+          giftId: gift['id'] as String,
+        );
+      } else {
+        await _service.sendRoomGift(
+          roomId: _roomId,
+          recipientId: recipient,
+          giftId: gift['id'] as String,
+        );
+        final payload = <String, dynamic>{
+          'gift_id': gift['id'],
+          'icon': gift['icon'],
+          'thumbnail_url': gift['icon'],
+          'name': gift['name'],
+          'media_url': gift['media_url'],
+          'media_type': gift['media_type'],
+          'category': gift['category'],
+          'recipient_id': recipient,
+          'flying_banner': true,
+        };
+        await _service.sendRoomMessage(
+          _roomId,
+          'أرسل هدية ${gift['name'] ?? 'هدية'}',
+          type: 'gift',
+          payload: payload,
+        );
+      }
       if (mounted) {
         setState(() {
           if (_comboActive) _comboCount++;
