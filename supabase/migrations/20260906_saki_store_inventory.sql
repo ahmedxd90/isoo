@@ -3,7 +3,7 @@ create table if not exists public.saki_store_products (
   category text not null check (category in ('frame','entrance')),
   name text not null,
   price bigint not null check (price >= 0),
-  media_type text not null check (media_type in ('mp4','svga','gif')),
+  media_type text not null check (media_type in ('png','mp4','svga','gif')),
   media_url text not null,
   thumbnail_url text not null,
   is_active boolean not null default true,

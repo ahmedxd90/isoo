@@ -356,11 +356,15 @@ class _StorePageState extends State<StorePage> {
       _future = SakiService.instance.storeProducts(category: _category);
 
   Future<void> _openAdminStore() async {
-    await Navigator.push<void>(
+    final uploaded = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (_) => const AdminStorePage()),
     );
-    if (mounted) setState(_reload);
+    if (!mounted) return;
+    setState(_reload);
+    if (uploaded == true) {
+      CustomToast.show(context, 'تم رفع المنتج وظهر في المتجر');
+    }
   }
 
   Future<void> _buySelected() async {
@@ -1429,6 +1433,7 @@ class _AdminStorePageState extends State<AdminStorePage> {
   Future<void> _add() async {
     final name = TextEditingController();
     final price = TextEditingController();
+    var uploaded = false;
     String category = 'frame';
     String mediaType = 'png';
     XFile? media;
@@ -1600,14 +1605,9 @@ class _AdminStorePageState extends State<AdminStorePage> {
                               mediaUrl: mediaUrl,
                               thumbnailUrl: thumbUrl,
                             );
+                            uploaded = true;
                             if (dialogContext.mounted) {
                               Navigator.pop(dialogContext);
-                            }
-                            if (mounted) {
-                              CustomToast.show(
-                                context,
-                                'تم رفع المنتج ونشره بنجاح',
-                              );
                             }
                           } catch (e) {
                             if (mounted) {
@@ -1654,7 +1654,10 @@ class _AdminStorePageState extends State<AdminStorePage> {
         ),
       ),
     );
-    if (mounted) _load();
+    if (mounted) {
+      await _load();
+      if (mounted && uploaded) Navigator.pop(context, true);
+    }
   }
 
   @override
