@@ -78,7 +78,7 @@ Source commit: 7baa0449dfae313831508f8b74ecf2ddc465a668
 Included update set:
 - Trace-style home, rooms, messaging, profile, VIP, and navigation updates.
 - Real room settings, moderation, extended seats, and allowing users to leave their own seat.
-- ZEGOCLOUD prebuilt live audio rooms with Supabase room_id and token flow.
+- Agora live audio rooms with Supabase room_id and secure token flow.
 - PK battles, rankings, live broadcast setup, and related Supabase modules.
 - Super Admin content/panel modules and trace profile features.
 - Supabase migrations from the trace release are present in supabase/migrations/.
@@ -110,7 +110,7 @@ Media and mini-room session update — 2026-09-06
 
 Reels now receive an explicit visibility flag from the selected home tab. Their video controllers pause whenever the user leaves the Reels tab, so no Reel video or audio plays on Home, Moments, Messages, Profile, or Rooms.
 
-Room entry now uses the ZEGOCLOUD prebuilt live audio room. Every room is created and stored in Supabase with a real room_id, appears in the live rooms list, and opens through the authenticated zego-token Edge Function.
+Room entry uses Agora live audio rooms. Every room is created and stored in Supabase with a real room_id, appears in the live rooms list, and opens through the authenticated agora-token Edge Function.
 
 Validation APK:
 - Version: 1.3.2+15
