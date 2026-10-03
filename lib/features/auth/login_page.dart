@@ -87,67 +87,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _emailLogin() async {
-    final email = TextEditingController();
-    final password = TextEditingController();
-    final credentials = await showDialog<(String, String)?>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('تسجيل الدخول بالبريد'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: email,
-              keyboardType: TextInputType.emailAddress,
-              textDirection: TextDirection.ltr,
-              decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: password,
-              obscureText: true,
-              textDirection: TextDirection.ltr,
-              decoration: const InputDecoration(labelText: 'كلمة المرور'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, (
-              email.text.trim(),
-              password.text,
-            )),
-            child: const Text('دخول'),
-          ),
-        ],
-      ),
-    );
-    email.dispose();
-    password.dispose();
-    if (credentials == null ||
-        credentials.$1.isEmpty ||
-        credentials.$2.isEmpty) {
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      await SakiService.instance.signInWithPassword(
-        email: credentials.$1,
-        password: credentials.$2,
-      );
-      await _routeAfterAuth();
-    } catch (error) {
-      if (mounted) _showError(_friendlyAuthError(error.toString()));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
   Future<void> _routeAfterAuth() async {
     if (_routing || !mounted) return;
     _routing = true;
@@ -253,7 +192,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+              padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
               child: Column(
                 children: [
                   Align(
@@ -262,91 +201,65 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                   ),
                   Expanded(
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [
-                              Color(0xFFFFF3B0),
-                              Color(0xFFFFD700),
-                              Color(0xFFF5A623),
-                            ],
-                          ).createShader(bounds),
-                          child: const Text(
-                            'SAKI CHAT',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 43,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2,
-                              shadows: [
-                                Shadow(color: Colors.black87, blurRadius: 12),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 20),
+                        _brandHeader(),
+                        const Spacer(),
                         const Text(
-                          'تراسلوا و احتفلوا و استمتعوا سويا',
+                          'مجتمع رائع للحفلات على الانترنت',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: .2,
                             shadows: [
-                              Shadow(color: Colors.black87, blurRadius: 6),
+                              Shadow(color: Colors.black87, blurRadius: 8),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const Text(
-                    'سجل الدخول لتجربة المزيد من الميزات',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      shadows: [Shadow(color: Colors.black87, blurRadius: 5)],
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(width: 320, height: 56, child: _googleButton()),
-                  TextButton(
-                    onPressed: _loading ? null : _emailLogin,
-                    child: const Text(
-                      'الدخول بالبريد الإلكتروني',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _loading ? null : () => context.go('/register'),
-                    child: const Text(
-                      'إنشاء حساب جديد',
-                      style: TextStyle(color: Color(0xFFFFD700)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'بالاستمرار، فإنك تؤكد أنك تبلغ 18 عاماً أو أكثر، وتوافق على ',
+                        const SizedBox(height: 10),
+                        const Text(
+                          'تواصل، استمتع، واصنع لحظات لا تُنسى',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            shadows: [
+                              Shadow(color: Colors.black87, blurRadius: 5),
+                            ],
+                          ),
                         ),
-                        _link('شروط'),
-                        const TextSpan(text: '\n'),
-                        _link('استخدام ساكي شات'),
-                        const TextSpan(text: ' و'),
-                        _link('سياسة الخصوصية'),
+                        const Spacer(),
+                        SizedBox(
+                          width: 340,
+                          height: 60,
+                          child: _googleButton(),
+                        ),
+                        const SizedBox(height: 16),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(text: 'بالاستمرار، توافق على '),
+                              _link('الشروط'),
+                              const TextSpan(text: ' و'),
+                              _link('سياسة الخصوصية'),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            height: 1.55,
+                            shadows: [
+                              Shadow(color: Colors.black87, blurRadius: 3),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
-                    ),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                      height: 1.55,
-                      shadows: [Shadow(color: Colors.black87, blurRadius: 3)],
                     ),
                   ),
                 ],
@@ -380,23 +293,91 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
     ),
   );
 
+  Widget _brandHeader() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 70,
+        height: 70,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFD86B), Color(0xFFFF5EA8), Color(0xFF6C63FF)],
+          ),
+          border: Border.all(color: Colors.white70, width: 1.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x99FF5EA8),
+              blurRadius: 24,
+              spreadRadius: 3,
+            ),
+            BoxShadow(color: Color(0x886C63FF), blurRadius: 38),
+          ],
+        ),
+        child: const Icon(
+          Icons.auto_awesome_rounded,
+          color: Colors.white,
+          size: 36,
+        ),
+      ),
+      const SizedBox(height: 14),
+      ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [
+            Color(0xFFFFF4B0),
+            Color(0xFFFFD32A),
+            Color(0xFFFF72B6),
+            Color(0xFF8CA7FF),
+          ],
+        ).createShader(bounds),
+        child: const Text(
+          'SAKI CHAT',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 42,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2.4,
+            shadows: [
+              Shadow(color: Color(0xFFFF6BBA), blurRadius: 18),
+              Shadow(color: Colors.black87, blurRadius: 10),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 7),
+      const Text(
+        'SAKI • LIVE • CONNECT',
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 3.2,
+          shadows: [Shadow(color: Colors.black87, blurRadius: 5)],
+        ),
+      ),
+    ],
+  );
+
   Widget _googleButton() => ElevatedButton(
     onPressed: _loading ? null : _googleLogin,
     style: ElevatedButton.styleFrom(
       backgroundColor: Colors.white.withValues(alpha: .96),
       foregroundColor: const Color(0xFF202124),
-      elevation: 10,
+      elevation: 12,
       shadowColor: Colors.black54,
-      shape: const StadiumBorder(),
-      padding: const EdgeInsets.symmetric(horizontal: 9),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
     ),
     child: Row(
       children: [
         Expanded(
           child: Text(
-            _loading ? 'جارٍ فتح تسجيل الدخول...' : 'الاستمرار ب جوجل',
+            _loading ? 'جارٍ فتح تسجيل الدخول...' : 'المتابعة باستخدام Google',
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
         ),
         Container(
