@@ -1,50 +1,39 @@
-# تقرير تجهيز تطبيق SAKI
+# تقرير إعداد SAKI — نسخة محدثة
 
-**التاريخ:** 11 سبتمبر 2026  
-**المستودع:** `ahmedxd90/isoo`  
-**الفرع:** `main`
+> هذا الملف يختصر الحالة الحالية للمشروع. التقرير التفصيلي الموثق بتاريخ 3 أكتوبر 2026 موجود في [`SAKI_BUILD_SETUP_20261003_AR.md`](SAKI_BUILD_SETUP_20261003_AR.md).
 
-## الحالة النهائية
+## الحالة الحالية
 
-تم تجهيز نسخة Android Release حقيقية من مشروع Flutter الموجود في المستودع، مع تثبيت أدوات Flutter وDart وJava 21 وAndroid SDK، والتحقق من اتصال التطبيق بمشروع Supabase المرتبط بالمستودع.
+- المستودع: `ahmedxd90/isoo`، الفرع `main`.
+- التطبيق: Flutter/Dart Native Android.
+- Flutter: `3.47.6` stable.
+- Dart: `3.13.5`.
+- Java/JDK: OpenJDK `21.0.12.1` مع `javac`.
+- Android SDK: API `36`، وBuild Tools `36.0.0`.
+- Android NDK: `28.2.13676358` مع `27.0.12077973` للتوافق.
 
-## بيئة البناء
+## Supabase الحالي
 
-| المكوّن | الإصدار أو المسار |
-|---|---|
-| Flutter | 3.47.3 stable |
-| Dart | 3.13.3 |
-| Java | OpenJDK 21.0.12 |
-| Android SDK | API 37.0.0 |
-| Android Build Tools | 37.0.0 |
-| Android NDK | 28.2.13676358، مع تثبيت 27.0.12077973 للتوافق مع بعض الحزم |
-| مشروع Flutter | `/home/ubuntu/isoo` |
+التطبيق متصل بالمشروع المتاح في الحساب:
 
-## Supabase
+- اسم المشروع: `Saki chat`.
+- Project ref: `faxtmvvovorxximsnxzy`.
+- URL: `https://faxtmvvovorxximsnxzy.supabase.co`.
+- إعداد العميل: `lib/core/config/supabase_config.dart`.
+- التهيئة: `lib/main.dart`.
 
-كان ربط Supabase موجودًا أصلًا داخل التطبيق، وتم التحقق من مطابقته للمشروع الوحيد المتاح في الحساب: `saki`، بالمرجع `vzooppdaqayerpmvdotl`. يستخدم التطبيق عنوان Supabase ومفتاح النشر الموجودين في `lib/core/config/supabase_config.dart`، وتهيئة العميل موجودة في `lib/main.dart`.
+تم التحقق من الجداول الرئيسية، وRLS، وحاويات Storage اللازمة للتطبيق. يستخدم التطبيق Publishable Key فقط، ولا يضع Service Role Key داخل Flutter أو APK.
 
-تم التحقق من اتصال REST الفعلي بنجاح باستجابة HTTP 200، كما تم التحقق من وجود الجداول الأساسية ومزامنة سجل migrations حتى آخر migration بتاريخ 10 سبتمبر 2026. حاويات Storage المطلوبة للتطبيق موجودة ومهيأة: `avatars` و`banners` و`posts` و`reels` و`report_evidence` و`room_music` و`rooms` و`store`، وجميعها عامة وفق إعدادات المشروع الحالية.
+## التحقق والبناء
 
-## التحقق من المشروع
+- `flutter pub get`: ناجح.
+- `flutter analyze`: ناجح بلا أخطاء.
+- APK Release: `build/app/outputs/flutter-apk/app-release.apk`.
+- الحزمة: `saki.room.ch`.
+- الإصدار: `3.3.16 (146)`.
+- `minSdk`: `24`، و`targetSdk`: `36`.
+- الحجم: نحو `445.8 MB`.
+- توقيع APK: صالح عبر APK Signature Scheme v2.
+- SHA-256: `ec3dc2b929795d91166cbdf7bcf1b6ee8fdbeb6b6da687a4d58db1be23d083da`.
 
-نجح `flutter pub get`، ونجح `flutter analyze` دون أخطاء: `No issues found`. لا يحتوي المستودع على مجلد `test/`، ولذلك لم يتم تشغيل اختبارات Flutter الآلية؛ تم تعويض ذلك بالتحقق من التحليل والبناء والتوقيع وسلامة أرشيف APK.
-
-تم بناء النسخة التالية:
-
-- **APK Release:** `build/app/outputs/flutter-apk/app-release.apk`
-- **نسخة التسليم:** `SAKI-release.apk`
-- **حجم الملف:** 458.6 MB تقريبًا
-- **SHA-256:** `2b0a7abbd756d2f28855771a6cf677fb16b9c6c7897825ccb705bd53b3950c3e`
-- **التوقيع:** صالح عبر APK Signature Scheme v2
-- **سلامة الأرشيف:** نجح فحص ZIP دون أخطاء
-
-## ملاحظات التشغيل
-
-يوجد تحذير مستقبلي من Flutter بخصوص إصدارات Gradle وAndroid Gradle Plugin وKotlin، لكنه لا يمنع البناء الحالي. توجد أيضًا حزم أحدث غير متوافقة مع القيود الحالية في `pubspec.yaml`؛ لم يتم رفعها تلقائيًا لتجنب تغييرات قد تكسر الميزات الحالية.
-
-تم إنشاء مفتاح Release محليًا للاختبار والتوزيع المباشر، وهو محفوظ داخل بيئة البناء وغير مرفوع إلى GitHub أو مرفق بالتقرير. يجب الاحتفاظ بنسخة احتياطية آمنة من نفس المفتاح إذا كان APK سيُستخدم لتحديثات لاحقة. إعداد Google OAuth وبيانات ZEGOCLOUD الخارجية يحتاج بيانات اعتماد وإعدادات خارجية.
-
-## ملفات الأدوات المساعدة
-
-يوجد سكربت إعداد البيئة في `/home/ubuntu/setup_flutter_android.sh`، وسكربت التحقق والبناء في `/home/ubuntu/build_saki.sh`. تم إبقاء مفاتيح التوقيع وملفات كلمات المرور خارج Git وخارج التسليم لحمايتها.
+هذه نسخة Release قابلة للتثبيت والاختبار. وللنشر على Google Play يجب توفير keystore إنتاجي مستقل خارج Git وربطه عبر `android/key.properties`؛ في البناء الحالي استُخدم توقيع debug fallback المحلي لعدم وجود ملف مفاتيح إنتاجي في المستودع.
