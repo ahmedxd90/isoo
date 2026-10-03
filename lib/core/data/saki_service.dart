@@ -1705,6 +1705,37 @@ class SakiService {
         .toList();
   }
 
+  Future<Map<String, dynamic>> roomInfoBundle(String roomId) async {
+    final room = Map<String, dynamic>.from(
+      await client
+          .from('rooms')
+          .select(
+            'id,room_id,name,image_url,country,country_code,seat_count,theme_key,is_official,category,owner_id',
+          )
+          .eq('id', roomId)
+          .single(),
+    );
+    final owner = await userProfile(room['owner_id'].toString());
+    final moderatorRows = await client
+        .from('room_moderators')
+        .select(
+          'user_id,created_at,profiles:user_id(id,username,display_name,avatar_url,vip_level,vip_expires_at,wealth_level,admin_role,is_super_admin)',
+        )
+        .eq('room_id', roomId)
+        .limit(100);
+    final moderators = List<Map<String, dynamic>>.from(moderatorRows)
+        .map((row) => Map<String, dynamic>.from(row['profiles'] ?? {}))
+        .where((profile) => profile['id'] != null)
+        .toList();
+    final members = await roomMembers(roomId);
+    return {
+      'room': room,
+      'owner': owner ?? const <String, dynamic>{},
+      'moderators': moderators,
+      'members': members,
+    };
+  }
+
   Future<RoomGiftRankingResult> roomGiftRanking(
     String roomId,
     String period,
