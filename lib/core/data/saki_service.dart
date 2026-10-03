@@ -565,6 +565,13 @@ class SakiService {
     });
   }
 
+  Future<void> adminDeleteStoreProduct(String productId) async {
+    await client.rpc(
+      'admin_delete_store_product',
+      params: {'p_product_id': productId},
+    );
+  }
+
   Future<List<Map<String, dynamic>>> storeInventory() async {
     final rows = await client
         .from('saki_store_inventory')

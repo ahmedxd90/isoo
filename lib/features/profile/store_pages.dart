@@ -1417,6 +1417,42 @@ class _AdminStorePageState extends State<AdminStorePage> {
     }
   }
 
+  Future<void> _deleteProduct(Map<String, dynamic> product) async {
+    final name = product['name']?.toString() ?? 'المنتج';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('حذف المنتج نهائيًا؟'),
+        content: Text(
+          'سيتم حذف "$name" من المتجر، ومخزون المستخدمين، وسجلات الدخول، ومكافآت الأكواد المرتبطة به. لا يمكن التراجع عن هذا الإجراء.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('حذف نهائي'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await SakiService.instance.adminDeleteStoreProduct(
+        product['id'].toString(),
+      );
+      await _load();
+      if (mounted) {
+        CustomToast.show(context, 'تم حذف المنتج نهائيًا من قاعدة البيانات');
+      }
+    } catch (error) {
+      if (mounted) CustomToast.show(context, 'تعذر حذف المنتج: $error');
+    }
+  }
+
   Future<XFile?> _pick(String extension) async {
     final picked = await FilePicker.platform.pickFiles(type: FileType.any);
     final result = picked?.files.single;
@@ -1745,6 +1781,14 @@ class _AdminStorePageState extends State<AdminStorePage> {
                   '${p['category']} • ${p['discounted_price'] ?? p['price']} ذهب '
                   '• ${p['duration_days'] ?? 7} أيام • خصم ${p['discount_percent'] ?? 0}% '
                   '• ${p['media_type']}',
+                ),
+                trailing: IconButton(
+                  tooltip: 'حذف نهائي',
+                  onPressed: () => _deleteProduct(p),
+                  icon: const Icon(
+                    Icons.delete_forever_rounded,
+                    color: Colors.redAccent,
+                  ),
                 ),
               );
             },
