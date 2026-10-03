@@ -1570,6 +1570,15 @@ class SakiService {
     }).toList();
   }
 
+  Future<Map<String, dynamic>?> roomById(String roomId) async {
+    final row = await client
+        .from('rooms')
+        .select('*')
+        .eq('id', roomId)
+        .maybeSingle();
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
+
   Future<Set<String>> followedRoomIds() async {
     final rows = await client
         .from('room_follows')

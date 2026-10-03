@@ -12,6 +12,11 @@ import 'core/data/saki_service.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/permissions/saki_permission_service.dart';
 import 'core/performance/saki_performance.dart';
+import 'core/room_background_bridge.dart';
+import 'core/room_session.dart';
+import 'features/rooms/rooms_page.dart';
+
+final GlobalKey<NavigatorState> sakiNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +26,33 @@ Future<void> main() async {
     publishableKey: supabasePublishableKey,
   );
   await SakiNotificationService.instance.initialize();
+  RoomBackgroundBridge.registerRoomActionHandler((payload) async {
+    final roomId = payload['roomId']?.toString();
+    if (roomId == null || roomId.isEmpty) return;
+    final navigator = sakiNavigatorKey.currentState;
+    if (navigator == null) return;
+    final messenger = navigator.context
+        .findRootAncestorStateOfType<ScaffoldMessengerState>();
+    try {
+      final room = await SakiService.instance.roomById(roomId);
+      if (room == null) {
+        messenger?.showSnackBar(
+          const SnackBar(content: Text('تعذر العثور على الغرفة')),
+        );
+        return;
+      }
+      final active = RoomSessionController.instance.room;
+      if (active?['id']?.toString() == roomId) return;
+      if (active != null) await RoomSessionController.instance.close();
+      await navigator.push(
+        MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
+      );
+    } catch (error) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text('تعذر فتح الغرفة من الفقاعة: $error')),
+      );
+    }
+  });
   runApp(const SakiApp());
 }
 
@@ -31,6 +63,7 @@ class SakiApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final router = GoRouter(
       initialLocation: '/splash',
+      navigatorKey: sakiNavigatorKey,
       overridePlatformDefaultLocation: true,
       onException: (context, state, router) {
         final callback = Uri.parse(supabaseOAuthRedirectUrl);

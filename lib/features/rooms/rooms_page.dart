@@ -1794,9 +1794,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       roomName: widget.room['name']?.toString() ?? 'غرفة SAKI',
       imageUrl: widget.room['image_url']?.toString(),
     );
-    // The in-app bubble is the only visible bubble while the app is active;
-    // the native view is toggled on only when the app goes to the background.
-    await RoomSessionController.instance.setOverlayVisible(false);
+    // Keep the native floating bubble visible while the voice session continues.
+    await RoomSessionController.instance.setOverlayVisible(true);
     if (!mounted) return;
     _joined = true;
     Navigator.of(context).pop();
@@ -2344,35 +2343,24 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<bool> _confirmExit() async {
     if (_closingRoom) return true;
-    final result = await showDialog<bool>(
+    final result = await showGeneralDialog<bool>(
       context: context,
       barrierDismissible: true,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF211F27),
-        title: const Text(
-          'مغادرة الغرفة؟',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
-        ),
-        content: const Text(
-          'يمكنك الاحتفاظ بالجلسة وتصغير الغرفة، أو الخروج بالكامل والنزول من المقعد.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white70, height: 1.5),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('احتفظ بالغرفة'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE34D68),
+      barrierLabel: 'مغادرة الغرفة',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 280),
+      pageBuilder: (dialogContext, _, _) => _RoomExitSheet(
+        service: _service,
+        currentRoomId: _roomId,
+        onKeep: () => Navigator.of(dialogContext).pop(false),
+        onExit: () => Navigator.of(dialogContext).pop(true),
+      ),
+      transitionBuilder: (_, animation, _, child) => SlideTransition(
+        position: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('خروج كامل'),
-          ),
-        ],
+        child: child,
       ),
     );
     if (result == true) {
@@ -7799,6 +7787,344 @@ class _RoomMemberTile extends StatelessWidget {
             ),
           ),
       ],
+    ),
+  );
+}
+
+class _RoomExitSheet extends StatelessWidget {
+  const _RoomExitSheet({
+    required this.service,
+    required this.currentRoomId,
+    required this.onKeep,
+    required this.onExit,
+  });
+  final SakiService service;
+  final String currentRoomId;
+  final VoidCallback onKeep;
+  final VoidCallback onExit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Material(
+        color: const Color(0xFFF8FAFC),
+        child: SafeArea(
+          child: SizedBox(
+            width: MediaQuery.sizeOf(context).width,
+            height: MediaQuery.sizeOf(context).height,
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: service.rooms(),
+              builder: (context, snapshot) {
+                final rooms = (snapshot.data ?? const <Map<String, dynamic>>[])
+                    .where((room) => room['id']?.toString() != currentRoomId)
+                    .take(5)
+                    .toList();
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: onKeep,
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Expanded(
+                            child: Text(
+                              'مغادرة الغرفة',
+                              style: TextStyle(
+                                color: Color(0xFF0F172A),
+                                fontSize: 21,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: onExit,
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xFFE11D48),
+                            ),
+                            tooltip: 'خروج كامل',
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE0F2FE),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFF0284C7),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'احتفظ بالغرفة لمتابعة الصوت أثناء تصفح التطبيق، أو اختر الخروج الكامل لإنهاء الجلسة.',
+                              style: TextStyle(
+                                color: Color(0xFF075985),
+                                height: 1.45,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(18, 22, 18, 10),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'أول 5 غرف في الترند الآن',
+                          style: TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: snapshot.connectionState == ConnectionState.waiting
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFFF97316),
+                              ),
+                            )
+                          : snapshot.hasError
+                          ? _RoomExitError(
+                              message:
+                                  'تعذر تحميل غرف الترند: ${snapshot.error}',
+                              onRetry: () =>
+                                  (context as Element).markNeedsBuild(),
+                            )
+                          : rooms.isEmpty
+                          ? const Center(
+                              child: Text(
+                                'لا توجد غرف ترند متاحة الآن',
+                                style: TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                              ),
+                              itemCount: rooms.length,
+                              itemBuilder: (_, index) => _TrendingExitRoomCard(
+                                room: rooms[index],
+                                rank: index + 1,
+                              ),
+                            ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: onKeep,
+                              icon: const Icon(
+                                Icons.picture_in_picture_alt_rounded,
+                              ),
+                              label: const Text('احتفظ بالغرفة'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0284C7),
+                                side: const BorderSide(
+                                  color: Color(0xFF7DD3FC),
+                                  width: 1.5,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: onExit,
+                              icon: const Icon(Icons.logout_rounded),
+                              label: const Text('خروج كامل'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFE11D48),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TrendingExitRoomCard extends StatelessWidget {
+  const _TrendingExitRoomCard({required this.room, required this.rank});
+  final Map<String, dynamic> room;
+  final int rank;
+  @override
+  Widget build(BuildContext context) {
+    final image = room['image_url']?.toString();
+    final name = room['name']?.toString() ?? 'غرفة صوتية';
+    final count =
+        (room['_members_count'] ??
+                room['member_count'] ??
+                room['online_count'] ??
+                0)
+            .toString();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0F172A),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 25,
+            alignment: Alignment.center,
+            child: Text(
+              '$rank',
+              style: TextStyle(
+                color: rank == 1
+                    ? const Color(0xFFF97316)
+                    : const Color(0xFF64748B),
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: image == null || image.isEmpty
+                ? Container(
+                    width: 58,
+                    height: 58,
+                    color: const Color(0xFFE0F2FE),
+                    child: const Icon(
+                      Icons.mic_external_on_rounded,
+                      color: Color(0xFF0284C7),
+                    ),
+                  )
+                : Image.network(
+                    image,
+                    width: 58,
+                    height: 58,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 58,
+                      height: 58,
+                      color: const Color(0xFFE0F2FE),
+                      child: const Icon(
+                        Icons.mic_external_on_rounded,
+                        color: Color(0xFF0284C7),
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    const _RoomWave(),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$count متصل',
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.trending_up_rounded, color: Color(0xFFF97316)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoomExitError extends StatelessWidget {
+  const _RoomExitError({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFE11D48),
+            size: 42,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF475569), height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: onRetry,
+            child: const Text('إعادة المحاولة'),
+          ),
+        ],
+      ),
     ),
   );
 }
