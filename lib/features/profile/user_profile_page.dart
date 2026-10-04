@@ -11,6 +11,7 @@ import '../../shared/widgets/profile_post_card.dart';
 import '../../shared/widgets/vip_identity.dart';
 import '../messages/messages_page.dart';
 import '../rooms/agora_room_page.dart';
+import 'html_profile_view.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
@@ -348,27 +349,62 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final gender = profile['gender'] as String? ?? '';
     final isSelf = widget.userId == SakiService.instance.currentUser?.id;
 
-    return _HtmlProfileView(
-      profile: profile,
-      stats: _stats,
-      posts: _posts,
-      gifts: _gifts,
-      vehicles: _vehicles,
-      badges: _badges,
-      countryFlag: _countryFlag,
-      username: username,
-      avatar: avatar,
-      coverImages: _profileCoverImages(profile),
-      country: country,
-      gender: gender,
-      isSelf: isSelf,
-      following: _following,
-      loading: _actionLoading,
+    final covers = _profileCoverImages(profile);
+    final htmlProfile = <String, dynamic>{
+      ...profile,
+      'id': widget.userId,
+      'name': username,
+      'avatar': avatar,
+      'cover': covers.isEmpty ? null : covers.first,
+      'country': country,
+      'countryFlag': _countryFlag,
+      'gender': gender,
+      'followers': _stats['followers'] ?? profile['followers_count'] ?? 0,
+      'following': _stats['following'] ?? profile['following_count'] ?? 0,
+      'visitors': _stats['visitors'] ?? profile['visitors_count'] ?? 0,
+      'level': profile['level'] ?? profile['level_number'] ?? 0,
+      'isOwner': isSelf,
+      'isFollowing': _following,
+    };
+    final htmlPosts = _posts.map((post) {
+      final item = <String, dynamic>{...post};
+      final nested = item['profiles'];
+      final author = nested is Map
+          ? Map<String, dynamic>.from(nested)
+          : const <String, dynamic>{};
+      return {
+        ...item,
+        'id': item['id']?.toString() ?? '',
+        'user_id_sender':
+            item['author_id'] ?? item['user_id_sender'] ?? widget.userId,
+        'text': item['text'] ?? item['content'] ?? '',
+        'avatar': item['avatar'] ?? author['avatar_url'] ?? avatar ?? '',
+        'username': item['username'] ?? author['username'] ?? username,
+        'image': item['image'] ?? item['image_url'],
+        'likes': item['likes'] ?? 0,
+      };
+    }).toList();
+    final viewer = <String, dynamic>{
+      'id': SakiService.instance.currentUser?.id ?? '',
+      'name': SakiService.instance.currentUser?.userMetadata?['username'] ?? '',
+      'avatar':
+          SakiService.instance.currentUser?.userMetadata?['avatar_url'] ?? '',
+    };
+    return HtmlProfileView(
+      data: htmlProfile,
+      posts: htmlPosts,
+      viewer: viewer,
       onBack: () => Navigator.maybePop(context),
-      onCopy: _copyId,
       onFollow: _toggleFollow,
       onMessage: _message,
       onReport: _report,
+      onOpenUser: (id) {
+        if (id == widget.userId) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => UserProfilePage(userId: id)),
+        );
+      },
     );
   }
 }

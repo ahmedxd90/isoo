@@ -1,0 +1,2914 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title> Royal  </title>
+
+    <link rel="stylesheet" href="all.min.css">
+
+    
+
+    <style>
+        /* --- المتغيرات الأساسية --- */
+        :root {
+            --primary: #7C4DFF;
+            --primary-light: #B47CFF;
+            --accent: #FF2E93;
+            --gold: #FFD700;
+            --bg-body: #050509;
+            --bg-card: rgba(30, 30, 40, 0.6);
+            --bg-glass: rgba(20, 20, 25, 0.95);
+            --text-main: #fff;
+            --text-sec: #aaa;
+            --gradient-royal: linear-gradient(135deg, #7C4DFF 0%, #00E5FF 100%);
+            --border-color: rgba(255,255,255,0.1);
+        }
+
+        /* --- الوضع المضيء --- */
+        body.light-mode {
+            --primary: #007BFF;
+            --primary-light: #0056b3;
+            --accent: #FF5E7E;
+            --gold: #DAA520;
+            --bg-body: #F0F2F5;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --bg-glass: rgba(255, 255, 255, 0.98);
+            --text-main: #1a1a1a;
+            --text-sec: #666;
+            --gradient-royal: linear-gradient(135deg, #007BFF 0%, #00BFFF 100%);
+            --border-color: rgba(0,0,0,0.1);
+        }
+
+        body, .post-card, .toolbar-container, .bottom-sheet, .wallet-page, .full-page {
+            transition: background 0.4s ease, color 0.4s ease;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+
+        /* [حماية] منع تحديد النصوص لغير حقول الإدخال */
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex; justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+/Edge */
+            user-select: none; /* Standard */
+        }
+@font-face {
+    font-family: 'Cairo';
+    src: url('fonts/Cairo-Regular.ttf');
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: 'Cairo';
+    src: url('fonts/Cairo-Bold.ttf');
+    font-weight: 700;
+}
+
+body {
+    font-family: 'Cairo', sans-serif !important;
+}
+        /* السماح بالكتابة في الحقول */
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        /* --- الخلفية --- */
+        .magic-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+            background: radial-gradient(circle at 50% -20%, #1a1a2e 0%, #050509 70%);
+            transition: 0.5s;
+        }
+        body.light-mode .magic-bg { background: radial-gradient(circle at 50% -20%, #e0e0e0 0%, #F0F2F5 70%); }
+
+        .app-container { width: 100%; max-width: 450px; position: relative; min-height: 100vh; padding-bottom: 100px; }
+
+        /* --- الهيدر (Top Bar & Cover) --- */
+        .top-bar {
+            position: fixed; top: 0; width: 100%; max-width: 450px; padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center; z-index: 50; transition: 0.3s;
+        }
+        .top-bar.scrolled {
+            background: var(--bg-glass);
+            backdrop-filter: blur(5px);
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color); box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .top-icons-group { display: flex; gap: 10px; }
+        .icon-glass {
+            width: 40px; height: 40px; border-radius: 12px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(3px);
+            border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 1.1rem; cursor: pointer; transition: 0.3s; position: relative;
+        }
+        body.light-mode .icon-glass { background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); color: #333; }
+        .icon-glass:active { transform: scale(0.9); }
+        .notif-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; border: 1px solid var(--bg-body); }
+
+        .header-wrapper {
+            position: relative; height: 280px; border-radius: 0 0 40% 40% / 30px;
+            overflow: hidden; box-shadow: 0 10px 50px rgba(124, 77, 255, 0.2);
+        }
+        .header-img { width: 100%; height: 100%; object-fit: cover; animation: zoomSlow 20s infinite alternate; transition: 0.5s; }
+        @keyframes zoomSlow { from { transform: scale(1); } to { transform: scale(1.15); } }
+        .header-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.2), var(--bg-body)); pointer-events: none; }
+
+        /* Magic Light Trail Effect on Cover */
+        .magic-trail {
+            position: absolute;
+            top: 50%;
+            right: 100%;
+            width: 300%;
+            height: 5px;
+            background: linear-gradient(90deg, transparent, rgba(124, 77, 255, 0.8), transparent);
+            box-shadow: 0 0 20px var(--primary-light);
+            animation: magicTrail 5s linear infinite;
+            z-index: 5;
+            pointer-events: none;
+            filter: blur(1px);
+        }
+        body.light-mode .magic-trail {
+            background: linear-gradient(90deg, transparent, rgba(0, 123, 255, 0.8), transparent);
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        @keyframes magicTrail {
+            0% { transform: translateX(100%) translateY(-50%); }
+            100% { transform: translateX(-100%) translateY(-50%); }
+        }
+
+        /* --- معلومات البروفايل --- */
+        .profile-card { margin-top: -60px; padding: 0 20px; position: relative; z-index: 10; }
+
+
+/* ========================= */
+/* FIX نهائي لإطارات SVGA    */
+/* ========================= */
+
+.avatar-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.avatar-box {
+    position: relative;
+    width: 110px;
+    height: 110px;
+}
+
+/* الصورة */
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    position: relative;
+    z-index: 1;
+}
+
+/* SVGA container */
+.avatar-frame-svga {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 145% !important;
+    height: 145% !important;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.avatar-frame-svga canvas {
+    width: 100% !important;
+    height: 100% !important;
+    position: static !important;
+    transform: none !important;
+    display: block;
+}
+
+    /* ================================================= */
+    /* 4. كلاس خاص بالصور الثابتة PNG (تحكم مستقل)     */
+    /* ================================================= */
+    .avatar-frame-static {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 145% !important;
+        height: 145% !important;
+        z-index: 10;
+        pointer-events: none;
+        object-fit: contain;
+        display: block;
+    }
+        /* --- شارة الشريك --- */
+        .partner-badge {
+            display: none;
+            align-items: center; gap: 10px;
+            background: rgba(20, 20, 25, 0.4); padding: 5px 15px 5px 5px;
+            border-radius: 40px; border: 1px solid rgba(255, 46, 147, 0.3);
+            backdrop-filter: blur(3px); cursor: pointer; transition: 0.3s;
+        }
+        body.light-mode .partner-badge { background: rgba(255, 255, 255, 0.6); border-color: rgba(255, 46, 147, 0.2); }
+        .partner-badge:active { transform: scale(0.95); }
+        .partner-img-box { position: relative; width: 42px; height: 42px; }
+        .partner-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 1px solid var(--accent); }
+        .partner-frame-overlay {
+            position: absolute; inset: -3px; border-radius: 50%;
+            border: 2px solid transparent; border-top-color: var(--accent); border-right-color: var(--gold);
+            animation: spin 4s linear infinite;
+        }
+        .partner-info { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+        .partner-label { font-size: 0.65rem; color: var(--accent); font-weight: bold; display: flex; align-items: center; gap: 3px; }
+        .partner-name { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* التصميم الأساسي للاسم */
+        .app-name {
+            font-size: 25px;
+            font-weight: 900;
+            margin: 0;
+            line-height: 1.2;
+            display: inline-block;
+            position: relative;
+            z-index: 20;
+            margin-left: -20px;
+            margin-top: 20px;
+            margin-bottom: 5px;
+
+            color: var(--text-main);
+            background: none;
+            -webkit-text-fill-color: initial;
+            transition: all 0.3s ease;
+        }
+
+        /* VIP Name */
+        .app-name.vip {
+            background: linear-gradient(to bottom, #FFD700 0%, #FFF 50%, #FFD700 100%);
+            background-image: linear-gradient(110deg, var(--gold) 20%, #FFFFFF 40%, #FFFFFF 60%, var(--gold) 80%);
+            background-size: 200% auto;
+            -webkit-background-clip: text !important;
+            background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            color: transparent !important;
+            animation: textShine 3s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.5));
+        }
+
+        .app-name.vip::after {
+            content: '\f521';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            font-size: 1.2rem;
+            position: absolute;
+            top: -22px;
+            left: 0px;
+            color: var(--gold);
+            text-shadow: 0 5px 15px rgba(255, 215, 0, 0.6);
+            -webkit-text-fill-color: initial !important;
+            animation: floatCrown 3s ease-in-out infinite;
+            transform-origin: bottom center;
+            transform: rotate(-10deg);
+        }
+
+        @keyframes textShine { to { background-position: 200% center; } }
+        @keyframes floatCrown {
+            0%, 100% { transform: translateY(0) rotate(-10deg); }
+            50% { transform: translateY(-8px) rotate(-5deg); }
+        }
+
+        .id-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(20,20,25,0.6); padding: 4px 12px; border-radius: 20px;
+            font-size: 0.75rem; color: #fff; cursor: pointer;
+            border: 1px solid rgba(255,215,0,0.3);
+            backdrop-filter: blur(3px);
+            z-index: 20;
+            transition: 0.2s;
+        }
+        body.light-mode .id-pill { background: rgba(255,255,255,0.7); color: #333; border-color: rgba(0,0,0,0.1); }
+        .id-pill:active { transform: scale(0.95); background: rgba(255,215,0,0.1) !important; }
+
+        .stats-row { display: flex; gap: 30px; margin: 20px 0; align-items: center; justify-content: center; }
+        .stat-item { text-align: center; }
+        .stat-item b { font-size: 1.3rem; display: block; color: var(--text-main); }
+        .stat-item span { font-size: 0.8rem; color: var(--text-sec); }
+        .xp-container { width: 60px; height: 6px; background: #333; border-radius: 10px; margin-top: 5px; overflow: hidden; position: relative; }
+        body.light-mode .xp-container { background: #ddd; }
+        .xp-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00E676, #00E5FF); transition: width 0.5s ease; }
+        .xp-text { font-size: 0.6rem; color: #00E5FF; margin-top: 2px; display: block; }
+        body.light-mode .xp-text { color: var(--primary); }
+
+        .nobles-section { margin: 20px 0; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 15px; border: 1px solid var(--border-color); }
+        body.light-mode .nobles-section { background: rgba(0,0,0,0.02); }
+        .nobles-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 10px; color: var(--text-sec); }
+        .nobles-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;}
+        .nobles-list::-webkit-scrollbar { display: none; }
+        .noble-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold); flex-shrink: 0; object-fit: cover; }
+        .crown-icon { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: var(--gold); }
+
+        .tags-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; justify-content: center; }
+        .tags-row::-webkit-scrollbar { display: none; }
+        .magic-tag {
+            padding: 6px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+            background: rgba(40, 40, 50, 0.8); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 5px; color: #fff;
+            transition: background 0.2s, transform 0.2s;
+        }
+        body.light-mode .magic-tag { background: #fff; color: #333; border-color: #ddd; }
+        .magic-tag:active { transform: scale(0.95); }
+        .tag-gradient { background: var(--gradient-royal) !important; border: none; box-shadow: 0 4px 15px rgba(124, 77, 255, 0.3); color: #fff !important; }
+
+        .toolbar-container {
+            margin: 10px 0 20px 0; background: rgba(255,255,255,0.02); border-radius: 20px; padding: 15px; border: 1px solid var(--border-color); position: relative; overflow: hidden;
+        }
+        body.light-mode .toolbar-container { background: #fff; box-shadow: 0 5px 20px rgba(0,0,0,0.03); }
+
+        .toolbar-container::before {
+            content: ''; position: absolute; inset: -5px; border-radius: 25px; padding: 2px;
+            background: linear-gradient(45deg, #FFD700, var(--primary), #FF2E93, #FFD700); background-size: 400% 400%;
+            animation: shimmerBorder 8s linear infinite; mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude; z-index: -1; opacity: 0.5;
+        }
+        @keyframes shimmerBorder { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+
+        .toolbar-scroll { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 8px; padding-bottom: 5px; }
+        .toolbar-scroll::-webkit-scrollbar { display: none; }
+        .tool-box { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; width: 100%; cursor: pointer; text-decoration: none; color: inherit; }
+        .tool-box span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tool-icon-circle {
+            width: 55px; height: 55px; border-radius: 18px; background: var(--bg-card);
+            display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff;
+            border: 1px solid var(--border-color); position: relative; overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: 0.3s;
+        }
+        .tool-icon-circle::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0) 100%); transition: 0.3s;
+        }
+        .tool-box:hover .tool-icon-circle::after { background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0.1) 100%); }
+        body.light-mode .tool-icon-circle { background: #f9f9f9; border-color: #eee; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .tool-box:active .tool-icon-circle { transform: scale(0.9); }
+
+        .t-wallet { color: #FF9800; } .t-gift { color: #FF2E93; } .t-room { color: #00E5FF; }
+        .t-family { color: #00E676; } .t-store { color: #D500F9; } .t-vip { color: #FFD700; }
+        .t-share { color: #fff; } body.light-mode .t-share {color: #555;}
+        .t-sub { color: #7C4DFF; } .t-friends { color: #FF4081; }
+        .t-tools { color: #00E5FF; } .t-level { color: #FFD700; } .t-agency { color: #7C4DFF; }
+        .t-task { color: #00E676; }
+
+        .tabs-sticky {
+            position: sticky; top: 70px; background: var(--bg-glass); backdrop-filter: blur(5px); z-index: 40;
+            display: flex; border-bottom: 1px solid var(--border-color); margin: 0 -20px 20px -20px; padding: 0 20px; transition: background 0.4s ease;
+        }
+        .tabs-container { display: flex; width: 100%; padding: 5px; background: rgba(255,255,255,0.05); border-radius: 15px; border: 1px solid var(--border-color); box-shadow: inset 0 0 10px rgba(0,0,0,0.1); }
+        body.light-mode .tabs-container { background: rgba(0,0,0,0.05); }
+
+        .tab-item { flex: 1; text-align: center; padding: 10px 0; color: var(--text-sec); font-weight: 700; cursor: pointer; position: relative; transition: 0.3s; border-radius: 12px; }
+        .tab-item.active { color: var(--text-main); background: var(--primary); box-shadow: 0 3px 10px rgba(124, 77, 255, 0.3); background: var(--gradient-royal); color: #fff !important; }
+        .tab-item.active::after { content: none; }
+
+        .content-section { display: none; min-height: 300px; animation: fadeIn 0.4s ease; }
+        .content-section.active { display: block; }
+        @keyframes fadeIn { from {opacity:0; transform:translateY(10px);} to {opacity:1; transform:translateY(0);} }
+
+        .post-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px;
+            padding: 15px; margin-bottom: 20px; backdrop-filter: blur(5px); transition: background 0.4s ease, border-color 0.4s ease;
+        }
+        .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .post-avatar { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--gold); object-fit: cover; }
+        .post-info h4 { margin: 0; font-size: 0.95rem; color: var(--text-main); }
+        .post-info span { font-size: 0.7rem; color: var(--text-sec); }
+        .post-text { font-size: 0.9rem; color: var(--text-main); line-height: 1.5; margin-bottom: 10px; opacity: 0.9; }
+        .post-img { width: 100%; border-radius: 15px; margin-bottom: 12px; }
+        .post-actions { display: flex; justify-content: space-between; color: var(--text-sec); padding-top: 10px; border-top: 1px solid var(--border-color); }
+        .p-action { display: flex; align-items: center; gap: 5px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .p-action.liked { color: #ff0055; transform: scale(1.1); }
+        .p-action:active { transform: scale(0.9); }
+
+        .post-options { margin-right: auto; display: flex; gap: 10px; color: var(--text-sec); }
+        .post-options i { cursor: pointer; transition: 0.2s; }
+        .post-options i:hover { color: var(--text-main); }
+
+        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .gallery-img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .gallery-img:hover { transform: scale(1.03); opacity: 0.9; }
+
+        .floating-bar {
+            position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+            width: 85%; max-width: 350px; height: 70px;
+            background: var(--bg-glass); backdrop-filter: blur(10px);
+            border-radius: 35px; border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-around;
+            padding: 5px 10px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); z-index: 99;
+            transition: background 0.4s ease;
+        }
+        body.light-mode .floating-bar { box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .float-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none; background: transparent;
+            color: var(--text-main); font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s;
+        }
+        .float-btn:active { transform: scale(0.9); }
+
+        .main-action-btn {
+            height: 50px; padding: 0 40px; border-radius: 25px; border: none;
+            background: var(--gradient-royal); color: #fff; font-weight: 800; font-size: 1rem; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; box-shadow: 0 5px 20px rgba(124, 77, 255, 0.4);
+            transition: 0.3s;
+        }
+        .main-action-btn.following {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); box-shadow: none; color: var(--text-main);
+        }
+        body.light-mode .main-action-btn.following { background: #ddd; border: none; color: #333; box-shadow: none; }
+        .main-action-btn:hover { box-shadow: 0 5px 25px rgba(124, 77, 255, 0.6); }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8);
+            z-index: 9999; display: none; align-items: flex-end; justify-content: center; backdrop-filter: blur(2px);
+        }
+        .modal-overlay.open { display: flex; animation: fadeBg 0.3s; }
+        .bottom-sheet {
+            background: #1a1a22; width: 100%; max-width: 450px; height: auto; max-height: 85vh;
+            border-radius: 30px 30px 0 0; display: flex; flex-direction: column;
+            box-shadow: 0 -10px 60px rgba(0,0,0,1); animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-top: 1px solid var(--border-color); color: #fff;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+        body.light-mode .bottom-sheet { background: #fff; color: #333; box-shadow: 0 -10px 40px rgba(0,0,0,0.1); }
+        .sheet-header { padding: 15px; text-align: center; flex-shrink: 0; border-bottom: 1px solid var(--border-color); }
+        .sheet-handle { width: 60px; height: 5px; background: #444; border-radius: 10px; margin: 0 auto; }
+        body.light-mode .sheet-handle { background: #ccc; }
+        .sheet-body { flex: 1; overflow-y: auto; padding: 20px; scrollbar-width: thin; }
+        .sheet-footer { padding: 15px 20px; background: transparent; flex-shrink: 0; border-top: 1px solid var(--border-color); }
+        @keyframes fadeBg { from {opacity: 0;} to {opacity: 1;} }
+        @keyframes slideUp { from {transform: translateY(100%);} to {transform: translateY(0);} }
+
+        /* Settings & Forms */
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 10px; border-bottom: 1px solid var(--border-color); cursor: pointer; border-radius: 8px; }
+        .setting-row:hover { background: rgba(255,255,255,0.05); }
+        body.light-mode .setting-row:hover { background: rgba(0,0,0,0.05); }
+        .setting-label { display: flex; align-items: center; gap: 10px; font-size: 0.95rem; }
+        .setting-label i { width: 25px; color: var(--primary-light); text-align: center; }
+        body.light-mode .setting-label i { color: var(--primary); }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        body.light-mode .slider { background-color: #ccc; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .input-group { margin-bottom: 15px; }
+        .label { display: block; color: var(--text-sec); font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; }
+        .input-field {
+            width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: var(--text-main);
+            padding: 12px; border-radius: 12px; font-family: inherit; font-size: 0.95rem; transition: border-color 0.3s, background 0.3s;
+            box-shadow: none !important;
+            text-shadow: none !important;
+            transform: translateZ(0);
+        }
+        body.light-mode .input-field { background: #f5f5f5; border-color: #ddd; color: var(--text-main); }
+        .input-field:focus { border-color: var(--primary-light); box-shadow: none !important; }
+        .input-row { display: flex; gap: 15px; } .input-col { flex: 1; }
+        .pass-toggle { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--gold); font-weight: 600; margin-top: 10px; }
+        body.light-mode .pass-toggle { background: rgba(0,0,0,0.05); }
+        .pass-content { display: none; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 0 0 12px 12px; margin-bottom: 15px; }
+        .btn-save { width: 100%; padding: 14px; background: var(--gradient-royal); color: #fff; border: none; border-radius: 15px; font-weight: 800; font-size: 1rem; cursor: pointer; box-shadow: 0 5px 20px rgba(124, 77, 255, 0.3); transition: 0.3s; }
+        .btn-save:active { transform: scale(0.98); }
+
+        /* Level & Rewards */
+        .levelup-box { text-align: center; padding: 30px 10px; background: radial-gradient(circle, rgba(124,77,255,0.2) 0%, rgba(5,5,9,0) 70%); }
+        .levelup-icon { font-size: 5rem; margin-bottom: 10px; color: var(--gold); animation: pulse 1s infinite; }
+        .levelup-text { font-size: 2rem; font-weight: 900; background: var(--gradient-royal); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .daily-reward-box { text-align: center; padding: 30px 10px; }
+        .reward-icon { font-size: 4rem; margin-bottom: 15px; color: var(--gold); filter: drop-shadow(0 0 15px var(--gold)); animation: floatY 2s infinite ease-in-out; }
+        @keyframes floatY { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-15px);} }
+        .reward-btn { background: linear-gradient(90deg, var(--gold), #FFA000); color: #000; padding: 12px 40px; border-radius: 30px; font-weight: 800; border: none; font-size: 1.1rem; box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4); cursor: pointer; margin-top: 20px; transition: 0.3s; }
+        .reward-btn:active { transform: scale(0.95); }
+
+        /* Music Widget */
+        .music-widget {
+            position: absolute; top: 70px; left: 20px; right: 20px;
+            background: var(--bg-glass); backdrop-filter: blur(5px);
+            border: 1px solid var(--border-color); border-radius: 15px;
+            padding: 10px 15px; display: none; align-items: center; gap: 15px;
+            z-index: 80; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideDown 0.3s ease; color: var(--text-main);
+        }
+        .music-widget.active { display: flex; }
+        .music-disc {
+            width: 40px; height: 40px; border-radius: 50%; background: #222; border: 2px solid var(--accent); position: relative;
+            background: linear-gradient(135deg, var(--accent), var(--gold));
+            flex-shrink: 0;
+        }
+        .music-disc.playing { animation: spin 3s linear infinite; }
+        .music-info { flex: 1; overflow: hidden; }
+        .music-title { font-size: 0.85rem; white-space: nowrap; font-weight: bold; }
+        .music-controls { display: flex; gap: 15px; font-size: 1.1rem; color: var(--text-main); flex-shrink: 0; }
+        @keyframes slideDown { from {opacity:0; transform:translateY(-20px);} to {opacity:1; transform:translateY(0);} }
+
+        .toast {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(20, 20, 25, 0.95); color: #fff; padding: 15px 30px;
+            border-radius: 30px; z-index: 10000; pointer-events: none; opacity: 0;
+            transition: 0.3s; display: flex; gap: 10px; border: 1px solid #333; align-items: center;
+        }
+        .toast.show { opacity: 1; }
+
+        .received-display-box {
+            display: none; flex-direction: column; align-items: flex-end; justify-content: center; margin-top: 15px;
+        }
+        .received-label { font-size: 0.9rem; color: var(--text-sec); margin-bottom: 5px; }
+        .received-value {
+            font-size: 1.8rem; font-weight: 900; background: linear-gradient(to bottom, #00E5FF 0%, #FFF 50%, #00E5FF 100%);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.5)); direction: ltr;
+        }
+
+        .comment-input-area {
+            position: absolute; bottom: 0; left: 0; right: 0; background: var(--bg-card);
+            padding: 10px 15px; display: flex; align-items: center; gap: 10px;
+            border-top: 1px solid var(--border-color); backdrop-filter: blur(10px);
+        }
+        .comment-input-avatar { width: 35px; height: 35px; border-radius: 50%; border: 1px solid var(--gold); }
+        .comment-input-field { flex: 1; background: rgba(255,255,255,0.05); border: none; padding: 10px 15px; border-radius: 20px; color: #fff; outline: none; }
+        .send-btn { background: var(--gradient-royal); color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .comment-item { display: flex; gap: 10px; margin-bottom: 15px; animation: fadeIn 0.3s; }
+        .comment-user-img { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border-color); cursor: pointer; }
+        .comment-content-box { flex: 1; }
+        .comment-bubble { background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 12px; display: inline-block; min-width: 150px; }
+        .comment-username { font-size: 0.85rem; font-weight: bold; color: var(--text-main); margin-bottom: 2px; cursor: pointer; }
+        .comment-text { font-size: 0.9rem; color: var(--text-sec); line-height: 1.4; word-wrap: break-word; }
+        .comment-time { font-size: 0.65rem; color: var(--text-sec); margin-top: 4px; display: block; }
+
+        /* Report Modal Styles */
+        .report-option {
+            display: flex; align-items: center; padding: 12px; border-radius: 10px;
+            background: rgba(255,255,255,0.05); margin-bottom: 10px; cursor: pointer; border: 1px solid transparent;
+        }
+        .report-option.selected { border-color: var(--accent); background: rgba(255, 46, 147, 0.1); }
+        .report-radio { margin-left: 10px; accent-color: var(--accent); }
+
+        .share-list { display: flex; flex-direction: column; gap: 10px; padding: 10px 20px; }
+
+        .friend-share-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px; background: rgba(255,255,255,0.03); border-radius: 12px;
+            border: 1px solid var(--border-color); transition: 0.2s;
+        }
+        .friend-share-item:active { transform: scale(0.98); background: rgba(255,255,255,0.08); }
+
+        .f-info { display: flex; align-items: center; gap: 12px; }
+        .f-avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border-color); }
+        .f-name { font-size: 0.95rem; font-weight: bold; color: var(--text-main); display: block; }
+        .f-id { font-size: 0.75rem; color: var(--text-sec); }
+
+        .btn-send-share {
+            padding: 6px 15px; border-radius: 20px; border: none;
+            background: var(--primary); color: #fff; font-size: 0.8rem; font-weight: bold;
+            cursor: pointer; display: flex; align-items: center; gap: 5px;
+        }
+        .btn-send-share i { font-size: 0.8rem; }
+
+        /* زر النقاط الثلاث في الهيدر */
+        .header-more-btn {
+            position: absolute;
+            right: 15px; /* يمين الهيدر */
+            top: 50%;
+            transform: translateY(-50%);
+            width: 35px; height: 35px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-sec);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .header-more-btn:active { background: rgba(255,255,255,0.1); color: var(--text-main); }
+
+        /* تنسيق زر الإرسال عندما يتم تعطيله (Sent) */
+        .btn-send-share.sent {
+            background: #444 !important; /* لون رمادي */
+            color: #aaa !important;
+            cursor: not-allowed;
+            pointer-events: none; /* منع الضغط مرة أخرى */
+            transform: none !important;
+        }
+
+        /* [جديد] تنسيقات قائمة إدارة الأصدقاء */
+        .friend-actions-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .f-act-btn {
+            width: 35px; height: 35px;
+            border-radius: 50%;
+            border: none;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        .f-act-btn:active { transform: scale(0.9); }
+
+        /* ألوان الأزرار */
+        .btn-msg { background: rgba(0, 229, 255, 0.2); color: #00E5FF; } /* رسالة (أزرق) */
+        .btn-gift { background: rgba(255, 46, 147, 0.2); color: #FF2E93; } /* هدية (وردي) */
+        .btn-unfriend { background: rgba(255, 0, 0, 0.2); color: #ff4444; } /* حذف (أحمر) */
+
+        /* انيميشن الحذف */
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+/* تنسيقات نافذة الهدايا العامة */
+.gifts-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding-bottom: 20px;
+}
+.gift-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    padding: 15px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.gift-card:active {
+    transform: scale(0.95);
+    background: rgba(255, 46, 147, 0.1);
+    border-color: var(--accent);
+}
+.gift-img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: 8px;
+}
+.gift-name {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.gift-price {
+    font-size: 0.85rem;
+    color: var(--gold);
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 5px;
+}
+    </style>
+</head>
+<body>
+
+<audio id="musicPlayer" loop></audio>
+
+<div id="svga-container" style="position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:300px; height:300px; z-index:9999; pointer-events:none;"></div>
+
+<div class="magic-bg"></div>
+
+<div class="app-container">
+    <div class="top-bar" id="topBar">
+        <div class="top-icons-group">
+            <div class="icon-glass" onclick="handleBackPress()"><i class="fas fa-arrow-right"></i></div>
+        </div>
+        <div class="top-icons-group">
+            <div class="icon-glass" id="topShareBtn" style="display:none;" onclick="callAndroid('shareProfile')"><i class="fas fa-share-alt"></i></div>
+
+            <div class="icon-glass" id="reportBtn" style="display:none;" onclick="openReportModal()"><i class="fas fa-exclamation-triangle" style="color: #ff4444;"></i></div>
+
+            <div class="icon-glass" onclick="toggleMusicWidget()"><i class="fas fa-music"></i></div>
+            <div class="icon-glass" onclick="callAndroid('openNotifications')"><i class="far fa-bell"></i><div class="notif-dot"></div></div>
+
+            <div class="icon-glass" id="settingsBtn" onclick="openModal('settingsModal')"><i class="fas fa-ellipsis-v"></i></div>
+        </div>
+    </div>
+
+    <div class="music-widget" id="musicWidget">
+        <div class="music-disc" id="musicDisc"></div>
+        <div class="music-info"><div class="music-title">Midnight City Vibe</div><div class="music-artist">Alight Remix</div></div>
+        <div class="music-controls">
+            <i class="fas fa-step-backward" style="cursor:pointer; opacity:0.7;"></i>
+            <i class="fas fa-play" id="playBtn" onclick="togglePlayMusic()" style="cursor:pointer; opacity:1;"></i>
+            <i class="fas fa-step-forward" style="cursor:pointer; opacity:0.7;"></i>
+        </div>
+    </div>
+
+    <div class="header-wrapper" onclick="checkOwnerAndChangeCover()">
+        <div class="header-overlay"></div>
+        <div class="magic-trail"></div>
+        <img src="" class="header-img" id="headerImg" onerror="this.onerror=null;this.src='file:///android_asset/icon_room.webp';">
+    </div>
+
+    <div class="profile-card">
+
+        <div id="identity-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+
+            <div id="avatar-name-group" style="display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; position: relative; z-index: 20; flex: 1 1 0; min-width: 0;">
+
+                <div class="avatar-box" onclick="checkOwnerAndChangeAvatar()">
+
+                    <div class="avatar-wrapper">
+
+                        <img src="file:///android_asset/icon_room.webp"
+                             class="avatar-img"
+                             id="displayAvatar">
+
+                        <div id="avatarFrameContainer"
+                             class="avatar-frame-svga"
+                             style="display:none;">
+                        </div>
+
+                        <img id="avatarStaticFrame"
+                             src=""
+                             class="avatar-frame-static"
+                             style="display:none;">
+
+                    </div>
+
+                </div>
+
+                <h1 class="app-name" id="displayName" style="margin-top: 15px; margin-bottom: 5px; max-width: 100%;">AlightTalk</h1>
+                <div id="nameBadgesRow" style="display:none;justify-content:center;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;max-width:100%;"><img id="badgeVipName" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeAgencyHost" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeAgencyWakel" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeCashAgent" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"></div>
+
+            </div>
+
+            <div id="partner-id-group" style="display: flex; flex-direction: column; align-items: flex-end; margin-top: 20px; flex-shrink: 0; margin-left: 10px;">
+
+                <div class="id-pill" onclick="Android.copyId(document.getElementById('displayID').innerText)" style="margin-bottom: 10px;"><span id="displayID">1829304</span> <i class="far fa-copy"></i></div>
+
+                <div class="partner-badge" id="partnerBadge" onclick="callAndroid('openPartner')">
+                    <div class="partner-img-box">
+                        <img id="partnerImg" src="" class="partner-img" onerror="this.onerror=null;this.src='file:///android_asset/icon_room.webp';">
+                        <div class="partner-frame-overlay"></div>
+                    </div>
+                    <div class="partner-info" style="align-items: flex-start;"><div class="partner-label">شريك <i class="fas fa-heart heart-beat-icon"></i></div><div class="partner-name" id="partnerName">Name</div></div>
+                </div>
+
+                <div id="ownerLevelDisplay" class="received-display-box">
+                    <div class="received-label">تم الاستلام</div>
+                    <div class="received-value">500.2K</div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <p style="color: var(--text-sec); line-height: 1.6; font-size: 0.9rem; margin: 0 0 20px 0; text-align: right;" id="displayBio">
+            صانع محتوى 🎵 | أحب السفر والهدوء ✈️ <br> مؤسس عائلة AlightTalk الرسمية 👑
+        </p>
+
+        <div class="stats-row" id="statsRow">
+            <div class="stat-item" onclick="openFollowersList()" style="cursor:pointer; transition:0.2s;" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'">
+                <b id="followersCount">000</b> <span>متابع</span>
+            </div>
+            <div class="stat-item"><b id="followingCount">340</b> <span>يتابع</span></div>
+
+            <div class="stat-item" id="visitorStatItem"><b id="visitorsCount">85.2k</b> <span id="visitorsLabel">زائر</span></div>
+
+            <div class="stat-item" id="statLevelItem" style="display:flex; flex-direction:column; align-items:center;">
+                <b id="levelNum">LV.50</b>
+                <div class="xp-container"><div class="xp-fill" id="xpBar" style="width: 45%;"></div></div>
+                <span class="xp-text" id="xpText">450/1000</span>
+            </div>
+        </div>
+
+        <div class="nobles-section" id="visitorsSection" style="display:none;">
+            <div class="nobles-header"><b>👥 الزوار</b><span onclick="openVisitorsModal()">المزيد</span></div>
+
+            <div class="nobles-list" id="visitorsPreviewList">
+            </div>
+        </div>
+
+        <div class="tags-row" id="tagsContainer">
+            <div class="magic-tag tag-gradient"><i class="fas fa-gem"></i> Alight Star</div>
+            <div class="magic-tag" id="tagStatus">❤️ مرتبط</div>
+            <div class="magic-tag" id="tagCountry">🇸🇦 السعودية</div>
+        </div>
+
+        <div class="toolbar-container" id="toolbarSection">
+            <div class="toolbar-scroll">
+                <div class="tool-box" onclick="callAndroid('openWallet')"><div class="tool-icon-circle t-wallet"><i class="fas fa-wallet"></i></div><span>محفظة</span></div>
+                <div class="tool-box" onclick="callAndroid('openVIP')"><div class="tool-icon-circle t-vip"><i class="fas fa-crown"></i></div><span>VIP</span></div>
+                <div class="tool-box" onclick="callAndroid('openWeeklyTasks')"><div class="tool-icon-circle t-task"><i class="fas fa-list-check"></i></div><span>المهام</span></div>
+                <div class="tool-box" onclick="callAndroid('openSubscriptions')" style="display: none;"><div class="tool-icon-circle t-sub"><i class="fas fa-star"></i></div><span>اشتراكات</span></div>
+
+                <div class="tool-box" onclick="callAndroid('openFriends')"><div class="tool-icon-circle t-friends"><i class="fas fa-user-friends"></i></div><span>أصدقاء</span></div>
+
+                <div class="tool-box" onclick="callAndroid('openGifts')"><div class="tool-icon-circle t-gift"><i class="fas fa-gift"></i></div><span>هدايا</span></div>
+                <div class="tool-box" onclick="callAndroid('openRoom')"><div class="tool-icon-circle t-room"><i class="fas fa-microphone-alt"></i></div><span>غرفتي</span></div>
+
+                <div class="tool-box" onclick="callAndroid('openMyTools')"><div class="tool-icon-circle t-tools"><i class="fas fa-toolbox"></i></div><span>أدواتي</span></div>
+                <div class="tool-box" onclick="callAndroid('openStore')"><div class="tool-icon-circle t-store"><i class="fas fa-store"></i></div><span>المتجر</span></div>
+                <div class="tool-box" onclick="callAndroid('openLevel')"><div class="tool-icon-circle t-level"><i class="fas fa-layer-group"></i></div><span>المستوى</span></div>
+
+                <div class="tool-box" id="btnAgency" onclick="callAndroid('openAgency')"><div class="tool-icon-circle t-agency"><i class="fas fa-building"></i></div><span>الوكالة</span></div>
+            </div>
+        </div>
+
+        <div class="tabs-sticky">
+            <div class="tabs-container">
+                <div class="tab-item active" onclick="switchTab(0, this)">المنشورات</div>
+                <div class="tab-item" onclick="switchTab(2, this)">المعرض</div>
+            </div>
+        </div>
+
+        <div id="tab-0" class="content-section active">
+        </div>
+
+        <div id="tab-2" class="content-section">
+            <div id="galleryGrid" class="gallery-grid">
+            </div>
+        </div>
+
+        <div class="floating-bar" id="floatingBar">
+        </div>
+
+    </div>
+
+    <div id="editModal" class="modal-overlay" onclick="closeModal(event, 'editModal')">
+        <div class="bottom-sheet">
+            <div class="sheet-header"><div class="sheet-handle"></div><h3 style="margin: 15px 0 0 0; color:var(--text-main);">تعديل الملف الشخصي</h3></div>
+            <div class="sheet-body">
+                <div style="text-align:center; margin-bottom:20px;">
+                    <div style="position:relative; width:80px; height:80px; margin:0 auto;" onclick="callAndroid('changeAvatar')">
+                        <img src="file:///android_asset/icon_room.webp" id="previewImg" style="width:100%; height:100%; border-radius:50%; opacity:0.7;">
+                        <i class="fas fa-camera" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:1.5rem; color:var(--text-main);"></i>
+                    </div>
+                </div>
+                <div class="input-group"><label class="label">الاسم</label><input type="text" id="editName" class="input-field" value="AlightTalk"></div>
+                <div class="input-group"><label class="label">رابط الموسيقى</label><input type="text" id="editMusicLink" class="input-field" placeholder="أدخل رابط الأغنية للبروفايل..."></div>
+                <div class="input-group"><label class="label">النبذة (الفقرة الأولى)</label><textarea id="editBio" class="input-field" rows="2">صانع محتوى 🎵 | أحب السفر</textarea></div>
+                <div class="input-row">
+                    <div class="input-col">
+                        <label class="label">الجنس</label>
+                        <select id="editGender" class="input-field">
+                            <option value="ذكر" selected>ذكر ‍♂️</option>
+                            <option value="أنثى">أنثى ‍♀️</option>
+                        </select>
+                    </div>
+                    <div class="input-col"><label class="label">الحالة</label><select id="editStatus" class="input-field"><option value="أعزب">أعزب 🔓</option><option value="مرتبط">مرتبط ❤️</option><option value="متزوج">متزوج 💍</option></select></div>
+                </div>
+                <div class="input-row"><div class="input-col"><label class="label">الدولة</label><input type="text" id="editCountry" class="input-field" value="السعودية 🇸🇦"></div></div>
+                <div class="pass-toggle" onclick="togglePass()"><span><i class="fas fa-lock"></i> تغيير كلمة المرور</span><i class="fas fa-chevron-down" id="passIcon"></i></div>
+                <div class="pass-content" id="passContent">
+                    <div class="input-group"><label class="label">كلمة المرور الحالية</label><input type="password" class="input-field"></div>
+                    <div class="input-group"><label class="label">كلمة المرور الجديدة</label><input type="password" class="input-field"></div>
+                </div>
+            </div>
+            <div class="sheet-footer"><button class="btn-save" onclick="saveProfile()">حفظ التعديلات ✨</button></div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal-overlay" onclick="closeModal(event, 'settingsModal')">
+        <div class="bottom-sheet" style="height:auto;">
+            <div class="sheet-header"><div class="sheet-handle"></div><h3 style="color:var(--text-main);">الإعدادات</h3></div>
+            <div class="sheet-body">
+                <div class="setting-row" onclick="closeModalById('settingsModal'); openModal('editModal')">
+                    <div class="setting-label"><i class="fas fa-user-edit"></i> تعديل الملف الشخصي</div><i class="fas fa-chevron-left" style="font-size:0.8rem; color:var(--text-sec);"></i>
+                </div>
+                <div class="setting-row" onclick="checkOwnerAndChangeCover()">
+                    <div class="setting-label"><i class="fas fa-camera"></i> تغيير الغلاف</div><i class="fas fa-chevron-left" style="font-size:0.8rem; color:var(--text-sec);"></i>
+                </div>
+                <div class="setting-row" onclick="openBlockList()">
+                    <div class="setting-label"><i class="fas fa-user-slash"></i> قائمة الحظر</div><i class="fas fa-chevron-left" style="font-size:0.8rem; color:var(--text-sec);"></i>
+                </div>
+                <div class="setting-row" onclick="openDeleteAccountModal()">
+                    <div class="setting-label"><i class="fas fa-user-minus" style="color:#ff4444;"></i> حذف الحساب</div>
+                </div>
+
+                <div class="setting-row"><div class="setting-label"><i class="fas fa-bell"></i> الإشعارات</div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><div class="setting-label"><i class="fas fa-sun"></i> الوضع المضيء</div><label class="switch"><input type="checkbox" id="themeSwitch" onchange="toggleTheme()"><span class="slider"></span></label></div>
+                <div class="setting-row"><div class="setting-label"><i class="fas fa-globe"></i> اللغة العربية</div><label class="switch"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row" onclick="callAndroid('logout')"><div class="setting-label"><i class="fas fa-sign-out-alt" style="color:red;"></i> تسجيل الخروج</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blockListModal" class="modal-overlay" onclick="closeModal(event, 'blockListModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-header">
+                <div class="sheet-handle"></div>
+                <h3 style="margin: 10px 0;">قائمة الحظر</h3>
+            </div>
+            <div class="sheet-body" style="padding: 0;">
+                <div id="blockListContainer" class="share-list">
+                    <div style="text-align:center; padding:20px; color:var(--text-sec);">
+                        <i class="fas fa-circle-notch fa-spin"></i> جاري التحميل...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteAccountModal" class="modal-overlay" style="z-index: 10005;" onclick="closeModal(event, 'deleteAccountModal')">
+        <div class="bottom-sheet" style="height:auto; min-height:unset; border-radius: 25px 25px 0 0;">
+            <div class="sheet-handle" style="margin-top:10px;"></div>
+            <div class="sheet-body" style="text-align:center; padding:20px 25px 30px 25px;">
+                <div style="width:70px; height:70px; background:rgba(255, 68, 68, 0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 15px auto;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:2rem; color:#ff4444; animation: shake 1s infinite;"></i>
+                </div>
+                <h3 style="margin:0 0 10px 0; color:var(--text-main); font-size:1.2rem;">حذف الحساب نهائياً</h3>
+                <p style="color:var(--text-sec); margin-bottom:15px; font-size:0.95rem; line-height:1.5;">
+                    هل أنت متأكد من أنك تريد حذف الحساب؟ <br> سيتم حذف كل شيء: رصيد، رسائل، ومنشورات لديك. لا يمكن التراجع عن هذا الإجراء!
+                </p>
+                <div class="input-group" style="margin-bottom:20px; text-align:right;">
+                    <input type="password" id="deleteAccountPass" class="input-field" placeholder="أدخل كلمة المرور للتأكيد">
+                </div>
+                <div style="display:flex; gap:15px;">
+                    <button class="btn-save" style="background:rgba(255,255,255,0.05); color:var(--text-sec); border:1px solid var(--border-color);" onclick="closeModalById('deleteAccountModal')">إلغاء</button>
+                    <button class="btn-save" style="background:#ff4444; box-shadow: 0 5px 15px rgba(255, 68, 68, 0.3);" onclick="confirmDeleteAccount()">نعم، احذف الحساب</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dailyRewardModal" class="modal-overlay" onclick="closeModal(event, 'dailyRewardModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()" style="height:auto;">
+            <div class="sheet-header"><div class="sheet-handle"></div><h3 style="color:var(--gold);">المكافأة اليومية</h3></div>
+            <div class="sheet-body daily-reward-box">
+                <i class="fas fa-gem reward-icon"></i>
+                <h2 style="margin:10px 0; color:var(--text-main);">+250 عملة</h2>
+                <p style="color:var(--text-sec);">مرحباً بعودتك! لقد حصلت على مكافأة اليوم.</p>
+                <button class="reward-btn" onclick="claimDailyReward()">جمع المكافأة</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="levelUpModal" class="modal-overlay" onclick="closeModal(event, 'levelUpModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()" style="height:auto;">
+            <div class="sheet-header"><div class="sheet-handle"></div></div>
+            <div class="sheet-body levelup-box">
+                <i class="fas fa-trophy levelup-icon"></i>
+                <div class="levelup-text">LEVEL UP!</div>
+                <h2 style="color:var(--text-main); margin:10px 0;">المستوى <span id="newLevelDisplay">51</span></h2>
+                <p style="color:var(--text-sec);">مبروك! لقد وصلت إلى مستوى جديد.</p>
+                <button class="reward-btn" onclick="document.getElementById('levelUpModal').classList.remove('open')">موافق</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="postDetailsModal" class="modal-overlay" style="z-index: 10000;">
+        <div class="bottom-sheet full-page" style="height: 100%; border-radius: 0;">
+            <div class="sheet-header" style="display:flex; align-items:center; justify-content:space-between; padding: 15px;">
+                <div class="icon-glass" onclick="handleBackPress()"><i class="fas fa-arrow-right"></i></div>
+                <h3 style="margin:0; font-size:1rem;">تفاصيل المنشور</h3>
+                <div style="width:40px;"></div> </div>
+
+            <div class="sheet-body" style="padding-bottom: 80px;"> <div id="modalPostContainer"></div>
+
+                <div class="comments-section">
+                    <h4 style="margin: 20px 0 10px 0; color:var(--text-sec); font-size:0.9rem;">التعليقات</h4>
+                    <div id="modalCommentsList">
+                    </div>
+                </div>
+            </div>
+
+            <div class="comment-input-area">
+                <img src="file:///android_asset/icon_room.webp" id="myCommentAvatar" class="comment-input-avatar">
+                <input type="text" id="commentInput" placeholder="أكتب تعليقاً..." class="comment-input-field">
+                <button class="send-btn" onclick="submitNewComment()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addPostModal" class="modal-overlay" onclick="closeModal(event, 'addPostModal')">
+        <div class="bottom-sheet">
+            <div class="sheet-header">
+                <div class="sheet-handle"></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                    <button onclick="closeModalById('addPostModal')" style="background:none; border:none; color:var(--text-sec);">إلغاء</button>
+                    <h3 style="margin:0; color:var(--text-main);">منشور جديد</h3>
+                    <button onclick="publishNewPost()" style="background:var(--primary); border:none; color:#fff; padding:5px 15px; border-radius:15px; font-weight:bold;">نشر</button>
+                </div>
+            </div>
+            <div class="sheet-body">
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <img src="file:///android_asset/icon_room.webp" id="addPostAvatar" style="width:50px; height:50px; border-radius:50%;">
+                    <textarea id="newPostContent" placeholder="بماذا تفكر؟" style="width:100%; background:transparent; border:none; color:#fff; resize:none; font-family:inherit; font-size:1rem; height:100px; outline:none;"></textarea>
+                </div>
+
+                <div id="imagePreviewContainer" style="display:none; position:relative; margin-bottom:15px;">
+                    <img id="newPostImagePreview" src="" style="width:100%; border-radius:15px; max-height:250px; object-fit:cover;">
+                    <div onclick="removePostImage()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i class="fas fa-times"></i></div>
+                </div>
+
+                <div style="border-top:1px solid var(--border-color); padding-top:15px; display:flex; gap:20px;">
+                    <div onclick="callAndroid('pickPostMedia', 'image')" style="cursor:pointer; color:#00E676; display:flex; align-items:center; gap:5px;">
+                        <i class="fas fa-image" style="font-size:1.2rem;"></i> صورة
+                    </div>
+
+                    <div onclick="callAndroid('pickPostMedia', 'video')" style="cursor:pointer; color:#FF2E93; display:flex; align-items:center; gap:5px;">
+                        <i class="fas fa-video" style="font-size:1.2rem;"></i> فيديو
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="reportModal" class="modal-overlay" onclick="closeModal(event, 'reportModal')">
+        <div class="bottom-sheet">
+            <div class="sheet-header"><div class="sheet-handle"></div><h3 style="color:var(--text-main);">إبلاغ عن محتوى</h3></div>
+            <div class="sheet-body">
+                <div class="report-option" onclick="selectReportOption(this)">
+                    <label style="flex:1; cursor:pointer;">الفاظ مسيئة</label> <input type="radio" name="reportReason" value="الفاظ مسيئة" class="report-radio">
+                </div>
+                <div class="report-option" onclick="selectReportOption(this)">
+                    <label style="flex:1; cursor:pointer;">صورة غير لائقة</label> <input type="radio" name="reportReason" value="صورة غير لائقة" class="report-radio">
+                </div>
+                <div class="report-option" onclick="selectReportOption(this)">
+                    <label style="flex:1; cursor:pointer;">التسبب بالازعاج</label> <input type="radio" name="reportReason" value="التسبب بالازعاج" class="report-radio">
+                </div>
+                <div class="report-option" onclick="selectReportOption(this)">
+                    <label style="flex:1; cursor:pointer;">انتحال شخصية</label> <input type="radio" name="reportReason" value="انتحال شخصية" class="report-radio">
+                </div>
+                <div class="report-option" onclick="selectReportOption(this)">
+                    <label style="flex:1; cursor:pointer;">أخرى</label> <input type="radio" name="reportReason" value="أخرى" class="report-radio">
+                </div>
+
+                <textarea id="reportDetails" class="input-field" placeholder="أكتب التفاصيل هنا..." style="display:none; height:80px; margin-top:10px;"></textarea>
+            </div>
+            <div class="sheet-footer"><button class="btn-save" style="background:#ff4444;" onclick="submitReport()">إرسال البلاغ</button></div>
+        </div>
+    </div>
+
+    <div id="editPostModal" class="modal-overlay" onclick="closeModal(event, 'editPostModal')">
+        <div class="bottom-sheet">
+            <div class="sheet-header"><div class="sheet-handle"></div><h3 style="color:var(--text-main);">تعديل المنشور</h3></div>
+            <div class="sheet-body">
+                <textarea id="editPostText" class="input-field" rows="5" placeholder="عدل النص هنا..."></textarea>
+                <input type="hidden" id="editPostId">
+            </div>
+            <div class="sheet-footer"><button class="btn-save" onclick="submitEditPost()">حفظ التعديل</button></div>
+        </div>
+    </div>
+
+    <div id="deleteConfirmModal" class="modal-overlay" style="z-index: 10005;" onclick="closeModal(event, 'deleteConfirmModal')">
+
+        <div class="bottom-sheet" style="height:auto; min-height:unset; border-radius: 25px 25px 0 0;">
+            <div class="sheet-handle" style="margin-top:10px;"></div>
+            <div class="sheet-body" style="text-align:center; padding:20px 25px 30px 25px;">
+
+                <div style="width:70px; height:70px; background:rgba(255, 68, 68, 0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 15px auto;">
+                    <i class="fas fa-trash-alt" style="font-size:2rem; color:#ff4444; animation: shake 1s infinite;"></i>
+                </div>
+
+                <h3 style="margin:0 0 10px 0; color:var(--text-main); font-size:1.2rem;">حذف التعليق</h3>
+                <p style="color:var(--text-sec); margin-bottom:25px; font-size:0.95rem; line-height:1.5;">
+                    هل أنت متأكد من أنك تريد حذف هذا التعليق؟ <br> لا يمكن التراجع عن هذا الإجراء.
+                </p>
+
+                <div style="display:flex; gap:15px;">
+                    <button class="btn-save" style="background:rgba(255,255,255,0.05); color:var(--text-sec); border:1px solid var(--border-color);" onclick="closeModalById('deleteConfirmModal')">تراجع</button>
+                    <button class="btn-save" style="background:#ff4444; box-shadow: 0 5px 15px rgba(255, 68, 68, 0.3);" onclick="executeDeleteComment()">نعم، احذف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="modal-overlay" onclick="closeModal(event, 'shareModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+
+            <div class="sheet-header" style="position: relative; display: flex; align-items: center; justify-content: center;">
+                <div class="sheet-handle" style="position: absolute; left: 50%; transform: translateX(-50%);"></div>
+
+                <h3 style="margin: 10px 0;"> مشاركة    </h3>
+
+                <div class="header-more-btn" onclick="triggerExternalShare()">
+                    <i class="fas fa-ellipsis-v"></i>
+                </div>
+            </div>
+
+            <div class="sheet-body" style="padding: 0;">
+                <div id="shareListContainer" class="share-list">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="friendsModal" class="modal-overlay" onclick="closeModal(event, 'friendsModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-header">
+                <div class="sheet-handle"></div>
+                <h3 style="margin: 10px 0;">قائمة الأصدقاء</h3>
+            </div>
+            <div class="sheet-body" style="padding: 0;">
+                <div id="friendsManageList" class="share-list">
+                    <div style="text-align:center; padding:20px; color:var(--text-sec);">
+                        <i class="fas fa-circle-notch fa-spin"></i> جاري التحميل...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="followersModal" class="modal-overlay" onclick="closeModal(event, 'followersModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-header">
+                <div class="sheet-handle"></div>
+                <h3 style="margin: 10px 0;">المتابعون</h3>
+            </div>
+            <div class="sheet-body" style="padding: 0;">
+                <div id="followersManageList" class="share-list">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="unfollowConfirmModal" class="modal-overlay" style="z-index: 10005;" onclick="closeModal(event, 'unfollowConfirmModal')">
+        <div class="bottom-sheet" style="height:auto; min-height:unset; border-radius: 25px 25px 0 0;">
+            <div class="sheet-handle" style="margin-top:10px;"></div>
+            <div class="sheet-body" style="text-align:center; padding:20px 25px 30px 25px;">
+                <div style="width:70px; height:70px; background:rgba(255, 68, 68, 0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 15px auto;">
+                    <i class="fas fa-user-times" style="font-size:2rem; color:#ff4444;"></i>
+                </div>
+                <h3 style="margin:0 0 10px 0; color:var(--text-main); font-size:1.2rem;">إلغاء المتابعة</h3>
+                <p style="color:var(--text-sec); margin-bottom:25px; font-size:0.95rem; line-height:1.5;">
+                    هل أنت متأكد أنك تريد إلغاء متابعة هذا المستخدم؟
+                </p>
+                <div style="display:flex; gap:15px;">
+                    <button class="btn-save" style="background:rgba(255,255,255,0.05); color:var(--text-sec); border:1px solid var(--border-color);" onclick="closeModalById('unfollowConfirmModal')">تراجع</button>
+                    <button class="btn-save" style="background:#ff4444; box-shadow: 0 5px 15px rgba(255, 68, 68, 0.3);" onclick="executeUnfollow()">نعم، إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="deletePostConfirmModal" class="modal-overlay" style="z-index: 10005;" onclick="closeModal(event, 'deletePostConfirmModal')">
+        <div class="bottom-sheet" style="height:auto; min-height:unset; border-radius: 25px 25px 0 0;">
+            <div class="sheet-handle" style="margin-top:10px;"></div>
+            <div class="sheet-body" style="text-align:center; padding:20px 25px 30px 25px;">
+
+                <div style="width:70px; height:70px; background:rgba(255, 68, 68, 0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 15px auto;">
+                    <i class="fas fa-trash-alt" style="font-size:2rem; color:#ff4444; animation: shake 1s infinite;"></i>
+                </div>
+
+                <h3 style="margin:0 0 10px 0; color:var(--text-main); font-size:1.2rem;">حذف المنشور</h3>
+                <p style="color:var(--text-sec); margin-bottom:25px; font-size:0.95rem; line-height:1.5;">
+                    هل أنت متأكد من حذف هذا المنشور نهائياً؟ <br> سيتم فقدان جميع التعليقات والإعجابات المرتبطة به.
+                </p>
+
+                <div style="display:flex; gap:15px;">
+                    <button class="btn-save" style="background:rgba(255,255,255,0.05); color:var(--text-sec); border:1px solid var(--border-color);" onclick="closeModalById('deletePostConfirmModal')">تراجع</button>
+                    <button class="btn-save" style="background:#ff4444; box-shadow: 0 5px 15px rgba(255, 68, 68, 0.3);" onclick="executeDeletePost()">نعم، احذف</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="visitorsModal" class="modal-overlay" onclick="closeModal(event, 'visitorsModal')">
+        <div class="bottom-sheet" onclick="event.stopPropagation()">
+            <div class="sheet-header">
+                <div class="sheet-handle"></div>
+                <h3 style="margin: 10px 0;">أحدث الزوار</h3>
+            </div>
+            <div class="sheet-body" style="padding: 0;">
+                <div id="allVisitorsList" class="share-list">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="toast"><i class="fas fa-check-circle" style="color:#00E676;"></i> <span id="toastMsg">تم الحفظ</span></div>
+    <div id="customUnfriendModal" class="modal-overlay" style="z-index: 10005;" onclick="closeModal(event, 'customUnfriendModal')">
+        <div class="bottom-sheet" style="height:auto; min-height:unset; border-radius: 30px 30px 0 0;" onclick="event.stopPropagation()">
+            <div class="sheet-handle" style="margin-top:10px;"></div>
+            <div class="sheet-body" style="text-align:center; padding:20px 25px 35px 25px;">
+
+                <div style="width:80px; height:80px; background:rgba(255, 46, 147, 0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 15px auto; box-shadow: 0 0 25px rgba(255, 46, 147, 0.2); border: 1px solid rgba(255, 46, 147, 0.3);">
+                    <i class="fas fa-heart-broken" style="font-size:2.5rem; color:var(--accent);"></i>
+                </div>
+
+                <h3 style="margin:0 0 10px 0; color:var(--text-main); font-size:1.3rem; font-weight:900;">إلغاء الصداقة</h3>
+
+                <p id="unfriendModalText" style="color:var(--text-sec); margin-bottom:25px; font-size:1rem; line-height:1.6;">
+                    هل أنت متأكد من إلغاء الصداقة؟
+                </p>
+
+                <div style="display:flex; gap:15px;">
+                    <button class="btn-save" style="background:rgba(255,255,255,0.05); color:var(--text-main); border:1px solid var(--border-color); font-weight:bold;" onclick="closeModalById('customUnfriendModal')">تراجع</button>
+
+                    <button class="btn-save" style="background:var(--accent); color:#fff; box-shadow: 0 5px 20px rgba(255, 46, 147, 0.4); font-weight:bold;" onclick="executeCustomUnfriend()">نعم، إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="publicGiftsModal" class="modal-overlay" onclick="closeModal(event, 'publicGiftsModal')">
+        <div class="bottom-sheet">
+            <div class="sheet-header">
+                <div class="sheet-handle"></div>
+                <h3 style="margin: 10px 0; color: var(--accent);">إرسال هدية 🎁</h3>
+            </div>
+            <div class="sheet-body">
+                <div id="publicGiftsGrid" class="gifts-grid">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // --- دالة التواصل مع الأندرويد ---
+        function callAndroid(functionName, param = "") {
+            if (window.ProfileBridge && window.ProfileBridge.postMessage) {
+                window.ProfileBridge.postMessage(JSON.stringify({type: functionName, param: param}));
+            }
+        }
+        window.Android = new Proxy({}, { get: function(_, name) { return function(param) { callAndroid(name, param || ""); }; } });
+
+        // --- CORE DATA ---
+      let pendingCommentId = null;
+        let profileID = '1829304';
+        let coins = 12500, level = 50, currentXP = 450, maxXP = 1000;
+        const FIXED_BIO_SUFFIX = '  light ';
+        let currentOpenPostId = null;
+        let currentPostOwnerId = null;
+
+        // [جديد]: متغير لمعرفة حالة المتابعة
+        let currentFollowState = "not_following";
+
+        // --- بيانات المستخدم المشاهد (أنا) ---
+        let myViewerID = '';
+        let myViewerName = '';
+        let myViewerAvatar = '';
+
+        // --- متغيرات مشغل الإطار ---
+        var framePlayer = null;
+        var frameParser = null;
+        var SVGA = window.SVGA || {};
+
+        // --- متغير لتحديد هل المستخدم هو المالك أم زائر ---
+        let isOwner = false;
+
+        // [حماية] منع النسخ والزر الأيمن
+   document.addEventListener('contextmenu', event => {
+    const targetTag = event.target.tagName.toLowerCase();
+
+    // إذا كان العنصر حقل إدخال أو مربع نص، اسمح بظهور قائمة النسخ واللصق
+    if (targetTag === 'input' || targetTag === 'textarea') {
+        return true;
+    }
+
+    // منع القائمة في أي مكان آخر في الصفحة
+    event.preventDefault();
+});
+
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) { return false; } // F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; }
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; }
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; }
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            applyProfileLogic();
+            if(localStorage.getItem('theme') === 'light') { document.body.classList.add('light-mode'); document.getElementById('themeSwitch').checked = true; }
+        });
+         function getProfileDataParams() {
+            const pName = document.getElementById('displayName').innerText;
+            const pImg = document.getElementById('displayAvatar').src;
+            return profileID + "~" + pName + "~" + pImg;
+        }
+        function setViewerData(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+                myViewerID = data.id;
+                myViewerName = data.name;
+                myViewerAvatar = data.avatar;
+
+                const inputAvatar = document.getElementById('myCommentAvatar');
+                if (inputAvatar) {
+                    inputAvatar.src = (myViewerAvatar && !myViewerAvatar.startsWith('http')) ? myViewerAvatar : myViewerAvatar;
+                }
+
+                const addPostAvatar = document.getElementById('addPostAvatar');
+                if(addPostAvatar) {
+                     addPostAvatar.src = inputAvatar.src;
+                }
+
+            } catch(e) {
+                console.error("Error setting viewer data", e);
+            }
+        }
+//===================================
+let targetGiftUserId = null;
+
+// فتح نافذة الهدايا العامة والطلب من الأندرويد
+function openPublicGiftsModal(userId) {
+    targetGiftUserId = userId; // حفظ آيدي الشخص الذي سنرسل له
+
+    const container = document.getElementById('publicGiftsGrid');
+    container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري تحميل الهدايا...</div>';
+
+    openModal('publicGiftsModal');
+
+    // نطلب قائمة الهدايا العامة من الأندرويد
+    callAndroid('getPublicGiftsList', '');
+}
+
+// الأندرويد سيستدعي هذه الدالة ويرسل لها النص (String)
+
+// إضافة المعامل الثاني baseUrl
+function renderPublicGiftsList(dataString, baseUrl) {
+    const container = document.getElementById('publicGiftsGrid');
+    container.innerHTML = '';
+
+    if (!dataString || dataString.trim() === "") {
+        container.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:var(--text-sec);">لا توجد هدايا متاحة حالياً</div>';
+        return;
+    }
+
+    const lines = dataString.split('\n');
+    lines.forEach(line => {
+        if (!line.trim()) return;
+
+        const parts = line.split('¦');
+        if (parts.length >= 5) {
+            const giftId = parts[0];
+            const giftName = parts[1];
+            const giftPrice = parts[2];
+            let giftIcon = parts[4];
+
+            if (!giftIcon.startsWith('http')) {
+                let finalBaseUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
+                giftIcon = finalBaseUrl + giftIcon;
+            }
+
+            // التعديل هنا: تمرير الـ id، والاسم، والصورة، والسعر
+            container.innerHTML += `
+                <div class="gift-card" onclick="executeSendPublicGift('${giftId}', '${giftName}', '${giftIcon}', '${giftPrice}')">
+                    <img src="${giftIcon}" class="gift-img" onerror="this.src='file:///android_asset/icon_room.webp'">
+                    <span class="gift-name">${giftName}</span>
+                    <span class="gift-price">${giftPrice} <i class="fas fa-coins" style="font-size:0.7rem;"></i></span>
+                </div>
+            `;
+        }
+    });
+}
+
+// تنفيذ الإرسال عند الضغط على هدية
+function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
+    // دمج البيانات: آيدي المستخدم المستلم ~ آيدي الهدية ~ اسم الهدية ~ صورة الهدية ~ السعر
+    const payload = targetGiftUserId + "~" + giftId + "~" + giftName + "~" + giftIcon + "~" + giftPrice;
+
+    // إرسال الأمر لـ Android
+    callAndroid('sendPublicGiftToUser', payload);
+
+    closeModalById('publicGiftsModal');
+    showToast(`تم إرسال ${giftName} بنجاح 🎁`);
+}
+
+//=============================================
+        function getFileExtension(filename) {
+            return filename.split('.').pop().toLowerCase();
+        }
+
+        function updateProfileData(jsonString) {
+            try {
+                const data = JSON.parse(jsonString);
+
+                if(data.id) {
+                    document.getElementById('displayID').innerText =   data.id;
+                    profileID = data.id;
+                }
+                if(data.name) document.getElementById('displayName').innerText = data.name;
+                if(data.avatar) document.getElementById('displayAvatar').src = data.avatar;
+                if(data.cover) document.getElementById('headerImg').src = data.cover;
+
+                if (data.frame) {
+                    const frameUrl = data.frame;
+                    const ext = getFileExtension(frameUrl);
+                    let fullFrameUrl = frameUrl;
+
+                    if (ext === 'svga') {
+                        document.getElementById('avatarStaticFrame').style.display = 'none';
+                        document.getElementById('avatarFrameContainer').style.display = 'block';
+                       playAvatarFrame(fullFrameUrl);
+                    } else if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                        document.getElementById('avatarFrameContainer').style.display = 'none';
+                        const staticImg = document.getElementById('avatarStaticFrame');
+                        staticImg.style.display = 'block';
+                        staticImg.src = fullFrameUrl;
+                        if(framePlayer) framePlayer.stopAnimation();
+                    }
+                } else {
+                    document.getElementById('avatarFrameContainer').style.display = 'none';
+                    document.getElementById('avatarStaticFrame').style.display = 'none';
+                }
+
+                if(data.followers) document.getElementById('followersCount').innerText = data.followers;
+                if(data.following) document.getElementById('followingCount').innerText = data.following;
+                if(data.visitors) document.getElementById('visitorsCount').innerText = data.visitors;
+                if(data.received) document.querySelector('#ownerLevelDisplay .received-value').innerText = data.received;
+                if(data.level) document.getElementById('levelNum').innerText = "LV." + data.level;
+                  if(data.gender) window.userGender = data.gender;
+               if (typeof data.musicLink !== 'undefined') {
+                   window.userMusic = data.musicLink; // حفظه ليظهر في خانة التعديل
+
+    // إذا كان الرابط غير فارغ، نعطيه لمشغل الصوت
+                          if (data.musicLink.trim() !== "") {
+                        const audioPlayer = document.getElementById('musicPlayer');
+
+        // التحقق مما إذا كان الرابط يحتاج إلى Base URL (اختياري، إذا كانت روابطك بدون http)
+        let finalMusicUrl = data.musicLink;
+        if (!finalMusicUrl.startsWith('http')) {
+            // استبدل هذا برابط سيرفرك إذا كانت الروابط تأتي كأسماء ملفات فقط
+            // finalMusicUrl = "http://192.168.1.5:6144/" + finalMusicUrl;
+        }
+
+        audioPlayer.src = finalMusicUrl;
+        audioPlayer.load(); // إجبار المشغل على تحميل المقطع الجديد فوراً
+    }
+}
+                if(data.levelProgress) {
+                    const parts = data.levelProgress.split('/');
+                    if(parts.length === 2) {
+                        const current = parseInt(parts[0]);
+                        const max = parseInt(parts[1]);
+                        const percent = (current / max) * 100;
+                        document.getElementById('xpBar').style.width = percent + '%';
+                        document.getElementById('xpText').innerText = data.levelProgress;
+                    }
+                }
+
+                if(data.status) document.getElementById('tagStatus').innerText = data.status;
+                if(data.country) document.getElementById('tagCountry').innerText = data.country;
+                if(data.bio) document.getElementById('displayBio').innerHTML = data.bio;
+
+                if(typeof data.isOwner !== 'undefined') {
+                    isOwner = data.isOwner;
+                    applyProfileLogic();
+                }
+                var nameElement = document.getElementById('displayName');
+                if (data.isVip === true || data.isVip === "true") {
+                    nameElement.classList.add('vip');
+                } else {
+                    nameElement.classList.remove('vip');
+                }
+                var badgeRow = document.getElementById('nameBadgesRow');
+                var badgeVipImg = document.getElementById('badgeVipName');
+                var badgeHostImg = document.getElementById('badgeAgencyHost');
+                var badgeWakelImg = document.getElementById('badgeAgencyWakel');
+                var badgeCashImg = document.getElementById('badgeCashAgent');
+                if (badgeVipImg) { badgeVipImg.style.display = 'none'; }
+                if (badgeHostImg) { badgeHostImg.style.display = 'none'; }
+                if (badgeWakelImg) { badgeWakelImg.style.display = 'none'; }
+                if (badgeCashImg) { badgeCashImg.style.display = 'none'; }
+                var showVipBadge = false, showHostBadge = false, showWakelBadge = false, showCashBadge = false;
+                var vipCodeStr = (typeof data.vipCode === 'string') ? data.vipCode : '';
+                if (vipCodeStr.indexOf('vip') === 0) {
+                    var vipBadgeN = parseInt(vipCodeStr.substring(3), 10);
+                    if (!isNaN(vipBadgeN) && vipBadgeN >= 1 && vipBadgeN <= 10) {
+                        showVipBadge = true;
+                        if (badgeVipImg) badgeVipImg.src = 'file:///android_res/drawable/ic_svip' + vipBadgeN + '.webp';
+                    }
+                }
+                var packgeStr = (typeof data.packge === 'string') ? data.packge : '';
+                if (packgeStr === 'wklmony') {
+                    showCashBadge = true;
+                    if (badgeCashImg) badgeCashImg.src = 'file:///android_res/drawable/ic_wakel_cash.webp';
+                }
+                var agencyStr = (typeof data.agency === 'string') ? data.agency.trim() : '';
+                if (agencyStr.length > 2 && agencyStr !== '-') {
+                    if (agencyStr === String(data.id || '')) {
+                        showHostBadge = true;
+                        if (badgeHostImg) badgeHostImg.src = 'file:///android_res/drawable/ic_wakel_aguncy.webp';
+                    } else {
+                        showWakelBadge = true;
+                        if (badgeWakelImg) badgeWakelImg.src = 'file:///android_res/drawable/ic_modef_aguncy.webp';
+                    }
+                }
+                if (badgeVipImg && showVipBadge) badgeVipImg.style.display = 'inline-block';
+                if (badgeHostImg && showHostBadge) badgeHostImg.style.display = 'inline-block';
+                if (badgeWakelImg && showWakelBadge) badgeWakelImg.style.display = 'inline-block';
+                if (badgeCashImg && showCashBadge) badgeCashImg.style.display = 'inline-block';
+                if (badgeRow) badgeRow.style.display = (showVipBadge || showHostBadge || showWakelBadge || showCashBadge) ? 'flex' : 'none';
+            } catch(e) {
+                console.error("Error parsing profile data: ", e);
+            }
+        }
+
+        function updateMusicUrl(url) {
+            const player = document.getElementById('musicPlayer');
+            player.src = url;
+            player.load();
+        }
+// دالة لإيقاف الموسيقى من الأندرويد عند الخروج
+function stopMusicFromAndroid() {
+    const musicPlayer = document.getElementById('musicPlayer');
+    const playBtn = document.getElementById('playBtn');
+    const musicDisc = document.getElementById('musicDisc');
+
+    if (musicPlayer && !musicPlayer.paused) {
+        musicPlayer.pause();
+        isPlaying = false;
+        if (playBtn) playBtn.className = 'fas fa-play';
+        if (musicDisc) musicDisc.classList.remove('playing');
+    }
+}
+    function addPost(postJson) {
+        try {
+            const post = JSON.parse(postJson);
+
+            // منع تكرار المنشور إذا كان موجوداً مسبقاً
+            if (document.getElementById('post_' + post.id)) { return; }
+
+            const container = document.getElementById('tab-0');
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post-card';
+            postDiv.id = 'post_' + post.id;
+
+            const safePostString = encodeURIComponent(postJson);
+
+            // --- تحديد الأزرار بناءً على حالة المالك ---
+            let postOptionsHTML = '';
+
+            if(isOwner) {
+                // إذا كنت المالك: أظهر زر التعديل وزر الحذف
+                postOptionsHTML = `
+                    <div class="post-options" style="margin-right: auto;">
+                        <i class="fas fa-edit" style="margin-left:10px;" onclick="openEditPostModal('${post.id}', '${post.text.replace(/'/g, "\\'")}')"></i>
+                        <i class="fas fa-trash" style="color:#ff4444;" onclick="confirmDeletePost('${post.id}')"></i>
+                    </div>
+                `;
+            } else {
+                // إذا كنت زائراً: أظهر زر الإبلاغ فقط
+                postOptionsHTML = `
+                    <div class="post-options" style="margin-right: auto;">
+                        <i class="fas fa-exclamation-circle" style="color:var(--text-sec); font-size:1.1rem;" onclick="reportPost('${post.id}', '${post.user_id_sender}')"></i>
+                    </div>
+                `;
+            }
+
+            postDiv.innerHTML = `
+                <div class="post-header">
+                    <img src="${post.avatar}" class="post-avatar" onclick="openUserProfile('${post.user_id_sender}')">
+                    <div><h4 style="margin:0;">${post.user} <i class="fas fa-check-circle" style="color:#00E5FF; font-size:0.8rem;"></i></h4><span style="font-size:0.7rem;">${post.time}</span></div>
+
+                    ${postOptionsHTML}
+                </div>
+
+                <p class="post-text" id="postText_${post.id}">${post.text}</p>
+
+                ${post.image ? `<img src="${post.image}" class="post-img" onclick="openPostModal('${safePostString}')">` : ''}
+
+                <div class="post-actions">
+                    <div class="p-action" onclick="likePost(this, '${post.id}', '${post.user_id_sender}')"><i class="far fa-heart"></i> <span>${post.likes || 0}</span></div>
+
+                    <div class="p-action" onclick="openPostModal('${safePostString}')">
+                        <i class="far fa-comment"></i> <span>${post.comments || 0}</span>
+                    </div>
+
+         <div class="p-action" onclick="openSharePostModal('${post.id}', '${post.text.replace(/'/g, "\\'")}', '${post.image || ''}')">
+        <i class="far fa-share-square"></i>
+    </div>
+                </div>
+            `;
+            container.insertBefore(postDiv, container.firstChild);
+        } catch(e) {
+            console.error("Error adding post", e);
+        }
+    }
+
+        function openPostModal(encodedJson) {
+            try {
+                const post = JSON.parse(decodeURIComponent(encodedJson));
+                currentOpenPostId = post.id;
+
+                // تخزين آيدي صاحب المنشور لاستخدامه عند التعليق أو الحذف
+                currentPostOwnerId = post.user_id_sender;
+
+                const modalPostContainer = document.getElementById('modalPostContainer');
+                modalPostContainer.innerHTML = `
+                    <div class="post-card" style="border:none; background:transparent; margin-bottom:0; box-shadow:none;">
+                        <div class="post-header">
+                            <img src="${post.avatar}" class="post-avatar" onclick="openUserProfile('${post.user_id_sender}')">
+                            <div><h4 style="margin:0;">${post.user}</h4><span style="font-size:0.7rem;">${post.time}</span></div>
+                        </div>
+                        <p class="post-text">${post.text}</p>
+                        ${post.image ? `<img src="${post.image}" class="post-img">` : ''}
+                    </div>
+                    <hr style="border-color:var(--border-color); opacity:0.3; margin:0 10px;">
+                `;
+
+                const commentsList = document.getElementById('modalCommentsList');
+                commentsList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-spinner fa-spin"></i> جاري تحميل التعليقات...</div>';
+
+                document.getElementById('postDetailsModal').classList.add('open');
+
+                const reqData = {
+                    postId: post.id,
+                    postOwnerId: post.user_id_sender
+                };
+
+                callAndroid('getPostComments', JSON.stringify(reqData));
+
+            } catch(e) {
+                console.error("Error opening post modal", e);
+            }
+        }
+
+        function loadCommentsFromAndroid(jsonArrayString) {
+            try {
+                const comments = JSON.parse(jsonArrayString);
+                const commentsList = document.getElementById('modalCommentsList');
+                commentsList.innerHTML = '';
+
+                if (comments.length > 0) {
+                    comments.forEach(comment => {
+                        commentsList.innerHTML += createCommentHTML(comment);
+                    });
+                } else {
+                    commentsList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);">لا توجد تعليقات بعد، كن أول من يعلق! ✍️</div>';
+                }
+            } catch(e) {
+                console.error("Error loading comments", e);
+            }
+        }
+
+        function createCommentHTML(comment) {
+            let userImg = comment.comment_imguser;
+            if (userImg && !userImg.startsWith('http')) {
+                userImg = "http://192.168.1.5:6144/" + userImg;
+            }
+
+            const commentOwnerId = comment.user_id;
+            const myId = myViewerID || profileID;
+            const commentId = comment.comment_id || '0';
+
+            // شرط الحذف: إذا كان آيدي صاحب التعليق يطابق آيدي المستخدم الحالي
+            let deleteBtn = '';
+            if (String(commentOwnerId) === String(myId)) {
+                deleteBtn = `
+                    <div onclick="deleteMyComment('${commentId}')" style="margin-right:auto; padding:5px; cursor:pointer;">
+                        <i class="fas fa-trash-alt" style="color:#ff4444; font-size:0.8rem;"></i>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="comment-item" id="comment-box-${commentId}">
+                    <img src="${userImg}" class="comment-user-img" onclick="openUserProfile('${commentOwnerId}')" onerror="this.onerror=null;this.src='file:///android_asset/icon_room.webp';">
+                    <div class="comment-content-box">
+                        <div class="comment-bubble">
+                            <div class="comment-username" onclick="openUserProfile('${commentOwnerId}')">${comment.username}</div>
+                            <div class="comment-text">${comment.comment_text}</div>
+                        </div>
+                        <span class="comment-time">${comment.timestamp}</span>
+                    </div>
+                    ${deleteBtn}
+                </div>
+            `;
+        }
+
+    function deleteMyComment(commentId) {
+            // نغلق أي نافذة أخرى قد تكون مفتوحة لتجنب التداخل
+            // نحفظ الآيدي في المتغير
+            pendingCommentId = commentId;
+
+            // نفتح نافذة التأكيد الجديدة
+            openModal('deleteConfirmModal');
+        }
+
+        // دالة التنفيذ الفعلي (تُستدعى عند ضغط زر "نعم احذف")
+        function executeDeleteComment() {
+            if (pendingCommentId) {
+                // نخفي النافذة
+                closeModalById('deleteConfirmModal');
+
+                // نخفي التعليق من الشاشة فوراً لجمالية التطبيق
+                const el = document.getElementById('comment-box-' + pendingCommentId);
+                if(el) {
+                    el.style.transition = 'all 0.5s ease';
+                    el.style.transform = 'translateX(100px)'; // حركة انزلاق
+                    el.style.opacity = '0';
+                    setTimeout(() => el.style.display = 'none', 500);
+                }
+
+                // نجهز البيانات للأندرويد
+                const deleteData = {
+                    postOwnerId: currentPostOwnerId,
+                    postId: currentOpenPostId,
+                    commentId: pendingCommentId
+                };
+
+                // نستدعي الأندرويد
+                callAndroid('deleteComment', JSON.stringify(deleteData));
+
+                // نعرض رسالة تأكيد صغيرة (Toast)
+                showToast("تم حذف التعليق بنجاح 🗑️");
+
+                // تصفير المتغير
+                pendingCommentId = null;
+            }
+        }
+    // متغير لتخزين آيدي المنشور المراد حذفه
+        let pendingPostIdToDelete = null;
+
+        // 1. دالة فتح النافذة (تستدعيها عند الضغط على زر الحذف في المنشور)
+        function confirmDeletePost(postId) {
+            pendingPostIdToDelete = postId;
+            openModal('deletePostConfirmModal');
+        }
+
+        // 2. دالة التنفيذ (عند الضغط على نعم)
+        function executeDeletePost() {
+            if (pendingPostIdToDelete) {
+                closeModalById('deletePostConfirmModal');
+
+                // إرسال الأمر للأندرويد
+                callAndroid('deletePost', pendingPostIdToDelete);
+
+                // حذف المنشور من الشاشة فوراً (Animation)
+                const postElement = document.getElementById('post_' + pendingPostIdToDelete);
+                if (postElement) {
+                    postElement.style.transition = "all 0.5s ease";
+                    postElement.style.transform = "scale(0.9)";
+                    postElement.style.opacity = "0";
+                    setTimeout(() => {
+                        postElement.remove();
+                        // إذا أردت إعادة ترتيب القائمة أو إظهار رسالة إذا أصبحت فارغة
+                    }, 500);
+                }
+
+                showToast("تم حذف المنشور 🗑️");
+                pendingPostIdToDelete = null;
+            }
+        }
+        function openUserProfile(userId) {
+            if(userId) {
+                callAndroid('openUserProfile', userId);
+            }
+        }
+
+        function submitNewComment() {
+            const input = document.getElementById('commentInput');
+            const text = input.value.trim();
+
+            if (text.length > 0 && currentOpenPostId) {
+
+                const commentData = {
+                    postId: currentOpenPostId,
+                    postOwnerId: currentPostOwnerId,
+                    commentText: text
+                };
+
+                callAndroid('sendComment', JSON.stringify(commentData));
+
+                const commentsList = document.getElementById('modalCommentsList');
+                if(commentsList.innerHTML.includes('جاري تحميل') || commentsList.innerHTML.includes('كن أول')) {
+                    commentsList.innerHTML = '';
+                }
+
+                const senderId = myViewerID || profileID;
+                const senderName = myViewerName || document.getElementById('displayName').innerText;
+
+                const tempComment = {
+                    user_id: senderId,
+                    username: senderName,
+                    comment_text: text,
+                    comment_imguser: myViewerAvatar || document.getElementById('myCommentAvatar').src,
+                    timestamp: 'الآن',
+                    comment_id: 'temp-' + Date.now()
+                };
+
+                commentsList.innerHTML += createCommentHTML(tempComment);
+
+                input.value = '';
+                commentsList.scrollTop = commentsList.scrollHeight;
+            }
+        }
+
+        function removePostImage() {
+            document.getElementById('newPostImagePreview').src = "";
+            document.getElementById('imagePreviewContainer').style.display = 'none';
+        }
+
+        function publishNewPost() {
+            const text = document.getElementById('newPostContent').value;
+            closeModalById('addPostModal');
+            showToast("جاري النشر...");
+            callAndroid('publishPost', text );
+            document.getElementById('newPostContent').value = "";
+        }
+
+        // [تعديل]: دالة استقبال الحالة من الأندرويد لتعيين شكل زر المتابعة
+        function setFollowState(state) {
+            currentFollowState = state;
+            const btn = document.getElementById('followBtn');
+            if (!btn) return;
+
+            if (state === 'mutual') {
+                btn.innerHTML = '<i class="fas fa-exchange-alt" style="color:#00E5FF;"></i>';
+                btn.style.background = 'rgba(0, 229, 255, 0.2)';
+            } else if (state === 'following') {
+                btn.innerHTML = '<i class="fas fa-user-check" style="color:#00E676;"></i>';
+                btn.style.background = 'rgba(0, 230, 118, 0.2)';
+            } else { // not_following
+                btn.innerHTML = '<i class="fas fa-user-plus" style="color:#00E676;"></i>';
+                btn.style.background = 'transparent';
+            }
+        }
+
+   // [تعديل]: عند ضغط زر المتابعة من الأسفل (الزائر)
+        function toggleFollowAction() {
+            if (currentFollowState === 'not_following') {
+                // 1. تغيير شكل الزر فوراً إلى "متابع" (Optimistic Update)
+                setFollowState('following');
+
+                // 2. إرسال الطلب للأندرويد في الخلفية
+                callAndroid('toggleFollow', 'not_following');
+                showToast("تمت المتابعة ✔️");
+            } else {
+                // في حال كان متابع أو متابعة متبادلة، نظهر نافذة التحذير
+                openModal('unfollowConfirmModal');
+            }
+        }
+
+        // [جديد]: دالة التنفيذ الفعلي لإلغاء المتابعة بعد التأكيد
+        function executeUnfollow() {
+            // 1. إغلاق نافذة التحذير
+            closeModalById('unfollowConfirmModal');
+
+            // 2. حفظ الحالة السابقة لإرسالها للأندرويد
+            let previousState = currentFollowState;
+
+            // 3. تغيير شكل الزر فوراً إلى "غير متابع"
+            setFollowState('not_following');
+
+            // 4. إرسال أمر الحذف للأندرويد
+            callAndroid('toggleFollow', previousState);
+            showToast("تم إلغاء المتابعة ❌");
+        }
+        function updateFollowButton(state) {
+            const btn = document.getElementById('followBtn');
+            if (!btn) return;
+            btn.className = 'main-action-btn';
+            if (state === 'following') {
+                btn.classList.add('following');
+                btn.innerHTML = '<i class="fas fa-check"></i> إلغاء متابعة';
+                btn.onclick = () => toggleFollowAction();
+            } else if (state === 'mutual') {
+                btn.classList.add('following');
+                btn.innerHTML = '<i class="fas fa-user-friends"></i> متابعة متبادلة';
+                btn.onclick = () => toggleFollowAction();
+            } else {
+                btn.innerHTML = '<i class="fas fa-plus"></i> متابعة';
+                btn.onclick = () => toggleFollowAction();
+            }
+        }
+
+        function setPartnerStatus(isActive, infoJson) {
+            const badge = document.getElementById('partnerBadge');
+            if (isActive === 'true') {
+                try {
+                    const data = JSON.parse(infoJson);
+                    if(data.name) document.getElementById('partnerName').innerText = data.name;
+                    if(data.avatar) document.getElementById('partnerImg').src = data.avatar;
+                    badge.style.display = 'flex';
+                } catch(e) {
+                    console.error("Error parsing partner info", e);
+                }
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    // دالة لتحديث صورة البروفايل فورياً بعد الاختيار من الأندرويد
+        function updateProfileAvatarPreview(base64Data) {
+            var imageSrc = "data:image/jpeg;base64," + base64Data;
+
+            // 1. تحديث الصورة الرئيسية في البروفايل
+            var mainAvatar = document.getElementById('displayAvatar');
+            if(mainAvatar) {
+                mainAvatar.src = imageSrc;
+                // إخفاء الفريم المتحرك مؤقتاً لتبدو الصورة واضحة
+                document.getElementById('avatarFrameContainer').style.display = 'none';
+                document.getElementById('avatarStaticFrame').style.display = 'none';
+            }
+
+            // 2. تحديث صورة المعاينة داخل نافذة "تعديل الملف الشخصي"
+            var editPreview = document.getElementById('previewImg');
+            if(editPreview) editPreview.src = imageSrc;
+
+            // 3. تحديث صورتك المصغرة بجانب خانة كتابة التعليق
+            var commentAvatar = document.getElementById('myCommentAvatar');
+            if(commentAvatar) commentAvatar.src = imageSrc;
+
+            // 4. تحديث صورتك في خانة "إضافة منشور"
+            var addPostAvatar = document.getElementById('addPostAvatar');
+            if(addPostAvatar) addPostAvatar.src = imageSrc;
+
+            showToast('تم تحديث الصورة الشخصية 📸');
+        }
+
+        // دالة لتحديث غلاف البروفايل فورياً
+        function updateProfileCoverPreview(base64Data) {
+            var imageSrc = "data:image/jpeg;base64," + base64Data;
+            var coverImg = document.getElementById('headerImg');
+
+            if(coverImg) {
+                coverImg.src = imageSrc;
+                showToast('تم تحديث غلاف البروفايل بنجاح 🌄');
+            }
+        }
+function applyProfileLogic() {
+        // تعريف العناصر
+        const ownerLevelDisplay = document.getElementById('ownerLevelDisplay');
+        const statLevelItem = document.getElementById('statLevelItem');
+        const visitorsSection = document.getElementById('visitorsSection');
+        const toolbarSection = document.getElementById('toolbarSection');
+        const topShareBtn = document.getElementById('topShareBtn');
+        const reportBtn = document.getElementById('reportBtn');
+        const floatingBar = document.getElementById('floatingBar');
+        const settingsBtn = document.getElementById('settingsBtn');
+
+        // ============================================
+        // 1. عناصر تظهر للجميع (مالك وزائر)
+        // ============================================
+
+        // صندوق "تم الاستلام" يظهر للكل
+        if(ownerLevelDisplay) ownerLevelDisplay.style.display = 'flex';
+
+        // زر المشاركة يظهر للكل + تفعيل الأكشن
+        if (topShareBtn) {
+            topShareBtn.style.display = 'flex';
+            topShareBtn.onclick = function() { openShareProfileModal(); };
+        }
+
+        // ============================================
+        // 2. منطق المالك (Owner)
+        // ============================================
+        if (isOwner) {
+            // شريط اللفل
+            if(statLevelItem) statLevelItem.style.display = 'flex';
+
+            // إظهار أقسام المالك الخاصة
+            if(visitorsSection) visitorsSection.style.display = 'block';
+            if(toolbarSection) toolbarSection.style.display = 'block';
+
+            // أيقونات الهيدر
+            if(reportBtn) reportBtn.style.display = 'none'; // المالك لا يبلغ عن نفسه
+            if(settingsBtn) settingsBtn.style.display = 'flex'; // زر الإعدادات
+
+            // [مهم جداً]: الزر العائم للمالك
+            // أضفنا id="ownerAddPostBtn" لكي نتحكم في إخفائه عند تغيير التبويب
+            floatingBar.innerHTML = `
+                <button id="ownerAddPostBtn" class="main-action-btn" style="width:100%; justify-content:center;" onclick="openModal('addPostModal')">
+                    <i class="fas fa-plus-circle"></i> إضافة منشور جديد
+                </button>
+            `;
+
+        }
+        // ============================================
+        // 3. منطق الزائر (Visitor)
+        // ============================================
+        else {
+            // إظهار شريط اللفل الصغير للزائر
+            if(statLevelItem) statLevelItem.style.display = 'flex';
+
+            // إخفاء أقسام المالك
+            if(visitorsSection) visitorsSection.style.display = 'none';
+            if(toolbarSection) toolbarSection.style.display = 'none';
+
+            // أيقونات الهيدر
+            if(reportBtn) reportBtn.style.display = 'flex'; // زر الإبلاغ عن البروفايل
+            if(settingsBtn) settingsBtn.style.display = 'none';
+
+            // =======================================================
+            // [تعديل هام]: إضافة زر هدية المتجر هنا وتعديل زر المتابعة 👇
+            // =======================================================
+    floatingBar.innerHTML = `
+              <button class="float-btn" onclick="openPublicGiftsModal(profileID)">
+                    <i class="fas fa-gift" style="color:#FF2E93;"></i>
+                </button>
+
+                <button class="float-btn" onclick="callAndroid('openStoreGift', getProfileDataParams())">
+                    <i class="fas fa-store" style="color:#D500F9;"></i>
+                </button>
+
+                <button class="float-btn" id="followBtn" onclick="toggleFollowAction()">
+                    <i class="fas fa-user-plus" style="color:#00E676;"></i>
+                </button>
+
+                <button class="float-btn" onclick="callAndroid('sendMessage', getProfileDataParams())">
+                    <i class="fas fa-comment-dots" style="color:#00E5FF;"></i>
+                </button>
+            `;
+
+            // تحديث شكل زر المتابعة فور التهيئة
+            setFollowState(currentFollowState);
+        }
+    }
+        const topBar = document.getElementById('topBar');
+        window.addEventListener('scroll', () => { topBar.classList.toggle('scrolled', window.scrollY > 50); });
+
+    // 1. تعديل دالة التبديل (تم إلغاء الهدايا منها)
+        function switchTab(index, btn) {
+            // تفعيل التبويب بصرياً
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+
+            // التبويب رقم 1 كان للهدايا، سنلغيه أو نتجاهله، ونركز على المعرض (رقم 2)
+            // لنفترض أن المعرض هو التبويب الأخير
+            document.getElementById('tab-' + index).classList.add('active');
+            btn.classList.add('active');
+
+            const addBtn = document.getElementById('ownerAddPostBtn');
+
+            if (index === 0) {
+                // --- تبويب المنشورات ---
+                if (addBtn) addBtn.style.display = 'flex'; // إظهار زر الإضافة للمالك
+
+            } else if (index === 2) {
+                // --- تبويب المعرض ---
+                if (addBtn) addBtn.style.display = 'none'; // إخفاء زر الإضافة
+
+                // طلب الصور من الأندرويد
+                // نقوم بإظهار أيقونة تحميل مؤقتة
+                document.getElementById('galleryGrid').innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري جلب الصور...</div>';
+
+                callAndroid('getUserGallery', profileID);
+            }
+        }
+
+        // 2. دالة استقبال قائمة الصور وعرضها
+        // سيتم استدعاؤها من الأندرويد: setGalleryImages('["url1", "url2", ...]')
+        function setGalleryImages(jsonArray) {
+            try {
+                const images = JSON.parse(jsonArray);
+                const container = document.getElementById('galleryGrid');
+                container.innerHTML = ''; // مسح المحتوى المؤقت
+
+                if (images.length === 0) {
+                    container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-sec);">لا توجد صور لعرضها 📷</div>';
+                    return;
+                }
+
+                // توليد الصور
+                images.forEach(imgUrl => {
+                    // تخطي الروابط الفارغة
+                    if(!imgUrl || imgUrl.trim() === "") return;
+
+                    const img = document.createElement('img');
+                    img.src = imgUrl;
+                    img.className = 'gallery-img';
+                    // عند الضغط، نفتح الصورة مكبرة
+                    img.onclick = function() { openFullImage(imgUrl); };
+
+                    container.appendChild(img);
+                });
+
+            } catch (e) {
+                console.error("Error setting gallery", e);
+            }
+        }
+
+        // 3. دالة بسيطة لفتح الصورة بحجم كامل (مودال سريع)
+        function openFullImage(url) {
+            // نستخدم نفس فكرة المودال لكن بصورة فقط
+            const modalHtml = `
+                <div id="imgViewerModal" class="modal-overlay open" onclick="closeImgViewer(event)" style="background:rgba(0,0,0,0.95); display:flex; align-items:center;">
+                    <img src="${url}" style="max-width:100%; max-height:100%; margin:auto; box-shadow:0 0 20px rgba(0,0,0,0.5); border-radius:5px;">
+                    <div style="position:absolute; top:20px; right:20px; color:#fff; font-size:2rem; cursor:pointer;">&times;</div>
+                </div>
+            `;
+
+            // إضافة المودال للجسم مؤقتاً
+            const div = document.createElement('div');
+            div.innerHTML = modalHtml;
+            document.body.appendChild(div.firstElementChild);
+        }
+
+        // دالة إغلاق مستعراض الصور
+        function closeImgViewer(e) {
+            // عند الضغط، نحذف العنصر تماماً من الصفحة
+            const viewer = document.getElementById('imgViewerModal');
+            if (viewer) viewer.remove();
+        }
+
+function openModal(id) {
+        const m = document.getElementById(id);
+
+        // قائمة النوافذ التي تحتوي على حقول كتابة
+        const heavyModals = ['editModal', 'addPostModal', 'editPostModal', 'reportModal', 'postDetailsModal'];
+
+        if (heavyModals.includes(id)) {
+            // أوقف كل شيء فوراً لضمان سرعة الفتح والكتابة
+            toggleHeavyEffects(false);
+        }
+
+        // ==========================================
+        // تعبئة بيانات التعديل بالبيانات الحقيقية
+        // ==========================================
+        if(id === 'editModal') {
+            // 1. جلب الاسم
+            document.getElementById('editName').value = document.getElementById('displayName').innerText.trim();
+
+            // 2. جلب النبذة (وتجاهل السطر الثاني الخاص بالعائلة)
+            let bioText = document.getElementById('displayBio').innerHTML;
+            if(bioText.includes('<br>')) bioText = bioText.split('<br>')[0];
+            document.getElementById('editBio').value = bioText.trim();
+
+            // 3. جلب الدولة من الـ Tag
+            let currentCountry = document.getElementById('tagCountry').innerText;
+            document.getElementById('editCountry').value = currentCountry.trim();
+
+            // 4. جلب الحالة وتحديد الخيار الصحيح في القائمة المنسدلة (مرتبط، أعزب، متزوج)
+            let currentStatus = document.getElementById('tagStatus').innerText;
+            let statusSelect = document.getElementById('editStatus');
+            for(let i = 0; i < statusSelect.options.length; i++) {
+                if(currentStatus.includes(statusSelect.options[i].value)) {
+                    statusSelect.selectedIndex = i;
+                    break;
+                }
+            }
+
+            // 5. جلب الجنس والموسيقى (من المتغيرات العامة التي سنضيفها)
+            if (typeof window.userGender !== 'undefined') {
+                let genderSelect = document.getElementById('editGender');
+                for(let i = 0; i < genderSelect.options.length; i++) {
+                    if(window.userGender.includes(genderSelect.options[i].value)) {
+                        genderSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+            if (typeof window.userMusic !== 'undefined') {
+                 document.getElementById('editMusicLink').value = window.userMusic;
+            }
+        }
+
+        if(m) m.classList.add('open');
+    }
+
+    function closeModal(e, id) {
+
+
+            if (e.target.id === id) {
+                const m = document.getElementById(id);
+                if(m) {
+                    m.classList.remove('open');
+
+                    // إعادة تشغيل التأثيرات عند الإغلاق (للحفاظ على الأداء)
+                    toggleHeavyEffects(true);
+                }
+            }
+        }
+
+        // دالة الإغلاق بالزر (X) أو (إلغاء)
+        function closeModalById(id) {
+            document.getElementById(id).classList.remove('open');
+            toggleHeavyEffects(true); // إعادة التشغيل دائماً هنا
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast'); document.getElementById('toastMsg').innerText = msg;
+            t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+            showToast(isLight ? 'تم تفعيل الوضع المضيء ☀️' : 'تم تفعيل الوضع الداكن 🌙');
+        }
+
+        let isPlaying = false;
+        function toggleMusicWidget() { document.getElementById('musicWidget').classList.toggle('active'); }
+        function togglePlayMusic() {
+            const musicPlayer = document.getElementById('musicPlayer');
+            const playBtn = document.getElementById('playBtn');
+            const musicDisc = document.getElementById('musicDisc');
+
+            if (isPlaying) {
+                musicPlayer.pause();
+                playBtn.className = 'fas fa-play';
+                musicDisc.classList.remove('playing');
+            } else {
+                musicPlayer.play().catch(error => { console.error("Autoplay failed:", error); showToast('يرجى التفاعل أولاً لتشغيل الصوت'); });
+                playBtn.className = 'fas fa-pause';
+                musicDisc.classList.add('playing');
+            }
+            isPlaying = !isPlaying;
+        }
+
+        // [تعديل]: تضمين رابط الموسيقى في دالة حفظ الملف الشخصي
+        function saveProfile() {
+            const name = document.getElementById('editName').value;
+            const bio = document.getElementById('editBio').value;
+            const country = document.getElementById('editCountry').value;
+            const status = document.getElementById('editStatus').value;
+            const gender = document.getElementById('editGender').value;
+            const musicLink = document.getElementById('editMusicLink').value; // جلب الرابط
+
+            if(name) document.getElementById('displayName').innerText = name;
+            document.getElementById('editModal').classList.remove('open');
+            showToast('جاري حفظ الملف الشخصي...');
+            const profileData = { name: name, bio: bio, country: country, status: status, gender: gender, musicLink: musicLink };
+            callAndroid('saveProfileData', JSON.stringify(profileData));
+        }
+
+        function togglePass() {
+            const content = document.getElementById('passContent'), icon = document.getElementById('passIcon');
+            const isHidden = content.style.display === 'none' || !content.style.display;
+            content.style.display = isHidden ? 'block' : 'none';
+            icon.className = isHidden ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        }
+    function likePost(el, postId, postOwnerId) {
+            // 1. التغيير البصري (Toggle)
+            el.classList.toggle('liked');
+            const span = el.querySelector('span');
+            const isLiked = el.classList.contains('liked');
+
+            // تحديث الرقم
+            span.innerText = isLiked ? parseInt(span.innerText) + 1 : parseInt(span.innerText) - 1;
+
+            // تحديث الأيقونة
+            el.querySelector('i').className = isLiked ? 'fas fa-heart' : 'far fa-heart';
+
+            // 2. تجهيز البيانات كـ JSON لإرسالها للأندرويد
+            const likeData = {
+                postId: postId,
+                ownerId: postOwnerId, // ايدي صاحب المنشور
+                status: isLiked ? 'liked' : 'unliked'
+            };
+
+            // 3. الإرسال للأندرويد
+            callAndroid('likePost', JSON.stringify(likeData));
+        }
+
+        function checkOwnerAndChangeCover() { if (!isOwner) { return; } callAndroid('changeCover'); }
+        function checkOwnerAndChangeAvatar() { if (!isOwner) { return; } callAndroid('changeAvatar'); }
+
+        function toggleAgencyButton(show) {
+            const agencyBtn = document.getElementById('btnAgency');
+            if(agencyBtn) { agencyBtn.style.display = show ? 'flex' : 'none'; }
+        }
+    // متغير لحفظ حالة التشغيل لتجنب التكرار
+        let areEffectsRunning = true;
+
+        function toggleHeavyEffects(shouldPlay) {
+            // إذا كانت الحالة الحالية هي نفسها المطلوبة، لا تفعل شيئاً (لتحسين الأداء)
+            if (areEffectsRunning === shouldPlay) return;
+            areEffectsRunning = shouldPlay;
+
+            const svgaContainer = document.getElementById('avatarFrameContainer');
+            const vipName = document.querySelector('.app-name.vip');
+            const headerImg = document.getElementById('headerImg');
+            const magicTrail = document.querySelector('.magic-trail');
+
+            if (shouldPlay) {
+                // === إعادة التشغيل (عند الانتهاء من الكتابة) ===
+
+                // 1. تشغيل SVGA
+                if (svgaContainer && svgaContainer.innerHTML.trim() !== "") {
+                    svgaContainer.style.display = 'block';
+                    if (framePlayer) try { framePlayer.startAnimation(); } catch(e) {}
+                }
+
+                // 2. تشغيل لمعان الاسم
+                if (vipName) vipName.style.animationPlayState = 'running';
+
+                // 3. تشغيل حركة الغلاف
+                if (headerImg) headerImg.style.animationPlayState = 'running';
+
+                // 4. تشغيل ذيل النجم (اختياري)
+                if (magicTrail) magicTrail.style.display = 'block';
+
+            } else {
+                // === الإيقاف التام (عند الكتابة) ===
+
+                // 1. إيقاف SVGA
+                if (svgaContainer) {
+                    svgaContainer.style.display = 'none'; // الإخفاء أفضل من الإيقاف فقط
+                    if (framePlayer) try { framePlayer.stopAnimation(); } catch(e) {}
+                }
+
+                // 2. تجميد لمعان الاسم
+                if (vipName) vipName.style.animationPlayState = 'paused';
+
+                // 3. تجميد حركة الغلاف
+                if (headerImg) headerImg.style.animationPlayState = 'paused';
+
+                // 4. إخفاء ذيل النجم (يستهلك موارد)
+                if (magicTrail) magicTrail.style.display = 'none';
+            }
+        }
+function playAvatarFrame(url) {
+    const container = document.getElementById('avatarFrameContainer');
+    const staticImg = document.getElementById('avatarStaticFrame');
+
+    if (!container || !url) return;
+
+    container.style.display = 'block';
+    staticImg.style.display = 'none';
+    container.innerHTML = '';
+
+    try {
+        var player = new SVGA.Player('#avatarFrameContainer');
+        var parser = new SVGA.Parser();
+
+        let finalUrl = url;
+        if (!url.startsWith('http') && !url.startsWith('file')) {
+            finalUrl = "http://192.168.1.5:6144/" + url;
+        }
+
+        parser.load(finalUrl, function(videoItem) {
+            player.setVideoItem(videoItem);
+            player.setContentMode("AspectFit");
+            player.startAnimation();
+        });
+
+    } catch (e) {
+        console.error("SVGA Error:", e);
+    }
+}
+
+        function setPostImagePreview(base64Data) {
+            var imageSrc = "data:image/jpeg;base64," + base64Data;
+            document.getElementById('newPostImagePreview').src = imageSrc;
+            document.getElementById('imagePreviewContainer').style.display = 'block';
+            showToast('تم اختيار الصورة بنجاح 📷');
+        }
+
+        // [NEW] Edit Post Functions
+        function openEditPostModal(id, currentText) {
+            document.getElementById('editPostId').value = id;
+            document.getElementById('editPostText').value = currentText;
+            openModal('editPostModal');
+        }
+    function submitEditPost() {
+            const id = document.getElementById('editPostId').value;   // آيدي المنشور
+            const text = document.getElementById('editPostText').value; // النص الجديد
+
+            if (!text.trim()) {
+                showToast("لا يمكن ترك النص فارغاً ❌");
+                return;
+            }
+
+            // تجهيز البيانات كـ JSON
+            const payload = {
+                postId: id,
+                newText: text
+            };
+
+            // إرسالها للأندرويد
+            callAndroid('updatePost', JSON.stringify(payload));
+
+            // تحديث النص في الواجهة فوراً (لإعطاء شعور بالسرعة)
+            const postTextElem = document.getElementById('postText_' + id);
+            if(postTextElem) {
+                postTextElem.innerText = text;
+                // إضافة تأثير بصري بسيط ليعرف المستخدم أنه تم التعديل
+                postTextElem.style.color = "var(--primary-light)";
+                setTimeout(() => postTextElem.style.color = "var(--text-main)", 1000);
+            }
+
+            closeModalById('editPostModal');
+            showToast("تم تعديل المنشور بنجاح ✏️");
+        }
+
+        // [NEW] Report Functions
+    let currentReportType = 'user'; // القيمة الافتراضية 'user' أو 'post'
+        let reportPostId = null;
+        let reportPostOwnerId = null;
+
+        // 1. دالة فتح بلاغ البروفايل (القديمة المعدلة)
+        function openReportModal() {
+            if(isOwner) return;
+
+            // نحدد النوع أنه بلاغ عن مستخدم
+            currentReportType = 'user';
+
+            // نفتح النافذة
+            openModal('reportModal');
+        }
+
+        function reportPost(postId, ownerId) {
+            // نحدد النوع أنه بلاغ عن منشور
+            currentReportType = 'post';
+
+            // نحفظ البيانات
+            reportPostId = postId;
+            reportPostOwnerId = ownerId;
+
+            // نفتح نفس النافذة
+            openModal('reportModal');
+        }
+        function selectReportOption(element) {
+            document.querySelectorAll('.report-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            const radio = element.querySelector('input[type="radio"]');
+            radio.checked = true;
+            const detailsBox = document.getElementById('reportDetails');
+            detailsBox.style.display = (radio.value === 'أخرى') ? 'block' : 'none';
+        }
+    function submitReport() {
+            const selectedOption = document.querySelector('input[name="reportReason"]:checked');
+            if (!selectedOption) { showToast("يرجى اختيار سبب البلاغ"); return; }
+
+            let reason = selectedOption.value;
+            let details = "";
+
+            // معالجة خيار "أخرى"
+            if (reason === 'أخرى') {
+                details = document.getElementById('reportDetails').value;
+                if(!details.trim()) { showToast("يرجى كتابة التفاصيل"); return; }
+                reason += ": " + details;
+            }
+
+            // --- التفرع حسب نوع البلاغ ---
+
+            if (currentReportType === 'user') {
+                // == الحالة الأولى: إبلاغ عن بروفايل (الكود القديم) ==
+                const reportData = {
+                    targetUserId: profileID,
+                    reason: reason,
+                    details: details
+                };
+                callAndroid('sendReport', JSON.stringify(reportData));
+
+            } else if (currentReportType === 'post') {
+                // == الحالة الثانية: إبلاغ عن منشور (الكود الجديد) ==
+                const reportData = {
+                    postId: reportPostId,
+                    ownerId: reportPostOwnerId,
+                    reason: reason
+                };
+                callAndroid('reportPost', JSON.stringify(reportData));
+            }
+
+            // إغلاق وتصفير
+            closeModalById('reportModal');
+            showToast("تم إرسال البلاغ شكراً لك");
+
+            // إعادة تعيين المتغيرات
+            currentReportType = 'user';
+            reportPostId = null;
+            reportPostOwnerId = null;
+            document.getElementById('reportDetails').value = ''; // تنظيف الحقل النصي
+        }
+
+function handleBackPress() {
+            // 1. الأولوية القصوى: إغلاق عارض الصور إذا كان مفتوحاً
+            const imgViewer = document.getElementById('imgViewerModal');
+            if (imgViewer) {
+                imgViewer.remove();
+                return;
+            }
+
+            // 2. الأولوية الثانية: إغلاق النوافذ المنبثقة (Modals)
+            // أضفنا نافذة unfollowConfirmModal للقائمة
+            const modals = ['postDetailsModal', 'addPostModal', 'settingsModal', 'editModal', 'reportModal', 'editPostModal', 'shareModal', 'friendsModal', 'visitorsModal', 'deleteAccountModal', 'blockListModal', 'unfollowConfirmModal', 'customUnfriendModal', 'publicGiftsModal', 'followersModal'];
+
+            for (let id of modals) {
+                const m = document.getElementById(id);
+                if (m && m.classList.contains('open')) {
+                    closeModalById(id);
+                    return;
+                }
+            }
+
+            // 3. إذا لم يكن هناك أي شيء مفتوح -> نرسل أمر الإغلاق للأندرويد
+            callAndroid('closeActivity');
+        }
+
+    // [جديد]: دوال حذف الحساب
+    function openDeleteAccountModal() {
+        closeModalById('settingsModal');
+        openModal('deleteAccountModal');
+    }
+
+    function confirmDeleteAccount() {
+        const pass = document.getElementById('deleteAccountPass').value;
+        if (!pass) {
+            showToast('يرجى إدخال كلمة المرور 🔑');
+            return;
+        }
+        callAndroid('deleteAccount', pass);
+        closeModalById('deleteAccountModal');
+        document.getElementById('deleteAccountPass').value = '';
+    }
+
+    // [جديد]: دوال قائمة الحظر
+    function openBlockList() {
+        closeModalById('settingsModal');
+        openModal('blockListModal');
+        document.getElementById('blockListContainer').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري التحميل...</div>';
+        callAndroid('getBlockList', 'X');
+    }
+
+    function setBlockListData(jsonList) {
+        try {
+            const users = JSON.parse(jsonList);
+            const container = document.getElementById('blockListContainer');
+            container.innerHTML = '';
+
+            if(users.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);">لا يوجد أشخاص في قائمة الحظر 🛡️</div>';
+                return;
+            }
+
+            users.forEach(u => {
+                const item = document.createElement('div');
+                item.className = 'friend-share-item';
+                item.id = 'blocked_user_' + u.id;
+
+                item.innerHTML = `
+                    <div class="f-info">
+                        <img src="${u.image}" class="f-avatar" onerror="this.src='default_avatar.png'">
+                        <div>
+                            <span class="f-name">${u.name}</span>
+                            <span class="f-id">ID: ${u.id}</span>
+                        </div>
+                    </div>
+                    <button class="f-act-btn btn-unfriend" onclick="unblockUser('${u.id}')" title="إلغاء الحظر">
+                        <i class="fas fa-unlock"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        } catch(e) {
+            console.error("Error parsing block list", e);
+        }
+    }
+
+    function unblockUser(userId) {
+        if(confirm('هل أنت متأكد من إلغاء الحظر عن هذا المستخدم؟')) {
+            callAndroid('unblockUser', userId);
+            const el = document.getElementById('blocked_user_' + userId);
+            if(el) el.remove();
+            showToast('تم إلغاء الحظر بنجاح 🔓');
+        }
+    }
+
+    // متغيرات لتخزين بيانات المشاركة مؤقتاً
+        let shareType = ''; // 'profile' or 'post'
+        let sharePayload = {}; // لتخزين بيانات البوست
+
+        // 1. دالة فتح مشاركة البروفايل (يتم استدعاؤها من زر المشاركة العلوي)
+        function openShareProfileModal() {
+            shareType = 'profile';
+            sharePayload = {}; // تفريغ البيانات القديمة
+
+            // فتح المودال
+            openModal('shareModal');
+
+            // طلب قائمة الأصدقاء من الأندرويد
+            document.getElementById('shareListContainer').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري التحميل...</div>';
+            callAndroid('getFriendsList', '');
+        }
+
+        // 2. دالة فتح مشاركة المنشور (يتم استدعاؤها من زر المنشور)
+        function openSharePostModal(postId, text, imgUrl) {
+            shareType = 'post';
+            // تخزين بيانات المنشور
+            sharePayload = {
+                postId: postId,
+                text: text,
+                image: imgUrl
+            };
+
+            // فتح المودال
+            openModal('shareModal');
+
+            // طلب قائمة الأصدقاء
+            document.getElementById('shareListContainer').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري التحميل...</div>';
+            callAndroid('getFriendsList', '');
+        }
+
+        // 3. دالة استقبال قائمة الأصدقاء من الأندرويد وعرضها
+
+        function sendShareToFriend(btnElement, targetFriendId) {
+
+            // 1. تغيير شكل الزر وتعطيله فوراً
+            btnElement.classList.add('sent');
+            btnElement.innerHTML = 'تم <i class="fas fa-check"></i>';
+            btnElement.onclick = null; // إلغاء وظيفة النقر للتأكد
+
+            // 2. تجهيز البيانات للإرسال (نفس المنطق السابق)
+            let dataToSend = {
+                targetFriendId: targetFriendId,
+                profileOwnerId: profileID
+            };
+
+            if (shareType === 'profile') {
+                dataToSend.type = 'profile_share';
+                dataToSend.msg = "مشاركة بروفايل";
+            } else if (shareType === 'post') {
+                dataToSend.type = 'post_share';
+                dataToSend.msg = "مشاركة منشور";
+                dataToSend.postId = sharePayload.postId;
+                dataToSend.postText = sharePayload.text;
+                dataToSend.postImage = sharePayload.image || "";
+            }
+
+            // 3. إرسال البيانات للأندرويد
+            callAndroid('submitShare', JSON.stringify(dataToSend));
+
+            // لا توجد رسالة Toast هنا لعدم الإزعاج، تغير الزر يكفي
+        }
+    function triggerExternalShare() {
+            // إغلاق النافذة (اختياري، يفضل إغلاقها عند الذهاب للتطبيق الخارجي)
+            closeModalById('shareModal');
+
+            // تجهيز البيانات للمشاركة الخارجية
+            // سنرسل نصاً واحداً يحتوي على المعلومات مفصولة بـ ~
+            let externalData = "";
+
+            if (shareType === 'profile') {
+                // مشاركة بروفايل: نرسل الآيدي فقط
+                // Format: PROFILE ~ UserID
+                externalData = "PROFILE~" + profileID;
+
+            } else if (shareType === 'post') {
+                // مشاركة منشور: نرسل آيدي المستخدم + آيدي المنشور
+                // Format: POST ~ UserID ~ PostID
+                externalData = "POST~" + profileID + "~" + sharePayload.postId;
+            }
+
+            // إرسال للأندرويد لفتح الـ Share Sheet
+            callAndroid('shareExternal', externalData);
+        }
+        function setFriendsList(jsonList) {
+            try {
+                const friends = JSON.parse(jsonList);
+                const container = document.getElementById('shareListContainer');
+                container.innerHTML = '';
+
+                if(friends.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);">القائمة فارغة 😕</div>';
+                    return;
+                }
+
+                friends.forEach(f => {
+                    // التحقق من حالة المتابعة المتبادلة
+                    let mutualBadge = '';
+                    if (f.isMutual) {
+                        mutualBadge = `<span style="font-size:0.65rem; background:rgba(0, 229, 255, 0.15); color:#00E5FF; padding:2px 6px; border-radius:4px; margin-right:5px;">
+                            <i class="fas fa-exchange-alt"></i> متبادلة
+                        </span>`;
+                    }
+
+                    // تقصير البيو اذا كان طويلاً
+                    let shortBio = f.bio.length > 30 ? f.bio.substring(0, 30) + '...' : f.bio;
+
+                    const item = document.createElement('div');
+                    item.className = 'friend-share-item';
+
+                    // هنا نضع التصميم
+                    item.innerHTML = `
+                        <div class="f-info">
+                            <img src="${f.image}" class="f-avatar" onerror="this.src='default_avatar.png'">
+                            <div style="display:flex; flex-direction:column; justify-content:center;">
+                                <span class="f-name">
+                                    ${f.name}
+                                    ${mutualBadge}
+                                </span>
+                                <span class="f-id" style="font-size:0.7rem; opacity:0.7;">${shortBio}</span>
+                            </div>
+                        </div>
+
+          <button class="btn-send-share" onclick="sendShareToFriend(this, '${f.id}')">
+            إرسال <i class="fas fa-paper-plane" style="margin-right:5px;"></i>
+        </button>
+                    `;
+                    container.appendChild(item);
+                });
+
+            } catch(e) {
+                console.error("Error parsing friends list", e);
+                document.getElementById('shareListContainer').innerHTML = '<div style="text-align:center; color:red;">خطأ في البيانات</div>';
+            }
+        }
+
+        // [جديد] دوال إدارة الأصدقاء (يستدعيها الأندرويد لعرض القائمة)
+        function renderFriendsManagement(jsonList) {
+            // فتح المودال الجديد
+            openModal('friendsModal');
+
+            try {
+                const friends = JSON.parse(jsonList);
+                const container = document.getElementById('friendsManageList');
+                container.innerHTML = '';
+
+                if(friends.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);">لا يوجد أصدقاء حالياً 🤷‍♂️</div>';
+                    return;
+                }
+
+                friends.forEach(f => {
+                    const item = document.createElement('div');
+                    item.className = 'friend-share-item';
+
+                    item.innerHTML = `
+                        <div class="f-info">
+                            <img src="${f.image}" class="f-avatar" onerror="this.src='default_avatar.png'">
+                            <div>
+                                <span class="f-name">${f.name}</span>
+                                <span class="f-id">ID: ${f.id}</span>
+                            </div>
+                        </div>
+
+                        <div class="friend-actions-group">
+                          <button class="f-act-btn btn-msg" onclick="callAndroid('openPrivateChat', '${f.id}~${f.name}~${f.image}')">
+                                <i class="fas fa-comment-dots"></i>
+                            </button>
+
+                            <button class="f-act-btn btn-gift" onclick="openPublicGiftsModal('${f.id}')">
+                                <i class="fas fa-gift"></i>
+                            </button>
+
+                            <button class="f-act-btn btn-unfriend" onclick="confirmUnfriend('${f.id}', '${f.name}')">
+                                <i class="fas fa-user-times"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+
+            } catch(e) {
+                console.error("Error", e);
+            }
+        }
+
+// دالة تأكيد الحذف (الجديدة)
+        let pendingUnfriendId = null;
+
+        function confirmUnfriend(id, name) {
+            pendingUnfriendId = id;
+
+            // تنسيق النص لإبراز الاسم باللون الذهبي
+            document.getElementById('unfriendModalText').innerHTML =
+                `هل أنت متأكد من رغبتك في إنهاء الصداقة مع <br>
+                 <span style="color:var(--gold); font-size:1.2rem; font-weight:900; display:inline-block; margin-top:8px;">${name}</span> ؟`;
+
+            openModal('customUnfriendModal');
+        }
+
+        function executeCustomUnfriend() {
+            if (pendingUnfriendId) {
+                callAndroid('removeFriend', pendingUnfriendId);
+                closeModalById('customUnfriendModal');
+                showToast("تم إلغاء الصداقة 💔");
+
+                // إخفاء الصديق من القائمة فوراً
+                const el = document.querySelector(`button[onclick*="confirmUnfriend('${pendingUnfriendId}'"]`)?.closest('.friend-share-item');
+                if(el) el.remove();
+
+                pendingUnfriendId = null;
+            }
+        }
+
+// متغير لتخزين قائمة الزوار كاملة
+    let allVisitorsData = [];
+
+    // دالة استقبال بيانات الزوار من الأندرويد
+    function setVisitorsData(jsonList) {
+        try {
+            // 1. إظهار قسم الزوار
+            document.getElementById('visitorsSection').style.display = 'block';
+
+            // 2. تحليل البيانات
+            allVisitorsData = JSON.parse(jsonList);
+            const previewContainer = document.getElementById('visitorsPreviewList');
+            previewContainer.innerHTML = '';
+
+            // 3. عرض أول 7 زوار فقط في الشريط الأفقي
+            const previewLimit = 7;
+
+            // نأخذ أول 7 عناصر (أو أقل إذا كانت القائمة صغيرة)
+            const previewList = allVisitorsData.slice(0, previewLimit);
+
+            previewList.forEach(user => {
+                // إنشاء الصورة الدائرية
+                const img = document.createElement('img');
+                img.src = user.image;
+                img.className = 'noble-avatar';
+                img.onerror = function() { this.src = 'file:///android_asset/icon_room.webp'; };
+
+                // عند الضغط على الصورة نفتح بروفايله
+                img.onclick = function() { callAndroid('openUserProfile', user.id); };
+
+                previewContainer.appendChild(img);
+            });
+
+        } catch(e) {
+            console.error("Error setting visitors", e);
+        }
+    }
+// 1. دالة فتح نافذة المتابعين وطلب البيانات من الأندرويد
+function openFollowersList() {
+    openModal('followersModal');
+    document.getElementById('followersManageList').innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري التحميل...</div>';
+
+    // إرسال الأمر للأندرويد مع آيدي البروفايل المفتوح حالياً
+    callAndroid('getListFanz', profileID);
+}
+
+// 2. دالة استقبال قائمة المتابعين من الأندرويد وعرضها
+function renderFollowersManagement(jsonList) {
+    try {
+        const followers = JSON.parse(jsonList);
+        const container = document.getElementById('followersManageList');
+        container.innerHTML = '';
+
+        if(followers.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);">لا يوجد متابعون حالياً 🤷‍♂️</div>';
+            return;
+        }
+
+        followers.forEach(f => {
+            const item = document.createElement('div');
+            item.className = 'friend-share-item';
+
+            // نفس تصميم قائمة الأصدقاء تماماً
+            item.innerHTML = `
+                <div class="f-info" onclick="callAndroid('openUserProfile', '${f.id}')" style="cursor:pointer;">
+                    <img src="${f.image}" class="f-avatar" onerror="this.src='default_avatar.png'">
+                    <div>
+                        <span class="f-name">${f.name}</span>
+                        <span class="f-id">ID: ${f.id}</span>
+                    </div>
+                </div>
+
+                <div class="friend-actions-group">
+                    <button class="f-act-btn btn-msg" onclick="callAndroid('openPrivateChat', '${f.id}~${f.name}~${f.image}')">
+                        <i class="fas fa-comment-dots"></i>
+                    </button>
+
+                    <button class="f-act-btn btn-gift" onclick="openPublicGiftsModal('${f.id}')">
+                        <i class="fas fa-gift"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+    } catch(e) {
+        console.error("Error parsing followers list", e);
+        document.getElementById('followersManageList').innerHTML = '<div style="text-align:center; color:red;">حدث خطأ في تحميل البيانات</div>';
+    }
+}
+    // دالة فتح المودال وعرض القائمة الكاملة
+
+    function openVisitorsModal() {
+        openModal('visitorsModal');
+        const container = document.getElementById('allVisitorsList');
+        container.innerHTML = '';
+
+        if(allVisitorsData.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-sec);">لا يوجد زوار حتى الآن</div>';
+            return;
+        }
+
+        allVisitorsData.forEach(user => {
+            const item = document.createElement('div');
+            item.className = 'friend-share-item';
+
+            // --- التعديل هنا ---
+            // أضفنا onclick للـ div المسمى f-info
+            // وأضفنا style="cursor:pointer" ليعرف المستخدم أنه قابل للضغط
+            item.innerHTML = `
+                <div class="f-info" onclick="callAndroid('openUserProfile', '${user.id}')" style="cursor:pointer; width:100%;">
+                    <img src="${user.image}" class="f-avatar" onerror="this.src='default_avatar.png'">
+                    <div>
+                        <span class="f-name">${user.name}</span>
+                        <span class="f-id">ID: ${user.id}</span>
+                    </div>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+    </script>
+<script>
+  if (window.ProfileBridge && window.ProfileBridge.postMessage) {
+    window.ProfileBridge.postMessage(JSON.stringify({type: 'ready'}));
+  }
+</script>
+</body>
+</html>
