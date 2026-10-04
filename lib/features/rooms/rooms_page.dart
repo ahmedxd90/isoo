@@ -4116,11 +4116,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                             )
                                           : null,
                                       width: _liveThemeKey == 'cinema'
-                                          ? 42
-                                          : 52,
+                                          ? 48
+                                          : 60,
                                       height: _liveThemeKey == 'cinema'
-                                          ? 42
-                                          : 52,
+                                          ? 48
+                                          : 60,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         gradient: occupied
@@ -4174,8 +4174,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                     radius:
                                                         _liveThemeKey ==
                                                             'cinema'
-                                                        ? 20
-                                                        : 25,
+                                                        ? 23
+                                                        : 29,
                                                     profile: profile,
                                                   ),
                                                 ),
@@ -5214,13 +5214,13 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     final opacity = progress > .985
         ? ((1 - progress) / .015).clamp(0.0, 1.0)
         : 1.0;
-    return Opacity(
-      opacity: opacity,
-      child: Positioned(
-        left: position.dx - size / 2,
-        top: position.dy - size / 2,
-        width: size,
-        height: size,
+    return Positioned(
+      left: position.dx - size / 2,
+      top: position.dy - size / 2,
+      width: size,
+      height: size,
+      child: Opacity(
+        opacity: opacity,
         child: Container(
           padding: EdgeInsets.all(atSeat ? 4 : 8),
           decoration: BoxDecoration(
@@ -5277,11 +5277,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     } else {
       media = Center(child: _thumbnail(130));
     }
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Stack(fit: StackFit.expand, children: [media]),
-      ),
-    );
+    return Positioned.fill(child: IgnorePointer(child: media));
   }
 
   @override
