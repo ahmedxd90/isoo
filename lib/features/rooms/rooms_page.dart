@@ -2195,6 +2195,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
   StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
   late final Stream<List<Map<String, dynamic>>> _messageStream;
+  late final Stream<List<Map<String, dynamic>>> _membersStream;
   late final _NoopRoomBroadcastChannel _roomChatChannel;
   DateTime? _chatClearedAt;
   bool _joined = false;
@@ -2360,6 +2361,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
     });
     _messageStream = _service.roomMessagesStream(_roomId, after: _roomOpenedAt);
+    _membersStream = _service.roomMembersStream(_roomId);
     _service.roomEmojis().then((items) {
       if (mounted) {
         final localItems = _localRoomEmojiTabs
@@ -2428,9 +2430,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     ) {
       _loadRoomMusic();
     });
-    _roomMembersSubscription = _service.roomMembersStream(_roomId).listen((
-      members,
-    ) {
+    _roomMembersSubscription = _membersStream.listen((members) {
       if (!mounted) return;
       final previousIds = _roomMembers.map((m) => m['id']).toSet();
       final entrant = members
@@ -2670,14 +2670,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           .recordUserTask('seat_5_minutes')
           .catchError((_) => const <String, dynamic>{});
     });
+    final permission = await Permission.microphone.request();
+    _micMuted = !permission.isGranted;
     await _engine?.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
     await _engine?.updateChannelMediaOptions(
-      const ChannelMediaOptions(
-        publishMicrophoneTrack: false,
+      ChannelMediaOptions(
+        publishMicrophoneTrack: permission.isGranted,
         autoSubscribeAudio: true,
       ),
     );
-    await _engine?.muteLocalAudioStream(true);
+    await _engine?.muteLocalAudioStream(!permission.isGranted);
+    RoomSessionController.instance.updateVoiceState(micMuted: _micMuted);
     if (mounted) setState(() {});
   }
 
@@ -4909,6 +4912,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       seatStream: _seatStream,
       lockStream: _seatLocksStream,
       messageStream: _messageStream,
+      membersStream: _membersStream,
       onSeatTap: (payload) {
         final seat = (payload['seat'] as num?)?.toInt();
         if (seat == null) return;
@@ -4924,8 +4928,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       },
       onMic: _toggleRoomMic,
       onSpeaker: _toggleListenMute,
+      onEmoji: _showEmojiPanel,
       onGift: _showGiftPanel,
       onMenu: _showRoomTools,
+      onOnline: _showOnline,
+      onRoomInfo: _showRoomInfo,
+      onUserTap: (userId) async {
+        final profile = await _service.userProfile(userId);
+        if (profile != null && mounted) _showUserCard(profile);
+      },
       onExit: () => unawaited(_confirmExit()),
     );
   }

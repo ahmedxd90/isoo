@@ -10,12 +10,17 @@ class HtmlRoomView extends StatefulWidget {
     required this.seatStream,
     required this.lockStream,
     required this.messageStream,
+    required this.membersStream,
     required this.onSeatTap,
     required this.onMessage,
     required this.onMic,
     required this.onSpeaker,
+    required this.onEmoji,
     required this.onGift,
     required this.onMenu,
+    required this.onOnline,
+    required this.onRoomInfo,
+    required this.onUserTap,
     required this.onExit,
   });
 
@@ -23,12 +28,17 @@ class HtmlRoomView extends StatefulWidget {
   final Stream<List<Map<String, dynamic>>> seatStream;
   final Stream<List<Map<String, dynamic>>> lockStream;
   final Stream<List<Map<String, dynamic>>> messageStream;
+  final Stream<List<Map<String, dynamic>>> membersStream;
   final ValueChanged<Map<String, dynamic>> onSeatTap;
   final ValueChanged<String> onMessage;
   final VoidCallback onMic;
   final VoidCallback onSpeaker;
+  final VoidCallback onEmoji;
   final VoidCallback onGift;
   final VoidCallback onMenu;
+  final VoidCallback onOnline;
+  final VoidCallback onRoomInfo;
+  final ValueChanged<String> onUserTap;
   final VoidCallback onExit;
 
   @override
@@ -41,6 +51,7 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   List<Map<String, dynamic>> _seats = const [];
   List<Map<String, dynamic>> _locks = const [];
   List<Map<String, dynamic>> _messages = const [];
+  List<Map<String, dynamic>> _members = const [];
 
   @override
   void initState() {
@@ -73,10 +84,19 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
               widget.onMic();
             case 'speaker':
               widget.onSpeaker();
+            case 'emoji':
+              widget.onEmoji();
             case 'gift':
               widget.onGift();
             case 'menu':
               widget.onMenu();
+            case 'online':
+              widget.onOnline();
+            case 'roomInfo':
+              widget.onRoomInfo();
+            case 'user':
+              final id = raw['userId']?.toString();
+              if (id != null && id.isNotEmpty) widget.onUserTap(id);
           }
         },
       )
@@ -131,14 +151,26 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       final map = profile is Map
           ? Map<String, dynamic>.from(profile)
           : const {};
-      return {'name': map['username'] ?? 'عضو', 'body': row['body'] ?? ''};
+      return {
+        'id': map['id'],
+        'name': map['username'] ?? 'عضو',
+        'avatar': map['avatar_url'],
+        'vip': map['vip_level'] ?? 0,
+        'wealth': map['wealth_level'] ?? 0,
+        'body': row['body'] ?? '',
+      };
     }).toList();
+    final members = _members
+        .take(5)
+        .map((row) => {'id': row['id'], 'avatar': row['avatar_url']})
+        .toList();
     final data = {
       'title': widget.room['name'] ?? 'غرفة SAKI',
       'roomNumber': widget.room['room_id'] ?? '',
       'hostAvatar': widget.room['image_url'],
       'backgroundUrl': widget.room['background_url'],
-      'onlineCount': 0,
+      'onlineCount': _members.length,
+      'members': members,
       'seats': seats,
     };
     _run(
@@ -160,13 +192,21 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
               stream: widget.messageStream,
               builder: (_, messageSnapshot) {
                 _messages = messageSnapshot.data ?? const [];
-                WidgetsBinding.instance.addPostFrameCallback((_) => _sync());
-                return WillPopScope(
-                  onWillPop: () async {
-                    widget.onExit();
-                    return false;
+                return StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: widget.membersStream,
+                  builder: (_, memberSnapshot) {
+                    _members = memberSnapshot.data ?? const [];
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => _sync(),
+                    );
+                    return WillPopScope(
+                      onWillPop: () async {
+                        widget.onExit();
+                        return false;
+                      },
+                      child: WebViewWidget(controller: _controller),
+                    );
                   },
-                  child: WebViewWidget(controller: _controller),
                 );
               },
             );

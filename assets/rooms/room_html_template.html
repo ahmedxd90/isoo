@@ -135,7 +135,7 @@
                 </div>
 
                 <!-- Connected Users Row (Showing 5 avatars from the opposite side) -->
-                <div onclick="showToast('قائمة المتصلين بالغرفة')" class="flex items-center gap-2 cursor-pointer active:scale-95 transition drop-shadow">
+                <div onclick="RoomBridge.postMessage(JSON.stringify({type:'online'}))" class="flex items-center gap-2 cursor-pointer active:scale-95 transition drop-shadow">
                     <!-- 5 Connected Users Mini Avatars List -->
                     <div class="flex -space-x-2 space-x-reverse">
                         <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop" 
@@ -328,7 +328,7 @@
             <!-- Left side: Interactive Toolbar Icons (Emoji, Speaker Mute, Mic, Apps, Gift) -->
             <div class="flex items-center gap-1.5">
                 <!-- Emoji Picker Icon -->
-                <button type="button" onclick="insertEmoji('😊')" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition hover:text-white">
+                <button type="button" onclick="RoomBridge.postMessage(JSON.stringify({type:'emoji'}))" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition hover:text-white">
                     <i class="fa-regular fa-face-smile text-sm"></i>
                 </button>
 
@@ -622,6 +622,13 @@
     if (id && data.roomNumber) id.textContent = 'ID:' + data.roomNumber;
     if (data.hostAvatar) document.getElementById('hostAvatar').src = data.hostAvatar;
     if (data.backgroundUrl) document.getElementById('appContainer').style.backgroundImage = 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.85) 100%), url(\"' + data.backgroundUrl + '\")';
+    const headerPill = document.querySelector('header .glass-pill');
+    if (headerPill) headerPill.onclick = function(){ bridge('roomInfo', {}); };
+    const users = document.querySelector('header .space-x-reverse');
+    if (users && Array.isArray(data.members)) {
+      users.innerHTML = data.members.map(function(m){ return '<img data-user-id="' + escapeHtml(m.id || '') + '" src="' + escapeHtml(m.avatar || '') + '" class="w-5 h-5 rounded-full object-cover border border-white/80 shadow-sm">'; }).join('');
+      users.querySelectorAll('[data-user-id]').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); bridge('user',{userId:el.dataset.userId}); }; });
+    }
     const container = document.getElementById('seatsContainer');
     window.__roomSeats = Array.isArray(data.seats) ? data.seats : [];
     if (container && Array.isArray(data.seats)) {
@@ -630,11 +637,12 @@
         const locked = !!seat.locked;
         const speaking = !!seat.speaking;
         const frame = (occupied ? 'bg-black/20 ' : '') + (speaking ? 'speaking-ripple ' : '') + 'w-10 h-10 rounded-full seat-frame flex items-center justify-center relative ' + (locked ? 'border-red-400' : '');
-        const avatar = occupied && seat.avatar ? '<img src="' + escapeHtml(seat.avatar) + '" class="w-full h-full rounded-full object-cover border-2 border-emerald-400">' : '';
+        const avatar = occupied && seat.avatar ? '<img data-user-id="' + escapeHtml(seat.userId || '') + '" src="' + escapeHtml(seat.avatar) + '" class="w-full h-full rounded-full object-cover border-2 border-emerald-400">' : '';
         const icon = locked && !occupied ? '<i class="fa-solid fa-lock text-red-300 text-sm"></i>' : (avatar ? '' : '<i class="fa-solid fa-couch text-white/80 text-sm"></i>');
         const label = occupied ? escapeHtml(seat.name || 'عضو') : (locked ? 'مقعد مقفول' : String(seat.no));
         return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + '</div><span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">' + label + '</span></div>';
       }).join('');
+      container.querySelectorAll('[data-user-id]').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); bridge('user',{userId:el.dataset.userId}); }; });
     }
     const online = document.querySelector('header .text-emerald-400 + span');
     if (online && data.onlineCount != null) online.textContent = String(data.onlineCount);
@@ -642,14 +650,17 @@
   window.renderRoomMessages = function (messages) {
     const stream = document.getElementById('chatStream');
     if (!stream || !Array.isArray(messages)) return;
-    stream.querySelectorAll('[data-native-message]').forEach(function (e) { e.remove(); });
+    stream.innerHTML = '';
     messages.slice(-80).forEach(function (m) {
       const wrap = document.createElement('div');
       wrap.dataset.nativeMessage = '1';
       wrap.className = 'flex flex-col gap-1 items-start max-w-[85%]';
       const name = escapeHtml(m.name || 'عضو');
       const body = escapeHtml(m.body || '');
-      wrap.innerHTML = '<div class="flex items-center gap-1.5"><div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + '</div>';
+      const avatar = m.avatar ? '<img data-user-id="' + escapeHtml(m.id || '') + '" src="' + escapeHtml(m.avatar) + '" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">' : '';
+      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + '</div>';
+      const image = wrap.querySelector('[data-user-id]');
+      if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
       stream.appendChild(wrap);
     });
     stream.scrollTop = stream.scrollHeight;
