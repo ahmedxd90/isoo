@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>غرفة كلك نظر</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Cairo', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            background-color: #0d0e12;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Background image with realistic lighting and dark mood matching photo */
+        .room-bg {
+            background-image: linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.85) 100%), 
+                              url('https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1000&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center 30%;
+        }
+
+        /* Glassmorphism containers */
+        .glass-pill {
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .glass-circle {
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* Seat avatar rim effect */
+        .seat-frame {
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.25s ease;
+        }
+
+        .seat-frame:active {
+            transform: scale(0.92);
+        }
+
+        .speaking-ripple {
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.8), 0 0 15px rgba(34, 197, 94, 0.6);
+            animation: pulse-ring 1.5s infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0px rgba(34, 197, 94, 0.8); }
+            70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0px rgba(34, 197, 94, 0); }
+        }
+
+        /* Custom scrollbar styling */
+        .chat-scroll::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+        .chat-scroll {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        /* Bottom bar gradient background */
+        .bottom-nav-gradient {
+            background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 70%, transparent 100%);
+        }
+
+        /* Floating gift animation */
+        @keyframes floatUp {
+            0% { transform: translateY(20px) scale(0.7); opacity: 0; }
+            30% { opacity: 1; transform: translateY(-30px) scale(1.2); }
+            80% { opacity: 1; transform: translateY(-100px) scale(1); }
+            100% { opacity: 0; transform: translateY(-140px) scale(0.8); }
+        }
+
+        .animated-gift {
+            animation: floatUp 2.2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="flex justify-center items-center h-screen w-screen bg-black">
+
+    <!-- Mobile Screen Frame Container -->
+    <div id="appContainer" class="relative w-full max-w-md h-full flex flex-col justify-between overflow-hidden room-bg shadow-2xl">
+
+        <!-- Header Section -->
+        <header class="w-full pt-10 px-3 pb-1 flex flex-col gap-2 z-20">
+            
+            <!-- Top Header Row -->
+            <div class="w-full flex items-center justify-between">
+                <!-- Right side: Room Header Info (Host & Title & ID) -->
+                <div class="glass-pill rounded-full pr-1 pl-3 py-1 flex items-center gap-2 border border-white/20 shadow-md">
+                    <div class="relative">
+                        <img id="hostAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop" 
+                             alt="Host Avatar" 
+                             class="w-10 h-10 rounded-full object-cover border-2 border-white shadow">
+                    </div>
+                    <div class="flex flex-col text-right leading-tight">
+                        <span class="text-white font-bold text-xs tracking-wide">غرفة كلك نظر</span>
+                        <span class="text-[10px] text-gray-300 font-mono tracking-wider">ID:89627243</span>
+                    </div>
+                </div>
+
+                <!-- Left side: Room Action Menu / Exit Button -->
+                <button onclick="toggleRoomMenu()" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/90 active:scale-90 transition shadow">
+                    <i class="fa-solid fa-ellipsis text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Sub-Header Row without background black strip container -->
+            <div class="w-full flex items-center justify-between px-1 py-0.5">
+                <!-- Golden Trophy + Counter Number (Compact formatted e.g., 100, 1K, 1.2M, 1T) -->
+                <div class="flex items-center gap-1.5 text-amber-400 font-bold text-xs drop-shadow-md">
+                    <i class="fa-solid fa-trophy text-amber-400 text-sm drop-shadow"></i>
+                    <span id="trophyCount" class="font-mono text-xs tracking-wide text-amber-300 drop-shadow">1.2M</span>
+                </div>
+
+                <!-- Connected Users Row (Showing 5 avatars from the opposite side) -->
+                <div onclick="showToast('قائمة المتصلين بالغرفة')" class="flex items-center gap-2 cursor-pointer active:scale-95 transition drop-shadow">
+                    <!-- 5 Connected Users Mini Avatars List -->
+                    <div class="flex -space-x-2 space-x-reverse">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop" 
+                             alt="User 1" class="w-5 h-5 rounded-full object-cover border border-white/80 shadow-sm">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop" 
+                             alt="User 2" class="w-5 h-5 rounded-full object-cover border border-white/80 shadow-sm">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=100&auto=format&fit=crop" 
+                             alt="User 3" class="w-5 h-5 rounded-full object-cover border border-white/80 shadow-sm">
+                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=100&auto=format&fit=crop" 
+                             alt="User 4" class="w-5 h-5 rounded-full object-cover border border-white/80 shadow-sm">
+                        <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop" 
+                             alt="User 5" class="w-5 h-5 rounded-full object-cover border border-white/80 shadow-sm">
+                    </div>
+
+                    <!-- Online users counter pill -->
+                    <div class="flex items-center gap-1 bg-black/35 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 shadow-sm">
+                        <i class="fa-solid fa-user-group text-[10px] text-emerald-400"></i>
+                        <span class="text-xs font-bold text-white font-mono">14</span>
+                    </div>
+                </div>
+            </div>
+
+        </header>
+
+        <!-- Center Section: 10 Mic Seats Grid (2 rows x 5 columns) -->
+        <section class="w-full px-3 pt-2 pb-1 z-20">
+            <div id="seatsContainer" class="grid grid-cols-5 gap-y-3 gap-x-1 justify-items-center">
+                
+                <!-- Seat 1 -->
+                <div onclick="handleSeatClick(1)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-1" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-1" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-1" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">1</span>
+                </div>
+
+                <!-- Seat 2 -->
+                <div onclick="handleSeatClick(2)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-2" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-2" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-2" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">2</span>
+                </div>
+
+                <!-- Seat 3 -->
+                <div onclick="handleSeatClick(3)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-3" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-3" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-3" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">3</span>
+                </div>
+
+                <!-- Seat 4 -->
+                <div onclick="handleSeatClick(4)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-4" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-4" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-4" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">4</span>
+                </div>
+
+                <!-- Seat 5 -->
+                <div onclick="handleSeatClick(5)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-5" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-5" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-5" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">5</span>
+                </div>
+
+                <!-- Seat 6 -->
+                <div onclick="handleSeatClick(6)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-6" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-6" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-6" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">6</span>
+                </div>
+
+                <!-- Seat 7 -->
+                <div onclick="handleSeatClick(7)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-7" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-7" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-7" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">7</span>
+                </div>
+
+                <!-- Seat 8 -->
+                <div onclick="handleSeatClick(8)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-8" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-8" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-8" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">8</span>
+                </div>
+
+                <!-- Seat 9 -->
+                <div onclick="handleSeatClick(9)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-9" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-9" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-9" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">9</span>
+                </div>
+
+                <!-- Seat 10 -->
+                <div onclick="handleSeatClick(10)" class="flex flex-col items-center justify-center cursor-pointer group">
+                    <div id="seat-frame-10" class="w-10 h-10 rounded-full seat-frame flex items-center justify-center relative">
+                        <i id="seat-icon-10" class="fa-solid fa-couch text-white/80 text-sm"></i>
+                        <img id="seat-avatar-10" src="" class="hidden w-full h-full rounded-full object-cover border-2 border-emerald-400">
+                    </div>
+                    <span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">10</span>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Chat Feed Stream Area -->
+        <main id="chatStream" class="flex-1 overflow-y-auto chat-scroll px-4 pt-2 pb-20 z-20 flex flex-col justify-end gap-3">
+            
+            <!-- System Notice (Teal Cyan Text) -->
+            <div class="text-[#2dd4bf] text-[12px] font-medium leading-relaxed max-w-[95%] drop-shadow-md">
+                مرحباً بك في غرفة الصوت، يرجى الالتزام بالآداب وتجنب المخالفات، ونتمنى لكم وقتاً ممتعاً
+            </div>
+
+            <!-- Message 1: Text message from user "كلك نظر" -->
+            <div class="flex flex-col gap-1 items-start max-w-[85%]">
+                <!-- User Profile & Badges Bar -->
+                <div class="flex items-center gap-1.5">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop" 
+                         alt="User" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">
+                    
+                    <div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10">
+                        <span class="bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-sm tracking-wider">NEW</span>
+                        <span class="text-amber-400 font-bold text-xs px-0.5">كلك نظر</span>
+                        <span class="bg-amber-600/90 text-white text-[9px] font-black px-1 rounded-sm">E4</span>
+                        <span class="bg-emerald-500 text-white text-[9px] font-bold px-1 rounded-sm flex items-center gap-0.5">
+                            <i class="fa-solid fa-caret-up text-[8px]"></i> LV.1
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Message Speech Bubble (Translucent Black) -->
+                <div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">
+                    السلام عليكم ورحمه الله وبركاته
+                </div>
+            </div>
+
+            <!-- Message 2: Emoji message from user "كلك نظر" -->
+            <div class="flex flex-col gap-1 items-start max-w-[85%]">
+                <div class="flex items-center gap-1.5">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop" 
+                         alt="User" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">
+                    
+                    <div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10">
+                        <span class="bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-sm tracking-wider">NEW</span>
+                        <span class="text-amber-400 font-bold text-xs px-0.5">كلك نظر</span>
+                        <span class="bg-amber-600/90 text-white text-[9px] font-black px-1 rounded-sm">E4</span>
+                        <span class="bg-emerald-500 text-white text-[9px] font-bold px-1 rounded-sm flex items-center gap-0.5">
+                            <i class="fa-solid fa-caret-up text-[8px]"></i> LV.1
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Message Speech Bubble for Emoji -->
+                <div class="bg-black/50 backdrop-blur-md border border-white/15 text-2xl px-3.5 py-1.5 rounded-2xl rounded-tr-none shadow-lg">
+                    😂
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Bottom Action Toolbar (RTL: Compact Message Input on Right -> Action Buttons to Left) -->
+        <footer class="bottom-nav-gradient absolute bottom-0 left-0 w-full px-2.5 py-2.5 flex items-center justify-between z-30 gap-1.5" dir="rtl">
+            
+            <!-- Right side: Compact Message Input Box -->
+            <div class="w-28 sm:w-32">
+                <form onsubmit="handleMessageSubmit(event)" class="w-full flex items-center glass-pill rounded-full px-2.5 py-1 border border-white/15">
+                    <input id="chatInput" 
+                           type="text" 
+                           placeholder="أدخل رسالة" 
+                           class="w-full bg-transparent border-none outline-none text-right text-[11px] text-white placeholder-white/50 font-medium">
+                </form>
+            </div>
+
+            <!-- Left side: Interactive Toolbar Icons (Emoji, Speaker Mute, Mic, Apps, Gift) -->
+            <div class="flex items-center gap-1.5">
+                <!-- Emoji Picker Icon -->
+                <button type="button" onclick="insertEmoji('😊')" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition hover:text-white">
+                    <i class="fa-regular fa-face-smile text-sm"></i>
+                </button>
+
+                <!-- Speaker Mute Icon (Replaced Star Icon) -->
+                <button id="speakerBtn" onclick="toggleSpeakerMute()" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition">
+                    <i id="speakerIcon" class="fa-solid fa-volume-high text-xs"></i>
+                </button>
+
+                <!-- Mic Toggle Icon -->
+                <button id="micBtn" onclick="toggleMic()" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition">
+                    <i id="micIcon" class="fa-solid fa-microphone text-xs"></i>
+                </button>
+
+                <!-- Apps/Games Grid Icon -->
+                <button onclick="showToast('قائمة التطبيقات والألعاب')" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition">
+                    <i class="fa-solid fa-border-all text-xs"></i>
+                </button>
+
+                <!-- Gift Box Button (Far Left) -->
+                <button onclick="openGiftModal()" class="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-500 via-orange-500 to-amber-400 flex items-center justify-center relative shadow-lg active:scale-95 transition-transform border border-amber-300/40">
+                    <i class="fa-solid fa-gift text-white text-sm drop-shadow"></i>
+                    <span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                </button>
+            </div>
+
+        </footer>
+
+        <!-- Interactive Gift Drawer Modal -->
+        <div id="giftModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-md z-50 flex flex-col justify-end transition-opacity duration-300">
+            <div class="bg-gray-900/95 border-t border-white/10 rounded-t-3xl p-4 text-white flex flex-col gap-4">
+                <div class="flex justify-between items-center border-b border-white/10 pb-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-gift text-pink-400"></i>
+                        <span class="font-bold text-sm">متجر الهدايا</span>
+                    </div>
+                    <button onclick="closeGiftModal()" class="text-gray-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Gift Items Grid -->
+                <div class="grid grid-cols-4 gap-3 py-2">
+                    <div onclick="sendGift('وردة حمراء', '🌹')" class="flex flex-col items-center p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer border border-white/5 active:scale-95 transition">
+                        <span class="text-3xl mb-1">🌹</span>
+                        <span class="text-[11px] font-bold">وردة</span>
+                        <span class="text-[10px] text-amber-400 font-mono">10 🪙</span>
+                    </div>
+
+                    <div onclick="sendGift('تاج ملكي', '👑')" class="flex flex-col items-center p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer border border-white/5 active:scale-95 transition">
+                        <span class="text-3xl mb-1">👑</span>
+                        <span class="text-[11px] font-bold">تاج</span>
+                        <span class="text-[10px] text-amber-400 font-mono">500 🪙</span>
+                    </div>
+
+                    <div onclick="sendGift('سيارة فاخرة', '🏎️')" class="flex flex-col items-center p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer border border-white/5 active:scale-95 transition">
+                        <span class="text-3xl mb-1">🏎️</span>
+                        <span class="text-[11px] font-bold">سيارة</span>
+                        <span class="text-[10px] text-amber-400 font-mono">2000 🪙</span>
+                    </div>
+
+                    <div onclick="sendGift('خاتم الألماس', '💎')" class="flex flex-col items-center p-2 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer border border-white/5 active:scale-95 transition">
+                        <span class="text-3xl mb-1">💎</span>
+                        <span class="text-[11px] font-bold">ألماس</span>
+                        <span class="text-[10px] text-amber-400 font-mono">5000 🪙</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Options Modal -->
+        <div id="roomMenuModal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-xs p-4 flex flex-col gap-3 text-right">
+                <h3 class="text-white font-bold text-sm border-b border-white/10 pb-2">إعدادات الغرفة</h3>
+                <button onclick="showToast('تم نسخ رابط الغرفة'); toggleRoomMenu();" class="text-xs text-gray-200 py-2 hover:bg-white/5 rounded px-2 flex items-center justify-between">
+                    <span>مشاركة الغرفة</span>
+                    <i class="fa-solid fa-share-nodes text-amber-400"></i>
+                </button>
+                <button onclick="showToast('تم كتم صوت الغرفة'); toggleRoomMenu();" class="text-xs text-gray-200 py-2 hover:bg-white/5 rounded px-2 flex items-center justify-between">
+                    <span>كتم صوت الجميع</span>
+                    <i class="fa-solid fa-volume-xmark text-amber-400"></i>
+                </button>
+                <button onclick="toggleRoomMenu()" class="mt-2 w-full bg-white/10 text-white font-bold text-xs py-2 rounded-xl active:scale-95">إغلاق</button>
+            </div>
+        </div>
+
+        <!-- Notification Toast Box -->
+        <div id="toastBox" class="hidden absolute top-16 left-1/2 -translate-x-1/2 bg-black/80 text-white text-xs px-4 py-2 rounded-full border border-white/20 z-50 shadow-xl transition-all duration-300">
+            <span id="toastMsg">تنبيه</span>
+        </div>
+
+        <!-- Gift Floating Overlay Container -->
+        <div id="giftAnimationArea" class="pointer-events-none absolute inset-0 z-40 overflow-hidden"></div>
+
+    </div>
+
+    <script>
+        // State variables
+        let isMuted = false;
+        let isSpeakerMuted = false;
+        let currentSeat = null;
+        const myUser = {
+            name: "كلك نظر",
+            avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop"
+        };
+
+        // Handle seat click (join or leave mic seat)
+        function handleSeatClick(seatNum) {
+            const avatarImg = document.getElementById(`seat-avatar-${seatNum}`);
+            const chairIcon = document.getElementById(`seat-icon-${seatNum}`);
+            const seatFrame = document.getElementById(`seat-frame-${seatNum}`);
+
+            if (currentSeat === seatNum) {
+                // Leave seat
+                avatarImg.classList.add('hidden');
+                avatarImg.src = '';
+                chairIcon.classList.remove('hidden');
+                seatFrame.classList.remove('speaking-ripple');
+                currentSeat = null;
+                showToast(`غادرت المقعد ${seatNum}`);
+            } else {
+                // Leave previous seat if sitting
+                if (currentSeat !== null) {
+                    const prevAvatar = document.getElementById(`seat-avatar-${currentSeat}`);
+                    const prevIcon = document.getElementById(`seat-icon-${currentSeat}`);
+                    const prevFrame = document.getElementById(`seat-frame-${currentSeat}`);
+                    if (prevAvatar) prevAvatar.classList.add('hidden');
+                    if (prevAvatar) prevAvatar.src = '';
+                    if (prevIcon) prevIcon.classList.remove('hidden');
+                    if (prevFrame) prevFrame.classList.remove('speaking-ripple');
+                }
+
+                // Take new seat
+                chairIcon.classList.add('hidden');
+                avatarImg.src = myUser.avatar;
+                avatarImg.classList.remove('hidden');
+                seatFrame.classList.add('speaking-ripple');
+                currentSeat = seatNum;
+                showToast(`صعدت إلى المايك ${seatNum}`);
+            }
+        }
+
+        // Toggle Room Speaker Mute State (Replaced Star Favorite toggle)
+        function toggleSpeakerMute() {
+            isSpeakerMuted = !isSpeakerMuted;
+            const speakerIcon = document.getElementById('speakerIcon');
+
+            if (isSpeakerMuted) {
+                speakerIcon.className = 'fa-solid fa-volume-xmark text-red-400 text-xs';
+                showToast('تم كتم صوت الغرفة');
+            } else {
+                speakerIcon.className = 'fa-solid fa-volume-high text-xs';
+                showToast('تم تشغيل صوت الغرفة');
+            }
+        }
+
+        // Handle sending a new message
+        function handleMessageSubmit(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendUserMessage(text);
+            input.value = '';
+        }
+
+        // Insert emoji to input field
+        function insertEmoji(emoji) {
+            const input = document.getElementById('chatInput');
+            input.value += emoji;
+            input.focus();
+        }
+
+        // Append user message to chat stream container
+        function appendUserMessage(content) {
+            const chatStream = document.getElementById('chatStream');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'flex flex-col gap-1 items-start max-w-[85%] animate-fade-in';
+            
+            msgDiv.innerHTML = `
+                <div class="flex items-center gap-1.5">
+                    <img src="${myUser.avatar}" alt="User" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">
+                    <div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10">
+                        <span class="bg-purple-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-sm tracking-wider">NEW</span>
+                        <span class="text-amber-400 font-bold text-xs px-0.5">${myUser.name}</span>
+                        <span class="bg-amber-600/90 text-white text-[9px] font-black px-1 rounded-sm">E4</span>
+                        <span class="bg-emerald-500 text-white text-[9px] font-bold px-1 rounded-sm flex items-center gap-0.5">
+                            <i class="fa-solid fa-caret-up text-[8px]"></i> LV.1
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">
+                    ${escapeHtml(content)}
+                </div>
+            `;
+
+            chatStream.appendChild(msgDiv);
+            chatStream.scrollTop = chatStream.scrollHeight;
+        }
+
+        // Toggle Microphone state
+        function toggleMic() {
+            isMuted = !isMuted;
+            const micIcon = document.getElementById('micIcon');
+            const micBtn = document.getElementById('micBtn');
+
+            if (isMuted) {
+                micIcon.className = 'fa-solid fa-microphone-slash text-red-400 text-sm';
+                showToast('الميكروفون مكتوم');
+            } else {
+                micIcon.className = 'fa-solid fa-microphone text-sm';
+                showToast('الميكروفون يعمل');
+            }
+        }
+
+        // Toggle Favorite room status
+        function toggleFavorite() {
+            isFavorite = !isFavorite;
+            const starIcon = document.getElementById('starIcon');
+
+            if (isFavorite) {
+                starIcon.className = 'fa-solid fa-star text-amber-400 text-sm';
+                showToast('تمت الإضافة للمفضلة');
+            } else {
+                starIcon.className = 'fa-regular fa-star text-sm';
+                showToast('تم الإلغاء من المفضلة');
+            }
+        }
+
+        // Modals & Toast helpers
+        function openGiftModal() {
+            document.getElementById('giftModal').classList.remove('hidden');
+        }
+
+        function closeGiftModal() {
+            document.getElementById('giftModal').classList.add('hidden');
+        }
+
+        function toggleRoomMenu() {
+            const menu = document.getElementById('roomMenuModal');
+            menu.classList.toggle('hidden');
+        }
+
+        function sendGift(giftName, emojiIcon) {
+            closeGiftModal();
+            showToast(`أرسلت ${giftName} ${emojiIcon}`);
+
+            // Animated Gift Effect
+            const giftContainer = document.getElementById('giftAnimationArea');
+            const giftEl = document.createElement('div');
+            giftEl.className = 'absolute bottom-20 left-1/2 -translate-x-1/2 text-6xl animated-gift flex flex-col items-center gap-1';
+            giftEl.innerHTML = `
+                <span>${emojiIcon}</span>
+                <span class="text-xs bg-black/70 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-400/40">${giftName}</span>
+            `;
+
+            giftContainer.appendChild(giftEl);
+            setTimeout(() => giftEl.remove(), 2300);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastBox');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.innerText = msg;
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2000);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+    </script>
+
+<script>
+(function () {
+  const bridge = (type, payload) => {
+    if (window.RoomBridge && window.RoomBridge.postMessage) {
+      window.RoomBridge.postMessage(JSON.stringify({type, ...(payload || {})}));
+    }
+  };
+  window.renderRoomData = function (data) {
+    data = data || {};
+    const title = document.querySelector('header .glass-pill span.text-white');
+    if (title && data.title) title.textContent = data.title;
+    const id = document.querySelector('header .glass-pill span.font-mono');
+    if (id && data.roomNumber) id.textContent = 'ID:' + data.roomNumber;
+    if (data.hostAvatar) document.getElementById('hostAvatar').src = data.hostAvatar;
+    if (data.backgroundUrl) document.getElementById('appContainer').style.backgroundImage = 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0.85) 100%), url(\"' + data.backgroundUrl + '\")';
+    const container = document.getElementById('seatsContainer');
+    window.__roomSeats = Array.isArray(data.seats) ? data.seats : [];
+    if (container && Array.isArray(data.seats)) {
+      container.innerHTML = data.seats.map(function (seat) {
+        const occupied = !!seat.userId;
+        const locked = !!seat.locked;
+        const speaking = !!seat.speaking;
+        const frame = (occupied ? 'bg-black/20 ' : '') + (speaking ? 'speaking-ripple ' : '') + 'w-10 h-10 rounded-full seat-frame flex items-center justify-center relative ' + (locked ? 'border-red-400' : '');
+        const avatar = occupied && seat.avatar ? '<img src="' + escapeHtml(seat.avatar) + '" class="w-full h-full rounded-full object-cover border-2 border-emerald-400">' : '';
+        const icon = locked && !occupied ? '<i class="fa-solid fa-lock text-red-300 text-sm"></i>' : (avatar ? '' : '<i class="fa-solid fa-couch text-white/80 text-sm"></i>');
+        const label = occupied ? escapeHtml(seat.name || 'عضو') : (locked ? 'مقعد مقفول' : String(seat.no));
+        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + '</div><span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">' + label + '</span></div>';
+      }).join('');
+    }
+    const online = document.querySelector('header .text-emerald-400 + span');
+    if (online && data.onlineCount != null) online.textContent = String(data.onlineCount);
+  };
+  window.renderRoomMessages = function (messages) {
+    const stream = document.getElementById('chatStream');
+    if (!stream || !Array.isArray(messages)) return;
+    stream.querySelectorAll('[data-native-message]').forEach(function (e) { e.remove(); });
+    messages.slice(-80).forEach(function (m) {
+      const wrap = document.createElement('div');
+      wrap.dataset.nativeMessage = '1';
+      wrap.className = 'flex flex-col gap-1 items-start max-w-[85%]';
+      const name = escapeHtml(m.name || 'عضو');
+      const body = escapeHtml(m.body || '');
+      wrap.innerHTML = '<div class="flex items-center gap-1.5"><div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + '</div>';
+      stream.appendChild(wrap);
+    });
+    stream.scrollTop = stream.scrollHeight;
+  };
+  window.handleSeatClick = function (seat) { const item=(window.__roomSeats||[]).find(function(x){return x.no===seat;})||{}; bridge('seat', {seat: seat, occupiedUserId: item.userId || null}); };
+  window.handleMessageSubmit = function (e) { e.preventDefault(); const i=document.getElementById('chatInput'); const t=i.value.trim(); if(t){ bridge('message',{body:t}); i.value=''; } };
+  window.toggleMic = function () { bridge('mic', {}); };
+  window.toggleSpeakerMute = function () { bridge('speaker', {}); };
+  window.openGiftModal = function () { bridge('gift', {}); };
+  window.toggleRoomMenu = function () { bridge('menu', {}); };
+  window.showToast = function (msg) { bridge('toast', {message:msg}); };
+  window.insertEmoji = function (emoji) { const i=document.getElementById('chatInput'); if(i){i.value += emoji; i.focus();} };
+  window.escapeHtml = function (text) { return String(text || '').replace(/[&<>"']/g, function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); };
+  bridge('ready', {});
+})();
+</script>
+</body>
