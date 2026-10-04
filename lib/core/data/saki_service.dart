@@ -3051,7 +3051,11 @@ class SakiService {
       'saki_wheel_current_round',
       params: {'p_room_id': roomId},
     );
-    return Map<String, dynamic>.from(result as Map);
+    final rows = result is List ? result : [result];
+    if (rows.isEmpty || rows.first is! Map) {
+      throw StateError('wheel_round_empty');
+    }
+    return Map<String, dynamic>.from(rows.first as Map);
   }
 
   Future<Map<String, dynamic>> wheelPlaceBet({
@@ -3074,7 +3078,11 @@ class SakiService {
       'saki_wheel_resolve',
       params: {'p_round_id': roundId},
     );
-    return Map<String, dynamic>.from(result as Map);
+    final rows = result is List ? result : [result];
+    if (rows.isEmpty || rows.first is! Map) {
+      throw StateError('wheel_result_empty');
+    }
+    return Map<String, dynamic>.from(rows.first as Map);
   }
 
   Future<List<Map<String, dynamic>>> wheelHistory(String roomId) async {

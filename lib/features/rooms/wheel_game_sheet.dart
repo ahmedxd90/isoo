@@ -52,6 +52,7 @@ class _WheelGameSheetState extends State<WheelGameSheet>
   bool _loading = true;
   bool _busy = false;
   String? _lastResultRound;
+  bool _errorShown = false;
 
   @override
   void initState() {
@@ -73,13 +74,18 @@ class _WheelGameSheetState extends State<WheelGameSheet>
 
   Future<void> _refresh() async {
     try {
-      final values = await Future.wait<dynamic>([
-        _service.wheelGetRound(widget.roomId),
-        _service.accountModules(),
-        _service.wheelHistory(widget.roomId),
-      ]);
+      // The round is the critical request. Wallet and history are auxiliary;
+      // one of them must not hide a valid betting round from the user.
+      final next = await _service.wheelGetRound(widget.roomId);
+      Map<String, dynamic> wallet = const {};
+      List<Map<String, dynamic>> history = const [];
+      try {
+        wallet = await _service.accountModules();
+      } catch (_) {}
+      try {
+        history = await _service.wheelHistory(widget.roomId);
+      } catch (_) {}
       if (!mounted) return;
-      final next = Map<String, dynamic>.from(values[0] as Map);
       final changed = _round?['id']?.toString() != next['id']?.toString();
       if (changed) {
         _myBets.clear();
@@ -89,17 +95,21 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       final winner = next['winning_food']?.toString();
       setState(() {
         _round = next;
-        _balance = ((values[1] as Map)['gold_coins'] as num?)?.toInt() ?? 0;
-        _history = List<Map<String, dynamic>>.from(values[2] as List);
+        _balance = (wallet['gold_coins'] as num?)?.toInt() ?? _balance;
+        _history = history;
         _winner = winner;
       });
+      _errorShown = false;
       if (next['status'] == 'result' && winner != null) {
         _spin.forward(from: 0);
         _showResultOnce(next);
       }
       _tick();
-    } catch (_) {
-      // Polling failures keep the last visible state; the next poll retries.
+    } catch (error) {
+      if (mounted && !_errorShown) {
+        _errorShown = true;
+        _message(_friendly(error));
+      }
     }
   }
 
@@ -537,7 +547,7 @@ class _WheelBoard extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                    progress > 0 ? 'جاري\nالسحب' : _timerText,
+                progress > 0 ? 'جاري\nالسحب' : _timerText,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF92400E),
