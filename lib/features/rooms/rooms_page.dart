@@ -4930,7 +4930,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       onSpeaker: _toggleListenMute,
       onEmoji: _showEmojiPanel,
       onGift: _showGiftPanel,
-      onMenu: _showRoomTools,
+      onMenu: () => unawaited(_confirmExit()),
       onOnline: _showOnline,
       onRoomInfo: _showRoomInfo,
       onUserTap: (userId) async {
