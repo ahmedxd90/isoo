@@ -90,20 +90,26 @@ class _HtmlUserProfileViewState extends State<HtmlUserProfileView> {
         children: [
           WebViewWidget(controller: _controller),
           if (showUserCenter)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 205,
+            Positioned.fill(
               child: IgnorePointer(
-                child: Center(
-                  child: SizedBox(
-                    width: 184,
-                    height: 184,
-                    child: VipSvgaAsset(
-                      assetPath: 'assets/vip/user_center_svip$vip.svga',
-                      fallbackAsset: 'assets/vip/title_vip$vip.png',
-                      size: 184,
-                      loop: true,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: FractionallySizedBox(
+                    heightFactor: .72,
+                    widthFactor: 1,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(35),
+                      ),
+                      child: Opacity(
+                        opacity: .34,
+                        child: VipSvgaAsset(
+                          assetPath: 'assets/vip/user_center_svip$vip.svga',
+                          fallbackAsset: 'assets/vip/title_vip$vip.png',
+                          size: double.infinity,
+                          loop: true,
+                        ),
+                      ),
                     ),
                   ),
                 ),
