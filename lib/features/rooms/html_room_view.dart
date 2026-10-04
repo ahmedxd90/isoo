@@ -137,6 +137,7 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       'title': widget.room['name'] ?? 'غرفة SAKI',
       'roomNumber': widget.room['room_id'] ?? '',
       'hostAvatar': widget.room['image_url'],
+      'backgroundUrl': widget.room['background_url'],
       'onlineCount': 0,
       'seats': seats,
     };
