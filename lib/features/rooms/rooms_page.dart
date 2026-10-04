@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
@@ -56,6 +57,77 @@ const _roomTrophyGold = Color(0xFFF3B83F);
 const _roomTrendOrange = Color(0xFFFF6B35);
 const _roomBg = Colors.white;
 const _roomMuted = Color(0xFF64748B);
+const _nativeRoomBg = Color(0xFF0D0E12);
+const _nativeRoomGlass = Color(0x73000000);
+const _nativeRoomBorder = Color(0x26FFFFFF);
+const _nativeRoomGreen = Color(0xFF22C55E);
+
+class _NativeRoomGlass extends StatelessWidget {
+  const _NativeRoomGlass({
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    this.borderRadius = 18,
+    this.color = _nativeRoomGlass,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final double borderRadius;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(borderRadius),
+    child: BackdropFilter(
+      filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(color: _nativeRoomBorder),
+        ),
+        child: child,
+      ),
+    ),
+  );
+}
+
+class _NativeRoomCircleButton extends StatelessWidget {
+  const _NativeRoomCircleButton({
+    required this.icon,
+    required this.onTap,
+    this.color = Colors.white,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color color;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: _NativeRoomGlass(
+          borderRadius: 18,
+          color: const Color(0x59000000),
+          padding: EdgeInsets.zero,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(icon, color: color, size: 17),
+          ),
+        ),
+      ),
+    );
+    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
+  }
+}
 
 const _localRoomEmojiTabs = <Map<String, dynamic>>[
   {
@@ -4746,7 +4818,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         ? const [Color(0xFF312E81), Color(0xFF7E22CE), Color(0xFFBE185D)]
         : backgroundUrl == 'free://sunset'
         ? const [Color(0xFFF97316), Color(0xFFDB2777), Color(0xFF4A0E17)]
-        : const [Color(0xFF4A0E17), Color(0xFF8A1C30), Color(0xFF2A080C)];
+        : const [_nativeRoomBg, Color(0xFF20222A), Color(0xFF090A0D)];
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -4754,7 +4826,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await _confirmExit();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF4A0E17),
+        backgroundColor: _nativeRoomBg,
         body: Stack(
           children: [
             Container(
@@ -4801,6 +4873,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
                       child: Row(
+                        textDirection: TextDirection.rtl,
                         children: [
                           GestureDetector(
                             onTap: _showRoomInfo,
@@ -4828,59 +4901,60 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                           Expanded(
                             child: GestureDetector(
                               onTap: _showRoomInfo,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    title,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w900,
+                              child: _NativeRoomGlass(
+                                borderRadius: 24,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 7,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    'ID: $roomNumber',
-                                    style: const TextStyle(
-                                      color: Colors.white60,
-                                      fontSize: 11,
+                                    Text(
+                                      'ID: $roomNumber',
+                                      style: const TextStyle(
+                                        color: Colors.white60,
+                                        fontSize: 11,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    _isOnSeat
-                                        ? (_micMuted
-                                              ? 'على مقعد • المايك مكتوم'
-                                              : 'يتحدث الآن')
-                                        : 'مستمع • ${_remoteUsers.length} متحدث',
-                                    style: TextStyle(
-                                      color: _isOnSeat && !_micMuted
-                                          ? Colors.greenAccent
-                                          : Colors.white54,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
+                                    Text(
+                                      _isOnSeat
+                                          ? (_micMuted
+                                                ? 'على مقعد • المايك مكتوم'
+                                                : 'يتحدث الآن')
+                                          : 'مستمع • ${_remoteUsers.length} متحدث',
+                                      style: TextStyle(
+                                        color: _isOnSeat && !_micMuted
+                                            ? Colors.greenAccent
+                                            : Colors.white54,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                           if (widget.room['owner_id']?.toString() ==
                               _service.uid)
-                            IconButton(
-                              onPressed: _openPkBattle,
-                              icon: const Icon(
-                                Icons.flash_on_rounded,
-                                color: Colors.amber,
-                              ),
+                            _NativeRoomCircleButton(
+                              onTap: _openPkBattle,
+                              icon: Icons.flash_on_rounded,
+                              color: Colors.amber,
                               tooltip: 'تحدي PK',
                             ),
-                          IconButton(
-                            onPressed: () async {
-                              await _confirmExit();
-                            },
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.white,
-                            ),
+                          _NativeRoomCircleButton(
+                            onTap: _confirmExit,
+                            icon: Icons.close_rounded,
+                            tooltip: 'مغادرة الغرفة',
                           ),
                         ],
                       ),
@@ -5011,6 +5085,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               );
                               final occupied = row != null;
                               final isOwnSeat = row?['user_id'] == _service.uid;
+                              final speaking = row?['is_speaking'] == true;
                               return GestureDetector(
                                 onTap: () => isOwnSeat
                                     ? _showUserCard(profile, selfSeat: true)
@@ -5026,13 +5101,20 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                           : null,
                                       width: _liveThemeKey == 'cinema'
                                           ? 48
-                                          : 60,
+                                          : 52,
                                       height: _liveThemeKey == 'cinema'
                                           ? 48
-                                          : 60,
+                                          : 52,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        gradient: occupied
+                                        gradient: speaking
+                                            ? const LinearGradient(
+                                                colors: [
+                                                  Color(0xFF14532D),
+                                                  Color(0xFF0F172A),
+                                                ],
+                                              )
+                                            : occupied
                                             ? const LinearGradient(
                                                 begin: Alignment.topLeft,
                                                 end: Alignment.bottomRight,
@@ -5048,12 +5130,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                 ],
                                               ),
                                         border: Border.all(
-                                          color: occupied
+                                          color: speaking
+                                              ? _nativeRoomGreen
+                                              : occupied
                                               ? const Color(0xFFE7B84B)
                                               : const Color(0x667B8798),
-                                          width: occupied ? 1.8 : 1.2,
+                                          width: speaking
+                                              ? 2.4
+                                              : occupied
+                                              ? 1.8
+                                              : 1.2,
                                         ),
-                                        boxShadow: occupied
+                                        boxShadow: speaking
+                                            ? const [
+                                                BoxShadow(
+                                                  color: Color(0xAA22C55E),
+                                                  blurRadius: 16,
+                                                  spreadRadius: 3,
+                                                ),
+                                              ]
+                                            : occupied
                                             ? const [
                                                 BoxShadow(
                                                   color: Color(0x55D69B37),
@@ -5715,6 +5811,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                       child: Row(
+                        textDirection: TextDirection.rtl,
                         children: [
                           Expanded(
                             child: InkWell(
@@ -5727,9 +5824,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                 ),
                                 alignment: Alignment.centerLeft,
                                 decoration: BoxDecoration(
-                                  color: Colors.black38,
+                                  color: const Color(0x73000000),
                                   borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: Colors.white12),
+                                  border: Border.all(color: _nativeRoomBorder),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x55000000),
+                                      blurRadius: 14,
+                                      offset: Offset(0, 5),
+                                    ),
+                                  ],
                                 ),
                                 child: const Row(
                                   children: [
@@ -5751,35 +5855,31 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: _showEmojiPanel,
-                            icon: const Icon(
-                              Icons.auto_awesome_rounded,
-                              color: Color(0xFFFFD166),
-                            ),
+                          _NativeRoomCircleButton(
+                            onTap: _showEmojiPanel,
+                            icon: Icons.auto_awesome_rounded,
+                            color: const Color(0xFFFFD166),
                             tooltip: 'إيموجي متحرك',
                           ),
-                          IconButton(
-                            onPressed: _toggleListenMute,
-                            icon: Icon(
-                              _listenMuted
-                                  ? Icons.volume_off_rounded
-                                  : Icons.volume_up_rounded,
-                              color: _listenMuted
-                                  ? Colors.redAccent
-                                  : Colors.white70,
-                            ),
+                          _NativeRoomCircleButton(
+                            onTap: _toggleListenMute,
+                            icon: _listenMuted
+                                ? Icons.volume_off_rounded
+                                : Icons.volume_up_rounded,
+                            color: _listenMuted
+                                ? Colors.redAccent
+                                : Colors.white70,
+                            tooltip: 'كتم صوت الغرفة',
                           ),
-                          IconButton(
-                            onPressed: _toggleRoomMic,
-                            icon: Icon(
-                              _micMuted
-                                  ? Icons.mic_off_rounded
-                                  : Icons.mic_rounded,
-                              color: _isOnSeat
-                                  ? Colors.amberAccent
-                                  : Colors.white38,
-                            ),
+                          _NativeRoomCircleButton(
+                            onTap: _toggleRoomMic,
+                            icon: _micMuted
+                                ? Icons.mic_off_rounded
+                                : Icons.mic_rounded,
+                            color: _isOnSeat
+                                ? _nativeRoomGreen
+                                : Colors.white38,
+                            tooltip: 'الميكروفون',
                           ),
                           SizedBox(
                             width: _comboActive ? 116 : 72,
@@ -5794,9 +5894,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                     height: 62,
                                     alignment: Alignment.center,
                                     decoration: BoxDecoration(
-                                      color: Colors.black26,
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(color: Colors.white12),
+                                      gradient: const LinearGradient(
+                                        begin: Alignment.topRight,
+                                        end: Alignment.bottomLeft,
+                                        colors: [
+                                          Color(0xFFF43F5E),
+                                          Color(0xFFF97316),
+                                          Color(0xFFFBBF24),
+                                        ],
+                                      ),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Color(0x66FDE68A),
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x66F97316),
+                                          blurRadius: 14,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
                                     ),
                                     child: Image.asset(
                                       'assets/saki_gift_box_icon.png',
@@ -5821,20 +5938,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            onPressed: _showRoomTools,
-                            icon: const Icon(
-                              Icons.grid_view_rounded,
-                              color: Colors.white,
-                            ),
+                          _NativeRoomCircleButton(
+                            onTap: _showRoomTools,
+                            icon: Icons.grid_view_rounded,
                             tooltip: 'أدوات الغرفة',
                           ),
-                          IconButton(
-                            onPressed: _showGamesSheet,
-                            icon: const Icon(
-                              Icons.sports_esports_rounded,
-                              color: Color(0xFFFFD166),
-                            ),
+                          _NativeRoomCircleButton(
+                            onTap: _showGamesSheet,
+                            icon: Icons.sports_esports_rounded,
+                            color: const Color(0xFFFFD166),
                             tooltip: 'ألعاب الغرفة',
                           ),
                         ],
