@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -122,7 +121,10 @@ class BuffetGameCatalogSheet extends StatelessWidget {
                 ),
                 _GameTile(
                   title: 'العجلة الدوارة',
-                  image: const _WheelCover(),
+                  image: Image.asset(
+                    'assets/games/wheel_game_cover.png',
+                    fit: BoxFit.cover,
+                  ),
                   onTap: () =>
                       _open(context, (_) => WheelGameSheet(roomId: roomId)),
                 ),
@@ -180,44 +182,6 @@ class _GameTile extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _WheelCover extends StatelessWidget {
-  const _WheelCover();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      gradient: RadialGradient(colors: [Color(0xFFE6C280), Color(0xFF7C4C24)]),
-    ),
-    child: CustomPaint(
-      painter: _MiniWheelPainter(),
-      child: const Center(child: Text('🎡', style: TextStyle(fontSize: 38))),
-    ),
-  );
-}
-
-class _MiniWheelPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final paint = Paint()
-      ..color = const Color(0xFF5C3716)
-      ..strokeWidth = 3;
-    for (var i = 0; i < 8; i++) {
-      final angle = i * math.pi / 4;
-      canvas.drawLine(
-        center -
-            Offset(math.cos(angle) * size.width, math.sin(angle) * size.height),
-        center +
-            Offset(math.cos(angle) * size.width, math.sin(angle) * size.height),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class BuffetGameSheet extends StatefulWidget {
