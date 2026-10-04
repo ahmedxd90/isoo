@@ -343,7 +343,7 @@
                 </button>
 
                 <!-- Apps/Games Grid Icon -->
-                <button onclick="showToast('قائمة التطبيقات والألعاب')" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition">
+                <button onclick="RoomBridge.postMessage(JSON.stringify({type:'apps'}))" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition">
                     <i class="fa-solid fa-border-all text-xs"></i>
                 </button>
 
@@ -638,9 +638,10 @@
         const speaking = !!seat.speaking;
         const frame = (occupied ? 'bg-black/20 ' : '') + (speaking ? 'speaking-ripple ' : '') + 'w-10 h-10 rounded-full seat-frame flex items-center justify-center relative ' + (locked ? 'border-red-400' : '');
         const avatar = occupied && seat.avatar ? '<img data-user-id="' + escapeHtml(seat.userId || '') + '" src="' + escapeHtml(seat.avatar) + '" class="w-full h-full rounded-full object-cover border-2 border-emerald-400">' : '';
+        const activeEmoji = occupied && seat.emoji ? '<img src="' + escapeHtml(seat.emoji) + '" class="absolute inset-0 z-10 w-full h-full rounded-full object-cover pointer-events-none drop-shadow-[0_0_6px_rgba(255,255,255,.9)]">' : '';
         const icon = locked && !occupied ? '<i class="fa-solid fa-lock text-red-300 text-sm"></i>' : (avatar ? '' : '<i class="fa-solid fa-couch text-white/80 text-sm"></i>');
         const label = occupied ? escapeHtml(seat.name || 'عضو') : (locked ? 'مقعد مقفول' : String(seat.no));
-        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + '</div><span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">' + label + '</span></div>';
+        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + activeEmoji + '</div><span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">' + label + '</span></div>';
       }).join('');
       container.querySelectorAll('[data-user-id]').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); bridge('user',{userId:el.dataset.userId}); }; });
     }
@@ -653,6 +654,7 @@
     const stream = document.getElementById('chatStream');
     if (!stream || !Array.isArray(messages)) return;
     stream.innerHTML = '';
+    window.__playedGiftIds = window.__playedGiftIds || new Set();
     messages.slice(-80).forEach(function (m) {
       const wrap = document.createElement('div');
       wrap.dataset.nativeMessage = '1';
@@ -660,13 +662,27 @@
       const name = escapeHtml(m.name || 'عضو');
       const body = escapeHtml(m.body || '');
       const avatar = m.avatar ? '<img data-user-id="' + escapeHtml(m.id || '') + '" src="' + escapeHtml(m.avatar) + '" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">' : '';
-      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + '</div>';
+      const payload = m.payload || {};
+      const isGift = m.type === 'gift';
+      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && payload.icon ? ' <img src="' + escapeHtml(payload.icon) + '" class="inline-block w-7 h-7 object-contain align-middle">' : '') + '</div>';
       const image = wrap.querySelector('[data-user-id]');
       if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
       stream.appendChild(wrap);
+      if (isGift && m.messageId && !window.__playedGiftIds.has(String(m.messageId))) {
+        window.__playedGiftIds.add(String(m.messageId));
+        playGiftOverlay(payload);
+      }
     });
     stream.scrollTop = stream.scrollHeight;
   };
+  function playGiftOverlay(p) {
+    const area = document.getElementById('giftAnimationArea'); if (!area) return;
+    const src = p.media_url || p.icon || p.thumbnail_url; if (!src) return;
+    const thumb=document.createElement('img'); thumb.src=p.thumbnail_url || p.icon || src; thumb.className='absolute w-16 h-16 object-contain z-50 transition-all duration-[4000ms] ease-in-out'; thumb.style.left='50%'; thumb.style.top='48%'; area.appendChild(thumb);
+    const target=document.querySelector('[data-user-id="'+escapeHtml(p.recipient_id || '')+'"]');
+    setTimeout(function(){ if(target){ const r=target.getBoundingClientRect(), a=area.getBoundingClientRect(); thumb.style.left=(r.left-a.left+r.width/2-32)+'px'; thumb.style.top=(r.top-a.top+r.height/2-32)+'px'; } }, 80);
+    setTimeout(function(){thumb.remove();}, Math.max(5000, Number(p.duration_seconds||5)*1000));
+  }
   window.handleSeatClick = function (seat) { const item=(window.__roomSeats||[]).find(function(x){return x.no===seat;})||{}; bridge('seat', {seat: seat, occupiedUserId: item.userId || null}); };
   window.handleMessageSubmit = function (e) { e.preventDefault(); const i=document.getElementById('chatInput'); const t=i.value.trim(); if(t){ bridge('message',{body:t}); i.value=''; } };
   window.toggleMic = function () { bridge('mic', {}); };

@@ -2196,6 +2196,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
   StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
   late final Stream<List<Map<String, dynamic>>> _messageStream;
+  StreamSubscription<List<Map<String, dynamic>>>? _roomMessageSubscription;
   late final Stream<List<Map<String, dynamic>>> _membersStream;
   late final _NoopRoomBroadcastChannel _roomChatChannel;
   DateTime? _chatClearedAt;
@@ -2362,6 +2363,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
     });
     _messageStream = _service.roomMessagesStream(_roomId, after: _roomOpenedAt);
+    _roomMessageSubscription = _messageStream.listen(_handleRoomMessages);
     _membersStream = _service.roomMembersStream(_roomId);
     _service.roomEmojis().then((items) {
       if (mounted) {
@@ -2380,6 +2382,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     ) {
       if (events.isEmpty) return;
       final event = events.last;
+      final eventId = event['id']?.toString();
+      if (eventId != null && !_seenAnimatedEmojiMessages.add(eventId)) {
+        return;
+      }
       final userId = event['user_id']?.toString();
       final emojiId = event['emoji_id']?.toString();
       if (userId == null || emojiId == null) return;
@@ -2506,6 +2512,31 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return bag['status'] == 'open' && expires != null && expires.isAfter(now);
     }).toList();
     if (mounted) setState(() => _luckBags = visible);
+  }
+
+  void _handleRoomMessages(List<Map<String, dynamic>> rows) {
+    for (final row in rows) {
+      final type = (row['message_type'] ?? row['type'])?.toString();
+      if (type != 'emoji' && type != 'game') continue;
+      final id = row['id']?.toString();
+      final senderId = row['sender_id']?.toString();
+      final payload = row['payload'];
+      if (id == null || senderId == null || payload is! Map) continue;
+      if (!_seenAnimatedEmojiMessages.add(id)) continue;
+      final emoji = Map<String, dynamic>.from(payload);
+      if (emoji['asset_path'] != null || emoji['gif_url'] != null) {
+        _activateSeatEmoji(senderId, emoji);
+      }
+    }
+    final gift = rows.lastWhere(
+      (row) => (row['message_type'] ?? row['type'])?.toString() == 'gift',
+      orElse: () => const <String, dynamic>{},
+    );
+    if (gift.isEmpty || !mounted) return;
+    final id = gift['id']?.toString();
+    if (id == null || id.isEmpty || id == _shownGiftMessageId) return;
+    _shownGiftMessageId = id;
+    setState(() => _activeGiftMessage = gift);
   }
 
   int _numericUid(String value) {
@@ -2739,7 +2770,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             'name': gift['name'],
             'media_url': gift['media_url'],
             'media_type': gift['media_type'],
-            'duration_seconds': 10,
+            'duration_seconds': 5,
             'category': gift['category'],
             'recipient_id': recipientId,
             'flying_banner': false,
@@ -2840,7 +2871,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           'name': gift['name'],
           'media_url': gift['media_url'],
           'media_type': gift['media_type'],
-          'duration_seconds': 10,
+          'duration_seconds': 5,
           'category': gift['category'],
           'recipient_id': recipient,
           'flying_banner': false,
@@ -4123,7 +4154,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (mounted) {
       setState(() => _activeSeatEmojis[userId] = emoji);
     }
-    _roomEmojiTimers[userId] = Timer(const Duration(seconds: 5), () {
+    _roomEmojiTimers[userId] = Timer(const Duration(milliseconds: 3500), () {
       if (mounted) {
         setState(() => _activeSeatEmojis.remove(userId));
       }
@@ -4614,7 +4645,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF3D0B12),
+      backgroundColor: Colors.white,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -4673,13 +4704,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              backgroundColor: Colors.white12,
-              child: Icon(icon, color: Colors.amberAccent),
+              backgroundColor: const Color(0xFFFFF3E0),
+              child: Icon(icon, color: const Color(0xFFE67E22)),
             ),
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              style: const TextStyle(color: Color(0xFF374151), fontSize: 11),
             ),
           ],
         ),
@@ -5058,6 +5089,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         RoomSessionController.instance.isSameRoom(_roomId) &&
         RoomSessionController.instance.engine == _engine;
     _message.dispose();
+    _roomMessageSubscription?.cancel();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
     _seatLocksSubscription?.cancel();
@@ -5092,43 +5124,60 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return HtmlRoomView(
-      room: {...widget.room, 'gold_total': _roomGoldTotal},
-      seatStream: _seatStream,
-      lockStream: _seatLocksStream,
-      messageStream: _messageStream,
-      membersStream: _membersStream,
-      onSeatTap: (payload) {
-        final seat = (payload['seat'] as num?)?.toInt();
-        if (seat == null) return;
-        final userId = payload['user_id']?.toString();
-        _seatAction(
-          seat,
-          userId == null ? null : <String, dynamic>{'user_id': userId},
-        );
-      },
-      onMessage: (body) {
-        _message.text = body;
-        unawaited(_send());
-      },
-      onMic: _toggleRoomMic,
-      onSpeaker: _toggleListenMute,
-      onEmoji: _showEmojiPanel,
-      onGift: _showGiftPanel,
-      onGiftRanking: () => showRoomGiftRanking(
-        context,
-        _service,
-        _roomId,
-        (profile) => _showUserCard(profile),
-      ),
-      onMenu: () => unawaited(_confirmExit()),
-      onOnline: _showOnline,
-      onRoomInfo: _showRoomInfo,
-      onUserTap: (userId) async {
-        final profile = await _service.userProfile(userId);
-        if (profile != null && mounted) _showUserCard(profile);
-      },
-      onExit: () => unawaited(_confirmExit()),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        HtmlRoomView(
+          room: {
+            ...widget.room,
+            'gold_total': _roomGoldTotal,
+            'seatEmojis': _activeSeatEmojis,
+          },
+          seatStream: _seatStream,
+          lockStream: _seatLocksStream,
+          messageStream: _messageStream,
+          membersStream: _membersStream,
+          onSeatTap: (payload) {
+            final seat = (payload['seat'] as num?)?.toInt();
+            if (seat == null) return;
+            final userId = payload['user_id']?.toString();
+            _seatAction(
+              seat,
+              userId == null ? null : <String, dynamic>{'user_id': userId},
+            );
+          },
+          onMessage: (body) {
+            _message.text = body;
+            unawaited(_send());
+          },
+          onMic: _toggleRoomMic,
+          onSpeaker: _toggleListenMute,
+          onEmoji: _showEmojiPanel,
+          onGift: _showGiftPanel,
+          onGiftRanking: () => showRoomGiftRanking(
+            context,
+            _service,
+            _roomId,
+            (profile) => _showUserCard(profile),
+          ),
+          onApps: _showRoomTools,
+          onMenu: () => unawaited(_confirmExit()),
+          onOnline: _showOnline,
+          onRoomInfo: _showRoomInfo,
+          onUserTap: (userId) async {
+            final profile = await _service.userProfile(userId);
+            if (profile != null && mounted) _showUserCard(profile);
+          },
+          onExit: () => unawaited(_confirmExit()),
+        ),
+        if (_activeGiftMessage != null)
+          GiftFullScreenOverlay(
+            message: _activeGiftMessage!,
+            onClose: () {
+              if (mounted) setState(() => _activeGiftMessage = null);
+            },
+          ),
+      ],
     );
   }
 }
@@ -5281,13 +5330,24 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
-  String get _type => (_payload['media_type']?.toString() ?? '').toLowerCase();
+  String get _type {
+    final raw = (_payload['media_type']?.toString() ?? '').toLowerCase();
+    if (raw.contains('svga')) return 'svga';
+    if (raw.contains('mp4') || raw.contains('video')) return 'mp4';
+    if (raw.contains('gif')) return 'gif';
+    return raw;
+  }
 
   bool get _rich => _type == 'svga' || _type == 'mp4' || _type == 'gif';
 
   String? get _mediaUrl {
     final value = _payload['media_url']?.toString();
-    return value != null && value.startsWith('http') ? value : null;
+    if (value != null &&
+        (value.startsWith('http') || value.startsWith('assets/'))) {
+      return value;
+    }
+    final fallback = _payload['icon']?.toString();
+    return fallback != null && fallback.startsWith('assets/') ? fallback : null;
   }
 
   @override
@@ -5301,6 +5361,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   }
 
   void _startRichGift() {
+    _richTimer = Timer(const Duration(seconds: 5), _close);
     final url = _mediaUrl;
     if (url == null) {
       _useThumbnailFallback();
@@ -5309,11 +5370,12 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     if (_type == 'gif') {
       // Flutter animates a GIF through Image.network. A safe upper bound is
       // used because the ImageProvider does not expose the GIF duration.
-      _richTimer = Timer(const Duration(seconds: 6), _close);
       return;
     }
     if (_type == 'mp4') {
-      final video = VideoPlayerController.networkUrl(Uri.parse(url));
+      final video = url.startsWith('assets/')
+          ? VideoPlayerController.asset(url)
+          : VideoPlayerController.networkUrl(Uri.parse(url));
       _video = video;
       video
           .initialize()
@@ -5331,8 +5393,10 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
       });
       return;
     }
-    SVGAParser.shared
-        .decodeFromURL(url)
+    final decoded = url.startsWith('assets/')
+        ? SVGAParser.shared.decodeFromAssets(url)
+        : SVGAParser.shared.decodeFromURL(url);
+    decoded
         .then((movie) {
           if (!mounted) return;
           _svga.videoItem = movie;
@@ -5468,18 +5532,19 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         ),
       );
     } else if (_type == 'gif') {
-      media = Center(
-        child: Image.network(
-          url,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) _useThumbnailFallback();
-            });
-            return _thumbnail(130);
-          },
-        ),
-      );
+      final image = url.startsWith('assets/')
+          ? Image.asset(url, fit: BoxFit.contain)
+          : Image.network(
+              url,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _useThumbnailFallback();
+                });
+                return _thumbnail(130);
+              },
+            );
+      media = Center(child: image);
     } else {
       media = Center(child: _thumbnail(130));
     }

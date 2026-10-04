@@ -18,6 +18,7 @@ class HtmlRoomView extends StatefulWidget {
     required this.onEmoji,
     required this.onGift,
     required this.onGiftRanking,
+    required this.onApps,
     required this.onMenu,
     required this.onOnline,
     required this.onRoomInfo,
@@ -37,6 +38,7 @@ class HtmlRoomView extends StatefulWidget {
   final VoidCallback onEmoji;
   final VoidCallback onGift;
   final VoidCallback onGiftRanking;
+  final VoidCallback onApps;
   final VoidCallback onMenu;
   final VoidCallback onOnline;
   final VoidCallback onRoomInfo;
@@ -92,6 +94,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
               widget.onGift();
             case 'giftRanking':
               widget.onGiftRanking();
+            case 'apps':
+              widget.onApps();
             case 'menu':
               widget.onMenu();
             case 'online':
@@ -148,6 +152,11 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
         'speaking': row?['is_speaking'] == true,
         'name': map['username'] ?? map['display_name'] ?? 'عضو',
         'avatar': map['avatar_url'],
+        'emoji': _emojiSource(
+          (widget.room['seatEmojis'] is Map)
+              ? (widget.room['seatEmojis'] as Map)[row?['user_id']?.toString()]
+              : null,
+        ),
       });
     }
     final messages = _messages.map((row) {
@@ -157,11 +166,14 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
           : const {};
       return {
         'id': map['id'],
+        'messageId': row['id'],
         'name': map['username'] ?? 'عضو',
         'avatar': map['avatar_url'],
         'vip': map['vip_level'] ?? 0,
         'wealth': map['wealth_level'] ?? 0,
         'body': row['body'] ?? '',
+        'type': row['message_type'] ?? row['type'] ?? 'chat',
+        'payload': row['payload'] is Map ? row['payload'] : const {},
       };
     }).toList();
     final members = _members
@@ -177,10 +189,28 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       'goldTotal': widget.room['gold_total'] ?? 0,
       'members': members,
       'seats': seats,
+      'seatEmojis': widget.room['seatEmojis'] ?? const {},
     };
     _run(
       'renderRoomData(${jsonEncode(data)});renderRoomMessages(${jsonEncode(messages)});',
     );
+  }
+
+  String? _emojiSource(dynamic value) {
+    if (value is String && value.isNotEmpty) return value;
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value);
+      for (final key in const [
+        'asset_path',
+        'gif_url',
+        'media_url',
+        'thumbnail_url',
+      ]) {
+        final source = map[key]?.toString();
+        if (source != null && source.isNotEmpty) return source;
+      }
+    }
+    return null;
   }
 
   @override
