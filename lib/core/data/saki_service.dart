@@ -3047,6 +3047,7 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> wheelGetRound(String roomId) async {
+    await client.rpc('ensure_room_membership', params: {'p_room_id': roomId});
     final result = await client.rpc(
       'saki_wheel_current_round',
       params: {'p_room_id': roomId},
