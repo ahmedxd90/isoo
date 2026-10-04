@@ -684,7 +684,8 @@ body {
     gap: 4px;
     margin-top: 5px;
 }
-    </style>
+    .gifts-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+</style>
 </head>
 <body>
 
@@ -705,9 +706,7 @@ body {
             <div class="icon-glass" id="reportBtn" style="display:none;" onclick="openReportModal()"><i class="fas fa-exclamation-triangle" style="color: #ff4444;"></i></div>
 
             <div class="icon-glass" onclick="toggleMusicWidget()"><i class="fas fa-music"></i></div>
-            <div class="icon-glass" onclick="callAndroid('openNotifications')"><i class="far fa-bell"></i><div class="notif-dot"></div></div>
 
-            <div class="icon-glass" id="settingsBtn" onclick="openModal('settingsModal')"><i class="fas fa-ellipsis-v"></i></div>
         </div>
     </div>
 
@@ -791,7 +790,7 @@ body {
             </div>
             <div class="stat-item"><b id="followingCount">340</b> <span>يتابع</span></div>
 
-            <div class="stat-item" id="visitorStatItem"><b id="visitorsCount">85.2k</b> <span id="visitorsLabel">زائر</span></div>
+            
 
             <div class="stat-item" id="statLevelItem" style="display:flex; flex-direction:column; align-items:center;">
                 <b id="levelNum">LV.50</b>
@@ -800,20 +799,15 @@ body {
             </div>
         </div>
 
-        <div class="nobles-section" id="visitorsSection" style="display:none;">
+        <div class="nobles-section" id="visitorsSection" style="display:none !important;">
             <div class="nobles-header"><b>👥 الزوار</b><span onclick="openVisitorsModal()">المزيد</span></div>
 
             <div class="nobles-list" id="visitorsPreviewList">
             </div>
         </div>
 
-        <div class="tags-row" id="tagsContainer">
-            <div class="magic-tag tag-gradient"><i class="fas fa-gem"></i> Alight Star</div>
-            <div class="magic-tag" id="tagStatus">❤️ مرتبط</div>
-            <div class="magic-tag" id="tagCountry">🇸🇦 السعودية</div>
-        </div>
 
-        <div class="toolbar-container" id="toolbarSection">
+        <div class="toolbar-container" id="toolbarSection" style="display:none;">
             <div class="toolbar-scroll">
                 <div class="tool-box" onclick="callAndroid('openWallet')"><div class="tool-icon-circle t-wallet"><i class="fas fa-wallet"></i></div><span>محفظة</span></div>
                 <div class="tool-box" onclick="callAndroid('openVIP')"><div class="tool-icon-circle t-vip"><i class="fas fa-crown"></i></div><span>VIP</span></div>
@@ -835,18 +829,21 @@ body {
 
         <div class="tabs-sticky">
             <div class="tabs-container">
-                <div class="tab-item active" onclick="switchTab(0, this)">المنشورات</div>
-                <div class="tab-item" onclick="switchTab(2, this)">المعرض</div>
+                <div class="tab-item active" onclick="switchTab(0, this)">معلومات المستخدم</div>
+                <div class="tab-item" onclick="switchTab(1, this)">اللحظات</div>
+                <div class="tab-item" onclick="switchTab(2, this)">الأوسمة</div>
+                <div class="tab-item" onclick="switchTab(3, this)">الهدايا</div>
             </div>
         </div>
 
         <div id="tab-0" class="content-section active">
+            <div class="nobles-section" style="display:block;"><div class="nobles-header"><b>معلومات المستخدم</b></div><p id="profileInfoText" style="color:var(--text-sec);line-height:1.8;margin:0;"></p></div>
+            <div id="profileBadgesInfo" class="nobles-section" style="display:block;"><div class="nobles-header"><b>الألقاب والتعريفات</b></div><div id="badgesContainer" class="nobles-list" style="flex-wrap:wrap;"></div></div>
         </div>
 
-        <div id="tab-2" class="content-section">
-            <div id="galleryGrid" class="gallery-grid">
-            </div>
-        </div>
+        <div id="tab-1" class="content-section"><div id="postsContainer"></div></div>
+        <div id="tab-2" class="content-section"><div id="profileBadgesGrid" class="gallery-grid"></div></div>
+        <div id="tab-3" class="content-section"><div id="receivedGiftsGrid" class="gifts-grid"></div></div>
 
         <div class="floating-bar" id="floatingBar">
         </div>
@@ -1422,8 +1419,9 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
                 if(data.followers) document.getElementById('followersCount').innerText = data.followers;
                 if(data.following) document.getElementById('followingCount').innerText = data.following;
                 if(data.visitors) document.getElementById('visitorsCount').innerText = data.visitors;
-                if(data.received) document.querySelector('#ownerLevelDisplay .received-value').innerText = data.received;
-                if(data.level) document.getElementById('levelNum').innerText = "LV." + data.level;
+                if(typeof data.received !== 'undefined') document.querySelector('#ownerLevelDisplay .received-value').innerText = data.received + ' ذهب';
+                var info = document.getElementById('profileInfoText'); if (info) info.innerText = 'مستوى الثروة: LV.' + (data.level || 0) + '  •  الذهب المستلم: ' + (data.received || 0);
+                if(typeof data.level !== 'undefined') { document.getElementById('levelNum').innerText = "LV." + (data.level || 0); document.getElementById('xpText').innerText = data.wealthTitle || 'مستوى الثروة'; }
                   if(data.gender) window.userGender = data.gender;
                if (typeof data.musicLink !== 'undefined') {
                    window.userMusic = data.musicLink; // حفظه ليظهر في خانة التعديل
@@ -1454,8 +1452,6 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
                     }
                 }
 
-                if(data.status) document.getElementById('tagStatus').innerText = data.status;
-                if(data.country) document.getElementById('tagCountry').innerText = data.country;
                 if(data.bio) document.getElementById('displayBio').innerHTML = data.bio;
 
                 if(typeof data.isOwner !== 'undefined') {
@@ -1532,6 +1528,18 @@ function stopMusicFromAndroid() {
         if (musicDisc) musicDisc.classList.remove('playing');
     }
 }
+    function setReceivedGifts(jsonString) {
+      const grid = document.getElementById('receivedGiftsGrid'); if (!grid) return;
+      const gifts = JSON.parse(jsonString || '[]'); grid.innerHTML = '';
+      if (!gifts.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-sec);padding:25px">لا توجد هدايا مستلمة</div>'; return; }
+      gifts.forEach(g => { grid.innerHTML += `<div class="gift-card"><img class="gift-img" src="${g.icon || 'file:///android_asset/icon_room.webp'}" onerror="this.src='file:///android_asset/icon_room.webp'"><span class="gift-name">${g.name || 'هدية'}</span><span class="gift-price">${g.price || 0} ذهب × ${g.received_count || 0}</span></div>`; });
+    }
+    function setProfileBadges(jsonString) {
+      const data = JSON.parse(jsonString || '[]');
+      const targets = [document.getElementById('profileBadgesGrid'), document.getElementById('badgesContainer')];
+      targets.forEach(grid => { if (!grid) return; grid.innerHTML = ''; if (!data.length) { grid.innerHTML = '<div style="color:var(--text-sec);padding:15px">لا توجد أوسمة</div>'; return; } data.forEach(b => { const image = b.image_url || b.icon || b.media_url || ''; grid.innerHTML += `<div class="magic-tag" style="margin:4px">${image ? `<img src="${image}" style="width:32px;height:32px;object-fit:contain">` : '<i class="fas fa-award"></i>'} ${b.title || b.name || b.label || 'وسام'}</div>`; }); });
+    }
+
     function addPost(postJson) {
         try {
             const post = JSON.parse(postJson);
@@ -1539,7 +1547,7 @@ function stopMusicFromAndroid() {
             // منع تكرار المنشور إذا كان موجوداً مسبقاً
             if (document.getElementById('post_' + post.id)) { return; }
 
-            const container = document.getElementById('tab-0');
+            const container = document.getElementById('postsContainer');
             const postDiv = document.createElement('div');
             postDiv.className = 'post-card';
             postDiv.id = 'post_' + post.id;
@@ -1970,7 +1978,7 @@ function applyProfileLogic() {
 
             // إظهار أقسام المالك الخاصة
             if(visitorsSection) visitorsSection.style.display = 'block';
-            if(toolbarSection) toolbarSection.style.display = 'block';
+            if(toolbarSection) toolbarSection.style.display = 'none';
 
             // أيقونات الهيدر
             if(reportBtn) reportBtn.style.display = 'none'; // المالك لا يبلغ عن نفسه
@@ -1979,7 +1987,7 @@ function applyProfileLogic() {
             // [مهم جداً]: الزر العائم للمالك
             // أضفنا id="ownerAddPostBtn" لكي نتحكم في إخفائه عند تغيير التبويب
             floatingBar.innerHTML = `
-                <button id="ownerAddPostBtn" class="main-action-btn" style="width:100%; justify-content:center;" onclick="openModal('addPostModal')">
+                <button id="ownerAddPostBtn" class="main-action-btn" style="width:100%; justify-content:center;" onclick="switchTab(1, document.querySelectorAll('.tab-item')[1]); openModal('addPostModal')">
                     <i class="fas fa-plus-circle"></i> إضافة منشور جديد
                 </button>
             `;
@@ -2030,86 +2038,13 @@ function applyProfileLogic() {
 
     // 1. تعديل دالة التبديل (تم إلغاء الهدايا منها)
         function switchTab(index, btn) {
-            // تفعيل التبويب بصرياً
             document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
-
-            // التبويب رقم 1 كان للهدايا، سنلغيه أو نتجاهله، ونركز على المعرض (رقم 2)
-            // لنفترض أن المعرض هو التبويب الأخير
-            document.getElementById('tab-' + index).classList.add('active');
-            btn.classList.add('active');
-
+            const tab = document.getElementById('tab-' + index);
+            if (tab) tab.classList.add('active');
+            if (btn) btn.classList.add('active');
             const addBtn = document.getElementById('ownerAddPostBtn');
-
-            if (index === 0) {
-                // --- تبويب المنشورات ---
-                if (addBtn) addBtn.style.display = 'flex'; // إظهار زر الإضافة للمالك
-
-            } else if (index === 2) {
-                // --- تبويب المعرض ---
-                if (addBtn) addBtn.style.display = 'none'; // إخفاء زر الإضافة
-
-                // طلب الصور من الأندرويد
-                // نقوم بإظهار أيقونة تحميل مؤقتة
-                document.getElementById('galleryGrid').innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-sec);"><i class="fas fa-circle-notch fa-spin"></i> جاري جلب الصور...</div>';
-
-                callAndroid('getUserGallery', profileID);
-            }
-        }
-
-        // 2. دالة استقبال قائمة الصور وعرضها
-        // سيتم استدعاؤها من الأندرويد: setGalleryImages('["url1", "url2", ...]')
-        function setGalleryImages(jsonArray) {
-            try {
-                const images = JSON.parse(jsonArray);
-                const container = document.getElementById('galleryGrid');
-                container.innerHTML = ''; // مسح المحتوى المؤقت
-
-                if (images.length === 0) {
-                    container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:20px; color:var(--text-sec);">لا توجد صور لعرضها 📷</div>';
-                    return;
-                }
-
-                // توليد الصور
-                images.forEach(imgUrl => {
-                    // تخطي الروابط الفارغة
-                    if(!imgUrl || imgUrl.trim() === "") return;
-
-                    const img = document.createElement('img');
-                    img.src = imgUrl;
-                    img.className = 'gallery-img';
-                    // عند الضغط، نفتح الصورة مكبرة
-                    img.onclick = function() { openFullImage(imgUrl); };
-
-                    container.appendChild(img);
-                });
-
-            } catch (e) {
-                console.error("Error setting gallery", e);
-            }
-        }
-
-        // 3. دالة بسيطة لفتح الصورة بحجم كامل (مودال سريع)
-        function openFullImage(url) {
-            // نستخدم نفس فكرة المودال لكن بصورة فقط
-            const modalHtml = `
-                <div id="imgViewerModal" class="modal-overlay open" onclick="closeImgViewer(event)" style="background:rgba(0,0,0,0.95); display:flex; align-items:center;">
-                    <img src="${url}" style="max-width:100%; max-height:100%; margin:auto; box-shadow:0 0 20px rgba(0,0,0,0.5); border-radius:5px;">
-                    <div style="position:absolute; top:20px; right:20px; color:#fff; font-size:2rem; cursor:pointer;">&times;</div>
-                </div>
-            `;
-
-            // إضافة المودال للجسم مؤقتاً
-            const div = document.createElement('div');
-            div.innerHTML = modalHtml;
-            document.body.appendChild(div.firstElementChild);
-        }
-
-        // دالة إغلاق مستعراض الصور
-        function closeImgViewer(e) {
-            // عند الضغط، نحذف العنصر تماماً من الصفحة
-            const viewer = document.getElementById('imgViewerModal');
-            if (viewer) viewer.remove();
+            if (addBtn) addBtn.style.display = index === 1 ? 'flex' : 'none';
         }
 
 function openModal(id) {

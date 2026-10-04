@@ -273,6 +273,31 @@ class _UserProfilePageState extends State<UserProfilePage> {
     detailsController.dispose();
   }
 
+  Future<void> _toggleProfilePostLike(String postId, bool newlyLiked) async {
+    await SakiService.instance.togglePostLike(postId, !newlyLiked);
+  }
+
+  Future<List<Map<String, dynamic>>> _profilePostComments(String postId) async {
+    final rows = await SakiService.instance.comments(postId);
+    return rows.map((row) {
+      final profile = row['profiles'] is Map
+          ? Map<String, dynamic>.from(row['profiles'] as Map)
+          : const <String, dynamic>{};
+      return {
+        'comment_id': row['id'],
+        'user_id': row['user_id'],
+        'username': profile['username'] ?? 'مستخدم SAKI',
+        'comment_imguser': profile['avatar_url'] ?? '',
+        'comment_text': row['content'] ?? '',
+        'timestamp': row['created_at'] ?? '',
+      };
+    }).toList();
+  }
+
+  Future<void> _addProfileComment(String postId, String content) async {
+    await SakiService.instance.addComment(postId, content);
+  }
+
   String _privateChatErrorDetails(Object error, StackTrace stackTrace) {
     final authUser = SakiService.instance.currentUser;
     final lines = <String>[
@@ -381,7 +406,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
       'followers': _stats['followers'] ?? profile['followers_count'] ?? 0,
       'following': _stats['following'] ?? profile['following_count'] ?? 0,
       'visitors': _stats['visitors'] ?? profile['visitors_count'] ?? 0,
-      'level': profile['level'] ?? profile['level_number'] ?? 0,
+      'level':
+          profile['wealth_level'] ??
+          profile['level'] ??
+          profile['level_number'] ??
+          0,
+      'wealthTitle': profile['wealth_title'] ?? 'مستوى الثروة',
+      'received': _gifts.fold<int>(
+        0,
+        (sum, gift) => sum + ((gift['received_value'] as num?)?.toInt() ?? 0),
+      ),
       'isOwner': isSelf,
       'isFollowing': _following,
       'isVip': activeVipLevel(profile) > 0,
@@ -405,10 +439,30 @@ class _UserProfilePageState extends State<UserProfilePage> {
         'text': item['text'] ?? item['content'] ?? '',
         'avatar': item['avatar'] ?? author['avatar_url'] ?? avatar ?? '',
         'username': item['username'] ?? author['username'] ?? username,
-        'image': item['image'] ?? item['image_url'],
-        'likes': item['likes'] ?? 0,
+        'user':
+            item['user'] ??
+            author['display_name'] ??
+            author['username'] ??
+            username,
+        'time': item['time'] ?? item['created_at'] ?? '',
+        'image': item['image'] ?? item['image_url'] ?? _firstPostImage(item),
+        'likes': item['_likes_count'] ?? item['likes'] ?? 0,
+        'comments': item['_comments_count'] ?? item['comments'] ?? 0,
+        'liked': item['_liked'] == true,
       };
     }).toList();
+    final htmlBadges = <Map<String, dynamic>>[
+      ..._badges,
+      if (activeVipLevel(profile) > 0)
+        {
+          'name': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
+          'title': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
+          'icon': 'assets/vip/title_vip${activeVipLevel(profile)}.png',
+        },
+      if ((profile['wealth_level'] as num?)?.toInt() case final wealth?
+          when wealth > 0)
+        {'name': 'مستوى الثروة LV.$wealth', 'title': 'مستوى الثروة LV.$wealth'},
+    ];
     final viewer = <String, dynamic>{
       'id': SakiService.instance.currentUser?.id ?? '',
       'name': SakiService.instance.currentUser?.userMetadata?['username'] ?? '',
@@ -418,6 +472,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return HtmlProfileView(
       data: htmlProfile,
       posts: htmlPosts,
+      gifts: _gifts,
+      badges: htmlBadges,
       viewer: viewer,
       onBack: () => Navigator.maybePop(context),
       onFollow: _toggleFollow,
@@ -430,7 +486,21 @@ class _UserProfilePageState extends State<UserProfilePage> {
           MaterialPageRoute(builder: (_) => UserProfilePage(userId: id)),
         );
       },
+      onLikePost: _toggleProfilePostLike,
+      onGetComments: _profilePostComments,
+      onSendComment: _addProfileComment,
     );
+  }
+
+  String? _firstPostImage(Map<String, dynamic> post) {
+    final media = post['_media'];
+    if (media is List && media.isNotEmpty && media.first is Map) {
+      final path = (media.first as Map)['storage_path']?.toString();
+      if (path != null && path.isNotEmpty) {
+        return SakiService.instance.postMediaUrl(path);
+      }
+    }
+    return null;
   }
 }
 
