@@ -210,6 +210,8 @@
         }
         .btn-follow { background: #7C4DFF; color: #fff; }
         .btn-msg { background: #2A2A35; color: #fff; }
+        .role-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:12px; background:rgba(255,255,255,.10); color:#fff; font-size:.72rem; font-weight:800; }
+        .role-badge img { width:25px; height:25px; object-fit:contain; }
 
     </style>
 </head>
@@ -281,7 +283,7 @@
         document.getElementById('userGender').innerText = (data.gender || '') + (data.age ? ' ' + data.age : '');
         document.getElementById('userCountry').innerText = data.countryIcon || '🌍';
         const badges = document.getElementById('badgesContainer'); badges.innerHTML = '';
-        if (data.isVip) badges.innerHTML += '<div class="badge b-vip"><i class="fas fa-crown"></i> ' + (data.vipTitle || ('VIP ' + (data.vipLevel || ''))) + '</div>';
+        renderRoleBadges(data.roleBadges || []);
         const frame = document.getElementById('frameSvga');
         if (frame && data.frame) { frame.style.display = 'block'; frame.style.backgroundImage = 'url("' + data.frame + '")'; frame.style.backgroundSize = 'contain'; frame.style.backgroundPosition = 'center'; frame.style.backgroundRepeat = 'no-repeat'; }
         if (data.wealthLevel) badges.innerHTML += '<div class="badge b-wealth"><i class="fas fa-gem"></i> ثروة Lv.' + data.wealthLevel + '</div>';
@@ -294,6 +296,16 @@
         follow.innerHTML = data.followingMe ? '<i class="fas fa-user-check"></i> متابَع' : '<i class="fas fa-user-plus"></i> متابعة';
         follow.style.background = data.followingMe ? '#55506f' : '#7C4DFF';
     };
+    function renderRoleBadges(items) {
+        const host = document.getElementById('badgesContainer'); if (!host) return;
+        host.innerHTML = '';
+        (items || []).forEach(item => {
+            let src = item.asset || '';
+            if (src.startsWith('assets/')) src = 'file:///android_asset/flutter_assets/' + src;
+            const fallback = item.fallback && item.fallback.startsWith('assets/') ? 'file:///android_asset/flutter_assets/' + item.fallback : 'file:///android_asset/icon_room.webp';
+            host.innerHTML += `<div class="role-badge"><img src="${src}" onerror="this.src='${fallback}'"><span>${item.name || ''}</span></div>`;
+        });
+    }
     function callAndroid(functionName) { bridge(functionName, {userId: window.currentUserId || ''}); }
     window.currentUserId = '';
     document.getElementById('userAvatar').onclick = () => callAndroid('openMainProfile');

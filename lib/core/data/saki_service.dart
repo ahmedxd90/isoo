@@ -1959,7 +1959,7 @@ class SakiService {
           final profilesFuture = client
               .from('profiles')
               .select(
-                'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin',
+                'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin,admin_role',
               )
               .inFilter('id', userIds);
           final inventoryFuture = client

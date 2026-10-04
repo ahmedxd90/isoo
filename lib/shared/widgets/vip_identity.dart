@@ -44,6 +44,53 @@ int activeVipLevel(Map<String, dynamic> profile) {
       : 0;
 }
 
+List<Map<String, dynamic>> profileRoleBadges(
+  Map<String, dynamic> profile, {
+  Map<String, dynamic> modules = const {},
+}) {
+  final merged = <String, dynamic>{...profile, ...modules};
+  final result = <Map<String, dynamic>>[];
+  final vip = activeVipLevel(merged);
+  if (vip > 0) {
+    result.add({
+      'key': 'vip',
+      'name': merged['vip_label'] ?? 'VIP $vip',
+      'asset': 'assets/vip/title_vip$vip.png',
+    });
+  }
+  final wealth = (merged['wealth_level'] as num?)?.toInt() ?? 0;
+  if (wealth > 0) {
+    result.add({
+      'key': 'wealth',
+      'name': merged['wealth_title'] ?? 'مستوى الثروة LV.$wealth',
+      'asset': 'assets/trace_profile/images/ic_tab_profile_level.png',
+    });
+  }
+  if (merged['is_super_admin'] == true ||
+      merged['admin_role']?.toString().toLowerCase() == 'super_admin') {
+    result.add({
+      'key': 'super_admin',
+      'name': 'سوبر أدمن',
+      'asset': 'assets/badges/super_admin.png',
+    });
+  } else if (merged['admin_role']?.toString().trim().isNotEmpty == true) {
+    result.add({
+      'key': 'admin',
+      'name': merged['admin_role'],
+      'asset': 'assets/saki_super_admin_badge.png',
+    });
+  }
+  if (merged['is_shipping_agent'] == true || merged['shipping_agent'] == true) {
+    result.add({
+      'key': 'shipping_agent',
+      'name': 'وكيل شحن',
+      'asset': 'assets/badges/wakeel.svga',
+      'fallback': 'assets/rooms/official_badge.png',
+    });
+  }
+  return result;
+}
+
 class VipNameText extends StatefulWidget {
   const VipNameText({
     super.key,

@@ -1408,10 +1408,24 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
             return filename.split('.').pop().toLowerCase();
         }
 
+        function renderRoleBadges(items) {
+            const row = document.getElementById('nameBadgesRow');
+            if (!row) return;
+            row.innerHTML = '';
+            (items || []).forEach(item => {
+                let src = item.asset || '';
+                if (src.startsWith('assets/')) src = 'file:///android_asset/flutter_assets/' + src;
+                const fallback = item.fallback && item.fallback.startsWith('assets/') ? 'file:///android_asset/flutter_assets/' + item.fallback : 'file:///android_asset/icon_room.webp';
+                row.innerHTML += `<span class="magic-tag tag-gradient" style="display:inline-flex;align-items:center;gap:5px"><img src="${src}" onerror="this.src='${fallback}'" style="height:28px;width:28px;object-fit:contain"><span>${item.name || ''}</span></span>`;
+            });
+            row.style.display = items && items.length ? 'flex' : 'none';
+        }
+
         function updateProfileData(jsonString) {
             try {
                 const data = JSON.parse(jsonString);
                 renderCommunityBars(data.communityBars || {}, data);
+                renderRoleBadges(data.roleBadges || []);
 
                 if(data.id) {
                     document.getElementById('displayID').innerText = data.saki_id || data.id;
@@ -1531,6 +1545,7 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
                 if (badgeWakelImg && showWakelBadge) badgeWakelImg.style.display = 'inline-block';
                 if (badgeCashImg && showCashBadge) badgeCashImg.style.display = 'inline-block';
                 if (badgeRow) badgeRow.style.display = (showVipBadge || showHostBadge || showWakelBadge || showCashBadge) ? 'flex' : 'none';
+                renderRoleBadges(data.roleBadges || []);
             } catch(e) {
                 console.error("Error parsing profile data: ", e);
             }

@@ -3397,6 +3397,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final chatMuted = moderation['mute_chat'] == true;
     final banned = moderation['banned'] == true;
     final vip = activeVipLevel({...profile, ...modules});
+    final roleBadges = profileRoleBadges({
+      ...profile,
+      'is_shipping_agent': isShippingAgent,
+    }, modules: modules);
     final followers = profile['followers_count'] ?? profile['followers'] ?? 0;
     final followingCount =
         profile['following_count'] ?? profile['following'] ?? 0;
@@ -3427,6 +3431,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'followingMe': following,
       'isSelf': userId == _service.uid,
       'vipTitle': modules['vip_label'] ?? profile['vip_label'] ?? 'VIP $vip',
+      'roleBadges': roleBadges,
       'frame': frameProduct?['thumbnail_url'] ?? frameProduct?['media_url'],
     };
     await showModalBottomSheet<void>(

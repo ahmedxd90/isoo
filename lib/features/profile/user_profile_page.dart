@@ -430,6 +430,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       'frame': profile['active_frame_url'],
       'vipTitle': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
       'communityBars': _communityBars,
+      'roleBadges': profileRoleBadges(profile),
     };
     final htmlPosts = _posts.map((post) {
       final item = <String, dynamic>{...post};
