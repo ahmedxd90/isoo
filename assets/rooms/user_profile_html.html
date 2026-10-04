@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Room Mini Profile</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+
+    <style>
+        @font-face {
+            font-family: 'Cairo';
+            src: url('fonts/Cairo-Regular.ttf');
+            font-weight: 400;
+        }
+        @font-face {
+            font-family: 'Cairo';
+            src: url('fonts/Cairo-Bold.ttf');
+            font-weight: 700;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 1. خلفية شفافة بالكامل لنرى الغرفة */
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: transparent;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 100vh;
+            overflow: hidden;
+            -webkit-user-select: none;
+        }
+
+        /* 2. مساحة الإغلاق العلوية الشفافة */
+        .close-area {
+            flex: 1;
+            width: 100%;
+            background: transparent;
+        }
+
+        /* 3. البطاقة السفلية الداكنة */
+        .bottom-sheet {
+            background-color: #16151A; /* نفس لون صورتك تقريباً */
+            width: 100%;
+            border-radius: 35px 35px 0 0;
+            position: relative;
+            padding: 55px 20px 25px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* زر الـ 3 نقاط */
+        .more-btn {
+            position: absolute;
+            top: 25px;
+            left: 20px;
+            width: 35px;
+            height: 35px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ccc;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        /* ========================================= */
+        /* منطقة الصورة والـ SVGA (السر هنا)         */
+        /* ========================================= */
+        .avatar-wrapper {
+            position: absolute;
+            top: -45px; /* بروز الصورة للأعلى */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 90px;
+            z-index: 20;
+            cursor: pointer;
+        }
+
+        /* خلفية SVGA (arab_kings.svga) */
+        .svga-bg {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px !important; /* حجم ثابت يمنع التمدد العشوائي */
+            height: 200px !important;
+            z-index: 1; /* خلف الصورة */
+            pointer-events: none;
+        }
+
+        /* الصورة الشخصية الدائرية */
+        .avatar-img {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #16151A; /* نفس لون البطاقة لتندمج بسلاسة */
+            z-index: 5; /* فوق الـ SVGA الخلفي */
+        }
+
+        /* إطار SVGA الأمامي (إن وجد) */
+        .svga-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 130px !important;
+            height: 130px !important;
+            z-index: 10; /* فوق الصورة */
+            pointer-events: none;
+            display: none; /* مخفي افتراضياً */
+        }
+
+        /* ========================================= */
+        /* النصوص والأوسمة                           */
+        /* ========================================= */
+        .user-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .user-details {
+            font-size: 0.8rem;
+            color: #999;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .badges-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 25px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .b-vip { background: #FF9800; color: #000; }
+        .b-wealth { background: #00C853; }
+        .b-active { background: #AA00FF; }
+
+        /* ========================================= */
+        /* الإحصائيات والأزرار                       */
+        /* ========================================= */
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0 10px;
+            margin-bottom: 25px;
+        }
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+        .stat-val { font-size: 1.2rem; font-weight: 700; color: #fff; display: block; margin-bottom: 2px; }
+        .stat-lbl { font-size: 0.75rem; color: #888; }
+
+        .buttons-row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 0;
+            border-radius: 25px;
+            border: none;
+            font-family: 'Cairo';
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-follow { background: #7C4DFF; color: #fff; }
+        .btn-msg { background: #2A2A35; color: #fff; }
+
+    </style>
+</head>
+<body>
+
+<div class="close-area" onclick="callAndroid('closeMiniProfile')"></div>
+
+<div class="bottom-sheet">
+
+    <div class="more-btn" onclick="callAndroid('openMoreMenu')"><i class="fas fa-ellipsis-v"></i></div>
+
+    <div class="avatar-wrapper" onclick="callAndroid('openMainProfile')">
+        <div id="bgSvga" class="svga-bg"></div>
+
+        <img id="userAvatar" src="https://placehold.co/100" class="avatar-img">
+
+        <div id="frameSvga" class="svga-frame"></div>
+    </div>
+
+    <div class="user-name" id="userName">جاري التحميل...</div>
+    <div class="user-details">
+        <span id="userCountry">🇱🇧</span> <span>|</span>
+        <span id="userGender">♀ 18</span> <span>|</span>
+        <span id="userId">UID: --------</span>
+    </div>
+
+    <div class="badges-row" id="badgesContainer">
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-item">
+            <span class="stat-val" id="visitorsCount">0</span>
+            <span class="stat-lbl">الزوار</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-val" id="followersCount">0</span>
+            <span class="stat-lbl">المتابعين</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-val" id="followingCount">0</span>
+            <span class="stat-lbl">يتابع</span>
+        </div>
+    </div>
+
+    <div class="buttons-row">
+        <button class="btn btn-msg" onclick="callAndroid('openPrivateChat')"><i class="fas fa-comment-dots"></i> رسالة</button>
+        <button class="btn btn-follow" id="followBtn" onclick="callAndroid('toggleFollow')"><i class="fas fa-user-plus"></i> متابعة</button>
+    </div>
+
+</div>
+
+<script>
+    var currentUserId = "";
+    var playerBg = null;
+    var playerFrame = null;
+    var parser = new SVGA.Parser();
+
+    const bridge = (type, payload) => {
+        if (window.UserProfileBridge && window.UserProfileBridge.postMessage) {
+            window.UserProfileBridge.postMessage(JSON.stringify({type, ...(payload || {})}));
+        }
+    };
+    window.renderProfile = function(data) {
+        data = data || {};
+        document.getElementById('userName').innerText = data.name || 'مستخدم SAKI';
+        document.getElementById('userId').innerText = 'UID: ' + (data.id || '');
+        document.getElementById('userAvatar').src = data.avatar || '';
+        document.getElementById('visitorsCount').innerText = data.visitors || '0';
+        document.getElementById('followersCount').innerText = data.followers || '0';
+        document.getElementById('followingCount').innerText = data.following || '0';
+        document.getElementById('userGender').innerText = (data.gender || '') + (data.age ? ' ' + data.age : '');
+        document.getElementById('userCountry').innerText = data.countryIcon || '🌍';
+        const badges = document.getElementById('badgesContainer'); badges.innerHTML = '';
+        if (data.isVip) badges.innerHTML += '<div class="badge b-vip"><i class="fas fa-crown"></i> VIP ' + (data.vipLevel || '') + '</div>';
+        if (data.wealthLevel) badges.innerHTML += '<div class="badge b-wealth"><i class="fas fa-gem"></i> ثروة Lv.' + data.wealthLevel + '</div>';
+        if (data.activeLevel) badges.innerHTML += '<div class="badge b-active"><i class="fas fa-star"></i> رائج Lv.' + data.activeLevel + '</div>';
+        const follow = document.getElementById('followBtn');
+        follow.innerHTML = data.followingMe ? '<i class="fas fa-user-check"></i> متابَع' : '<i class="fas fa-user-plus"></i> متابعة';
+        follow.style.background = data.followingMe ? '#55506f' : '#7C4DFF';
+    };
+    function callAndroid(functionName) { bridge(functionName, {userId: window.currentUserId || ''}); }
+    window.currentUserId = '';
+    document.getElementById('userAvatar').onclick = () => callAndroid('openMainProfile');
+    document.querySelector('.close-area').onclick = () => bridge('closeMiniProfile', {});
+    document.querySelector('.more-btn').onclick = () => callAndroid('openMoreMenu');
+    document.getElementById('followBtn').onclick = () => callAndroid('toggleFollow');
+    document.querySelector('.btn-msg').onclick = () => callAndroid('openPrivateChat');
+    window.renderProfileData = function(data) { window.currentUserId = data.id || ''; window.renderProfile(data); };
+    bridge('ready', {});
+</script>
+</body>
+</html>

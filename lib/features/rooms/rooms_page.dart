@@ -28,6 +28,7 @@ import 'room_combo_button.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'room_global_gift_banner.dart';
 import 'html_room_view.dart';
+import 'html_user_profile_view.dart';
 import 'luck_bag_widgets.dart';
 import 'buffet_game_sheet.dart';
 import '../profile/store_pages.dart';
@@ -3407,6 +3408,80 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
 
     if (!mounted) return;
+    final htmlData = <String, dynamic>{
+      'id': userId,
+      'name': username,
+      'avatar': profile['avatar_url'] ?? profile['avatar'],
+      'countryIcon': countryFlag,
+      'gender': gender,
+      'age': profile['age'],
+      'followers': followers,
+      'following': followingCount,
+      'visitors': visitors,
+      'isVip': vip > 0,
+      'vipLevel': vip,
+      'wealthLevel': modules['wealth_level'] ?? profile['wealth_level'] ?? 0,
+      'activeLevel': modules['active_level'] ?? profile['active_level'] ?? 0,
+      'followingMe': following,
+    };
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      builder: (_) => SizedBox(
+        height: MediaQuery.sizeOf(context).height * .72,
+        child: HtmlUserProfileView(
+          data: htmlData,
+          onClose: () => Navigator.of(context).pop(),
+          onFollow: () async {
+            await _service.toggleFollow(userId, following);
+            if (mounted)
+              _messageSnack(following ? 'تم إلغاء المتابعة.' : 'تمت المتابعة.');
+          },
+          onMessage: () async {
+            Navigator.of(context).pop();
+            final conversationId = await _service.createConversation(userId);
+            if (!mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatPage(
+                  conversationId: conversationId,
+                  participant: profile,
+                ),
+              ),
+            );
+          },
+          onOpenProfile: () {
+            Navigator.of(context).pop();
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserProfilePage(userId: userId),
+              ),
+            );
+          },
+          onMore: () {
+            Navigator.of(context).pop();
+            _showRoomUserActions(
+              userId: userId,
+              username: username,
+              profile: profile,
+              canModerate: canModerate,
+              targetModerator: targetModerator,
+              voiceMuted: voiceMuted,
+              chatMuted: chatMuted,
+              banned: banned,
+              selfSeat: selfSeat,
+            );
+          },
+        ),
+      ),
+    );
+    return;
+
+    // Kept below as the complete native fallback implementation.
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -3558,6 +3633,105 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _showRoomUserActions({
+    required String userId,
+    required String username,
+    required Map<String, dynamic> profile,
+    required bool canModerate,
+    required bool targetModerator,
+    required bool voiceMuted,
+    required bool chatMuted,
+    required bool banned,
+    required bool selfSeat,
+  }) async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      builder: (sheetContext) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(
+                Icons.card_giftcard,
+                color: Colors.deepOrange,
+              ),
+              title: const Text('إرسال هدية'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showGiftPanel();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.flag, color: Colors.red),
+              title: const Text('إبلاغ عن المستخدم'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showRoomReportSheet(userId, username);
+              },
+            ),
+            if (canModerate) ...[
+              ListTile(
+                leading: const Icon(Icons.mic_off),
+                title: Text(voiceMuted ? 'إلغاء كتم الصوت' : 'كتم الصوت'),
+                onTap: () async {
+                  await (voiceMuted
+                      ? _service.roomUnmute(_roomId, userId, 'voice')
+                      : _service.roomMute(
+                          _roomId,
+                          userId,
+                          null,
+                          kind: 'voice',
+                        ));
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.chat_bubble_outline),
+                title: Text(chatMuted ? 'إلغاء كتم الدردشة' : 'كتم الدردشة'),
+                onTap: () async {
+                  await (chatMuted
+                      ? _service.roomUnmute(_roomId, userId, 'chat')
+                      : _service.roomMute(_roomId, userId, null, kind: 'chat'));
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings),
+                title: Text(targetModerator ? 'إزالة المشرف' : 'تعيين كمشرف'),
+                onTap: () async {
+                  await (targetModerator
+                      ? _service.removeRoomModerator(_roomId, userId)
+                      : _service.addRoomModerator(_roomId, userId));
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.block, color: Colors.red),
+                title: Text(banned ? 'إلغاء الحظر' : 'حظر المستخدم'),
+                onTap: () async {
+                  await (banned
+                      ? _service.removeRoomBan(_roomId, userId)
+                      : _service.roomBan(_roomId, userId, null));
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                },
+              ),
+            ],
+            if (selfSeat)
+              ListTile(
+                leading: const Icon(Icons.mic_off),
+                title: const Text('النزول من المقعد'),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await _leaveOwnSeat();
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
