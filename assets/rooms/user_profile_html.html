@@ -57,7 +57,10 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            animation: profileSheetUp .32s cubic-bezier(.2,.8,.2,1);
         }
+        @keyframes profileSheetUp { from { transform: translateY(100%); opacity:.5; } to { transform: translateY(0); opacity:1; } }
+        body.vip-theme .bottom-sheet { background: radial-gradient(circle at 50% 0%, rgba(34,70,120,.92), #111321 62%); border-top: 1px solid rgba(89,205,255,.7); box-shadow: 0 -12px 42px rgba(36,180,255,.25); }
 
         /* زر الـ 3 نقاط */
         .more-btn {
@@ -126,6 +129,8 @@
             pointer-events: none;
             display: none; /* مخفي افتراضياً */
         }
+        .vip-theme .avatar-wrapper { width: 104px; height: 104px; top: -52px; }
+        .vip-theme .svga-frame { width: 156px !important; height: 156px !important; }
 
         /* ========================================= */
         /* النصوص والأوسمة                           */
@@ -268,6 +273,7 @@
     };
     window.renderProfile = function(data) {
         data = data || {};
+        document.body.classList.toggle('vip-theme', !!data.isVip);
         document.getElementById('userName').innerText = data.name || 'مستخدم SAKI';
         document.getElementById('userId').innerText = 'ID: ' + (data.sakiId || data.id || '');
         document.getElementById('userAvatar').src = data.avatar || '';
