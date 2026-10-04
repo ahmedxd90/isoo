@@ -3046,6 +3046,48 @@ class SakiService {
     return Map<String, dynamic>.from(created);
   }
 
+  Future<Map<String, dynamic>> wheelGetRound(String roomId) async {
+    final result = await client.rpc(
+      'saki_wheel_current_round',
+      params: {'p_room_id': roomId},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<Map<String, dynamic>> wheelPlaceBet({
+    required String roomId,
+    required String foodKey,
+    required int amount,
+  }) async {
+    final result = await client.rpc(
+      'saki_wheel_place_bet',
+      params: {'p_room_id': roomId, 'p_food_key': foodKey, 'p_amount': amount},
+    );
+    final rows = result is List ? result : [result];
+    return rows.isEmpty
+        ? const <String, dynamic>{}
+        : Map<String, dynamic>.from(rows.first as Map);
+  }
+
+  Future<Map<String, dynamic>> wheelResolve({required int roundId}) async {
+    final result = await client.rpc(
+      'saki_wheel_resolve',
+      params: {'p_round_id': roundId},
+    );
+    return Map<String, dynamic>.from(result as Map);
+  }
+
+  Future<List<Map<String, dynamic>>> wheelHistory(String roomId) async {
+    final rows = await client
+        .from('saki_wheel_rounds')
+        .select('id,round_no,winning_food,status')
+        .eq('room_id', roomId)
+        .not('winning_food', 'is', null)
+        .order('id', ascending: false)
+        .limit(10);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<Map<String, dynamic>> buffetGetRound(String roomId) async {
     final result = await client.rpc(
       'saki_buffet_get_round',

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/custom_toast.dart';
+import 'wheel_game_sheet.dart';
 
 class BuffetFood {
   const BuffetFood(this.id, this.name, this.multiplier, this.emoji);
@@ -40,6 +42,19 @@ class BuffetGameCatalogSheet extends StatelessWidget {
   const BuffetGameCatalogSheet({super.key, required this.roomId});
   final String roomId;
 
+  void _open(BuildContext context, WidgetBuilder builder) {
+    Navigator.pop(context);
+    Future<void>.delayed(Duration.zero, () {
+      if (!context.mounted) return;
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: builder,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Container(
     constraints: BoxConstraints(
@@ -56,7 +71,7 @@ class BuffetGameCatalogSheet extends StatelessWidget {
     child: SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -83,96 +98,126 @@ class BuffetGameCatalogSheet extends StatelessWidget {
             const Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(
-                'ألعاب تفاعلية مرتبطة بالغرفة والرصيد الحقيقي',
+                'اختر لعبة وابدأ اللعب مع أعضاء الغرفة',
                 style: TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                Future<void>.delayed(Duration.zero, () {
-                  if (!context.mounted) return;
-                  showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (_) => BuffetGameSheet(roomId: roomId),
-                  );
-                });
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF17151B),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFFD7A94B),
-                    width: 1.5,
+            const SizedBox(height: 14),
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 4,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 8,
+              childAspectRatio: .72,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _GameTile(
+                  title: 'بوفيه الأطعمة',
+                  image: Image.asset(
+                    'assets/games/buffet_game_cover.png',
+                    fit: BoxFit.cover,
                   ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black38,
-                      blurRadius: 16,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
+                  onTap: () =>
+                      _open(context, (_) => BuffetGameSheet(roomId: roomId)),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child: Image.asset(
-                        'assets/games/buffet_game_cover.png',
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 13),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'لعبة بوفيه الأطعمة',
-                              style: TextStyle(
-                                color: Color(0xFFF4E5C1),
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFFC83B), Color(0xFFFF8C00)],
-                              ),
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                            child: const Text(
-                              'العب داخل الغرفة',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                _GameTile(
+                  title: 'العجلة الدوارة',
+                  image: const _WheelCover(),
+                  onTap: () =>
+                      _open(context, (_) => WheelGameSheet(roomId: roomId)),
                 ),
-              ),
+              ],
             ),
           ],
         ),
       ),
     ),
   );
+}
+
+class _GameTile extends StatelessWidget {
+  const _GameTile({
+    required this.title,
+    required this.image,
+    required this.onTap,
+  });
+  final String title;
+  final Widget image;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(14),
+    child: Column(
+      children: [
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFD7A94B), width: 1.2),
+              boxShadow: const [
+                BoxShadow(color: Colors.black45, blurRadius: 8),
+              ],
+            ),
+            child: image,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFFF4E5C1),
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _WheelCover extends StatelessWidget {
+  const _WheelCover();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      gradient: RadialGradient(colors: [Color(0xFFE6C280), Color(0xFF7C4C24)]),
+    ),
+    child: CustomPaint(
+      painter: _MiniWheelPainter(),
+      child: const Center(child: Text('🎡', style: TextStyle(fontSize: 38))),
+    ),
+  );
+}
+
+class _MiniWheelPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final paint = Paint()
+      ..color = const Color(0xFF5C3716)
+      ..strokeWidth = 3;
+    for (var i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      canvas.drawLine(
+        center -
+            Offset(math.cos(angle) * size.width, math.sin(angle) * size.height),
+        center +
+            Offset(math.cos(angle) * size.width, math.sin(angle) * size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class BuffetGameSheet extends StatefulWidget {
