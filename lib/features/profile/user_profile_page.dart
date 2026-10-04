@@ -42,6 +42,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _vehicles = [];
   List<Map<String, dynamic>> _badges = [];
+  Map<String, dynamic> _communityBars = {};
   String _countryFlag = '🌍';
   bool _following = false;
   bool _loading = true;
@@ -74,6 +75,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.isFollowing(widget.userId),
         SakiService.instance.userBadges(widget.userId),
         SakiService.instance.isShippingAgent(widget.userId),
+        SakiService.instance.profileCommunityBars(widget.userId),
       ]);
       if (!mounted) return;
       var countryFlag = '🌍';
@@ -142,6 +144,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _badges = results[7] is List
             ? List<Map<String, dynamic>>.from(results[7] as List)
             : [];
+        _communityBars = results[9] is Map
+            ? Map<String, dynamic>.from(results[9] as Map)
+            : {};
         _countryFlag = countryFlag;
       });
     } catch (error) {
@@ -424,6 +429,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           : '',
       'frame': profile['active_frame_url'],
       'vipTitle': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
+      'communityBars': _communityBars,
     };
     final htmlPosts = _posts.map((post) {
       final item = <String, dynamic>{...post};
@@ -451,28 +457,44 @@ class _UserProfilePageState extends State<UserProfilePage> {
         'liked': item['_liked'] == true,
       };
     }).toList();
-    final htmlBadges = <Map<String, dynamic>>[
-      ..._badges,
-      if (activeVipLevel(profile) > 0)
-        {
-          'name': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
-          'title': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
-          'icon': 'assets/vip/title_vip${activeVipLevel(profile)}.png',
-        },
-      if ((profile['wealth_level'] as num?)?.toInt() case final wealth?
-          when wealth > 0)
-        {'name': 'مستوى الثروة LV.$wealth', 'title': 'مستوى الثروة LV.$wealth'},
-    ];
     final viewer = <String, dynamic>{
       'id': SakiService.instance.currentUser?.id ?? '',
       'name': SakiService.instance.currentUser?.userMetadata?['username'] ?? '',
       'avatar':
           SakiService.instance.currentUser?.userMetadata?['avatar_url'] ?? '',
     };
+    final htmlGifts = _gifts.map((gift) {
+      final item = <String, dynamic>{...gift};
+      final icon = item['icon']?.toString();
+      if (icon != null && icon.startsWith('assets/')) {
+        item['icon'] = 'file:///android_asset/flutter_assets/$icon';
+      }
+      return item;
+    }).toList();
+    final htmlBadges = <Map<String, dynamic>>[
+      ..._badges.map((badge) {
+        final item = <String, dynamic>{...badge};
+        final icon = item['icon']?.toString() ?? item['image_url']?.toString();
+        if (icon != null && icon.startsWith('assets/')) {
+          item['icon'] = 'file:///android_asset/flutter_assets/$icon';
+        }
+        return item;
+      }),
+      if (activeVipLevel(profile) > 0)
+        {
+          'name': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
+          'title': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
+          'icon':
+              'file:///android_asset/flutter_assets/assets/vip/title_vip${activeVipLevel(profile)}.png',
+        },
+      if ((profile['wealth_level'] as num?)?.toInt() case final wealth?
+          when wealth > 0)
+        {'name': 'مستوى الثروة LV.$wealth', 'title': 'مستوى الثروة LV.$wealth'},
+    ];
     return HtmlProfileView(
       data: htmlProfile,
       posts: htmlPosts,
-      gifts: _gifts,
+      gifts: htmlGifts,
       badges: htmlBadges,
       viewer: viewer,
       onBack: () => Navigator.maybePop(context),

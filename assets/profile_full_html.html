@@ -345,6 +345,30 @@ body {
         }
         @keyframes shimmerBorder { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
 
+        .community-bars { display:flex; flex-direction:column; gap:10px; margin:14px 0 18px; }
+        .community-bar { min-height:68px; display:flex; align-items:center; gap:11px; padding:9px 12px; border-radius:17px; color:#fff; border:1px solid rgba(255,255,255,.25); box-shadow:0 8px 22px rgba(0,0,0,.2); position:relative; overflow:hidden; }
+        .community-bar::after { content:''; position:absolute; inset:0; background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.28) 48%,transparent 70%); background-size:220% 100%; animation:barShine 3.8s linear infinite; pointer-events:none; }
+        @keyframes barShine { from { background-position: -120% 0; } to { background-position: 120% 0; } }
+        .community-family { background:linear-gradient(110deg,#8a5a00,#ffd45a,#8b5d00); }
+        .community-agency { background:linear-gradient(110deg,#07528a,#18b8ff,#07528a); }
+        .community-love { background:linear-gradient(110deg,#8e1458,#ff4fa6,#8e1458); }
+        .community-avatar { width:45px; height:45px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.8); flex:none; position:relative; z-index:1; }
+        .community-icon { width:45px; height:45px; display:grid; place-items:center; font-size:1.45rem; position:relative; z-index:1; }
+        .community-copy { min-width:0; flex:1; position:relative; z-index:1; }
+        .community-title { font-weight:900; font-size:.92rem; }
+        .community-sub { font-size:.72rem; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .community-love-content { display:flex; align-items:center; gap:7px; position:relative; z-index:1; }
+        .community-love-content .community-avatar { width:38px; height:38px; }
+        .love-wave { font-size:1.1rem; animation:lovePulse 1.2s ease-in-out infinite; }
+        @keyframes lovePulse { 50% { transform:scale(1.25); filter:drop-shadow(0 0 7px #fff); } }
+        .fa, .fas, .far, .fab { font-family: sans-serif !important; font-style:normal; }
+        .fa-heart::before { content:'♡'; } .fa-comment::before,.fa-comment-dots::before { content:'▢'; }
+        .fa-copy::before { content:'⧉'; } .fa-user-plus::before { content:'＋'; } .fa-user-check::before { content:'✓'; }
+        .fa-share-square::before { content:'↗'; } .fa-trash::before,.fa-trash-alt::before { content:'♲'; }
+        .fa-edit::before { content:'✎'; } .fa-exclamation-circle::before { content:'!'; }
+        .fa-award::before { content:'✪'; } .fa-crown::before { content:'♛'; } .fa-gem::before { content:'◆'; }
+        .fa-coins::before { content:'●'; } .fa-store::before { content:'▣'; } .fa-gift::before { content:'🎁'; }
+
         .toolbar-scroll { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 8px; padding-bottom: 5px; }
         .toolbar-scroll::-webkit-scrollbar { display: none; }
         .tool-box { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; width: 100%; cursor: pointer; text-decoration: none; color: inherit; }
@@ -837,6 +861,7 @@ body {
         </div>
 
         <div id="tab-0" class="content-section active">
+            <div id="communityBars" class="community-bars"></div>
             <div class="nobles-section" style="display:block;"><div class="nobles-header"><b>معلومات المستخدم</b></div><p id="profileInfoText" style="color:var(--text-sec);line-height:1.8;margin:0;"></p></div>
             <div id="profileBadgesInfo" class="nobles-section" style="display:block;"><div class="nobles-header"><b>الألقاب والتعريفات</b></div><div id="badgesContainer" class="nobles-list" style="flex-wrap:wrap;"></div></div>
         </div>
@@ -1386,6 +1411,7 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
         function updateProfileData(jsonString) {
             try {
                 const data = JSON.parse(jsonString);
+                renderCommunityBars(data.communityBars || {}, data);
 
                 if(data.id) {
                     document.getElementById('displayID').innerText = data.saki_id || data.id;
@@ -1538,6 +1564,15 @@ function stopMusicFromAndroid() {
       const data = JSON.parse(jsonString || '[]');
       const targets = [document.getElementById('profileBadgesGrid'), document.getElementById('badgesContainer')];
       targets.forEach(grid => { if (!grid) return; grid.innerHTML = ''; if (!data.length) { grid.innerHTML = '<div style="color:var(--text-sec);padding:15px">لا توجد أوسمة</div>'; return; } data.forEach(b => { const image = b.image_url || b.icon || b.media_url || ''; grid.innerHTML += `<div class="magic-tag" style="margin:4px">${image ? `<img src="${image}" style="width:32px;height:32px;object-fit:contain">` : '<i class="fas fa-award"></i>'} ${b.title || b.name || b.label || 'وسام'}</div>`; }); });
+    }
+
+    function renderCommunityBars(data, profile) {
+      const host = document.getElementById('communityBars'); if (!host) return;
+      const bars = data || {}; host.innerHTML = '';
+      const family = bars.family, agency = bars.agency, love = bars.love;
+      if (family) host.innerHTML += `<div class="community-bar community-family"><div class="community-icon">👑</div><img class="community-avatar" src="${family.avatar_url || 'file:///android_asset/icon_room.webp'}" onerror="this.src='file:///android_asset/icon_room.webp'"><div class="community-copy"><div class="community-title">العائلة: ${family.name || family.family_alias || 'عائلة'}</div><div class="community-sub">${family.members_count || 0} منظم/عضو • المستوى ${family.level || 1}</div></div></div>`;
+      if (agency) host.innerHTML += `<div class="community-bar community-agency"><img class="community-avatar" src="${profile?.avatar || 'file:///android_asset/icon_room.webp'}" onerror="this.src='file:///android_asset/icon_room.webp'"><div class="community-copy"><div class="community-title">وكالة الشحن: ${agency.name || 'وكالة شحن'}</div><div class="community-sub">${profile?.name || 'المستخدم'} • ${agency.friends_count || 0} أصدقاء • ${agency.gold_coins || 0} عملة SAKI</div></div><div class="community-icon">🚚</div></div>`;
+      if (love && love.partner) { const partner = love.partner; host.innerHTML += `<div class="community-bar community-love"><div class="community-love-content"><img class="community-avatar" src="${profile?.avatar || 'file:///android_asset/icon_room.webp'}" onerror="this.src='file:///android_asset/icon_room.webp'"><span class="love-wave">💕</span><img class="community-avatar" src="${partner.avatar_url || 'file:///android_asset/icon_room.webp'}" onerror="this.src='file:///android_asset/icon_room.webp'"></div><div class="community-copy"><div class="community-title">CP وبيت الحب</div><div class="community-sub">${profile?.name || 'المستخدم'} ♥ ${partner.display_name || partner.username || 'الشريك'} • خاتم بيت الحب</div></div><div class="community-icon">💍</div></div>`; }
     }
 
     function addPost(postJson) {
@@ -2046,6 +2081,22 @@ function applyProfileLogic() {
             const addBtn = document.getElementById('ownerAddPostBtn');
             if (addBtn) addBtn.style.display = index === 1 ? 'flex' : 'none';
         }
+
+        let profileSwipeStartX = null;
+        document.addEventListener('touchstart', (event) => {
+            if (event.touches.length === 1) profileSwipeStartX = event.touches[0].clientX;
+        }, {passive:true});
+        document.addEventListener('touchend', (event) => {
+            if (profileSwipeStartX === null || !event.changedTouches.length) return;
+            const delta = event.changedTouches[0].clientX - profileSwipeStartX;
+            profileSwipeStartX = null;
+            if (Math.abs(delta) < 55) return;
+            const active = document.querySelector('.tab-item.active');
+            const current = active ? Array.from(document.querySelectorAll('.tab-item')).indexOf(active) : 0;
+            const next = Math.max(0, Math.min(3, current + (delta < 0 ? 1 : -1)));
+            const tabs = document.querySelectorAll('.tab-item');
+            if (next !== current) switchTab(next, tabs[next]);
+        }, {passive:true});
 
 function openModal(id) {
         const m = document.getElementById(id);

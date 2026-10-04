@@ -1163,6 +1163,87 @@ class SakiService {
     return row?['is_super_admin'] == true;
   }
 
+  Future<Map<String, dynamic>> profileCommunityBars(String userId) async {
+    final result = <String, dynamic>{};
+    try {
+      final family = await familyBadgeForUser(userId);
+      if (family != null) {
+        final familyId = family['id']?.toString();
+        var members = 0;
+        if (familyId != null) {
+          final rows = await client
+              .from('family_members')
+              .select('user_id')
+              .eq('family_id', familyId)
+              .eq('status', 'active')
+              .limit(500);
+          members = (rows as List).length;
+        }
+        result['family'] = {...family, 'members_count': members};
+      }
+    } catch (_) {}
+    try {
+      final rows = await client
+          .from('trace_agency_members')
+          .select('role,agency_id,trace_agencies:agency_id(id,name,owner_id)')
+          .eq('user_id', userId)
+          .eq('status', 'active')
+          .limit(1);
+      if (rows.isNotEmpty) {
+        final row = Map<String, dynamic>.from(rows.first);
+        final agency = row['trace_agencies'] is Map
+            ? Map<String, dynamic>.from(row['trace_agencies'] as Map)
+            : <String, dynamic>{};
+        final agencyId = row['agency_id']?.toString();
+        var friends = 0;
+        if (agencyId != null) {
+          final members = await client
+              .from('trace_agency_members')
+              .select('user_id')
+              .eq('agency_id', agencyId)
+              .eq('status', 'active')
+              .limit(500);
+          friends = (members as List).length;
+        }
+        final account = await client
+            .from('saki_account_modules')
+            .select('gold_coins')
+            .eq('user_id', userId)
+            .maybeSingle();
+        result['agency'] = {
+          ...agency,
+          'role': row['role'],
+          'friends_count': friends,
+          'gold_coins': account?['gold_coins'] ?? 0,
+        };
+      }
+    } catch (_) {}
+    try {
+      final relationships = await client
+          .from('love_relationships')
+          .select('id,user_a_id,user_b_id,started_at')
+          .or('user_a_id.eq.$userId,user_b_id.eq.$userId')
+          .isFilter('ended_at', null)
+          .limit(1);
+      if (relationships.isNotEmpty) {
+        final relationship = Map<String, dynamic>.from(relationships.first);
+        final partnerId = relationship['user_a_id'] == userId
+            ? relationship['user_b_id']
+            : relationship['user_a_id'];
+        final partner = await client
+            .from('profiles')
+            .select('id,username,display_name,avatar_url,saki_id')
+            .eq('id', partnerId)
+            .maybeSingle();
+        result['love'] = {
+          ...relationship,
+          'partner': partner ?? const <String, dynamic>{},
+        };
+      }
+    } catch (_) {}
+    return result;
+  }
+
   Future<Map<String, int>> userProfileStats(String userId) async {
     final followers = await client
         .from('follows')
