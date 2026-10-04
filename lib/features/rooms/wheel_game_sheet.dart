@@ -38,13 +38,14 @@ class _WheelGameSheetState extends State<WheelGameSheet>
   final _service = SakiService.instance;
   Timer? _poll;
   Timer? _clock;
-  late final AnimationController _spin = AnimationController(
+  late final AnimationController _flash = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 5000),
+    duration: const Duration(seconds: 5),
   );
   Map<String, dynamic>? _round;
   final Map<String, int> _myBets = {};
   List<Map<String, dynamic>> _history = [];
+  List<Map<String, dynamic>> _roundWinners = [];
   int _balance = 0;
   int _seconds = 0;
   int _bet = 100;
@@ -74,8 +75,6 @@ class _WheelGameSheetState extends State<WheelGameSheet>
 
   Future<void> _refresh() async {
     try {
-      // The round is the critical request. Wallet and history are auxiliary;
-      // one of them must not hide a valid betting round from the user.
       final next = await _service.wheelGetRound(widget.roomId);
       Map<String, dynamic> wallet = const {};
       List<Map<String, dynamic>> history = const [];
@@ -90,7 +89,8 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       if (changed) {
         _myBets.clear();
         _winner = null;
-        _spin.reset();
+        _roundWinners = [];
+        _flash.reset();
       }
       final winner = next['winning_food']?.toString();
       setState(() {
@@ -101,7 +101,7 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       });
       _errorShown = false;
       if (next['status'] == 'result' && winner != null) {
-        _spin.forward(from: 0);
+        _flash.forward(from: 0);
         _showResultOnce(next);
       }
       _tick();
@@ -133,7 +133,7 @@ class _WheelGameSheetState extends State<WheelGameSheet>
         await _refresh();
       }
     } catch (_) {
-      // Another participant may have resolved it; polling will sync it.
+      // Another player may resolve the same round; polling will synchronize it.
     } finally {
       _busy = false;
     }
@@ -153,6 +153,7 @@ class _WheelGameSheetState extends State<WheelGameSheet>
         _myBets[item.key] = (_myBets[item.key] ?? 0) + _bet;
         _balance = (result['gold_coins'] as num?)?.toInt() ?? _balance - _bet;
       });
+      _message('راهنت $_bet على ${item.name}');
     } catch (error) {
       if (mounted) _message(_friendly(error));
     } finally {
@@ -160,29 +161,51 @@ class _WheelGameSheetState extends State<WheelGameSheet>
     }
   }
 
-  void _showResultOnce(Map<String, dynamic> round) {
+  Future<void> _showResultOnce(Map<String, dynamic> round) async {
     final key = round['id']?.toString();
     if (key == null || key == _lastResultRound) return;
     _lastResultRound = key;
     final item = _wheelItems.where((x) => x.key == _winner).firstOrNull;
-    if (item == null || !mounted) return;
-    Future<void>.delayed(const Duration(milliseconds: 900), () {
-      if (!mounted) return;
-      final stake = _myBets[item.key] ?? 0;
-      final payout = stake * item.multiplier;
-      showDialog<void>(
-        context: context,
-        barrierColor: Colors.black.withValues(alpha: .72),
-        builder: (_) =>
-            _WheelResultDialog(item: item, stake: stake, payout: payout),
-      );
+    final id = int.tryParse(key);
+    if (item == null || id == null || !mounted) return;
+    try {
+      _roundWinners = await _service.wheelRoundLeaderboard(id);
+    } catch (_) {
+      _roundWinners = [];
+    }
+    if (!mounted) return;
+    setState(() {});
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+    final stake = _myBets[item.key] ?? 0;
+    final payout = stake * item.multiplier;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: .30),
+      builder: (_) => _WheelResultDialog(
+        item: item,
+        stake: stake,
+        payout: payout,
+        winners: _roundWinners,
+      ),
+    );
+    Future<void>.delayed(const Duration(seconds: 5), () {
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
     });
   }
 
   String _friendly(Object error) {
     final text = error.toString().replaceFirst('Exception: ', '');
-    if (text.contains('insufficient')) return 'رصيدك لا يكفي لهذا الرهان.';
-    if (text.contains('closed')) {
+    if (text.contains('insufficient')) {
+      return 'رصيدك من العملات الذهبية لا يكفي.';
+    }
+    if (text.contains('permission denied')) {
+      return 'صلاحيات اللعبة غير مفعلة. أعد فتح التطبيق بعد تحديث قاعدة البيانات.';
+    }
+    if (text.contains('closed') || text.contains('finished')) {
       return 'انتهى وقت الرهان، انتظر الجولة التالية.';
     }
     if (text.contains('not_room_member')) return 'يجب أن تكون عضواً في الغرفة.';
@@ -200,21 +223,26 @@ class _WheelGameSheetState extends State<WheelGameSheet>
   void dispose() {
     _poll?.cancel();
     _clock?.cancel();
-    _spin.dispose();
+    _flash.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF1A1A1A),
+      color: const Color(0xFF143B1E),
       child: SafeArea(
         child: Container(
           decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/games/saki_farm_wheel_background.png'),
+              fit: BoxFit.cover,
+              opacity: .28,
+            ),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF6A421F), Color(0xFF1A1009)],
+              colors: [Color(0xFF376D35), Color(0xFF132B17)],
             ),
           ),
           child: _loading
@@ -247,16 +275,24 @@ class _WheelGameSheetState extends State<WheelGameSheet>
             const SizedBox(width: 6),
             _circleButton(Icons.list_alt_rounded, _showHistory),
             const SizedBox(width: 6),
-            _circleButton(Icons.emoji_events_rounded, _showHistory),
+            _circleButton(Icons.emoji_events_rounded, _showLeaderboard),
           ],
+        ),
+        const Text(
+          'مزرعة ساكي',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         TextButton(
           onPressed: _showRules,
           style: TextButton.styleFrom(
-            backgroundColor: Colors.brown.shade700.withValues(alpha: .8),
+            backgroundColor: Colors.black45,
             foregroundColor: const Color(0xFFFFD59A),
           ),
-          child: const Text('قواعد اللعب'),
+          child: const Text('القواعد'),
         ),
       ],
     ),
@@ -269,9 +305,9 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: const Color(0xFF4B8BC5),
+        color: const Color(0xFF4B8F55),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB9E3FF), width: 2),
+        border: Border.all(color: const Color(0xFFFFD66B), width: 2),
         boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 6)],
       ),
       child: Icon(icon, color: Colors.white),
@@ -284,20 +320,27 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       return SingleChildScrollView(
         child: Column(
           children: [
-            Text(
-              'معرف الجولة: ${_round?['round_no'] ?? '-'}',
-              style: const TextStyle(
+            const Text(
+              'مزرعة ساكي',
+              style: TextStyle(
                 color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              'الجولة ${_round?['round_no'] ?? '-'}',
+              style: const TextStyle(
+                color: Colors.white70,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              _round?['status'] == 'result' ? 'ظهرت النتيجة' : 'حدد المرحلة',
-              style: TextStyle(
-                color: _round?['status'] == 'result'
-                    ? Colors.yellowAccent
-                    : Colors.amber.shade900,
+              _round?['status'] == 'result'
+                  ? 'النتيجة ظهرت'
+                  : 'اختر صنفاً وارهن قبل انتهاء العدّاد',
+              style: const TextStyle(
+                color: Colors.amberAccent,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -306,11 +349,13 @@ class _WheelGameSheetState extends State<WheelGameSheet>
               width: size,
               height: size + 18,
               child: AnimatedBuilder(
-                animation: _spin,
+                animation: _flash,
                 builder: (_, _) => _WheelBoard(
                   size: size,
-                  progress: _spin.value,
+                  flashProgress: _flash.value,
                   winner: _winner,
+                  seconds: _seconds,
+                  bets: _myBets,
                   onTap: _placeBet,
                 ),
               ),
@@ -324,8 +369,8 @@ class _WheelGameSheetState extends State<WheelGameSheet>
   Widget _bottomControls() => Container(
     padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
     decoration: const BoxDecoration(
-      gradient: LinearGradient(colors: [Color(0xFFD2944B), Color(0xFF995C21)]),
-      border: Border(top: BorderSide(color: Color(0xFF6B3E12), width: 5)),
+      gradient: LinearGradient(colors: [Color(0xFF86B24D), Color(0xFF3E6B2E)]),
+      border: Border(top: BorderSide(color: Color(0xFF244A20), width: 5)),
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 14)],
     ),
@@ -337,7 +382,7 @@ class _WheelGameSheetState extends State<WheelGameSheet>
             const Text(
               'الرهان',
               style: TextStyle(
-                color: Color(0xFF4A2912),
+                color: Colors.white,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -377,25 +422,20 @@ class _WheelGameSheetState extends State<WheelGameSheet>
     return InkWell(
       onTap: () => setState(() => _bet = amount),
       child: Container(
-        height: 49,
+        height: 45,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF8B5A2B), Color(0xFF5C3716)],
-          ),
+          color: active ? const Color(0xFFFFB938) : const Color(0xFF315A28),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: active ? Colors.greenAccent : const Color(0xFF3E240C),
-            width: active ? 2 : 1.5,
+            color: active ? Colors.white : Colors.black38,
+            width: active ? 2 : 1,
           ),
-          boxShadow: active
-              ? const [BoxShadow(color: Colors.greenAccent, blurRadius: 8)]
-              : null,
         ),
         child: Center(
           child: Text(
             amount >= 1000 ? '${amount ~/ 1000}K' : '$amount',
-            style: const TextStyle(
-              color: Color(0xFFFEF08A),
+            style: TextStyle(
+              color: active ? Colors.black : Colors.white,
               fontWeight: FontWeight.w900,
               fontSize: 12,
             ),
@@ -409,16 +449,15 @@ class _WheelGameSheetState extends State<WheelGameSheet>
     height: 34,
     padding: const EdgeInsets.symmetric(horizontal: 6),
     decoration: BoxDecoration(
-      color: const Color(0xFFDDB475),
+      color: Colors.white70,
       borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: const Color(0xFFB08040)),
     ),
     child: Row(
       children: [
         const Text(
           'النتائج',
           style: TextStyle(
-            color: Color(0xFF5C3716),
+            color: Color(0xFF244A20),
             fontWeight: FontWeight.bold,
             fontSize: 11,
           ),
@@ -434,7 +473,7 @@ class _WheelGameSheetState extends State<WheelGameSheet>
               final item = _wheelItems.where((x) => x.key == key).firstOrNull;
               return CircleAvatar(
                 radius: 12,
-                backgroundColor: Colors.white70,
+                backgroundColor: Colors.white,
                 child: Text(
                   item?.emoji ?? '•',
                   style: const TextStyle(fontSize: 13),
@@ -452,7 +491,6 @@ class _WheelGameSheetState extends State<WheelGameSheet>
     decoration: BoxDecoration(
       color: Colors.black45,
       borderRadius: BorderRadius.circular(99),
-      border: Border.all(color: Colors.black54),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -473,9 +511,9 @@ class _WheelGameSheetState extends State<WheelGameSheet>
   void _showRules() => showDialog<void>(
     context: context,
     builder: (_) => const AlertDialog(
-      title: Text('قواعد العجلة الدوارة'),
+      title: Text('طريقة مزرعة ساكي'),
       content: Text(
-        'اختر قيمة الرهان ثم اضغط على العنصر المطلوب قبل انتهاء العداد. يتم اختيار النتيجة من الخادم، وتضاف المكافأة تلقائياً إلى رصيدك.',
+        'العجلة ثابتة. لديك 30 ثانية لاختيار قيمة الرهان والصنف. بعد انتهاء العدّاد يومض إطار الأصناف 5 ثوانٍ، ثم تظهر النتيجة وتبدأ جولة جديدة.',
       ),
     ),
   );
@@ -506,29 +544,45 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       ],
     ),
   );
+
+  Future<void> _showLeaderboard() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _WheelLeaderboardSheet(service: _service),
+    );
+  }
 }
 
 class _WheelBoard extends StatelessWidget {
   const _WheelBoard({
     required this.size,
-    required this.progress,
+    required this.flashProgress,
     required this.winner,
+    required this.seconds,
+    required this.bets,
     required this.onTap,
   });
   final double size;
-  final double progress;
+  final double flashProgress;
   final String? winner;
+  final int seconds;
+  final Map<String, int> bets;
   final ValueChanged<WheelItem> onTap;
 
   @override
   Widget build(BuildContext context) {
     final center = size / 2;
     final radius = size * .39;
-    final spinAngle = progress * math.pi * 12;
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Positioned.fill(child: CustomPaint(painter: _WheelPainter())),
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _WheelPainter(flashProgress: flashProgress),
+          ),
+        ),
         Positioned(
           left: center - 60,
           top: center - 60,
@@ -538,7 +592,7 @@ class _WheelBoard extends StatelessWidget {
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(
-                colors: [Color(0xFFFFF5D1), Color(0xFFF7D273)],
+                colors: [Color(0xFFFFF5D1), Color(0xFF75B84A)],
               ),
               border: Border.fromBorderSide(
                 BorderSide(color: Color(0xFFD4A348), width: 6),
@@ -547,10 +601,10 @@ class _WheelBoard extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                progress > 0 ? 'جاري\nالسحب' : _timerText,
+                '$seconds\nثانية',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Color(0xFF92400E),
+                  color: Color(0xFF214C24),
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
@@ -558,21 +612,31 @@ class _WheelBoard extends StatelessWidget {
             ),
           ),
         ),
-        for (var i = 0; i < _wheelItems.length; i++)
-          _slot(i, center, radius, spinAngle),
+        for (var i = 0; i < _wheelItems.length; i++) _slot(i, center, radius),
       ],
     );
   }
 
-  String get _timerText => 'GO';
-
-  Widget _slot(int index, double center, double radius, double spinAngle) {
+  Widget _slot(int index, double center, double radius) {
     final item = _wheelItems[index];
-    final angle =
-        -math.pi / 2 + (index * 2 * math.pi / _wheelItems.length) + spinAngle;
+    final angle = -math.pi / 2 + (index * 2 * math.pi / _wheelItems.length);
     final x = center + math.cos(angle) * radius - 40;
     final y = center + math.sin(angle) * radius - 40;
     final isWinner = winner == item.key;
+    final isFlashing = flashProgress > 0;
+    final pulse = isFlashing
+        ? (math.sin(flashProgress * math.pi * 10 + index) + 1) / 2
+        : 0.0;
+    final borderColor = isWinner && flashProgress >= .98
+        ? Colors.white
+        : (isFlashing
+              ? HSVColor.fromAHSV(
+                  1,
+                  (index * 40 + flashProgress * 360) % 360,
+                  1,
+                  1,
+                ).toColor()
+              : const Color(0xFFEAB308));
     return Positioned(
       left: x,
       top: y,
@@ -587,21 +651,23 @@ class _WheelBoard extends StatelessWidget {
               colors: [Color(0xFFFFEBA8), Color(0xFFFCD34D)],
             ),
             border: Border.all(
-              color: isWinner ? Colors.white : const Color(0xFFEAB308),
-              width: isWinner ? 6 : 4,
+              color: borderColor,
+              width: isFlashing ? 4 + pulse * 4 : (isWinner ? 6 : 4),
             ),
             boxShadow: [
               BoxShadow(
-                color: isWinner ? Colors.yellowAccent : Colors.black38,
-                blurRadius: isWinner ? 22 : 7,
-                spreadRadius: isWinner ? 6 : 0,
+                color: isFlashing
+                    ? borderColor.withValues(alpha: .8)
+                    : Colors.black38,
+                blurRadius: isFlashing ? 8 + pulse * 14 : 7,
+                spreadRadius: isFlashing ? pulse * 3 : 0,
               ),
             ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(item.emoji, style: const TextStyle(fontSize: 31)),
+              Text(item.emoji, style: const TextStyle(fontSize: 30)),
               Text(
                 'x${item.multiplier}',
                 style: const TextStyle(
@@ -610,6 +676,15 @@ class _WheelBoard extends StatelessWidget {
                   fontSize: 11,
                 ),
               ),
+              if ((bets[item.key] ?? 0) > 0)
+                Text(
+                  '${bets[item.key]}',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
             ],
           ),
         ),
@@ -619,6 +694,9 @@ class _WheelBoard extends StatelessWidget {
 }
 
 class _WheelPainter extends CustomPainter {
+  const _WheelPainter({required this.flashProgress});
+  final double flashProgress;
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
@@ -628,7 +706,7 @@ class _WheelPainter extends CustomPainter {
       r,
       Paint()
         ..shader = const RadialGradient(
-          colors: [Color(0xFFE6C280), Color(0xFFB38540)],
+          colors: [Color(0xFFE6C280), Color(0xFF6D9B43)],
         ).createShader(Rect.fromCircle(center: center, radius: r)),
     );
     canvas.drawCircle(
@@ -650,10 +728,27 @@ class _WheelPainter extends CustomPainter {
         spoke,
       );
     }
+    if (flashProgress > 0) {
+      final ring = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..color = HSVColor.fromAHSV(
+          1,
+          flashProgress * 360 % 360,
+          .9,
+          1,
+        ).toColor();
+      canvas.drawCircle(
+        center,
+        r + 3 + math.sin(flashProgress * math.pi * 10) * 3,
+        ring,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WheelPainter oldDelegate) =>
+      oldDelegate.flashProgress != flashProgress;
 }
 
 class _WheelResultDialog extends StatelessWidget {
@@ -661,36 +756,36 @@ class _WheelResultDialog extends StatelessWidget {
     required this.item,
     required this.stake,
     required this.payout,
+    required this.winners,
   });
   final WheelItem item;
   final int stake;
   final int payout;
+  final List<Map<String, dynamic>> winners;
 
   @override
   Widget build(BuildContext context) => Dialog(
     backgroundColor: Colors.transparent,
     child: Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF1E3A8A)],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFF60A5FA), width: 4),
+        color: Colors.black.withValues(alpha: .70),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.amberAccent, width: 2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'النتيجة',
+            'نتيجة الجولة',
             style: TextStyle(
               color: Colors.amberAccent,
-              fontSize: 27,
+              fontSize: 24,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 12),
-          Text(item.emoji, style: const TextStyle(fontSize: 70)),
+          const SizedBox(height: 4),
+          Text(item.emoji, style: const TextStyle(fontSize: 64)),
           Text(
             item.name,
             style: const TextStyle(
@@ -700,28 +795,154 @@ class _WheelResultDialog extends StatelessWidget {
             ),
           ),
           Text(
-            'المضاعف x${item.multiplier}',
+            'رهانك: $stake   ربحك: $payout',
             style: const TextStyle(
-              color: Colors.amberAccent,
-              fontSize: 18,
+              color: Colors.greenAccent,
               fontWeight: FontWeight.w900,
             ),
           ),
-          if (stake > 0)
-            Text(
-              payout > 0 ? 'مبروك! ربحت $payout' : 'حظ أوفر في الجولة القادمة',
-              style: TextStyle(
-                color: payout > 0 ? Colors.greenAccent : Colors.white70,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          const SizedBox(height: 14),
-          FilledButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('حسناً'),
+          const SizedBox(height: 12),
+          const Text(
+            'أكثر 3 فائزين في الجولة',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          ...winners.map((row) => _WinnerRow(row: row)),
+          const SizedBox(height: 8),
+          const Text(
+            'تبدأ جولة جديدة تلقائياً',
+            style: TextStyle(color: Colors.white60, fontSize: 11),
           ),
         ],
       ),
+    ),
+  );
+}
+
+class _WinnerRow extends StatelessWidget {
+  const _WinnerRow({required this.row});
+  final Map<String, dynamic> row;
+  @override
+  Widget build(BuildContext context) => ListTile(
+    dense: true,
+    leading: CircleAvatar(
+      backgroundImage: (row['avatar_url']?.toString().isNotEmpty ?? false)
+          ? NetworkImage(row['avatar_url'].toString())
+          : null,
+      child: const Icon(Icons.person),
+    ),
+    title: Text(
+      row['username']?.toString() ?? 'مستخدم',
+      style: const TextStyle(color: Colors.white),
+    ),
+    trailing: Text(
+      '+${row['gold_won'] ?? 0}',
+      style: const TextStyle(
+        color: Colors.amberAccent,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
+  );
+}
+
+class _WheelLeaderboardSheet extends StatefulWidget {
+  const _WheelLeaderboardSheet({required this.service});
+  final SakiService service;
+  @override
+  State<_WheelLeaderboardSheet> createState() => _WheelLeaderboardSheetState();
+}
+
+class _WheelLeaderboardSheetState extends State<_WheelLeaderboardSheet> {
+  int _tab = 0;
+  late Future<List<Map<String, dynamic>>> _future;
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.service.wheelLeaderboard('daily');
+  }
+
+  void _changeTab(int tab) {
+    setState(() {
+      _tab = tab;
+      _future = widget.service.wheelLeaderboard(tab == 0 ? 'daily' : 'weekly');
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: MediaQuery.sizeOf(context).height * .78,
+    decoration: const BoxDecoration(
+      color: Color(0xFF16381E),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    child: Column(
+      children: [
+        const SizedBox(height: 10),
+        Container(
+          width: 48,
+          height: 5,
+          decoration: BoxDecoration(
+            color: Colors.white54,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'كأس مزرعة ساكي — أفضل 100 فائز',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 19,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ToggleButtons(
+          isSelected: [_tab == 0, _tab == 1],
+          onPressed: _changeTab,
+          children: const [
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 28),
+              child: Text('اليومي'),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 28),
+              child: Text('الأسبوعي'),
+            ),
+          ],
+        ),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Colors.amber),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'تعذر تحميل الترتيب',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                );
+              }
+              final rows = snapshot.data ?? [];
+              if (rows.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'لا توجد أرباح بعد',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                );
+              }
+              return ListView.builder(
+                itemCount: rows.length,
+                itemBuilder: (_, index) => _WinnerRow(row: rows[index]),
+              );
+            },
+          ),
+        ),
+      ],
     ),
   );
 }

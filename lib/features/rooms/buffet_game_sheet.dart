@@ -120,9 +120,9 @@ class BuffetGameCatalogSheet extends StatelessWidget {
                       _open(context, (_) => BuffetGameSheet(roomId: roomId)),
                 ),
                 _GameTile(
-                  title: 'العجلة الدوارة',
+                  title: 'مزرعة ساكي',
                   image: Image.asset(
-                    'assets/games/wheel_game_cover.png',
+                    'assets/games/saki_farm_cover.png',
                     fit: BoxFit.cover,
                   ),
                   onTap: () =>

@@ -3097,6 +3097,22 @@ class SakiService {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  Future<List<Map<String, dynamic>>> wheelRoundLeaderboard(int roundId) async {
+    final rows = await client.rpc(
+      'saki_wheel_round_leaderboard',
+      params: {'p_round_id': roundId, 'p_limit': 3},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<List<Map<String, dynamic>>> wheelLeaderboard(String period) async {
+    final rows = await client.rpc(
+      'saki_wheel_leaderboard',
+      params: {'p_period': period, 'p_limit': 100},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<Map<String, dynamic>> buffetGetRound(String roomId) async {
     final result = await client.rpc(
       'saki_buffet_get_round',
