@@ -1821,6 +1821,21 @@ class SakiService {
     await client.rpc('leave_room_seat', params: {'p_room_id': roomId});
   }
 
+  Future<void> setRoomSeatLocked(String roomId, int seatNo, bool locked) async {
+    await client.rpc(
+      'set_room_seat_locked',
+      params: {'p_room_id': roomId, 'p_seat_no': seatNo, 'p_locked': locked},
+    );
+  }
+
+  Stream<List<Map<String, dynamic>>> roomSeatLocksStream(String roomId) {
+    return client
+        .from('room_seat_locks')
+        .stream(primaryKey: ['room_id', 'seat_no'])
+        .eq('room_id', roomId)
+        .order('seat_no');
+  }
+
   Stream<List<Map<String, dynamic>>> roomMessagesStream(
     String roomId, {
     DateTime? after,

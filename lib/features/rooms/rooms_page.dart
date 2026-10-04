@@ -2190,6 +2190,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late final String _roomId = widget.room['id'] as String;
   late final DateTime _roomOpenedAt = DateTime.now().toUtc();
   late final Stream<List<Map<String, dynamic>>> _seatStream;
+  late final Stream<List<Map<String, dynamic>>> _seatLocksStream;
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
   StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
   late final Stream<List<Map<String, dynamic>>> _messageStream;
@@ -2221,6 +2222,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   List<Map<String, dynamic>> _roomMembers = [];
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _seatLocksSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _luckBagSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomBanSubscription;
@@ -2228,6 +2230,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final Map<String, Map<String, dynamic>> _activeSeatEmojis = {};
   final Set<String> _seenAnimatedEmojiMessages = <String>{};
   final Map<String, GlobalKey> _seatKeys = {};
+  final Set<int> _lockedSeatNos = <int>{};
   List<Map<String, dynamic>> _roomEmojis = [];
   int _roomGoldTotal = 0;
   Map<String, dynamic>? _entranceProfile;
@@ -2324,6 +2327,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (state == ProcessingState.completed) _handleMusicCompleted();
     });
     _seatStream = _service.roomSeatsStream(_roomId);
+    _seatLocksStream = _service.roomSeatLocksStream(_roomId);
+    _seatLocksSubscription = _seatLocksStream.listen((rows) {
+      if (!mounted) return;
+      setState(() {
+        _lockedSeatNos
+          ..clear()
+          ..addAll(
+            rows
+                .map((row) => (row['seat_no'] as num?)?.toInt())
+                .whereType<int>(),
+          );
+      });
+    });
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
     _liveThemeKey = widget.room['theme_key']?.toString() ?? 'default';
@@ -4626,39 +4642,117 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _seatAction(int seatNo, Map<String, dynamic>? occupied) async {
     if (_busy) return;
-    if (occupied != null && occupied['user_id'] != _service.uid) return;
     final take = occupied == null;
-    final confirm = await showModalBottomSheet<bool>(
+    final locked = _lockedSeatNos.contains(seatNo);
+    final canManageLock = _isRoomOwner || _isModerator;
+    final action = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: const Color(0xFF3D0B12),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            ListTile(
-              leading: Icon(
-                take ? Icons.mic : Icons.mic_off,
-                color: Colors.amberAccent,
-              ),
-              title: Text(
-                take ? 'خذ مقعد $seatNo' : 'نزول من المقعد',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      isScrollControlled: false,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1D5DB),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              onTap: () => Navigator.pop(context, true),
-            ),
-            const SizedBox(height: 12),
-          ],
+              const SizedBox(height: 14),
+              Text(
+                'المقعد $seatNo',
+                style: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              if ((occupied == null && (!locked || canManageLock)) ||
+                  occupied?['user_id'] == _service.uid)
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  leading: Icon(
+                    take ? Icons.mic_rounded : Icons.mic_off_rounded,
+                    color: const Color(0xFFF97316),
+                  ),
+                  title: Text(
+                    take ? 'خذ مقعد $seatNo' : 'النزول من المقعد',
+                    style: const TextStyle(
+                      color: Color(0xFF111827),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, take ? 'take' : 'leave'),
+                )
+              else
+                const ListTile(
+                  leading: Icon(Icons.person_rounded, color: Color(0xFF64748B)),
+                  title: Text(
+                    'المقعد مستخدم حالياً',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              if (canManageLock)
+                ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  leading: Icon(
+                    locked ? Icons.lock_open_rounded : Icons.lock_rounded,
+                    color: locked
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFFDC2626),
+                  ),
+                  title: Text(
+                    locked ? 'فتح المقعد' : 'قفل المقعد',
+                    style: const TextStyle(
+                      color: Color(0xFF111827),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    'يظهر هذا الخيار لمالك الغرفة والمشرف فقط',
+                    style: TextStyle(color: Color(0xFF6B7280), fontSize: 11),
+                  ),
+                  onTap: () =>
+                      Navigator.pop(sheetContext, locked ? 'unlock' : 'lock'),
+                ),
+              const SizedBox(height: 4),
+            ],
+          ),
         ),
       ),
     );
-    if (confirm != true) return;
+    if (action == 'lock' || action == 'unlock') {
+      try {
+        await _service.setRoomSeatLocked(_roomId, seatNo, action == 'lock');
+        if (mounted) {
+          _messageSnack(action == 'lock' ? 'تم قفل المقعد.' : 'تم فتح المقعد.');
+        }
+      } catch (error) {
+        if (mounted) _messageSnack('تعذر تغيير حالة المقعد: $error');
+      }
+      return;
+    }
+    if (action != 'take' && action != 'leave') return;
     setState(() => _busy = true);
     try {
-      if (!take) {
+      if (action == 'leave') {
         setState(() {
           _optimisticSeatRow = null;
           _isOnSeat = false;
@@ -4777,6 +4871,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _message.dispose();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
+    _seatLocksSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
     _luckBagSubscription?.cancel();
     _globalLuckBagSubscription?.cancel();
@@ -5086,6 +5181,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                               final occupied = row != null;
                               final isOwnSeat = row?['user_id'] == _service.uid;
                               final speaking = row?['is_speaking'] == true;
+                              final locked = _lockedSeatNos.contains(seatNo);
                               return GestureDetector(
                                 onTap: () => isOwnSeat
                                     ? _showUserCard(profile, selfSeat: true)
@@ -5107,7 +5203,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                           : 52,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        gradient: speaking
+                                        gradient: locked && !occupied
+                                            ? const LinearGradient(
+                                                colors: [
+                                                  Color(0xFF374151),
+                                                  Color(0xFF111827),
+                                                ],
+                                              )
+                                            : speaking
                                             ? const LinearGradient(
                                                 colors: [
                                                   Color(0xFF14532D),
@@ -5130,18 +5233,30 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                 ],
                                               ),
                                         border: Border.all(
-                                          color: speaking
+                                          color: locked && !occupied
+                                              ? const Color(0xFFF87171)
+                                              : speaking
                                               ? _nativeRoomGreen
                                               : occupied
                                               ? const Color(0xFFE7B84B)
                                               : const Color(0x667B8798),
-                                          width: speaking
+                                          width: locked && !occupied
+                                              ? 2.0
+                                              : speaking
                                               ? 2.4
                                               : occupied
                                               ? 1.8
                                               : 1.2,
                                         ),
-                                        boxShadow: speaking
+                                        boxShadow: locked && !occupied
+                                            ? const [
+                                                BoxShadow(
+                                                  color: Color(0x66EF4444),
+                                                  blurRadius: 12,
+                                                  spreadRadius: 1,
+                                                ),
+                                              ]
+                                            : speaking
                                             ? const [
                                                 BoxShadow(
                                                   color: Color(0xAA22C55E),
@@ -5285,9 +5400,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                               height: 46,
                                               fit: BoxFit.contain,
                                             )
-                                          : const Icon(
-                                              Icons.mic_none_rounded,
-                                              color: Colors.white70,
+                                          : Icon(
+                                              locked
+                                                  ? Icons.lock_rounded
+                                                  : Icons.mic_none_rounded,
+                                              color: locked
+                                                  ? const Color(0xFFFCA5A5)
+                                                  : Colors.white70,
                                             ),
                                     ),
                                     const SizedBox(height: 4),
@@ -5295,6 +5414,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                       occupied
                                           ? (profile['username'] as String? ??
                                                 'عضو')
+                                          : locked
+                                          ? 'مقعد مقفول'
                                           : 'مقعد $seatNo',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
