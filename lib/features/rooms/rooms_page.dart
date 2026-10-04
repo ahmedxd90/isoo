@@ -3387,6 +3387,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       profile['country'] as String?,
     );
     final modules = await _service.accountModulesForUser(userId);
+    final frameProduct = await _service.activeProfileFrame(userId);
     final familyBadge = await _service.familyBadgeForUser(userId);
     final isShippingAgent = await _service.isShippingAgent(userId);
     final moderation = canModerate
@@ -3410,6 +3411,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (!mounted) return;
     final htmlData = <String, dynamic>{
       'id': userId,
+      'sakiId': profile['saki_id'] ?? userId,
       'name': username,
       'avatar': profile['avatar_url'] ?? profile['avatar'],
       'countryIcon': countryFlag,
@@ -3423,6 +3425,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'wealthLevel': modules['wealth_level'] ?? profile['wealth_level'] ?? 0,
       'activeLevel': modules['active_level'] ?? profile['active_level'] ?? 0,
       'followingMe': following,
+      'isSelf': userId == _service.uid,
+      'vipTitle': modules['vip_label'] ?? profile['vip_label'] ?? 'VIP $vip',
+      'frame': frameProduct?['thumbnail_url'] ?? frameProduct?['media_url'],
     };
     await showModalBottomSheet<void>(
       context: context,
@@ -3666,14 +3671,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 _showGiftPanel();
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.flag, color: Colors.red),
-              title: const Text('إبلاغ عن المستخدم'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _showRoomReportSheet(userId, username);
-              },
-            ),
+            if (userId != _service.uid)
+              ListTile(
+                leading: const Icon(Icons.flag, color: Colors.red),
+                title: const Text('إبلاغ عن المستخدم'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _showRoomReportSheet(userId, username);
+                },
+              ),
             if (canModerate) ...[
               ListTile(
                 leading: const Icon(Icons.mic_off),

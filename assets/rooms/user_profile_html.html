@@ -269,7 +269,7 @@
     window.renderProfile = function(data) {
         data = data || {};
         document.getElementById('userName').innerText = data.name || 'مستخدم SAKI';
-        document.getElementById('userId').innerText = 'UID: ' + (data.id || '');
+        document.getElementById('userId').innerText = 'ID: ' + (data.sakiId || data.id || '');
         document.getElementById('userAvatar').src = data.avatar || '';
         document.getElementById('visitorsCount').innerText = data.visitors || '0';
         document.getElementById('followersCount').innerText = data.followers || '0';
@@ -277,10 +277,16 @@
         document.getElementById('userGender').innerText = (data.gender || '') + (data.age ? ' ' + data.age : '');
         document.getElementById('userCountry').innerText = data.countryIcon || '🌍';
         const badges = document.getElementById('badgesContainer'); badges.innerHTML = '';
-        if (data.isVip) badges.innerHTML += '<div class="badge b-vip"><i class="fas fa-crown"></i> VIP ' + (data.vipLevel || '') + '</div>';
+        if (data.isVip) badges.innerHTML += '<div class="badge b-vip"><i class="fas fa-crown"></i> ' + (data.vipTitle || ('VIP ' + (data.vipLevel || ''))) + '</div>';
+        const frame = document.getElementById('frameSvga');
+        if (frame && data.frame) { frame.style.display = 'block'; frame.style.backgroundImage = 'url("' + data.frame + '")'; frame.style.backgroundSize = 'contain'; frame.style.backgroundPosition = 'center'; frame.style.backgroundRepeat = 'no-repeat'; }
         if (data.wealthLevel) badges.innerHTML += '<div class="badge b-wealth"><i class="fas fa-gem"></i> ثروة Lv.' + data.wealthLevel + '</div>';
         if (data.activeLevel) badges.innerHTML += '<div class="badge b-active"><i class="fas fa-star"></i> رائج Lv.' + data.activeLevel + '</div>';
         const follow = document.getElementById('followBtn');
+        const message = document.querySelector('.btn-msg');
+        const self = data.isSelf === true;
+        if (message) message.style.display = self ? 'none' : 'flex';
+        if (follow) follow.style.display = self ? 'none' : 'flex';
         follow.innerHTML = data.followingMe ? '<i class="fas fa-user-check"></i> متابَع' : '<i class="fas fa-user-plus"></i> متابعة';
         follow.style.background = data.followingMe ? '#55506f' : '#7C4DFF';
     };

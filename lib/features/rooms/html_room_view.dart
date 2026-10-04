@@ -204,12 +204,16 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
                     WidgetsBinding.instance.addPostFrameCallback(
                       (_) => _sync(),
                     );
-                    return WillPopScope(
-                      onWillPop: () async {
-                        widget.onExit();
-                        return false;
-                      },
-                      child: WebViewWidget(controller: _controller),
+                    return SafeArea(
+                      bottom: true,
+                      maintainBottomViewPadding: true,
+                      child: WillPopScope(
+                        onWillPop: () async {
+                          widget.onExit();
+                          return false;
+                        },
+                        child: WebViewWidget(controller: _controller),
+                      ),
                     );
                   },
                 );

@@ -756,7 +756,7 @@ body {
                 </div>
 
                 <h1 class="app-name" id="displayName" style="margin-top: 15px; margin-bottom: 5px; max-width: 100%;">AlightTalk</h1>
-                <div id="nameBadgesRow" style="display:none;justify-content:center;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;max-width:100%;"><img id="badgeVipName" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeAgencyHost" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeAgencyWakel" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeCashAgent" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"></div>
+                <div id="nameBadgesRow" style="display:none;justify-content:center;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;max-width:100%;"><span id="vipTitleText" class="magic-tag tag-gradient" style="display:none;"></span><img id="badgeVipName" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeAgencyHost" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeAgencyWakel" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"><img id="badgeCashAgent" class="profile-badge-img" style="display:none;height:34px;width:auto;max-width:64px;object-fit:contain;"></div>
 
             </div>
 
@@ -1391,7 +1391,7 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
                 const data = JSON.parse(jsonString);
 
                 if(data.id) {
-                    document.getElementById('displayID').innerText =   data.id;
+                    document.getElementById('displayID').innerText = data.saki_id || data.id;
                     profileID = data.id;
                 }
                 if(data.name) document.getElementById('displayName').innerText = data.name;
@@ -1473,12 +1473,14 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
                 var badgeHostImg = document.getElementById('badgeAgencyHost');
                 var badgeWakelImg = document.getElementById('badgeAgencyWakel');
                 var badgeCashImg = document.getElementById('badgeCashAgent');
+                var vipTitleText = document.getElementById('vipTitleText');
+                if (vipTitleText) { vipTitleText.style.display = 'none'; vipTitleText.innerText = ''; }
                 if (badgeVipImg) { badgeVipImg.style.display = 'none'; }
                 if (badgeHostImg) { badgeHostImg.style.display = 'none'; }
                 if (badgeWakelImg) { badgeWakelImg.style.display = 'none'; }
                 if (badgeCashImg) { badgeCashImg.style.display = 'none'; }
                 var showVipBadge = false, showHostBadge = false, showWakelBadge = false, showCashBadge = false;
-                var vipCodeStr = (typeof data.vipCode === 'string') ? data.vipCode : '';
+                var vipCodeStr = (typeof data.vipCode === 'string') ? data.vipCode : (data.vip_level ? 'vip' + data.vip_level : '');
                 if (vipCodeStr.indexOf('vip') === 0) {
                     var vipBadgeN = parseInt(vipCodeStr.substring(3), 10);
                     if (!isNaN(vipBadgeN) && vipBadgeN >= 1 && vipBadgeN <= 10) {
@@ -1502,6 +1504,7 @@ function executeSendPublicGift(giftId, giftName, giftIcon, giftPrice) {
                     }
                 }
                 if (badgeVipImg && showVipBadge) badgeVipImg.style.display = 'inline-block';
+                if (vipTitleText && showVipBadge) { vipTitleText.innerText = data.vipTitle || ('VIP ' + vipBadgeN); vipTitleText.style.display = 'inline-flex'; }
                 if (badgeHostImg && showHostBadge) badgeHostImg.style.display = 'inline-block';
                 if (badgeWakelImg && showWakelBadge) badgeWakelImg.style.display = 'inline-block';
                 if (badgeCashImg && showCashBadge) badgeCashImg.style.display = 'inline-block';

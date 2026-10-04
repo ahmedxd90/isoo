@@ -89,6 +89,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
       } catch (_) {
         countryFlag = '🌍';
       }
+      Map<String, dynamic>? activeFrame;
+      try {
+        activeFrame = await SakiService.instance.activeProfileFrame(
+          widget.userId,
+        );
+      } catch (_) {}
+      Map<String, dynamic> accountModules = const {};
+      try {
+        accountModules = await SakiService.instance.accountModulesForUser(
+          widget.userId,
+        );
+      } catch (_) {}
       setState(() {
         final base = results[0] is Map
             ? Map<String, dynamic>.from(results[0] as Map)
@@ -102,6 +114,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ...base,
                 'family_badge': family,
                 'shipping_agent': results[8] == true,
+                'active_frame_url':
+                    activeFrame?['thumbnail_url'] ?? activeFrame?['media_url'],
+                'active_frame_media_type': activeFrame?['media_type'],
+                'vip_label': accountModules['vip_label'],
+                'wealth_level':
+                    accountModules['wealth_level'] ?? base['wealth_level'],
               };
         _stats = results[2] is Map
             ? Map<String, int>.from(
@@ -353,6 +371,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final htmlProfile = <String, dynamic>{
       ...profile,
       'id': widget.userId,
+      'saki_id': profile['saki_id'] ?? widget.userId,
       'name': username,
       'avatar': avatar,
       'cover': covers.isEmpty ? null : covers.first,
@@ -365,6 +384,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
       'level': profile['level'] ?? profile['level_number'] ?? 0,
       'isOwner': isSelf,
       'isFollowing': _following,
+      'isVip': activeVipLevel(profile) > 0,
+      'vipCode': activeVipLevel(profile) > 0
+          ? 'vip${activeVipLevel(profile)}'
+          : '',
+      'frame': profile['active_frame_url'],
+      'vipTitle': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
     };
     final htmlPosts = _posts.map((post) {
       final item = <String, dynamic>{...post};
