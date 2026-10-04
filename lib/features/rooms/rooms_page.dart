@@ -10,6 +10,7 @@ import 'package:flutter_svga/flutter_svga.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:video_player/video_player.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/data/saki_service.dart';
@@ -4890,7 +4891,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   if (mounted) setState(() => _newLuckBag = null);
                 },
               ),
-            if (_activeGiftMessage != null)
+            if (_activeGiftMessage != null &&
+                _activeGiftMessage!['message_type'] == 'gift')
               GiftFullScreenOverlay(
                 message: _activeGiftMessage!,
                 seatKey: _seatKeyForGift(_activeGiftMessage!),
@@ -4899,6 +4901,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 },
               ),
             if (_activeGiftMessage != null &&
+                _activeGiftMessage!['message_type'] == 'luck_multiplier' &&
                 ((Map<String, dynamic>.from(
                                   _activeGiftMessage!['payload'] ?? const {},
                                 )['multiplier']
@@ -5066,33 +5069,113 @@ class GiftFullScreenOverlay extends StatefulWidget {
   State<GiftFullScreenOverlay> createState() => _GiftFullScreenOverlayState();
 }
 
-/// Displays only the gift thumbnail: centered for 2.5 seconds, flies to the
-/// recipient's seat, then remains there for 3 seconds before disappearing.
+/// Normal gifts fly as a thumbnail. Rich gifts (SVGA/MP4/GIF) play in place
+/// over the room without adding a white page or a user card.
 class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
+  late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 5500),
-  )..forward();
+    duration: const Duration(milliseconds: 5000),
+  );
+  late final SVGAAnimationController _svga = SVGAAnimationController(
+    vsync: this,
+  );
+  VideoPlayerController? _video;
+  Timer? _richTimer;
+  bool _richFailed = false;
+  bool _closed = false;
 
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
+  String get _type => (_payload['media_type']?.toString() ?? '').toLowerCase();
+
+  bool get _rich => _type == 'svga' || _type == 'mp4' || _type == 'gif';
+
+  String? get _mediaUrl {
+    final value = _payload['media_url']?.toString();
+    return value != null && value.startsWith('http') ? value : null;
+  }
+
   @override
   void initState() {
     super.initState();
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed && mounted) widget.onClose();
-    });
+    if (_rich) {
+      _startRichGift();
+    } else {
+      _flight.forward();
+    }
+  }
+
+  void _startRichGift() {
+    final url = _mediaUrl;
+    if (url == null) {
+      _useThumbnailFallback();
+      return;
+    }
+    if (_type == 'gif') {
+      // Flutter animates a GIF through Image.network. A safe upper bound is
+      // used because the ImageProvider does not expose the GIF duration.
+      _richTimer = Timer(const Duration(seconds: 6), _close);
+      return;
+    }
+    if (_type == 'mp4') {
+      final video = VideoPlayerController.networkUrl(Uri.parse(url));
+      _video = video;
+      video
+          .initialize()
+          .then((_) {
+            if (!mounted) return;
+            video.play();
+            setState(() {});
+          })
+          .catchError((_) {
+            if (mounted) _useThumbnailFallback();
+          });
+      video.addListener(() {
+        if (!video.value.isInitialized || video.value.isPlaying) return;
+        if (video.value.position >= video.value.duration) _close();
+      });
+      return;
+    }
+    SVGAParser.shared
+        .decodeFromURL(url)
+        .then((movie) {
+          if (!mounted) return;
+          _svga.videoItem = movie;
+          _svga.addStatusListener((status) {
+            if (status == AnimationStatus.completed) _close();
+          });
+          _svga.forward(from: 0);
+          setState(() {});
+        })
+        .catchError((_) {
+          if (mounted) _useThumbnailFallback();
+        });
+  }
+
+  void _useThumbnailFallback() {
+    if (!mounted || _richFailed) return;
+    setState(() => _richFailed = true);
+    _flight.forward(from: 0);
+  }
+
+  void _close() {
+    if (_closed || !mounted) return;
+    _closed = true;
+    widget.onClose();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _richTimer?.cancel();
+    _video?.dispose();
+    _svga.dispose();
+    _flight.dispose();
     super.dispose();
   }
 
-  Widget _thumbnail({required double size}) {
+  Widget _thumbnail(double size) {
     final source = _payload['thumbnail_url']?.toString();
     final icon = _payload['icon']?.toString() ?? '🎁';
     if (source != null && source.startsWith('http')) {
@@ -5108,75 +5191,115 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     return Text(icon, style: TextStyle(fontSize: size * .72));
   }
 
+  Widget _normalGiftFlight(BuildContext context) {
+    final screen = MediaQuery.sizeOf(context);
+    final targetBox =
+        widget.seatKey?.currentContext?.findRenderObject() as RenderBox?;
+    final target = targetBox == null
+        ? Offset(screen.width / 2, screen.height * .62)
+        : targetBox.localToGlobal(
+            Offset(targetBox.size.width / 2, targetBox.size.height / 2),
+          );
+    final center = Offset(screen.width / 2, screen.height / 2);
+    final progress = _flight.value;
+    // Hold at the center for 2.5s, fly for .5s, hold at the seat for 2s.
+    final flight = ((progress - .5) / .1).clamp(0.0, 1.0);
+    final position = Offset.lerp(
+      center,
+      target,
+      Curves.easeInOutCubic.transform(flight),
+    )!;
+    final atSeat = flight >= 1;
+    final size = atSeat ? 64.0 : 100.0;
+    final opacity = progress > .985
+        ? ((1 - progress) / .015).clamp(0.0, 1.0)
+        : 1.0;
+    return Opacity(
+      opacity: opacity,
+      child: Positioned(
+        left: position.dx - size / 2,
+        top: position.dy - size / 2,
+        width: size,
+        height: size,
+        child: Container(
+          padding: EdgeInsets.all(atSeat ? 4 : 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: .22),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: const Color(0xFFFFD166),
+              width: atSeat ? 1.4 : 2,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x99FF9F1C),
+                blurRadius: 18,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: _thumbnail(size - (atSeat ? 8 : 16)),
+        ),
+      ),
+    );
+  }
+
+  Widget _richGift(BuildContext context) {
+    final url = _mediaUrl;
+    if (_richFailed || url == null) return _normalGiftFlight(context);
+    Widget media;
+    if (_type == 'svga' && _svga.videoItem != null) {
+      media = Center(child: SVGAImage(_svga, fit: BoxFit.contain));
+    } else if (_type == 'mp4' && _video?.value.isInitialized == true) {
+      media = Center(
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: _video!.value.size.width,
+            height: _video!.value.size.height,
+            child: VideoPlayer(_video!),
+          ),
+        ),
+      );
+    } else if (_type == 'gif') {
+      media = Center(
+        child: Image.network(
+          url,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _useThumbnailFallback();
+            });
+            return _thumbnail(130);
+          },
+        ),
+      );
+    } else {
+      media = Center(child: _thumbnail(130));
+    }
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(fit: StackFit.expand, children: [media]),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // No Material, color, dialog, or opaque background is used here. The room
+    // remains visible underneath every gift animation.
     return Positioned.fill(
       child: IgnorePointer(
         child: Stack(
           fit: StackFit.expand,
           children: [
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) {
-                final screen = MediaQuery.sizeOf(context);
-                final targetBox =
-                    widget.seatKey?.currentContext?.findRenderObject()
-                        as RenderBox?;
-                final target = targetBox == null
-                    ? Offset(screen.width / 2, screen.height * .62)
-                    : targetBox.localToGlobal(
-                        Offset(
-                          targetBox.size.width / 2,
-                          targetBox.size.height / 2,
-                        ),
-                      );
-                final progress = _controller.value;
-                // 0.0..0.4545 = center hold (2.5s)
-                // 0.4545..0.5455 = flight (0.5s)
-                // 0.5455..1.0 = seat hold (3s)
-                final flightProgress = ((progress - .4545) / .091).clamp(
-                  0.0,
-                  1.0,
-                );
-                final eased = Curves.easeInOutCubic.transform(flightProgress);
-                final center = Offset(screen.width / 2, screen.height / 2);
-                final position = Offset.lerp(center, target, eased)!;
-                final size = flightProgress < 1 ? 96.0 : 60.0;
-                final opacity = progress > .98
-                    ? ((1 - progress) / .02).clamp(0.0, 1.0)
-                    : 1.0;
-                return Opacity(
-                  opacity: opacity,
-                  child: Positioned(
-                    left: position.dx - size / 2,
-                    top: position.dy - size / 2,
-                    width: size,
-                    height: size,
-                    child: Container(
-                      padding: EdgeInsets.all(flightProgress < 1 ? 7 : 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: .24),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: const Color(0xFFFFD166).withValues(alpha: .9),
-                          width: flightProgress < 1 ? 2 : 1.3,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x99FF9F1C),
-                            blurRadius: 18,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: _thumbnail(
-                        size: size - (flightProgress < 1 ? 14 : 8),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+            if (_rich && !_richFailed)
+              _richGift(context)
+            else
+              AnimatedBuilder(
+                animation: _flight,
+                builder: (context, child) => _normalGiftFlight(context),
+              ),
           ],
         ),
       ),
