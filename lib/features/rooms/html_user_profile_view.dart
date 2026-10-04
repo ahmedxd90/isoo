@@ -76,5 +76,9 @@ class _HtmlUserProfileViewState extends State<HtmlUserProfileView> {
   }
 
   @override
-  Widget build(BuildContext context) => WebViewWidget(controller: _controller);
+  Widget build(BuildContext context) => SafeArea(
+    bottom: true,
+    maintainBottomViewPadding: true,
+    child: WebViewWidget(controller: _controller),
+  );
 }

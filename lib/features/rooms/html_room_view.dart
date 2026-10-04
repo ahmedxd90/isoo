@@ -17,6 +17,7 @@ class HtmlRoomView extends StatefulWidget {
     required this.onSpeaker,
     required this.onEmoji,
     required this.onGift,
+    required this.onGiftRanking,
     required this.onMenu,
     required this.onOnline,
     required this.onRoomInfo,
@@ -35,6 +36,7 @@ class HtmlRoomView extends StatefulWidget {
   final VoidCallback onSpeaker;
   final VoidCallback onEmoji;
   final VoidCallback onGift;
+  final VoidCallback onGiftRanking;
   final VoidCallback onMenu;
   final VoidCallback onOnline;
   final VoidCallback onRoomInfo;
@@ -88,6 +90,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
               widget.onEmoji();
             case 'gift':
               widget.onGift();
+            case 'giftRanking':
+              widget.onGiftRanking();
             case 'menu':
               widget.onMenu();
             case 'online':
@@ -170,6 +174,7 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       'hostAvatar': widget.room['image_url'],
       'backgroundUrl': widget.room['background_url'],
       'onlineCount': _members.length,
+      'goldTotal': widget.room['gold_total'] ?? 0,
       'members': members,
       'seats': seats,
     };

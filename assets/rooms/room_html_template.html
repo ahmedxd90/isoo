@@ -129,7 +129,7 @@
             <!-- Sub-Header Row without background black strip container -->
             <div class="w-full flex items-center justify-between px-1 py-0.5">
                 <!-- Golden Trophy + Counter Number (Compact formatted e.g., 100, 1K, 1.2M, 1T) -->
-                <div class="flex items-center gap-1.5 text-amber-400 font-bold text-xs drop-shadow-md">
+                <div onclick="RoomBridge.postMessage(JSON.stringify({type:'giftRanking'}))" class="flex items-center gap-1.5 text-amber-400 font-bold text-xs drop-shadow-md cursor-pointer active:scale-95">
                     <i class="fa-solid fa-trophy text-amber-400 text-sm drop-shadow"></i>
                     <span id="trophyCount" class="font-mono text-xs tracking-wide text-amber-300 drop-shadow">1.2M</span>
                 </div>
@@ -646,6 +646,8 @@
     }
     const online = document.querySelector('header .text-emerald-400 + span');
     if (online && data.onlineCount != null) online.textContent = String(data.onlineCount);
+    const trophy = document.getElementById('trophyCount');
+    if (trophy && data.goldTotal != null) trophy.textContent = String(data.goldTotal);
   };
   window.renderRoomMessages = function (messages) {
     const stream = document.getElementById('chatStream');

@@ -5082,7 +5082,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   Widget build(BuildContext context) {
     return HtmlRoomView(
-      room: widget.room,
+      room: {...widget.room, 'gold_total': _roomGoldTotal},
       seatStream: _seatStream,
       lockStream: _seatLocksStream,
       messageStream: _messageStream,
@@ -5104,6 +5104,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       onSpeaker: _toggleListenMute,
       onEmoji: _showEmojiPanel,
       onGift: _showGiftPanel,
+      onGiftRanking: () => showRoomGiftRanking(
+        context,
+        _service,
+        _roomId,
+        (profile) => _showUserCard(profile),
+      ),
       onMenu: () => unawaited(_confirmExit()),
       onOnline: _showOnline,
       onRoomInfo: _showRoomInfo,
