@@ -11,7 +11,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/room_background_bridge.dart';
@@ -2356,7 +2355,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         onExit: () => Navigator.of(dialogContext).pop(true),
       ),
       transitionBuilder: (_, animation, _, child) => SlideTransition(
-        position: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero)
+        position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
             .animate(
               CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
@@ -5058,6 +5057,7 @@ class GiftFullScreenOverlay extends StatefulWidget {
     this.seatKey,
     required this.onClose,
   });
+
   final Map<String, dynamic> message;
   final GlobalKey? seatKey;
   final VoidCallback onClose;
@@ -5066,377 +5066,119 @@ class GiftFullScreenOverlay extends StatefulWidget {
   State<GiftFullScreenOverlay> createState() => _GiftFullScreenOverlayState();
 }
 
+/// Displays only the gift thumbnail: centered for 2.5 seconds, flies to the
+/// recipient's seat, then remains there for 3 seconds before disappearing.
 class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     with SingleTickerProviderStateMixin {
-  VideoPlayerController? _video;
-  late final SVGAAnimationController _svga;
-  bool _visible = true;
-  bool _flyingToSeat = false;
-  bool _flightVisible = true;
-  bool _bannerEntered = false;
-  bool _bannerLeaving = false;
-  String? _recipientAvatar;
-  Timer? _flightTimer;
-  Timer? _flightHideTimer;
-  Timer? _bannerTimer;
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 5500),
+  )..forward();
 
   Map<String, dynamic> get _payload =>
       Map<String, dynamic>.from(widget.message['payload'] ?? const {});
 
-  bool get _compactGift {
-    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    return type != 'svga' && type != 'mp4';
-  }
-
   @override
   void initState() {
     super.initState();
-    _svga = SVGAAnimationController(vsync: this)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) _hide();
-      });
-    final recipientId = _payload['recipient_id'] as String?;
-    if (recipientId != null) {
-      SakiService.instance.userProfile(recipientId).then((profile) {
-        if (mounted) {
-          setState(() => _recipientAvatar = profile?['avatar_url'] as String?);
-        }
-      });
-    }
-    _flightTimer = Timer(const Duration(milliseconds: 180), () {
-      if (mounted) setState(() => _flyingToSeat = true);
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted) widget.onClose();
     });
-    _flightHideTimer = Timer(const Duration(milliseconds: 820), () {
-      if (mounted) setState(() => _flightVisible = false);
-    });
-    _bannerTimer = Timer(const Duration(milliseconds: 1800), () {
-      if (mounted) setState(() => _bannerLeaving = true);
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _bannerEntered = true);
-    });
-    if (_compactGift) {
-      Future<void>.delayed(const Duration(milliseconds: 1900), _hide);
-      return;
-    }
-    final url = _payload['media_url'] as String?;
-    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    if (url != null && url.isNotEmpty && type == 'svga') {
-      SVGAParser.shared
-          .decodeFromURL(url)
-          .then((movie) {
-            if (!mounted) return;
-            _svga.videoItem = movie;
-            _svga.forward(from: 0);
-            setState(() {});
-          })
-          .catchError((_) {
-            if (mounted) setState(() {});
-          });
-    } else if (url != null && url.isNotEmpty && type == 'mp4') {
-      final video = VideoPlayerController.networkUrl(Uri.parse(url));
-      _video = video;
-      video.initialize().then((_) {
-        if (mounted) {
-          video.play();
-          setState(() {});
-        }
-      });
-      video.addListener(() {
-        if (!video.value.isInitialized || video.value.isPlaying) return;
-        if (video.value.position >= video.value.duration) _hide();
-      });
-    } else if (url != null && url.isNotEmpty && type == 'gif') {
-      Future<void>.delayed(const Duration(seconds: 5), _hide);
-    } else {
-      Future<void>.delayed(const Duration(milliseconds: 900), _hide);
-    }
-  }
-
-  void _hide() {
-    if (!mounted || !_visible) return;
-    setState(() => _visible = false);
-    widget.onClose();
   }
 
   @override
   void dispose() {
-    _flightTimer?.cancel();
-    _flightHideTimer?.cancel();
-    _bannerTimer?.cancel();
-    _video?.dispose();
-    _svga.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Widget _buildGiftFlight(BuildContext context) {
-    final payload = _payload;
-    final thumbnail = payload['thumbnail_url'] as String?;
-    final media = payload['media_url'] as String?;
-    final url = thumbnail?.startsWith('http') == true
-        ? thumbnail
-        : media?.startsWith('http') == true
-        ? media
-        : null;
-    final screen = MediaQuery.sizeOf(context);
-    final targetBox =
-        widget.seatKey?.currentContext?.findRenderObject() as RenderBox?;
-    final target = targetBox == null
-        ? Offset(screen.width / 2, screen.height * .58)
-        : targetBox.localToGlobal(
-            Offset(targetBox.size.width / 2, targetBox.size.height / 2),
-          );
-    final delta = Offset(
-      (target.dx - screen.width / 2) / screen.width,
-      (target.dy - screen.height / 2) / screen.height,
-    );
-    final image = url != null && url.isNotEmpty
-        ? Image.network(
-            url,
-            width: 72,
-            height: 72,
-            fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => Text(
-              payload['icon'] as String? ?? '🎁',
-              style: const TextStyle(fontSize: 48),
-            ),
-          )
-        : Text(
-            payload['icon'] as String? ?? '🎁',
-            style: const TextStyle(fontSize: 48),
-          );
-    if (!_flightVisible) return const SizedBox.shrink();
-    return IgnorePointer(
-      child: TweenAnimationBuilder<Offset>(
-        tween: Tween(
-          begin: Offset.zero,
-          end: _flyingToSeat ? delta : Offset.zero,
-        ),
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeInOutCubic,
-        builder: (_, offset, child) =>
-            FractionalTranslation(translation: offset, child: child),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: .22, end: _flyingToSeat ? .34 : 1),
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutBack,
-          builder: (_, scale, child) =>
-              Transform.scale(scale: scale, child: child),
-          child: Center(
-            child: Stack(
-              clipBehavior: Clip.none,
-              alignment: Alignment.center,
-              children: [
-                image,
-                if (_recipientAvatar != null &&
-                    _recipientAvatar!.startsWith('http'))
-                  Positioned(
-                    right: -10,
-                    bottom: -6,
-                    child: ClipOval(
-                      child: Image.network(
-                        _recipientAvatar!,
-                        width: 27,
-                        height: 27,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  Widget _thumbnail({required double size}) {
+    final source = _payload['thumbnail_url']?.toString();
+    final icon = _payload['icon']?.toString() ?? '🎁';
+    if (source != null && source.startsWith('http')) {
+      return Image.network(
+        source,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) =>
+            Text(icon, style: TextStyle(fontSize: size * .72)),
+      );
+    }
+    return Text(icon, style: TextStyle(fontSize: size * .72));
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_visible) return const SizedBox.shrink();
-    final url = _payload['media_url'] as String?;
-    final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    final senderId = widget.message['sender_id'] as String?;
-    final recipientId = _payload['recipient_id'] as String?;
-    return Material(
-      color: Colors.transparent,
-      child: FutureBuilder<List<Map<String, dynamic>?>>(
-        future: Future.wait([
-          if (senderId != null) SakiService.instance.userProfile(senderId),
-          if (recipientId != null)
-            SakiService.instance.userProfile(recipientId),
-        ]),
-        builder: (_, snapshot) {
-          final sender = snapshot.data?.isNotEmpty == true
-              ? snapshot.data!.first
-              : null;
-          final recipient = snapshot.data != null && snapshot.data!.length > 1
-              ? snapshot.data![1]
-              : null;
-          final immersive = type == 'mp4' || type == 'svga';
-          final mediaView = _svga.videoItem != null
-              ? SVGAImage(_svga, fit: BoxFit.contain)
-              : _video != null && _video!.value.isInitialized
-              ? FittedBox(
-                  fit: BoxFit.contain,
-                  child: SizedBox(
-                    width: _video!.value.size.width,
-                    height: _video!.value.size.height,
-                    child: VideoPlayer(_video!),
-                  ),
-                )
-              : url != null && url.isNotEmpty
-              ? Image.network(url, fit: BoxFit.contain)
-              : Center(
-                  child: Text(
-                    _payload['icon'] as String? ?? '🎁',
-                    style: const TextStyle(fontSize: 100),
-                  ),
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                final screen = MediaQuery.sizeOf(context);
+                final targetBox =
+                    widget.seatKey?.currentContext?.findRenderObject()
+                        as RenderBox?;
+                final target = targetBox == null
+                    ? Offset(screen.width / 2, screen.height * .62)
+                    : targetBox.localToGlobal(
+                        Offset(
+                          targetBox.size.width / 2,
+                          targetBox.size.height / 2,
+                        ),
+                      );
+                final progress = _controller.value;
+                // 0.0..0.4545 = center hold (2.5s)
+                // 0.4545..0.5455 = flight (0.5s)
+                // 0.5455..1.0 = seat hold (3s)
+                final flightProgress = ((progress - .4545) / .091).clamp(
+                  0.0,
+                  1.0,
                 );
-          final thumbnail = _payload['thumbnail_url'] as String?;
-          final senderAvatar = sender?['avatar_url'] as String?;
-          return Stack(
-            fit: StackFit.expand,
-            alignment: Alignment.center,
-            children: [
-              if (immersive) Positioned.fill(child: Center(child: mediaView)),
-              if (_payload['flying_banner'] == true)
-                Positioned(
-                  top: 34,
-                  left: 0,
-                  right: 0,
-                  child: AnimatedSlide(
-                    offset: _bannerLeaving
-                        ? const Offset(1.35, 0)
-                        : _bannerEntered
-                        ? Offset.zero
-                        : const Offset(-1.35, 0),
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOutCubic,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsetsDirectional.only(
-                          start: 12,
-                          end: 12,
+                final eased = Curves.easeInOutCubic.transform(flightProgress);
+                final center = Offset(screen.width / 2, screen.height / 2);
+                final position = Offset.lerp(center, target, eased)!;
+                final size = flightProgress < 1 ? 96.0 : 60.0;
+                final opacity = progress > .98
+                    ? ((1 - progress) / .02).clamp(0.0, 1.0)
+                    : 1.0;
+                return Opacity(
+                  opacity: opacity,
+                  child: Positioned(
+                    left: position.dx - size / 2,
+                    top: position.dy - size / 2,
+                    width: size,
+                    height: size,
+                    child: Container(
+                      padding: EdgeInsets.all(flightProgress < 1 ? 7 : 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .24),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFFFFD166).withValues(alpha: .9),
+                          width: flightProgress < 1 ? 2 : 1.3,
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: .86),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.amberAccent),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                senderAvatar != null &&
-                                        senderAvatar.startsWith('http')
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          senderAvatar,
-                                          width: 32,
-                                          height: 32,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.person,
-                                        color: Colors.amberAccent,
-                                      ),
-                                const SizedBox(width: 5),
-                                thumbnail != null &&
-                                        thumbnail.startsWith('http')
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          thumbnail,
-                                          width: 32,
-                                          height: 32,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.card_giftcard,
-                                        color: Colors.amberAccent,
-                                      ),
-                                const SizedBox(width: 5),
-                                _recipientAvatar != null &&
-                                        _recipientAvatar!.startsWith('http')
-                                    ? ClipOval(
-                                        child: Image.network(
-                                          _recipientAvatar!,
-                                          width: 32,
-                                          height: 32,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.person_pin,
-                                        color: Colors.amberAccent,
-                                      ),
-                                const SizedBox(width: 7),
-                                Text(
-                                  '${sender?['username'] ?? 'مستخدم'} أرسل ${_payload['name'] ?? 'هدية'} إلى ${recipient?['username'] ?? 'مستخدم'}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '×${(_payload['combo_count'] as num?)?.toInt() ?? 1}',
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFD54F),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black87,
-                                        blurRadius: 5,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: SizedBox(
-                                width: 190,
-                                height: 4,
-                                child: LinearProgressIndicator(
-                                  value:
-                                      (((_payload['combo_count'] as num?)
-                                                      ?.toDouble() ??
-                                                  1) /
-                                              10)
-                                          .clamp(0.08, 1.0),
-                                  backgroundColor: Colors.white24,
-                                  valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                        Color(0xFF34D399),
-                                      ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x99FF9F1C),
+                            blurRadius: 18,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: _thumbnail(
+                        size: size - (flightProgress < 1 ? 14 : 8),
                       ),
                     ),
                   ),
-                ),
-              if (_flightVisible)
-                Positioned.fill(child: _buildGiftFlight(context)),
-            ],
-          );
-        },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -7798,6 +7540,9 @@ class _RoomExitSheet extends StatelessWidget {
     required this.onKeep,
     required this.onExit,
   });
+
+  // Kept in the constructor for call-site compatibility; the compact panel
+  // intentionally does not load or show a room list.
   final SakiService service;
   final String currentRoomId;
   final VoidCallback onKeep;
@@ -7806,282 +7551,77 @@ class _RoomExitSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: Alignment.topCenter,
       child: Material(
-        color: const Color(0xFFF8FAFC),
+        color: Colors.transparent,
         child: SafeArea(
-          child: SizedBox(
-            width: MediaQuery.sizeOf(context).width,
-            height: MediaQuery.sizeOf(context).height,
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: service.rooms(),
-              builder: (context, snapshot) {
-                final rooms = (snapshot.data ?? const <Map<String, dynamic>>[])
-                    .where((room) => room['id']?.toString() != currentRoomId)
-                    .take(5)
-                    .toList();
-                return Column(
+          bottom: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: .90),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(22),
+              ),
+              border: const Border(
+                bottom: BorderSide(color: Colors.white24, width: 1),
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black54,
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white38,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'ماذا تريد أن تفعل بالغرفة؟',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 16, 12, 10),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: onKeep,
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Expanded(
-                            child: Text(
-                              'مغادرة الغرفة',
-                              style: TextStyle(
-                                color: Color(0xFF0F172A),
-                                fontSize: 21,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: onExit,
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: Color(0xFFE11D48),
-                            ),
-                            tooltip: 'خروج كامل',
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 18),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE0F2FE),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline_rounded,
-                            color: Color(0xFF0284C7),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'احتفظ بالغرفة لمتابعة الصوت أثناء تصفح التطبيق، أو اختر الخروج الكامل لإنهاء الجلسة.',
-                              style: TextStyle(
-                                color: Color(0xFF075985),
-                                height: 1.45,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(18, 22, 18, 10),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'أول 5 غرف في الترند الآن',
-                          style: TextStyle(
-                            color: Color(0xFF0F172A),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onKeep,
+                        icon: const Icon(Icons.picture_in_picture_alt_rounded),
+                        label: const Text('تصغير الغرفة'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF67E8F9),
+                          side: const BorderSide(color: Color(0xFF22D3EE)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: snapshot.connectionState == ConnectionState.waiting
-                          ? const Center(
-                              child: CircularProgressIndicator(
-                                color: Color(0xFFF97316),
-                              ),
-                            )
-                          : snapshot.hasError
-                          ? _RoomExitError(
-                              message:
-                                  'تعذر تحميل غرف الترند: ${snapshot.error}',
-                              onRetry: () =>
-                                  (context as Element).markNeedsBuild(),
-                            )
-                          : rooms.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'لا توجد غرف ترند متاحة الآن',
-                                style: TextStyle(
-                                  color: Color(0xFF64748B),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                              ),
-                              itemCount: rooms.length,
-                              itemBuilder: (_, index) => _TrendingExitRoomCard(
-                                room: rooms[index],
-                                rank: index + 1,
-                              ),
-                            ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: onKeep,
-                              icon: const Icon(
-                                Icons.picture_in_picture_alt_rounded,
-                              ),
-                              label: const Text('احتفظ بالغرفة'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFF0284C7),
-                                side: const BorderSide(
-                                  color: Color(0xFF7DD3FC),
-                                  width: 1.5,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: onExit,
-                              icon: const Icon(Icons.logout_rounded),
-                              label: const Text('خروج كامل'),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFE11D48),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TrendingExitRoomCard extends StatelessWidget {
-  const _TrendingExitRoomCard({required this.room, required this.rank});
-  final Map<String, dynamic> room;
-  final int rank;
-  @override
-  Widget build(BuildContext context) {
-    final image = room['image_url']?.toString();
-    final name = room['name']?.toString() ?? 'غرفة صوتية';
-    final count =
-        (room['_members_count'] ??
-                room['member_count'] ??
-                room['online_count'] ??
-                0)
-            .toString();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A0F172A),
-            blurRadius: 8,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 25,
-            alignment: Alignment.center,
-            child: Text(
-              '$rank',
-              style: TextStyle(
-                color: rank == 1
-                    ? const Color(0xFFF97316)
-                    : const Color(0xFF64748B),
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: image == null || image.isEmpty
-                ? Container(
-                    width: 58,
-                    height: 58,
-                    color: const Color(0xFFE0F2FE),
-                    child: const Icon(
-                      Icons.mic_external_on_rounded,
-                      color: Color(0xFF0284C7),
-                    ),
-                  )
-                : Image.network(
-                    image,
-                    width: 58,
-                    height: 58,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      width: 58,
-                      height: 58,
-                      color: const Color(0xFFE0F2FE),
-                      child: const Icon(
-                        Icons.mic_external_on_rounded,
-                        color: Color(0xFF0284C7),
-                      ),
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    const _RoomWave(),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$count متصل',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                      child: FilledButton.icon(
+                        onPressed: onExit,
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('الخروج من الغرفة'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFE11D48),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                        ),
                       ),
                     ),
                   ],
@@ -8089,42 +7629,8 @@ class _TrendingExitRoomCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.trending_up_rounded, color: Color(0xFFF97316)),
-        ],
+        ),
       ),
     );
   }
-}
-
-class _RoomExitError extends StatelessWidget {
-  const _RoomExitError({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: Color(0xFFE11D48),
-            size: 42,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF475569), height: 1.4),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: onRetry,
-            child: const Text('إعادة المحاولة'),
-          ),
-        ],
-      ),
-    ),
-  );
 }
