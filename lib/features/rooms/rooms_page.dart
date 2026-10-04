@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
@@ -55,6 +56,752 @@ const _roomTrophyGold = Color(0xFFF3B83F);
 const _roomTrendOrange = Color(0xFFFF6B35);
 const _roomBg = Colors.white;
 const _roomMuted = Color(0xFF64748B);
+
+const _localRoomEmojiTabs = <Map<String, dynamic>>[
+  {
+    'title': 'إيموجي',
+    'items': [
+      {
+        'title': 'smile',
+        'name': 'smile',
+        'asset_path': 'assets/rooms/emojis/emoji_01_1f600.gif',
+        'id': 'local-emoji-01',
+      },
+      {
+        'title': 'smile-with-big-eyes',
+        'name': 'smile-with-big-eyes',
+        'asset_path': 'assets/rooms/emojis/emoji_02_1f603.gif',
+        'id': 'local-emoji-02',
+      },
+      {
+        'title': 'grin',
+        'name': 'grin',
+        'asset_path': 'assets/rooms/emojis/emoji_03_1f604.gif',
+        'id': 'local-emoji-03',
+      },
+      {
+        'title': 'grinning',
+        'name': 'grinning',
+        'asset_path': 'assets/rooms/emojis/emoji_04_1f601.gif',
+        'id': 'local-emoji-04',
+      },
+      {
+        'title': 'laughing',
+        'name': 'laughing',
+        'asset_path': 'assets/rooms/emojis/emoji_05_1f606.gif',
+        'id': 'local-emoji-05',
+      },
+      {
+        'title': 'grin-sweat',
+        'name': 'grin-sweat',
+        'asset_path': 'assets/rooms/emojis/emoji_06_1f605.gif',
+        'id': 'local-emoji-06',
+      },
+      {
+        'title': 'joy',
+        'name': 'joy',
+        'asset_path': 'assets/rooms/emojis/emoji_07_1f602.gif',
+        'id': 'local-emoji-07',
+      },
+      {
+        'title': 'rofl',
+        'name': 'rofl',
+        'asset_path': 'assets/rooms/emojis/emoji_08_1f923.gif',
+        'id': 'local-emoji-08',
+      },
+      {
+        'title': 'loudly-crying',
+        'name': 'loudly-crying',
+        'asset_path': 'assets/rooms/emojis/emoji_09_1f62d.gif',
+        'id': 'local-emoji-09',
+      },
+      {
+        'title': 'wink',
+        'name': 'wink',
+        'asset_path': 'assets/rooms/emojis/emoji_10_1f609.gif',
+        'id': 'local-emoji-10',
+      },
+      {
+        'title': 'kissing',
+        'name': 'kissing',
+        'asset_path': 'assets/rooms/emojis/emoji_11_1f617.gif',
+        'id': 'local-emoji-11',
+      },
+      {
+        'title': 'kissing-smiling-eyes',
+        'name': 'kissing-smiling-eyes',
+        'asset_path': 'assets/rooms/emojis/emoji_12_1f619.gif',
+        'id': 'local-emoji-12',
+      },
+      {
+        'title': 'kissing-closed-eyes',
+        'name': 'kissing-closed-eyes',
+        'asset_path': 'assets/rooms/emojis/emoji_13_1f61a.gif',
+        'id': 'local-emoji-13',
+      },
+      {
+        'title': 'kissing-heart',
+        'name': 'kissing-heart',
+        'asset_path': 'assets/rooms/emojis/emoji_14_1f618.gif',
+        'id': 'local-emoji-14',
+      },
+      {
+        'title': 'heart-face',
+        'name': 'heart-face',
+        'asset_path': 'assets/rooms/emojis/emoji_15_1f970.gif',
+        'id': 'local-emoji-15',
+      },
+      {
+        'title': 'heart-eyes',
+        'name': 'heart-eyes',
+        'asset_path': 'assets/rooms/emojis/emoji_16_1f60d.gif',
+        'id': 'local-emoji-16',
+      },
+      {
+        'title': 'star-struck',
+        'name': 'star-struck',
+        'asset_path': 'assets/rooms/emojis/emoji_17_1f929.gif',
+        'id': 'local-emoji-17',
+      },
+      {
+        'title': 'partying-face',
+        'name': 'partying-face',
+        'asset_path': 'assets/rooms/emojis/emoji_18_1f973.gif',
+        'id': 'local-emoji-18',
+      },
+      {
+        'title': 'melting',
+        'name': 'melting',
+        'asset_path': 'assets/rooms/emojis/emoji_19_1fae0.gif',
+        'id': 'local-emoji-19',
+      },
+      {
+        'title': 'upside-down-face',
+        'name': 'upside-down-face',
+        'asset_path': 'assets/rooms/emojis/emoji_20_1f643.gif',
+        'id': 'local-emoji-20',
+      },
+      {
+        'title': 'slightly-happy',
+        'name': 'slightly-happy',
+        'asset_path': 'assets/rooms/emojis/emoji_21_1f642.gif',
+        'id': 'local-emoji-21',
+      },
+      {
+        'title': 'happy-cry',
+        'name': 'happy-cry',
+        'asset_path': 'assets/rooms/emojis/emoji_22_1f972.gif',
+        'id': 'local-emoji-22',
+      },
+      {
+        'title': 'holding-back-tears',
+        'name': 'holding-back-tears',
+        'asset_path': 'assets/rooms/emojis/emoji_23_1f979.gif',
+        'id': 'local-emoji-23',
+      },
+      {
+        'title': 'blush',
+        'name': 'blush',
+        'asset_path': 'assets/rooms/emojis/emoji_24_1f60a.gif',
+        'id': 'local-emoji-24',
+      },
+      {
+        'title': 'warm-smile',
+        'name': 'warm-smile',
+        'asset_path': 'assets/rooms/emojis/emoji_25_263a_fe0f.gif',
+        'id': 'local-emoji-25',
+      },
+      {
+        'title': 'relieved',
+        'name': 'relieved',
+        'asset_path': 'assets/rooms/emojis/emoji_26_1f60c.gif',
+        'id': 'local-emoji-26',
+      },
+      {
+        'title': 'head-nod',
+        'name': 'head-nod',
+        'asset_path': 'assets/rooms/emojis/emoji_27_1f642_200d_2195_fe0f.gif',
+        'id': 'local-emoji-27',
+      },
+      {
+        'title': 'head-shake',
+        'name': 'head-shake',
+        'asset_path': 'assets/rooms/emojis/emoji_28_1f642_200d_2194_fe0f.gif',
+        'id': 'local-emoji-28',
+      },
+      {
+        'title': 'smirk',
+        'name': 'smirk',
+        'asset_path': 'assets/rooms/emojis/emoji_29_1f60f.gif',
+        'id': 'local-emoji-29',
+      },
+      {
+        'title': 'drool',
+        'name': 'drool',
+        'asset_path': 'assets/rooms/emojis/emoji_30_1f924.gif',
+        'id': 'local-emoji-30',
+      },
+    ],
+  },
+  {
+    'title': 'حيوانات',
+    'items': [
+      {
+        'title': 'lion-face',
+        'name': 'lion-face',
+        'asset_path': 'assets/rooms/emojis/animals_01_1f981.gif',
+        'id': 'local-animals-01',
+      },
+      {
+        'title': 'wolf',
+        'name': 'wolf',
+        'asset_path': 'assets/rooms/emojis/animals_02_1f43a.gif',
+        'id': 'local-animals-02',
+      },
+      {
+        'title': 'bear-face',
+        'name': 'bear-face',
+        'asset_path': 'assets/rooms/emojis/animals_03_1f43b.gif',
+        'id': 'local-animals-03',
+      },
+      {
+        'title': 'panda',
+        'name': 'panda',
+        'asset_path': 'assets/rooms/emojis/animals_04_1f43c.gif',
+        'id': 'local-animals-04',
+      },
+      {
+        'title': 'fox-face',
+        'name': 'fox-face',
+        'asset_path': 'assets/rooms/emojis/animals_05_1f98a.gif',
+        'id': 'local-animals-05',
+      },
+      {
+        'title': 'cow-face',
+        'name': 'cow-face',
+        'asset_path': 'assets/rooms/emojis/animals_06_1f42e.gif',
+        'id': 'local-animals-06',
+      },
+      {
+        'title': 'unicorn',
+        'name': 'unicorn',
+        'asset_path': 'assets/rooms/emojis/animals_07_1f984.gif',
+        'id': 'local-animals-07',
+      },
+      {
+        'title': 'lizard',
+        'name': 'lizard',
+        'asset_path': 'assets/rooms/emojis/animals_08_1f98e.gif',
+        'id': 'local-animals-08',
+      },
+      {
+        'title': 'dragon',
+        'name': 'dragon',
+        'asset_path': 'assets/rooms/emojis/animals_09_1f409.gif',
+        'id': 'local-animals-09',
+      },
+      {
+        'title': 't-rex',
+        'name': 't-rex',
+        'asset_path': 'assets/rooms/emojis/animals_10_1f996.gif',
+        'id': 'local-animals-10',
+      },
+      {
+        'title': 'dinosaur',
+        'name': 'dinosaur',
+        'asset_path': 'assets/rooms/emojis/animals_11_1f995.gif',
+        'id': 'local-animals-11',
+      },
+      {
+        'title': 'turtle',
+        'name': 'turtle',
+        'asset_path': 'assets/rooms/emojis/animals_12_1f422.gif',
+        'id': 'local-animals-12',
+      },
+      {
+        'title': 'crocodile',
+        'name': 'crocodile',
+        'asset_path': 'assets/rooms/emojis/animals_13_1f40a.gif',
+        'id': 'local-animals-13',
+      },
+      {
+        'title': 'snake',
+        'name': 'snake',
+        'asset_path': 'assets/rooms/emojis/animals_14_1f40d.gif',
+        'id': 'local-animals-14',
+      },
+      {
+        'title': 'frog',
+        'name': 'frog',
+        'asset_path': 'assets/rooms/emojis/animals_15_1f438.gif',
+        'id': 'local-animals-15',
+      },
+      {
+        'title': 'rabbit',
+        'name': 'rabbit',
+        'asset_path': 'assets/rooms/emojis/animals_16_1f407.gif',
+        'id': 'local-animals-16',
+      },
+      {
+        'title': 'rat',
+        'name': 'rat',
+        'asset_path': 'assets/rooms/emojis/animals_17_1f400.gif',
+        'id': 'local-animals-17',
+      },
+      {
+        'title': 'poodle',
+        'name': 'poodle',
+        'asset_path': 'assets/rooms/emojis/animals_18_1f429.gif',
+        'id': 'local-animals-18',
+      },
+      {
+        'title': 'dog',
+        'name': 'dog',
+        'asset_path': 'assets/rooms/emojis/animals_19_1f415.gif',
+        'id': 'local-animals-19',
+      },
+      {
+        'title': 'guide-dog',
+        'name': 'guide-dog',
+        'asset_path': 'assets/rooms/emojis/animals_20_1f9ae.gif',
+        'id': 'local-animals-20',
+      },
+      {
+        'title': 'service-dog',
+        'name': 'service-dog',
+        'asset_path': 'assets/rooms/emojis/animals_21_1f415_200d_1f9ba.gif',
+        'id': 'local-animals-21',
+      },
+      {
+        'title': 'pig',
+        'name': 'pig',
+        'asset_path': 'assets/rooms/emojis/animals_22_1f416.gif',
+        'id': 'local-animals-22',
+      },
+      {
+        'title': 'racehorse',
+        'name': 'racehorse',
+        'asset_path': 'assets/rooms/emojis/animals_23_1f40e.gif',
+        'id': 'local-animals-23',
+      },
+      {
+        'title': 'donkey',
+        'name': 'donkey',
+        'asset_path': 'assets/rooms/emojis/animals_24_1facf.gif',
+        'id': 'local-animals-24',
+      },
+      {
+        'title': 'ox',
+        'name': 'ox',
+        'asset_path': 'assets/rooms/emojis/animals_25_1f402.gif',
+        'id': 'local-animals-25',
+      },
+      {
+        'title': 'goat',
+        'name': 'goat',
+        'asset_path': 'assets/rooms/emojis/animals_26_1f410.gif',
+        'id': 'local-animals-26',
+      },
+      {
+        'title': 'sloth',
+        'name': 'sloth',
+        'asset_path': 'assets/rooms/emojis/animals_27_1f9a5.gif',
+        'id': 'local-animals-27',
+      },
+      {
+        'title': 'kangaroo',
+        'name': 'kangaroo',
+        'asset_path': 'assets/rooms/emojis/animals_28_1f998.gif',
+        'id': 'local-animals-28',
+      },
+      {
+        'title': 'tiger',
+        'name': 'tiger',
+        'asset_path': 'assets/rooms/emojis/animals_29_1f405.gif',
+        'id': 'local-animals-29',
+      },
+      {
+        'title': 'monkey',
+        'name': 'monkey',
+        'asset_path': 'assets/rooms/emojis/animals_30_1f412.gif',
+        'id': 'local-animals-30',
+      },
+    ],
+  },
+  {
+    'title': 'تفاعلي',
+    'items': [
+      {
+        'title': 'dancer-woman',
+        'name': 'dancer-woman',
+        'asset_path': 'assets/rooms/emojis/interactive_01_1f483.gif',
+        'id': 'local-interactive-01',
+      },
+      {
+        'title': 'dancer-woman',
+        'name': 'dancer-woman',
+        'asset_path': 'assets/rooms/emojis/interactive_02_1f483_1f3fb.gif',
+        'id': 'local-interactive-02',
+      },
+      {
+        'title': 'dancer-woman',
+        'name': 'dancer-woman',
+        'asset_path': 'assets/rooms/emojis/interactive_03_1f483_1f3fc.gif',
+        'id': 'local-interactive-03',
+      },
+      {
+        'title': 'dancer-woman',
+        'name': 'dancer-woman',
+        'asset_path': 'assets/rooms/emojis/interactive_04_1f483_1f3fd.gif',
+        'id': 'local-interactive-04',
+      },
+      {
+        'title': 'dancer-woman',
+        'name': 'dancer-woman',
+        'asset_path': 'assets/rooms/emojis/interactive_05_1f483_1f3fe.gif',
+        'id': 'local-interactive-05',
+      },
+      {
+        'title': 'dancer-woman',
+        'name': 'dancer-woman',
+        'asset_path': 'assets/rooms/emojis/interactive_06_1f483_1f3ff.gif',
+        'id': 'local-interactive-06',
+      },
+      {
+        'title': 'clapper',
+        'name': 'clapper',
+        'asset_path': 'assets/rooms/emojis/interactive_07_1f3ac.gif',
+        'id': 'local-interactive-07',
+      },
+      {
+        'title': 'parachute',
+        'name': 'parachute',
+        'asset_path': 'assets/rooms/emojis/interactive_08_1fa82.gif',
+        'id': 'local-interactive-08',
+      },
+      {
+        'title': 'hairy-creature',
+        'name': 'hairy-creature',
+        'asset_path': 'assets/rooms/emojis/interactive_09_1fac8.gif',
+        'id': 'local-interactive-09',
+      },
+      {
+        'title': 'balloon',
+        'name': 'balloon',
+        'asset_path': 'assets/rooms/emojis/interactive_10_1f388.gif',
+        'id': 'local-interactive-10',
+      },
+      {
+        'title': 'birthday-cake',
+        'name': 'birthday-cake',
+        'asset_path': 'assets/rooms/emojis/interactive_11_1f382.gif',
+        'id': 'local-interactive-11',
+      },
+      {
+        'title': 'wrapped-gift',
+        'name': 'wrapped-gift',
+        'asset_path': 'assets/rooms/emojis/interactive_12_1f381.gif',
+        'id': 'local-interactive-12',
+      },
+      {
+        'title': 'fireworks',
+        'name': 'fireworks',
+        'asset_path': 'assets/rooms/emojis/interactive_13_1f386.gif',
+        'id': 'local-interactive-13',
+      },
+      {
+        'title': 'diya-lamp',
+        'name': 'diya-lamp',
+        'asset_path': 'assets/rooms/emojis/interactive_14_1fa94.gif',
+        'id': 'local-interactive-14',
+      },
+      {
+        'title': 'piñata',
+        'name': 'piñata',
+        'asset_path': 'assets/rooms/emojis/interactive_15_1fa85.gif',
+        'id': 'local-interactive-15',
+      },
+      {
+        'title': 'mirror-ball',
+        'name': 'mirror-ball',
+        'asset_path': 'assets/rooms/emojis/interactive_16_1faa9.gif',
+        'id': 'local-interactive-16',
+      },
+      {
+        'title': 'gold-medal',
+        'name': 'gold-medal',
+        'asset_path': 'assets/rooms/emojis/interactive_17_1f947.gif',
+        'id': 'local-interactive-17',
+      },
+      {
+        'title': 'silver-medal',
+        'name': 'silver-medal',
+        'asset_path': 'assets/rooms/emojis/interactive_18_1f948.gif',
+        'id': 'local-interactive-18',
+      },
+      {
+        'title': 'bronze-medal',
+        'name': 'bronze-medal',
+        'asset_path': 'assets/rooms/emojis/interactive_19_1f949.gif',
+        'id': 'local-interactive-19',
+      },
+      {
+        'title': 'trophy',
+        'name': 'trophy',
+        'asset_path': 'assets/rooms/emojis/interactive_20_1f3c6.gif',
+        'id': 'local-interactive-20',
+      },
+      {
+        'title': 'soccer-ball',
+        'name': 'soccer-ball',
+        'asset_path': 'assets/rooms/emojis/interactive_21_26bd.gif',
+        'id': 'local-interactive-21',
+      },
+      {
+        'title': 'baseball',
+        'name': 'baseball',
+        'asset_path': 'assets/rooms/emojis/interactive_22_26be.gif',
+        'id': 'local-interactive-22',
+      },
+      {
+        'title': 'softball',
+        'name': 'softball',
+        'asset_path': 'assets/rooms/emojis/interactive_23_1f94e.gif',
+        'id': 'local-interactive-23',
+      },
+      {
+        'title': 'basketball',
+        'name': 'basketball',
+        'asset_path': 'assets/rooms/emojis/interactive_24_1f3c0.gif',
+        'id': 'local-interactive-24',
+      },
+      {
+        'title': 'rugby-football',
+        'name': 'rugby-football',
+        'asset_path': 'assets/rooms/emojis/interactive_25_1f3c9.gif',
+        'id': 'local-interactive-25',
+      },
+      {
+        'title': 'tennis',
+        'name': 'tennis',
+        'asset_path': 'assets/rooms/emojis/interactive_26_1f3be.gif',
+        'id': 'local-interactive-26',
+      },
+      {
+        'title': 'badminton',
+        'name': 'badminton',
+        'asset_path': 'assets/rooms/emojis/interactive_27_1f3f8.gif',
+        'id': 'local-interactive-27',
+      },
+      {
+        'title': 'lacrosse',
+        'name': 'lacrosse',
+        'asset_path': 'assets/rooms/emojis/interactive_28_1f94d.gif',
+        'id': 'local-interactive-28',
+      },
+      {
+        'title': 'cricket-game',
+        'name': 'cricket-game',
+        'asset_path': 'assets/rooms/emojis/interactive_29_1f3cf.gif',
+        'id': 'local-interactive-29',
+      },
+      {
+        'title': 'field-hockey',
+        'name': 'field-hockey',
+        'asset_path': 'assets/rooms/emojis/interactive_30_1f3d1.gif',
+        'id': 'local-interactive-30',
+      },
+    ],
+  },
+  {
+    'title': 'ألعاب',
+    'items': [
+      {
+        'title': 'النرد',
+        'name': 'النرد',
+        'asset_path': 'assets/rooms/emojis/games_special_dice.gif',
+        'id': 'local-games-01',
+        'game_type': 'dice',
+      },
+      {
+        'title': 'رقم الحظ',
+        'name': 'رقم الحظ',
+        'asset_path': 'assets/rooms/emojis/games_special_lucky.gif',
+        'id': 'local-games-02',
+        'game_type': 'lucky',
+      },
+      {
+        'title': 'حجر ورقة مقص',
+        'name': 'حجر ورقة مقص',
+        'asset_path': 'assets/rooms/emojis/games_special_rps.gif',
+        'id': 'local-games-03',
+        'game_type': 'rps',
+      },
+      {
+        'title': 'balloon',
+        'name': 'balloon',
+        'asset_path': 'assets/rooms/emojis/games_01_1f388.gif',
+        'id': 'local-games-04',
+      },
+      {
+        'title': 'birthday-cake',
+        'name': 'birthday-cake',
+        'asset_path': 'assets/rooms/emojis/games_02_1f382.gif',
+        'id': 'local-games-05',
+      },
+      {
+        'title': 'wrapped-gift',
+        'name': 'wrapped-gift',
+        'asset_path': 'assets/rooms/emojis/games_03_1f381.gif',
+        'id': 'local-games-06',
+      },
+      {
+        'title': 'fireworks',
+        'name': 'fireworks',
+        'asset_path': 'assets/rooms/emojis/games_04_1f386.gif',
+        'id': 'local-games-07',
+      },
+      {
+        'title': 'diya-lamp',
+        'name': 'diya-lamp',
+        'asset_path': 'assets/rooms/emojis/games_05_1fa94.gif',
+        'id': 'local-games-08',
+      },
+      {
+        'title': 'piñata',
+        'name': 'piñata',
+        'asset_path': 'assets/rooms/emojis/games_06_1fa85.gif',
+        'id': 'local-games-09',
+      },
+      {
+        'title': 'mirror-ball',
+        'name': 'mirror-ball',
+        'asset_path': 'assets/rooms/emojis/games_07_1faa9.gif',
+        'id': 'local-games-10',
+      },
+      {
+        'title': 'gold-medal',
+        'name': 'gold-medal',
+        'asset_path': 'assets/rooms/emojis/games_08_1f947.gif',
+        'id': 'local-games-11',
+      },
+      {
+        'title': 'silver-medal',
+        'name': 'silver-medal',
+        'asset_path': 'assets/rooms/emojis/games_09_1f948.gif',
+        'id': 'local-games-12',
+      },
+      {
+        'title': 'bronze-medal',
+        'name': 'bronze-medal',
+        'asset_path': 'assets/rooms/emojis/games_10_1f949.gif',
+        'id': 'local-games-13',
+      },
+      {
+        'title': 'trophy',
+        'name': 'trophy',
+        'asset_path': 'assets/rooms/emojis/games_11_1f3c6.gif',
+        'id': 'local-games-14',
+      },
+      {
+        'title': 'soccer-ball',
+        'name': 'soccer-ball',
+        'asset_path': 'assets/rooms/emojis/games_12_26bd.gif',
+        'id': 'local-games-15',
+      },
+      {
+        'title': 'baseball',
+        'name': 'baseball',
+        'asset_path': 'assets/rooms/emojis/games_13_26be.gif',
+        'id': 'local-games-16',
+      },
+      {
+        'title': 'softball',
+        'name': 'softball',
+        'asset_path': 'assets/rooms/emojis/games_14_1f94e.gif',
+        'id': 'local-games-17',
+      },
+      {
+        'title': 'basketball',
+        'name': 'basketball',
+        'asset_path': 'assets/rooms/emojis/games_15_1f3c0.gif',
+        'id': 'local-games-18',
+      },
+      {
+        'title': 'rugby-football',
+        'name': 'rugby-football',
+        'asset_path': 'assets/rooms/emojis/games_16_1f3c9.gif',
+        'id': 'local-games-19',
+      },
+      {
+        'title': 'tennis',
+        'name': 'tennis',
+        'asset_path': 'assets/rooms/emojis/games_17_1f3be.gif',
+        'id': 'local-games-20',
+      },
+      {
+        'title': 'badminton',
+        'name': 'badminton',
+        'asset_path': 'assets/rooms/emojis/games_18_1f3f8.gif',
+        'id': 'local-games-21',
+      },
+      {
+        'title': 'lacrosse',
+        'name': 'lacrosse',
+        'asset_path': 'assets/rooms/emojis/games_19_1f94d.gif',
+        'id': 'local-games-22',
+      },
+      {
+        'title': 'cricket-game',
+        'name': 'cricket-game',
+        'asset_path': 'assets/rooms/emojis/games_20_1f3cf.gif',
+        'id': 'local-games-23',
+      },
+      {
+        'title': 'field-hockey',
+        'name': 'field-hockey',
+        'asset_path': 'assets/rooms/emojis/games_21_1f3d1.gif',
+        'id': 'local-games-24',
+      },
+      {
+        'title': 'ice-hockey',
+        'name': 'ice-hockey',
+        'asset_path': 'assets/rooms/emojis/games_22_1f3d2.gif',
+        'id': 'local-games-25',
+      },
+      {
+        'title': 'skis',
+        'name': 'skis',
+        'asset_path': 'assets/rooms/emojis/games_23_1f3bf.gif',
+        'id': 'local-games-26',
+      },
+      {
+        'title': 'ice-skate',
+        'name': 'ice-skate',
+        'asset_path': 'assets/rooms/emojis/games_24_26f8_fe0f.gif',
+        'id': 'local-games-27',
+      },
+      {
+        'title': 'roller-skates',
+        'name': 'roller-skates',
+        'asset_path': 'assets/rooms/emojis/games_25_1f6fc.gif',
+        'id': 'local-games-28',
+      },
+      {
+        'title': 'ballet-shoes',
+        'name': 'ballet-shoes',
+        'asset_path': 'assets/rooms/emojis/games_26_1fa70.gif',
+        'id': 'local-games-29',
+      },
+      {
+        'title': 'skateboard',
+        'name': 'skateboard',
+        'asset_path': 'assets/rooms/emojis/games_27_1f6f9.gif',
+        'id': 'local-games-30',
+      },
+    ],
+  },
+];
 
 class RoomsPage extends StatefulWidget {
   const RoomsPage({super.key});
@@ -1368,7 +2115,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final _service = SakiService.instance;
   final _picker = ImagePicker();
   final _message = TextEditingController();
-  final _messageFocus = FocusNode();
   late final String _roomId = widget.room['id'] as String;
   late final DateTime _roomOpenedAt = DateTime.now().toUtc();
   late final Stream<List<Map<String, dynamic>>> _seatStream;
@@ -1384,7 +2130,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _isOnSeat = false;
   bool _micMuted = true;
   bool _listenMuted = false;
-  bool _isComposing = false;
   String _micPermission = 'everyone';
   bool _isModerator = false;
   bool _comboActive = false;
@@ -1409,6 +2154,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   StreamSubscription<List<Map<String, dynamic>>>? _roomBanSubscription;
   final Map<String, Timer> _roomEmojiTimers = {};
   final Map<String, Map<String, dynamic>> _activeSeatEmojis = {};
+  final Set<String> _seenAnimatedEmojiMessages = <String>{};
   final Map<String, GlobalKey> _seatKeys = {};
   List<Map<String, dynamic>> _roomEmojis = [];
   int _roomGoldTotal = 0;
@@ -1526,7 +2272,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     });
     _messageStream = _service.roomMessagesStream(_roomId, after: _roomOpenedAt);
     _service.roomEmojis().then((items) {
-      if (mounted) setState(() => _roomEmojis = items);
+      if (mounted) {
+        final localItems = _localRoomEmojiTabs
+            .expand(
+              (tab) => (tab['items'] as List).map(
+                (item) => Map<String, dynamic>.from(item as Map),
+              ),
+            )
+            .toList();
+        setState(() => _roomEmojis = [...localItems, ...items]);
+      }
     });
     _roomEmojiSubscription = _service.roomEmojiEventsStream(_roomId).listen((
       events,
@@ -1883,10 +2638,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           final payload = <String, dynamic>{
             'gift_id': gift['id'],
             'icon': gift['icon'],
-            'thumbnail_url': gift['icon'],
+            'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
+            'thumbnail_asset_path': gift['icon']?.toString().startsWith('assets/') == true
+                ? gift['icon']
+                : null,
             'name': gift['name'],
             'media_url': gift['media_url'],
             'media_type': gift['media_type'],
+            'duration_seconds': 10,
             'category': gift['category'],
             'recipient_id': recipientId,
             'flying_banner': false,
@@ -1979,10 +2738,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         final payload = <String, dynamic>{
           'gift_id': gift['id'],
           'icon': gift['icon'],
-          'thumbnail_url': gift['icon'],
+          'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
+          'thumbnail_asset_path': gift['icon']?.toString().startsWith('assets/') == true
+              ? gift['icon']
+              : null,
           'name': gift['name'],
           'media_url': gift['media_url'],
           'media_type': gift['media_type'],
+          'duration_seconds': 10,
           'category': gift['category'],
           'recipient_id': recipient,
           'flying_banner': false,
@@ -2189,7 +2952,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       type: 'chat',
       payload: const <String, dynamic>{},
     );
-    if (mounted) setState(() => _isComposing = false);
     try {
       await _service.sendRoomMessage(_roomId, body);
     } catch (error) {
@@ -2198,6 +2960,68 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _messageSnack(error.toString().replaceFirst('Exception: ', ''));
       }
     }
+  }
+
+  Future<void> _showChatComposer() async {
+    _message.clear();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: Material(
+          color: const Color(0xFF211D27),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 10, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _message,
+                      autofocus: true,
+                      minLines: 1,
+                      maxLines: 5,
+                      textInputAction: TextInputAction.newline,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'اكتب رسالتك في الغرفة...',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        filled: true,
+                        fillColor: Colors.white10,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'إرسال الرسالة',
+                    onPressed: () async {
+                      if (_message.text.trim().isEmpty) return;
+                      await _send();
+                      if (sheetContext.mounted) Navigator.pop(sheetContext);
+                    },
+                    icon: const Icon(
+                      Icons.send_rounded,
+                      color: Color(0xFF67E8F9),
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _sendRoomImage() async {
@@ -2389,7 +3213,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _showRoomInfo() async {
-    final bundle = await _service.roomInfoBundle(_roomId);
+    Map<String, dynamic> bundle;
+    try {
+      bundle = await _service.roomInfoBundle(_roomId);
+    } catch (error) {
+      bundle = {
+        'room': widget.room,
+        'owner': const <String, dynamic>{},
+        'moderators': const <Map<String, dynamic>>[],
+        'members': _roomMembers,
+      };
+      if (mounted) {
+        _messageSnack(
+          'ظهرت معلومات الغرفة الأساسية. تعذر تحميل بعض البيانات: $error',
+        );
+      }
+    }
     if (!mounted) return;
     final owner = widget.room['owner_id'] == _service.uid;
     await showModalBottomSheet<void>(
@@ -2828,6 +3667,178 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     ),
   );
 
+  Future<void> _showEmojiPanel() async {
+    if (!_isOnSeat) {
+      _messageSnack('اصعد إلى مقعد لاستخدام الإيموجي.');
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => DefaultTabController(
+        length: _localRoomEmojiTabs.length,
+        child: Container(
+          height: MediaQuery.sizeOf(sheetContext).height * .42,
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
+          decoration: const BoxDecoration(
+            color: Color(0xFF17131D),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white38,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD166)),
+                  SizedBox(width: 8),
+                  Text(
+                    'إيموجي الغرفة المتحرك',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TabBar(
+                isScrollable: true,
+                indicatorColor: const Color(0xFFFFD166),
+                labelColor: const Color(0xFFFFD166),
+                unselectedLabelColor: Colors.white60,
+                tabs: [
+                  for (final tab in _localRoomEmojiTabs)
+                    Tab(text: tab['title'] as String),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    for (final tab in _localRoomEmojiTabs)
+                      GridView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        itemCount: (tab['items'] as List).length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 5,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: .92,
+                            ),
+                        itemBuilder: (_, index) {
+                          final emoji = Map<String, dynamic>.from(
+                            (tab['items'] as List)[index] as Map,
+                          );
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => emoji['game_type'] is String
+                                ? _sendRoomGame(emoji, sheetContext)
+                                : _sendRoomEmoji(emoji, sheetContext),
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: .08),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xFFFFD166)
+                                      .withValues(alpha: .30),
+                                ),
+                              ),
+                              child: Image.asset(
+                                (emoji['preview_asset_path'] ??
+                                        emoji['asset_path'])
+                                    as String,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendRoomEmoji(
+    Map<String, dynamic> emoji,
+    BuildContext sheetContext,
+  ) async {
+    Navigator.of(sheetContext).pop();
+    _activateSeatEmoji(_service.uid, emoji);
+    _queueOptimisticMessage(
+      body: emoji['name']?.toString() ?? 'إيموجي',
+      type: 'emoji',
+      payload: {'asset_path': emoji['asset_path'], 'name': emoji['name']},
+    );
+    try {
+      await _service.sendRoomMessage(
+        _roomId,
+        emoji['name']?.toString() ?? 'إيموجي',
+        type: 'emoji',
+        payload: {'asset_path': emoji['asset_path'], 'name': emoji['name']},
+      );
+      final remoteId = emoji['remote_id']?.toString();
+      if (remoteId != null && remoteId.isNotEmpty) {
+        await _service.sendRoomEmoji(_roomId, remoteId);
+      }
+    } catch (error) {
+      _messageSnack('تعذر إرسال الإيموجي: $error');
+    }
+  }
+
+  Future<void> _sendRoomGame(
+    Map<String, dynamic> game,
+    BuildContext sheetContext,
+  ) async {
+    Navigator.of(sheetContext).pop();
+    final type = game['game_type']?.toString() ?? 'dice';
+    final random = math.Random();
+    final value = type == 'dice'
+        ? random.nextInt(6) + 1
+        : type == 'lucky'
+        ? random.nextInt(900) + 100
+        : random.nextInt(3);
+    final result = type == 'dice'
+        ? '🎲 النرد: $value'
+        : type == 'lucky'
+        ? 'رقم الحظ: $value'
+        : 'حجر-ورقة-مقص: ${['حجر', 'ورقة', 'مقص'][value]}';
+    final payload = {
+      'asset_path': game['asset_path'],
+      'name': result,
+      'game_type': type,
+      'value': value,
+    };
+    _activateSeatEmoji(_service.uid, payload);
+    _queueOptimisticMessage(body: result, type: 'game', payload: payload);
+    try {
+      await _service.sendRoomMessage(
+        _roomId,
+        result,
+        type: 'game',
+        payload: payload,
+      );
+    } catch (error) {
+      _messageSnack('تعذر إرسال نتيجة اللعبة: $error');
+    }
+  }
+
   void _activateSeatEmoji(String userId, Map<String, dynamic> emoji) {
     _roomEmojiTimers[userId]?.cancel();
     if (mounted) {
@@ -2838,115 +3849,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         setState(() => _activeSeatEmojis.remove(userId));
       }
     });
-  }
-
-  Future<void> _showEmojiPanel() async {
-    final seats = await _service.roomSeats(_roomId);
-    if (!mounted) return;
-    final canSpeak = seats.any((seat) => seat['user_id'] == _service.uid);
-    if (!canSpeak) {
-      _messageSnack('اصعد إلى مقعد لاستخدام الإيموجي.');
-      return;
-    }
-    if (_roomEmojis.isEmpty) {
-      _messageSnack('لا توجد إيموجيات غرفة متاحة حالياً.');
-      return;
-    }
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: .5),
-      builder: (_) => SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 20),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: .5),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white54,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  'إيموجي المقعد',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _roomEmojis.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: .82,
-                ),
-                itemBuilder: (_, index) {
-                  final emoji = _roomEmojis[index];
-                  return GestureDetector(
-                    onTap: () {
-                      final userId = _service.uid;
-                      // Activate locally first so the sender sees the GIF immediately;
-                      // the Realtime event then synchronizes the same seat for everyone else.
-                      _activateSeatEmoji(userId, emoji);
-                      Navigator.pop(context);
-                      _service.sendRoomEmoji(_roomId, emoji['id'] as String);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .10),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: .16),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Image.network(
-                              emoji['gif_url'] as String,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            emoji['name'] as String,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   void _messageSnack(String value) => CustomToast.show(context, value);
@@ -3437,8 +4339,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Wrap(
+            alignment: WrapAlignment.spaceAround,
+            spacing: 18,
+            runSpacing: 14,
             children: [
               if (_isOnSeat)
                 _toolButton(Icons.music_note, 'موسيقى', () {
@@ -3455,6 +4359,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 'هدايا',
                 () => Navigator.pop(context),
               ),
+              _toolButton(Icons.image_rounded, 'رفع صورة VIP4+', () {
+                Navigator.pop(context);
+                _sendRoomImage();
+              }),
               _toolButton(Icons.card_giftcard_rounded, 'حقيبة حظ', () {
                 Navigator.pop(context);
                 LuckBagComposer.show(context, _roomId, (bag) {
@@ -3793,7 +4701,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         RoomSessionController.instance.isSameRoom(_roomId) &&
         RoomSessionController.instance.engine == _engine;
     _message.dispose();
-    _messageFocus.dispose();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
@@ -4192,13 +5099,82 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                 if (_activeSeatEmojis[row['user_id']
                                                         ?.toString()] !=
                                                     null)
-                                                  Positioned.fill(
+                                                  Positioned(
+                                                    left: -22,
+                                                    top: -22,
+                                                    width: 96,
+                                                    height: 96,
                                                     child: IgnorePointer(
-                                                      child: Image.network(
-                                                        _activeSeatEmojis[row['user_id']
-                                                                ?.toString()]!['gif_url']
-                                                            as String,
-                                                        fit: BoxFit.contain,
+                                                      child: Stack(
+                                                        alignment:
+                                                            Alignment.center,
+                                                        children: [
+                                                          _activeSeatEmojis[row['user_id']
+                                                                      ?.toString()]!['asset_path'] !=
+                                                                  null
+                                                              ? Image.asset(
+                                                                  _activeSeatEmojis[row['user_id']
+                                                                          ?.toString()]!['asset_path']
+                                                                      as String,
+                                                                  fit: BoxFit
+                                                                      .contain,
+                                                                )
+                                                              : Image.network(
+                                                                  _activeSeatEmojis[row['user_id']
+                                                                          ?.toString()]!['gif_url']
+                                                                      as String,
+                                                                  fit: BoxFit
+                                                                      .contain,
+                                                                ),
+                                                          if (_activeSeatEmojis[row['user_id']
+                                                                  ?.toString()]!['game_type'] !=
+                                                              null)
+                                                            Positioned(
+                                                              bottom: 4,
+                                                              child: DecoratedBox(
+                                                                decoration: BoxDecoration(
+                                                                  color: const Color(
+                                                                    0xEE111827,
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                ),
+                                                                child: Padding(
+                                                                  padding:
+                                                                      const EdgeInsets.symmetric(
+                                                                        horizontal:
+                                                                            6,
+                                                                        vertical:
+                                                                            2,
+                                                                      ),
+                                                                  child: Text(
+                                                                    _activeSeatEmojis[row['user_id']
+                                                                                ?.toString()]!['game_type'] ==
+                                                                            'rps'
+                                                                        ? (_activeSeatEmojis[row['user_id']?.toString()]!['name'] ?? '')
+                                                                              .toString()
+                                                                              .split(
+                                                                                ': ',
+                                                                              )
+                                                                              .last
+                                                                        : (_activeSeatEmojis[row['user_id']?.toString()]!['value'] ?? '')
+                                                                              .toString(),
+                                                                    style: const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                      fontSize:
+                                                                          11,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w900,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ),
@@ -4310,6 +5286,34 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                 ),
                                           ),
                                 );
+                          for (final message in messages) {
+                            final messageType = message['message_type'];
+                            if (messageType != 'emoji' &&
+                                messageType != 'game') {
+                              continue;
+                            }
+                            final payload = message['payload'];
+                            if (payload is! Map ||
+                                (messageType == 'emoji' &&
+                                    payload['asset_path'] is! String) ||
+                                (messageType == 'game' &&
+                                    payload['asset_path'] is! String)) {
+                              continue;
+                            }
+                            final messageKey =
+                                message['id']?.toString() ??
+                                '${message['sender_id']}:${message['created_at']}';
+                            if (!_seenAnimatedEmojiMessages.add(messageKey)) {
+                              continue;
+                            }
+                            scheduleMicrotask(() {
+                              if (!mounted) return;
+                              final senderId =
+                                  message['sender_id']?.toString() ?? '';
+                              final effect = Map<String, dynamic>.from(payload);
+                              _activateSeatEmoji(senderId, effect);
+                            });
+                          }
                           final latestMessage = messages.isEmpty
                               ? const <String, dynamic>{}
                               : messages.last;
@@ -4638,10 +5642,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                                                         ),
                                                       ),
                                                     ),
-                                                  messageType == 'image' &&
-                                                          (payload['image_url'] ??
-                                                                  payload['thumbnail_url'])
+                                                  messageType == 'emoji' &&
+                                                          payload['asset_path']
                                                               is String
+                                                      ? Image.asset(
+                                                          payload['asset_path']
+                                                              .toString(),
+                                                          width: 72,
+                                                          height: 72,
+                                                          fit: BoxFit.contain,
+                                                        )
+                                                      : messageType ==
+                                                                'image' &&
+                                                            (payload['image_url'] ??
+                                                                    payload['thumbnail_url'])
+                                                                is String
                                                       ? GestureDetector(
                                                           onTap: () => _openRoomImage(
                                                             (payload['image_url'] ??
@@ -4699,161 +5714,127 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                       child: Row(
                         children: [
-                          if (_isComposing) ...[
-                            Expanded(
-                              child: TextField(
-                                controller: _message,
-                                focusNode: _messageFocus,
-                                autofocus: true,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: InputDecoration(
-                                  hintText: 'كتابة رسالة...',
-                                  hintStyle: const TextStyle(
-                                    color: Colors.white54,
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.black38,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide.none,
-                                  ),
+                          Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: _showChatComposer,
+                              child: Container(
+                                height: 48,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
                                 ),
-                                onSubmitted: (_) => _send(),
-                              ),
-                            ),
-                            IconButton(
-                              tooltip: 'إرسال صورة VIP4+',
-                              onPressed: _sendRoomImage,
-                              icon: const Icon(
-                                Icons.image_rounded,
-                                color: Colors.lightBlueAccent,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _send,
-                              icon: const Icon(
-                                Icons.send_rounded,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ] else ...[
-                            Expanded(
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(24),
-                                onTap: () =>
-                                    setState(() => _isComposing = true),
-                                child: Container(
-                                  height: 48,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 18,
-                                  ),
-                                  alignment: Alignment.centerLeft,
-                                  decoration: BoxDecoration(
-                                    color: Colors.black38,
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: const Text(
-                                    'كتابة رسالة...',
-                                    style: TextStyle(color: Colors.white54),
-                                  ),
+                                alignment: Alignment.centerLeft,
+                                decoration: BoxDecoration(
+                                  color: Colors.black38,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.white12),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      color: Colors.white70,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'الدردشة',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                            IconButton(
-                              onPressed: _showEmojiPanel,
-                              icon: const Icon(
-                                Icons.emoji_emotions_outlined,
-                                color: Colors.amberAccent,
-                              ),
+                          ),
+                          IconButton(
+                            onPressed: _showEmojiPanel,
+                            icon: const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Color(0xFFFFD166),
                             ),
-                            IconButton(
-                              tooltip: 'إرسال صورة VIP4+',
-                              onPressed: _sendRoomImage,
-                              icon: const Icon(
-                                Icons.image_rounded,
-                                color: Colors.lightBlueAccent,
-                              ),
+                            tooltip: 'إيموجي متحرك',
+                          ),
+                          IconButton(
+                            onPressed: _toggleListenMute,
+                            icon: Icon(
+                              _listenMuted
+                                  ? Icons.volume_off_rounded
+                                  : Icons.volume_up_rounded,
+                              color: _listenMuted
+                                  ? Colors.redAccent
+                                  : Colors.white70,
                             ),
-                            IconButton(
-                              onPressed: _toggleListenMute,
-                              icon: Icon(
-                                _listenMuted
-                                    ? Icons.volume_off_rounded
-                                    : Icons.volume_up_rounded,
-                                color: _listenMuted
-                                    ? Colors.redAccent
-                                    : Colors.white70,
-                              ),
+                          ),
+                          IconButton(
+                            onPressed: _toggleRoomMic,
+                            icon: Icon(
+                              _micMuted
+                                  ? Icons.mic_off_rounded
+                                  : Icons.mic_rounded,
+                              color: _isOnSeat
+                                  ? Colors.amberAccent
+                                  : Colors.white38,
                             ),
-                            IconButton(
-                              onPressed: _toggleRoomMic,
-                              icon: Icon(
-                                _micMuted
-                                    ? Icons.mic_off_rounded
-                                    : Icons.mic_rounded,
-                                color: _isOnSeat
-                                    ? Colors.amberAccent
-                                    : Colors.white38,
-                              ),
-                            ),
-                            SizedBox(
-                              width: _comboActive ? 116 : 72,
-                              height: _comboActive ? 140 : 64,
-                              child: Stack(
-                                alignment: AlignmentDirectional.bottomCenter,
-                                children: [
-                                  GestureDetector(
-                                    onTap: _showGiftPanel,
-                                    child: Container(
-                                      width: 62,
-                                      height: 62,
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: Colors.black26,
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(
-                                          color: Colors.white12,
-                                        ),
-                                      ),
-                                      child: Image.asset(
-                                        'assets/saki_gift_box_icon.png',
-                                        width: 36,
-                                        height: 36,
-                                        fit: BoxFit.contain,
-                                      ),
+                          ),
+                          SizedBox(
+                            width: _comboActive ? 116 : 72,
+                            height: _comboActive ? 140 : 64,
+                            child: Stack(
+                              alignment: AlignmentDirectional.bottomCenter,
+                              children: [
+                                GestureDetector(
+                                  onTap: _showGiftPanel,
+                                  child: Container(
+                                    width: 62,
+                                    height: 62,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black26,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: Colors.white12),
+                                    ),
+                                    child: Image.asset(
+                                      'assets/saki_gift_box_icon.png',
+                                      width: 36,
+                                      height: 36,
+                                      fit: BoxFit.contain,
                                     ),
                                   ),
-                                  if (_comboActive)
-                                    Positioned(
-                                      top: 0,
-                                      child: RoomComboButton(
-                                        key: const ValueKey('room-gift-combo'),
-                                        count: _comboCount,
-                                        isSending: _comboSending,
-                                        duration: const Duration(seconds: 10),
-                                        onTap: _sendComboAgain,
-                                        onExpired: _expireGiftCombo,
-                                      ),
+                                ),
+                                if (_comboActive)
+                                  Positioned(
+                                    top: 0,
+                                    child: RoomComboButton(
+                                      key: const ValueKey('room-gift-combo'),
+                                      count: _comboCount,
+                                      isSending: _comboSending,
+                                      duration: const Duration(seconds: 10),
+                                      onTap: _sendComboAgain,
+                                      onExpired: _expireGiftCombo,
                                     ),
-                                ],
-                              ),
+                                  ),
+                              ],
                             ),
-                            IconButton(
-                              onPressed: _showRoomTools,
-                              icon: const Icon(
-                                Icons.grid_view_rounded,
-                                color: Colors.white,
-                              ),
+                          ),
+                          IconButton(
+                            onPressed: _showRoomTools,
+                            icon: const Icon(
+                              Icons.grid_view_rounded,
+                              color: Colors.white,
                             ),
-                            IconButton(
-                              tooltip: 'ألعاب الغرفة',
-                              onPressed: _showGamesSheet,
-                              icon: const Icon(
-                                Icons.sports_esports_rounded,
-                                color: Color(0xFFFFD166),
-                              ),
+                            tooltip: 'أدوات الغرفة',
+                          ),
+                          IconButton(
+                            onPressed: _showGamesSheet,
+                            icon: const Icon(
+                              Icons.sports_esports_rounded,
+                              color: Color(0xFFFFD166),
                             ),
-                          ],
+                            tooltip: 'ألعاب الغرفة',
+                          ),
                         ],
                       ),
                     ),
@@ -5085,7 +6066,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
 
   bool get _compactGift {
     final type = (_payload['media_type'] as String? ?? '').toLowerCase();
-    return type != 'svga' && type != 'mp4';
+    return type != 'svga' && type != 'mp4' && type != 'gif';
   }
 
   @override
@@ -5147,7 +6128,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
         if (video.value.position >= video.value.duration) _hide();
       });
     } else if (url != null && url.isNotEmpty && type == 'gif') {
-      Future<void>.delayed(const Duration(seconds: 5), _hide);
+      Future<void>.delayed(const Duration(seconds: 10), _hide);
     } else {
       Future<void>.delayed(const Duration(milliseconds: 900), _hide);
     }
@@ -5172,6 +6153,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   Widget _buildGiftFlight(BuildContext context) {
     final payload = _payload;
     final thumbnail = payload['thumbnail_url'] as String?;
+    final thumbnailAsset = payload['thumbnail_asset_path'] as String?;
     final media = payload['media_url'] as String?;
     final url = thumbnail?.startsWith('http') == true
         ? thumbnail
@@ -5190,7 +6172,14 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
       (target.dx - screen.width / 2) / screen.width,
       (target.dy - screen.height / 2) / screen.height,
     );
-    final image = url != null && url.isNotEmpty
+    final image = thumbnailAsset != null && thumbnailAsset.isNotEmpty
+        ? Image.asset(
+            thumbnailAsset,
+            width: 72,
+            height: 72,
+            fit: BoxFit.contain,
+          )
+        : url != null && url.isNotEmpty
         ? Image.network(
             url,
             width: 72,
@@ -5273,6 +6262,9 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
               ? snapshot.data![1]
               : null;
           final immersive = type == 'mp4' || type == 'svga';
+          final localMedia = url != null && url.startsWith('assets/')
+              ? Image.asset(url, fit: BoxFit.contain)
+              : null;
           final mediaView = _svga.videoItem != null
               ? SVGAImage(_svga, fit: BoxFit.contain)
               : _video != null && _video!.value.isInitialized
@@ -5284,6 +6276,8 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
                     child: VideoPlayer(_video!),
                   ),
                 )
+              : localMedia != null
+              ? localMedia
               : url != null && url.isNotEmpty
               ? Image.network(url, fit: BoxFit.contain)
               : Center(

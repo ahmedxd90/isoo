@@ -1,0 +1,992 @@
+[
+  {
+    "group": "emoji",
+    "items": [
+      {
+        "name": "smile",
+        "codepoint": "1f600",
+        "file": "emoji_01_1f600.gif",
+        "tags": [
+          ":smile:"
+        ]
+      },
+      {
+        "name": "smile-with-big-eyes",
+        "codepoint": "1f603",
+        "file": "emoji_02_1f603.gif",
+        "tags": [
+          ":smile-with-big-eyes:"
+        ]
+      },
+      {
+        "name": "grin",
+        "codepoint": "1f604",
+        "file": "emoji_03_1f604.gif",
+        "tags": [
+          ":grin:"
+        ]
+      },
+      {
+        "name": "grinning",
+        "codepoint": "1f601",
+        "file": "emoji_04_1f601.gif",
+        "tags": [
+          ":grinning:"
+        ]
+      },
+      {
+        "name": "laughing",
+        "codepoint": "1f606",
+        "file": "emoji_05_1f606.gif",
+        "tags": [
+          ":laughing:"
+        ]
+      },
+      {
+        "name": "grin-sweat",
+        "codepoint": "1f605",
+        "file": "emoji_06_1f605.gif",
+        "tags": [
+          ":grin-sweat:"
+        ]
+      },
+      {
+        "name": "joy",
+        "codepoint": "1f602",
+        "file": "emoji_07_1f602.gif",
+        "tags": [
+          ":joy:"
+        ]
+      },
+      {
+        "name": "rofl",
+        "codepoint": "1f923",
+        "file": "emoji_08_1f923.gif",
+        "tags": [
+          ":rofl:"
+        ]
+      },
+      {
+        "name": "loudly-crying",
+        "codepoint": "1f62d",
+        "file": "emoji_09_1f62d.gif",
+        "tags": [
+          ":loudly-crying:"
+        ]
+      },
+      {
+        "name": "wink",
+        "codepoint": "1f609",
+        "file": "emoji_10_1f609.gif",
+        "tags": [
+          ":wink:"
+        ]
+      },
+      {
+        "name": "kissing",
+        "codepoint": "1f617",
+        "file": "emoji_11_1f617.gif",
+        "tags": [
+          ":kissing:"
+        ]
+      },
+      {
+        "name": "kissing-smiling-eyes",
+        "codepoint": "1f619",
+        "file": "emoji_12_1f619.gif",
+        "tags": [
+          ":kissing-smiling-eyes:"
+        ]
+      },
+      {
+        "name": "kissing-closed-eyes",
+        "codepoint": "1f61a",
+        "file": "emoji_13_1f61a.gif",
+        "tags": [
+          ":kissing-closed-eyes:"
+        ]
+      },
+      {
+        "name": "kissing-heart",
+        "codepoint": "1f618",
+        "file": "emoji_14_1f618.gif",
+        "tags": [
+          ":kissing-heart:"
+        ]
+      },
+      {
+        "name": "heart-face",
+        "codepoint": "1f970",
+        "file": "emoji_15_1f970.gif",
+        "tags": [
+          ":heart-face:",
+          ":3-hearts:"
+        ]
+      },
+      {
+        "name": "heart-eyes",
+        "codepoint": "1f60d",
+        "file": "emoji_16_1f60d.gif",
+        "tags": [
+          ":heart-eyes:"
+        ]
+      },
+      {
+        "name": "star-struck",
+        "codepoint": "1f929",
+        "file": "emoji_17_1f929.gif",
+        "tags": [
+          ":star-struck:"
+        ]
+      },
+      {
+        "name": "partying-face",
+        "codepoint": "1f973",
+        "file": "emoji_18_1f973.gif",
+        "tags": [
+          ":partying-face:"
+        ]
+      },
+      {
+        "name": "melting",
+        "codepoint": "1fae0",
+        "file": "emoji_19_1fae0.gif",
+        "tags": [
+          ":melting:"
+        ]
+      },
+      {
+        "name": "upside-down-face",
+        "codepoint": "1f643",
+        "file": "emoji_20_1f643.gif",
+        "tags": [
+          ":upside-down-face:"
+        ]
+      },
+      {
+        "name": "slightly-happy",
+        "codepoint": "1f642",
+        "file": "emoji_21_1f642.gif",
+        "tags": [
+          ":slightly-happy:"
+        ]
+      },
+      {
+        "name": "happy-cry",
+        "codepoint": "1f972",
+        "file": "emoji_22_1f972.gif",
+        "tags": [
+          ":happy-cry:"
+        ]
+      },
+      {
+        "name": "holding-back-tears",
+        "codepoint": "1f979",
+        "file": "emoji_23_1f979.gif",
+        "tags": [
+          ":holding-back-tears:"
+        ]
+      },
+      {
+        "name": "blush",
+        "codepoint": "1f60a",
+        "file": "emoji_24_1f60a.gif",
+        "tags": [
+          ":blush:"
+        ]
+      },
+      {
+        "name": "warm-smile",
+        "codepoint": "263a_fe0f",
+        "file": "emoji_25_263a_fe0f.gif",
+        "tags": [
+          ":warm-smile:"
+        ]
+      },
+      {
+        "name": "relieved",
+        "codepoint": "1f60c",
+        "file": "emoji_26_1f60c.gif",
+        "tags": [
+          ":relieved:"
+        ]
+      },
+      {
+        "name": "head-nod",
+        "codepoint": "1f642_200d_2195_fe0f",
+        "file": "emoji_27_1f642_200d_2195_fe0f.gif",
+        "tags": [
+          ":head-nod:"
+        ]
+      },
+      {
+        "name": "head-shake",
+        "codepoint": "1f642_200d_2194_fe0f",
+        "file": "emoji_28_1f642_200d_2194_fe0f.gif",
+        "tags": [
+          ":head-shake:"
+        ]
+      },
+      {
+        "name": "smirk",
+        "codepoint": "1f60f",
+        "file": "emoji_29_1f60f.gif",
+        "tags": [
+          ":smirk:"
+        ]
+      },
+      {
+        "name": "drool",
+        "codepoint": "1f924",
+        "file": "emoji_30_1f924.gif",
+        "tags": [
+          ":drool:"
+        ]
+      }
+    ]
+  },
+  {
+    "group": "animals",
+    "items": [
+      {
+        "name": "lion-face",
+        "codepoint": "1f981",
+        "file": "animals_01_1f981.gif",
+        "tags": [
+          ":lion-face:"
+        ]
+      },
+      {
+        "name": "wolf",
+        "codepoint": "1f43a",
+        "file": "animals_02_1f43a.gif",
+        "tags": [
+          ":wolf:"
+        ]
+      },
+      {
+        "name": "bear-face",
+        "codepoint": "1f43b",
+        "file": "animals_03_1f43b.gif",
+        "tags": [
+          ":bear-face:"
+        ]
+      },
+      {
+        "name": "panda",
+        "codepoint": "1f43c",
+        "file": "animals_04_1f43c.gif",
+        "tags": [
+          ":panda:"
+        ]
+      },
+      {
+        "name": "fox-face",
+        "codepoint": "1f98a",
+        "file": "animals_05_1f98a.gif",
+        "tags": [
+          ":fox-face:"
+        ]
+      },
+      {
+        "name": "cow-face",
+        "codepoint": "1f42e",
+        "file": "animals_06_1f42e.gif",
+        "tags": [
+          ":cow-face:"
+        ]
+      },
+      {
+        "name": "unicorn",
+        "codepoint": "1f984",
+        "file": "animals_07_1f984.gif",
+        "tags": [
+          ":unicorn:"
+        ]
+      },
+      {
+        "name": "lizard",
+        "codepoint": "1f98e",
+        "file": "animals_08_1f98e.gif",
+        "tags": [
+          ":lizard:"
+        ]
+      },
+      {
+        "name": "dragon",
+        "codepoint": "1f409",
+        "file": "animals_09_1f409.gif",
+        "tags": [
+          ":dragon:"
+        ]
+      },
+      {
+        "name": "t-rex",
+        "codepoint": "1f996",
+        "file": "animals_10_1f996.gif",
+        "tags": [
+          ":t-rex:"
+        ]
+      },
+      {
+        "name": "dinosaur",
+        "codepoint": "1f995",
+        "file": "animals_11_1f995.gif",
+        "tags": [
+          ":dinosaur:"
+        ]
+      },
+      {
+        "name": "turtle",
+        "codepoint": "1f422",
+        "file": "animals_12_1f422.gif",
+        "tags": [
+          ":turtle:"
+        ]
+      },
+      {
+        "name": "crocodile",
+        "codepoint": "1f40a",
+        "file": "animals_13_1f40a.gif",
+        "tags": [
+          ":crocodile:"
+        ]
+      },
+      {
+        "name": "snake",
+        "codepoint": "1f40d",
+        "file": "animals_14_1f40d.gif",
+        "tags": [
+          ":snake:"
+        ]
+      },
+      {
+        "name": "frog",
+        "codepoint": "1f438",
+        "file": "animals_15_1f438.gif",
+        "tags": [
+          ":frog:"
+        ]
+      },
+      {
+        "name": "rabbit",
+        "codepoint": "1f407",
+        "file": "animals_16_1f407.gif",
+        "tags": [
+          ":rabbit:"
+        ]
+      },
+      {
+        "name": "rat",
+        "codepoint": "1f400",
+        "file": "animals_17_1f400.gif",
+        "tags": [
+          ":rat:"
+        ]
+      },
+      {
+        "name": "poodle",
+        "codepoint": "1f429",
+        "file": "animals_18_1f429.gif",
+        "tags": [
+          ":poodle:"
+        ]
+      },
+      {
+        "name": "dog",
+        "codepoint": "1f415",
+        "file": "animals_19_1f415.gif",
+        "tags": [
+          ":dog:"
+        ]
+      },
+      {
+        "name": "guide-dog",
+        "codepoint": "1f9ae",
+        "file": "animals_20_1f9ae.gif",
+        "tags": [
+          ":guide-dog:"
+        ]
+      },
+      {
+        "name": "service-dog",
+        "codepoint": "1f415_200d_1f9ba",
+        "file": "animals_21_1f415_200d_1f9ba.gif",
+        "tags": [
+          ":service-dog:"
+        ]
+      },
+      {
+        "name": "pig",
+        "codepoint": "1f416",
+        "file": "animals_22_1f416.gif",
+        "tags": [
+          ":pig:"
+        ]
+      },
+      {
+        "name": "racehorse",
+        "codepoint": "1f40e",
+        "file": "animals_23_1f40e.gif",
+        "tags": [
+          ":racehorse:"
+        ]
+      },
+      {
+        "name": "donkey",
+        "codepoint": "1facf",
+        "file": "animals_24_1facf.gif",
+        "tags": [
+          ":donkey:"
+        ]
+      },
+      {
+        "name": "ox",
+        "codepoint": "1f402",
+        "file": "animals_25_1f402.gif",
+        "tags": [
+          ":ox:"
+        ]
+      },
+      {
+        "name": "goat",
+        "codepoint": "1f410",
+        "file": "animals_26_1f410.gif",
+        "tags": [
+          ":goat:"
+        ]
+      },
+      {
+        "name": "sloth",
+        "codepoint": "1f9a5",
+        "file": "animals_27_1f9a5.gif",
+        "tags": [
+          ":sloth:"
+        ]
+      },
+      {
+        "name": "kangaroo",
+        "codepoint": "1f998",
+        "file": "animals_28_1f998.gif",
+        "tags": [
+          ":kangaroo:"
+        ]
+      },
+      {
+        "name": "tiger",
+        "codepoint": "1f405",
+        "file": "animals_29_1f405.gif",
+        "tags": [
+          ":tiger:"
+        ]
+      },
+      {
+        "name": "monkey",
+        "codepoint": "1f412",
+        "file": "animals_30_1f412.gif",
+        "tags": [
+          ":monkey:"
+        ]
+      }
+    ]
+  },
+  {
+    "group": "interactive",
+    "items": [
+      {
+        "name": "dancer-woman",
+        "codepoint": "1f483",
+        "file": "interactive_01_1f483.gif",
+        "tags": [
+          ":dancer-woman:"
+        ]
+      },
+      {
+        "name": "dancer-woman",
+        "codepoint": "1f483_1f3fb",
+        "file": "interactive_02_1f483_1f3fb.gif",
+        "tags": [
+          ":dancer-woman:"
+        ]
+      },
+      {
+        "name": "dancer-woman",
+        "codepoint": "1f483_1f3fc",
+        "file": "interactive_03_1f483_1f3fc.gif",
+        "tags": [
+          ":dancer-woman:"
+        ]
+      },
+      {
+        "name": "dancer-woman",
+        "codepoint": "1f483_1f3fd",
+        "file": "interactive_04_1f483_1f3fd.gif",
+        "tags": [
+          ":dancer-woman:"
+        ]
+      },
+      {
+        "name": "dancer-woman",
+        "codepoint": "1f483_1f3fe",
+        "file": "interactive_05_1f483_1f3fe.gif",
+        "tags": [
+          ":dancer-woman:"
+        ]
+      },
+      {
+        "name": "dancer-woman",
+        "codepoint": "1f483_1f3ff",
+        "file": "interactive_06_1f483_1f3ff.gif",
+        "tags": [
+          ":dancer-woman:"
+        ]
+      },
+      {
+        "name": "clapper",
+        "codepoint": "1f3ac",
+        "file": "interactive_07_1f3ac.gif",
+        "tags": [
+          ":clapper:"
+        ]
+      },
+      {
+        "name": "parachute",
+        "codepoint": "1fa82",
+        "file": "interactive_08_1fa82.gif",
+        "tags": [
+          ":parachute:"
+        ]
+      },
+      {
+        "name": "hairy-creature",
+        "codepoint": "1fac8",
+        "file": "interactive_09_1fac8.gif",
+        "tags": [
+          ":hairy-creature:"
+        ]
+      },
+      {
+        "name": "balloon",
+        "codepoint": "1f388",
+        "file": "interactive_10_1f388.gif",
+        "tags": [
+          ":balloon:"
+        ]
+      },
+      {
+        "name": "birthday-cake",
+        "codepoint": "1f382",
+        "file": "interactive_11_1f382.gif",
+        "tags": [
+          ":birthday-cake:"
+        ]
+      },
+      {
+        "name": "wrapped-gift",
+        "codepoint": "1f381",
+        "file": "interactive_12_1f381.gif",
+        "tags": [
+          ":wrapped-gift:"
+        ]
+      },
+      {
+        "name": "fireworks",
+        "codepoint": "1f386",
+        "file": "interactive_13_1f386.gif",
+        "tags": [
+          ":fireworks:"
+        ]
+      },
+      {
+        "name": "diya-lamp",
+        "codepoint": "1fa94",
+        "file": "interactive_14_1fa94.gif",
+        "tags": [
+          ":diya-lamp:"
+        ]
+      },
+      {
+        "name": "piñata",
+        "codepoint": "1fa85",
+        "file": "interactive_15_1fa85.gif",
+        "tags": [
+          ":piñata:"
+        ]
+      },
+      {
+        "name": "mirror-ball",
+        "codepoint": "1faa9",
+        "file": "interactive_16_1faa9.gif",
+        "tags": [
+          ":mirror-ball:",
+          ":disco-ball:"
+        ]
+      },
+      {
+        "name": "gold-medal",
+        "codepoint": "1f947",
+        "file": "interactive_17_1f947.gif",
+        "tags": [
+          ":gold-medal:",
+          ":1st-place-medal:"
+        ]
+      },
+      {
+        "name": "silver-medal",
+        "codepoint": "1f948",
+        "file": "interactive_18_1f948.gif",
+        "tags": [
+          ":silver-medal:",
+          ":2nd-place-medal:"
+        ]
+      },
+      {
+        "name": "bronze-medal",
+        "codepoint": "1f949",
+        "file": "interactive_19_1f949.gif",
+        "tags": [
+          ":bronze-medal:",
+          ":3rd-place-medal:"
+        ]
+      },
+      {
+        "name": "trophy",
+        "codepoint": "1f3c6",
+        "file": "interactive_20_1f3c6.gif",
+        "tags": [
+          ":trophy:"
+        ]
+      },
+      {
+        "name": "soccer-ball",
+        "codepoint": "26bd",
+        "file": "interactive_21_26bd.gif",
+        "tags": [
+          ":soccer-ball:"
+        ]
+      },
+      {
+        "name": "baseball",
+        "codepoint": "26be",
+        "file": "interactive_22_26be.gif",
+        "tags": [
+          ":baseball:"
+        ]
+      },
+      {
+        "name": "softball",
+        "codepoint": "1f94e",
+        "file": "interactive_23_1f94e.gif",
+        "tags": [
+          ":softball:"
+        ]
+      },
+      {
+        "name": "basketball",
+        "codepoint": "1f3c0",
+        "file": "interactive_24_1f3c0.gif",
+        "tags": [
+          ":basketball:"
+        ]
+      },
+      {
+        "name": "rugby-football",
+        "codepoint": "1f3c9",
+        "file": "interactive_25_1f3c9.gif",
+        "tags": [
+          ":rugby-football:"
+        ]
+      },
+      {
+        "name": "tennis",
+        "codepoint": "1f3be",
+        "file": "interactive_26_1f3be.gif",
+        "tags": [
+          ":tennis:"
+        ]
+      },
+      {
+        "name": "badminton",
+        "codepoint": "1f3f8",
+        "file": "interactive_27_1f3f8.gif",
+        "tags": [
+          ":badminton:"
+        ]
+      },
+      {
+        "name": "lacrosse",
+        "codepoint": "1f94d",
+        "file": "interactive_28_1f94d.gif",
+        "tags": [
+          ":lacrosse:"
+        ]
+      },
+      {
+        "name": "cricket-game",
+        "codepoint": "1f3cf",
+        "file": "interactive_29_1f3cf.gif",
+        "tags": [
+          ":cricket-game:"
+        ]
+      },
+      {
+        "name": "field-hockey",
+        "codepoint": "1f3d1",
+        "file": "interactive_30_1f3d1.gif",
+        "tags": [
+          ":field-hockey:"
+        ]
+      }
+    ]
+  },
+  {
+    "group": "games",
+    "items": [
+      {
+        "name": "balloon",
+        "codepoint": "1f388",
+        "file": "games_01_1f388.gif",
+        "tags": [
+          ":balloon:"
+        ]
+      },
+      {
+        "name": "birthday-cake",
+        "codepoint": "1f382",
+        "file": "games_02_1f382.gif",
+        "tags": [
+          ":birthday-cake:"
+        ]
+      },
+      {
+        "name": "wrapped-gift",
+        "codepoint": "1f381",
+        "file": "games_03_1f381.gif",
+        "tags": [
+          ":wrapped-gift:"
+        ]
+      },
+      {
+        "name": "fireworks",
+        "codepoint": "1f386",
+        "file": "games_04_1f386.gif",
+        "tags": [
+          ":fireworks:"
+        ]
+      },
+      {
+        "name": "diya-lamp",
+        "codepoint": "1fa94",
+        "file": "games_05_1fa94.gif",
+        "tags": [
+          ":diya-lamp:"
+        ]
+      },
+      {
+        "name": "piñata",
+        "codepoint": "1fa85",
+        "file": "games_06_1fa85.gif",
+        "tags": [
+          ":piñata:"
+        ]
+      },
+      {
+        "name": "mirror-ball",
+        "codepoint": "1faa9",
+        "file": "games_07_1faa9.gif",
+        "tags": [
+          ":mirror-ball:",
+          ":disco-ball:"
+        ]
+      },
+      {
+        "name": "gold-medal",
+        "codepoint": "1f947",
+        "file": "games_08_1f947.gif",
+        "tags": [
+          ":gold-medal:",
+          ":1st-place-medal:"
+        ]
+      },
+      {
+        "name": "silver-medal",
+        "codepoint": "1f948",
+        "file": "games_09_1f948.gif",
+        "tags": [
+          ":silver-medal:",
+          ":2nd-place-medal:"
+        ]
+      },
+      {
+        "name": "bronze-medal",
+        "codepoint": "1f949",
+        "file": "games_10_1f949.gif",
+        "tags": [
+          ":bronze-medal:",
+          ":3rd-place-medal:"
+        ]
+      },
+      {
+        "name": "trophy",
+        "codepoint": "1f3c6",
+        "file": "games_11_1f3c6.gif",
+        "tags": [
+          ":trophy:"
+        ]
+      },
+      {
+        "name": "soccer-ball",
+        "codepoint": "26bd",
+        "file": "games_12_26bd.gif",
+        "tags": [
+          ":soccer-ball:"
+        ]
+      },
+      {
+        "name": "baseball",
+        "codepoint": "26be",
+        "file": "games_13_26be.gif",
+        "tags": [
+          ":baseball:"
+        ]
+      },
+      {
+        "name": "softball",
+        "codepoint": "1f94e",
+        "file": "games_14_1f94e.gif",
+        "tags": [
+          ":softball:"
+        ]
+      },
+      {
+        "name": "basketball",
+        "codepoint": "1f3c0",
+        "file": "games_15_1f3c0.gif",
+        "tags": [
+          ":basketball:"
+        ]
+      },
+      {
+        "name": "rugby-football",
+        "codepoint": "1f3c9",
+        "file": "games_16_1f3c9.gif",
+        "tags": [
+          ":rugby-football:"
+        ]
+      },
+      {
+        "name": "tennis",
+        "codepoint": "1f3be",
+        "file": "games_17_1f3be.gif",
+        "tags": [
+          ":tennis:"
+        ]
+      },
+      {
+        "name": "badminton",
+        "codepoint": "1f3f8",
+        "file": "games_18_1f3f8.gif",
+        "tags": [
+          ":badminton:"
+        ]
+      },
+      {
+        "name": "lacrosse",
+        "codepoint": "1f94d",
+        "file": "games_19_1f94d.gif",
+        "tags": [
+          ":lacrosse:"
+        ]
+      },
+      {
+        "name": "cricket-game",
+        "codepoint": "1f3cf",
+        "file": "games_20_1f3cf.gif",
+        "tags": [
+          ":cricket-game:"
+        ]
+      },
+      {
+        "name": "field-hockey",
+        "codepoint": "1f3d1",
+        "file": "games_21_1f3d1.gif",
+        "tags": [
+          ":field-hockey:"
+        ]
+      },
+      {
+        "name": "ice-hockey",
+        "codepoint": "1f3d2",
+        "file": "games_22_1f3d2.gif",
+        "tags": [
+          ":ice-hockey:"
+        ]
+      },
+      {
+        "name": "skis",
+        "codepoint": "1f3bf",
+        "file": "games_23_1f3bf.gif",
+        "tags": [
+          ":skis:"
+        ]
+      },
+      {
+        "name": "ice-skate",
+        "codepoint": "26f8_fe0f",
+        "file": "games_24_26f8_fe0f.gif",
+        "tags": [
+          ":ice-skate:"
+        ]
+      },
+      {
+        "name": "roller-skates",
+        "codepoint": "1f6fc",
+        "file": "games_25_1f6fc.gif",
+        "tags": [
+          ":roller-skates:"
+        ]
+      },
+      {
+        "name": "ballet-shoes",
+        "codepoint": "1fa70",
+        "file": "games_26_1fa70.gif",
+        "tags": [
+          ":ballet-shoes:"
+        ]
+      },
+      {
+        "name": "skateboard",
+        "codepoint": "1f6f9",
+        "file": "games_27_1f6f9.gif",
+        "tags": [
+          ":skateboard:"
+        ]
+      },
+      {
+        "name": "flag-in-hole",
+        "codepoint": "26f3",
+        "file": "games_28_26f3.gif",
+        "tags": [
+          ":flag-in-hole:"
+        ]
+      },
+      {
+        "name": "direct-hit",
+        "codepoint": "1f3af",
+        "file": "games_29_1f3af.gif",
+        "tags": [
+          ":direct-hit:",
+          ":target:"
+        ]
+      },
+      {
+        "name": "flying-disc",
+        "codepoint": "1f94f",
+        "file": "games_30_1f94f.gif",
+        "tags": [
+          ":flying-disc:"
+        ]
+      }
+    ]
+  }
+]

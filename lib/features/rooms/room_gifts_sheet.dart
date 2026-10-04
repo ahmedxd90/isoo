@@ -143,6 +143,16 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
 
   Widget _giftVisual(Map<String, dynamic> gift, {double size = 38}) {
     final icon = gift['icon'] as String? ?? '🎁';
+    final localAsset = gift['thumbnail_asset_path']?.toString() ??
+        (icon.startsWith('assets/') ? icon : null);
+    if (localAsset != null) {
+      return Image.asset(
+        localAsset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+    }
     final thumbnail = icon.startsWith('http')
         ? icon
         : (gift['thumbnail_url'] as String?);

@@ -1,0 +1,919 @@
+[
+  {
+    "category": "general",
+    "name": "وردة ذهبية",
+    "price": 100,
+    "icon": "assets/rooms/gifts/general/general_01.gif",
+    "media_url": "assets/rooms/gifts/general/general_01.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "قلب لامع",
+    "price": 200,
+    "icon": "assets/rooms/gifts/general/general_02.gif",
+    "media_url": "assets/rooms/gifts/general/general_02.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "تاج ملكي",
+    "price": 300,
+    "icon": "assets/rooms/gifts/general/general_03.gif",
+    "media_url": "assets/rooms/gifts/general/general_03.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "نجمة مضيئة",
+    "price": 400,
+    "icon": "assets/rooms/gifts/general/general_04.gif",
+    "media_url": "assets/rooms/gifts/general/general_04.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "ماسة زرقاء",
+    "price": 500,
+    "icon": "assets/rooms/gifts/general/general_05.gif",
+    "media_url": "assets/rooms/gifts/general/general_05.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "فراشة حب",
+    "price": 600,
+    "icon": "assets/rooms/gifts/general/general_06.gif",
+    "media_url": "assets/rooms/gifts/general/general_06.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "قمر فضي",
+    "price": 700,
+    "icon": "assets/rooms/gifts/general/general_07.gif",
+    "media_url": "assets/rooms/gifts/general/general_07.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "شمس ذهبية",
+    "price": 800,
+    "icon": "assets/rooms/gifts/general/general_08.gif",
+    "media_url": "assets/rooms/gifts/general/general_08.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "بالون فرح",
+    "price": 900,
+    "icon": "assets/rooms/gifts/general/general_09.gif",
+    "media_url": "assets/rooms/gifts/general/general_09.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "كعكة احتفال",
+    "price": 1000,
+    "icon": "assets/rooms/gifts/general/general_10.gif",
+    "media_url": "assets/rooms/gifts/general/general_10.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "هدية مفاجأة",
+    "price": 1100,
+    "icon": "assets/rooms/gifts/general/general_11.gif",
+    "media_url": "assets/rooms/gifts/general/general_11.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "صاروخ نجاح",
+    "price": 1200,
+    "icon": "assets/rooms/gifts/general/general_12.gif",
+    "media_url": "assets/rooms/gifts/general/general_12.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "كأس فوز",
+    "price": 1300,
+    "icon": "assets/rooms/gifts/general/general_13.gif",
+    "media_url": "assets/rooms/gifts/general/general_13.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "ميدالية ذهبية",
+    "price": 1400,
+    "icon": "assets/rooms/gifts/general/general_14.gif",
+    "media_url": "assets/rooms/gifts/general/general_14.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "نجمة حظ",
+    "price": 1500,
+    "icon": "assets/rooms/gifts/general/general_15.gif",
+    "media_url": "assets/rooms/gifts/general/general_15.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "سحابة قلوب",
+    "price": 1600,
+    "icon": "assets/rooms/gifts/general/general_16.gif",
+    "media_url": "assets/rooms/gifts/general/general_16.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "مطر قلوب",
+    "price": 1700,
+    "icon": "assets/rooms/gifts/general/general_17.gif",
+    "media_url": "assets/rooms/gifts/general/general_17.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "قوس قزح",
+    "price": 1800,
+    "icon": "assets/rooms/gifts/general/general_18.gif",
+    "media_url": "assets/rooms/gifts/general/general_18.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "ألعاب نارية",
+    "price": 1900,
+    "icon": "assets/rooms/gifts/general/general_19.gif",
+    "media_url": "assets/rooms/gifts/general/general_19.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "كرة ضوء",
+    "price": 2000,
+    "icon": "assets/rooms/gifts/general/general_20.gif",
+    "media_url": "assets/rooms/gifts/general/general_20.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "ميكروفون لامع",
+    "price": 2100,
+    "icon": "assets/rooms/gifts/general/general_21.gif",
+    "media_url": "assets/rooms/gifts/general/general_21.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "غيتار احتفال",
+    "price": 2200,
+    "icon": "assets/rooms/gifts/general/general_22.gif",
+    "media_url": "assets/rooms/gifts/general/general_22.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "طبلة فرح",
+    "price": 2300,
+    "icon": "assets/rooms/gifts/general/general_23.gif",
+    "media_url": "assets/rooms/gifts/general/general_23.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "تذكرة حفلة",
+    "price": 2400,
+    "icon": "assets/rooms/gifts/general/general_24.gif",
+    "media_url": "assets/rooms/gifts/general/general_24.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "كرة ذهبية",
+    "price": 2500,
+    "icon": "assets/rooms/gifts/general/general_25.gif",
+    "media_url": "assets/rooms/gifts/general/general_25.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "طائرة حب",
+    "price": 2600,
+    "icon": "assets/rooms/gifts/general/general_26.gif",
+    "media_url": "assets/rooms/gifts/general/general_26.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "سيارة فاخرة",
+    "price": 2700,
+    "icon": "assets/rooms/gifts/general/general_27.gif",
+    "media_url": "assets/rooms/gifts/general/general_27.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "يخت ملكي",
+    "price": 2800,
+    "icon": "assets/rooms/gifts/general/general_28.gif",
+    "media_url": "assets/rooms/gifts/general/general_28.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "قصر الأحلام",
+    "price": 2900,
+    "icon": "assets/rooms/gifts/general/general_29.gif",
+    "media_url": "assets/rooms/gifts/general/general_29.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "مصباح سحري",
+    "price": 3000,
+    "icon": "assets/rooms/gifts/general/general_30.gif",
+    "media_url": "assets/rooms/gifts/general/general_30.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "صندوق كنز",
+    "price": 3100,
+    "icon": "assets/rooms/gifts/general/general_31.gif",
+    "media_url": "assets/rooms/gifts/general/general_31.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "حصان ذهبي",
+    "price": 3200,
+    "icon": "assets/rooms/gifts/general/general_32.gif",
+    "media_url": "assets/rooms/gifts/general/general_32.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "أسد ملكي",
+    "price": 3300,
+    "icon": "assets/rooms/gifts/general/general_33.gif",
+    "media_url": "assets/rooms/gifts/general/general_33.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "تنين لامع",
+    "price": 3400,
+    "icon": "assets/rooms/gifts/general/general_34.gif",
+    "media_url": "assets/rooms/gifts/general/general_34.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "روبوت مرح",
+    "price": 3500,
+    "icon": "assets/rooms/gifts/general/general_35.gif",
+    "media_url": "assets/rooms/gifts/general/general_35.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "قط لطيف",
+    "price": 3600,
+    "icon": "assets/rooms/gifts/general/general_36.gif",
+    "media_url": "assets/rooms/gifts/general/general_36.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "كلب وفاء",
+    "price": 3700,
+    "icon": "assets/rooms/gifts/general/general_37.gif",
+    "media_url": "assets/rooms/gifts/general/general_37.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "باندا حب",
+    "price": 3800,
+    "icon": "assets/rooms/gifts/general/general_38.gif",
+    "media_url": "assets/rooms/gifts/general/general_38.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "أرنب وردي",
+    "price": 3900,
+    "icon": "assets/rooms/gifts/general/general_39.gif",
+    "media_url": "assets/rooms/gifts/general/general_39.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "دب دافئ",
+    "price": 4000,
+    "icon": "assets/rooms/gifts/general/general_40.gif",
+    "media_url": "assets/rooms/gifts/general/general_40.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "قلب كريستال",
+    "price": 4100,
+    "icon": "assets/rooms/gifts/general/general_41.gif",
+    "media_url": "assets/rooms/gifts/general/general_41.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "إكليل ورد",
+    "price": 4200,
+    "icon": "assets/rooms/gifts/general/general_42.gif",
+    "media_url": "assets/rooms/gifts/general/general_42.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "شجرة أمنيات",
+    "price": 4300,
+    "icon": "assets/rooms/gifts/general/general_43.gif",
+    "media_url": "assets/rooms/gifts/general/general_43.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "كوكب لامع",
+    "price": 4400,
+    "icon": "assets/rooms/gifts/general/general_44.gif",
+    "media_url": "assets/rooms/gifts/general/general_44.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "general",
+    "name": "مجرة حب",
+    "price": 4500,
+    "icon": "assets/rooms/gifts/general/general_45.gif",
+    "media_url": "assets/rooms/gifts/general/general_45.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "قبلة وردية",
+    "price": 500,
+    "icon": "assets/rooms/gifts/cp/cp_01.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_01.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "رسالة حب",
+    "price": 1000,
+    "icon": "assets/rooms/gifts/cp/cp_02.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_02.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "خاتم ألماس",
+    "price": 1500,
+    "icon": "assets/rooms/gifts/cp/cp_03.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_03.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "قلوب متشابكة",
+    "price": 2000,
+    "icon": "assets/rooms/gifts/cp/cp_04.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_04.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "دب عاشق",
+    "price": 2500,
+    "icon": "assets/rooms/gifts/cp/cp_05.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_05.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "وردة حمراء",
+    "price": 3000,
+    "icon": "assets/rooms/gifts/cp/cp_06.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_06.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "شمعة رومانسية",
+    "price": 3500,
+    "icon": "assets/rooms/gifts/cp/cp_07.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_07.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "عطر الحب",
+    "price": 4000,
+    "icon": "assets/rooms/gifts/cp/cp_08.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_08.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "شوكولاتة فاخرة",
+    "price": 4500,
+    "icon": "assets/rooms/gifts/cp/cp_09.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_09.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "كوبان دافئان",
+    "price": 5000,
+    "icon": "assets/rooms/gifts/cp/cp_10.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_10.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "بالون قلب",
+    "price": 5500,
+    "icon": "assets/rooms/gifts/cp/cp_11.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_11.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "حمام حب",
+    "price": 6000,
+    "icon": "assets/rooms/gifts/cp/cp_12.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_12.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "مظلة رومانسية",
+    "price": 6500,
+    "icon": "assets/rooms/gifts/cp/cp_13.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_13.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "مفتاح القلب",
+    "price": 7000,
+    "icon": "assets/rooms/gifts/cp/cp_14.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_14.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "قفل الحب",
+    "price": 7500,
+    "icon": "assets/rooms/gifts/cp/cp_15.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_15.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "جناحان من نور",
+    "price": 8000,
+    "icon": "assets/rooms/gifts/cp/cp_16.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_16.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "نجمان عاشقان",
+    "price": 8500,
+    "icon": "assets/rooms/gifts/cp/cp_17.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_17.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "قمر العاشقين",
+    "price": 9000,
+    "icon": "assets/rooms/gifts/cp/cp_18.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_18.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "غروب رومانسي",
+    "price": 9500,
+    "icon": "assets/rooms/gifts/cp/cp_19.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_19.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "موسيقى حب",
+    "price": 10000,
+    "icon": "assets/rooms/gifts/cp/cp_20.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_20.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "رقصة ثنائية",
+    "price": 10500,
+    "icon": "assets/rooms/gifts/cp/cp_21.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_21.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "قصر الحب",
+    "price": 11000,
+    "icon": "assets/rooms/gifts/cp/cp_22.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_22.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "جزيرة رومانسية",
+    "price": 11500,
+    "icon": "assets/rooms/gifts/cp/cp_23.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_23.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "مركب العاشقين",
+    "price": 12000,
+    "icon": "assets/rooms/gifts/cp/cp_24.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_24.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "سيارة زفاف",
+    "price": 12500,
+    "icon": "assets/rooms/gifts/cp/cp_25.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_25.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "كعكة زفاف",
+    "price": 13000,
+    "icon": "assets/rooms/gifts/cp/cp_26.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_26.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "باقة فاخرة",
+    "price": 13500,
+    "icon": "assets/rooms/gifts/cp/cp_27.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_27.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "قلادة قلب",
+    "price": 14000,
+    "icon": "assets/rooms/gifts/cp/cp_28.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_28.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "رسالة سرية",
+    "price": 14500,
+    "icon": "assets/rooms/gifts/cp/cp_29.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_29.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "cp",
+    "name": "حب أبدي",
+    "price": 15000,
+    "icon": "assets/rooms/gifts/cp/cp_30.gif",
+    "media_url": "assets/rooms/gifts/cp/cp_30.gif",
+    "media_type": "gif",
+    "duration_seconds": 10
+  },
+  {
+    "category": "countries",
+    "name": "السعودية • برج المملكة",
+    "price": 300,
+    "icon": "assets/rooms/gifts/countries/sa.png",
+    "media_url": "assets/rooms/emojis/interactive_01_1f483.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "sa",
+    "landmark": "برج المملكة"
+  },
+  {
+    "category": "countries",
+    "name": "الإمارات • برج خليفة",
+    "price": 600,
+    "icon": "assets/rooms/gifts/countries/ae.png",
+    "media_url": "assets/rooms/emojis/interactive_02_1f3fb.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "ae",
+    "landmark": "برج خليفة"
+  },
+  {
+    "category": "countries",
+    "name": "قطر • متحف قطر",
+    "price": 900,
+    "icon": "assets/rooms/gifts/countries/qa.png",
+    "media_url": "assets/rooms/emojis/interactive_03_1f3fc.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "qa",
+    "landmark": "متحف قطر"
+  },
+  {
+    "category": "countries",
+    "name": "الكويت • أبراج الكويت",
+    "price": 1200,
+    "icon": "assets/rooms/gifts/countries/kw.png",
+    "media_url": "assets/rooms/emojis/interactive_04_1f3fd.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "kw",
+    "landmark": "أبراج الكويت"
+  },
+  {
+    "category": "countries",
+    "name": "البحرين • قلعة البحرين",
+    "price": 1500,
+    "icon": "assets/rooms/gifts/countries/bh.png",
+    "media_url": "assets/rooms/emojis/interactive_05_1f3fe.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "bh",
+    "landmark": "قلعة البحرين"
+  },
+  {
+    "category": "countries",
+    "name": "عُمان • قلعة نزوى",
+    "price": 1800,
+    "icon": "assets/rooms/gifts/countries/om.png",
+    "media_url": "assets/rooms/emojis/interactive_06_1f3ff.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "om",
+    "landmark": "قلعة نزوى"
+  },
+  {
+    "category": "countries",
+    "name": "اليمن • صنعاء القديمة",
+    "price": 2100,
+    "icon": "assets/rooms/gifts/countries/ye.png",
+    "media_url": "assets/rooms/emojis/interactive_07_1f3ac.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "ye",
+    "landmark": "صنعاء القديمة"
+  },
+  {
+    "category": "countries",
+    "name": "مصر • أهرامات الجيزة",
+    "price": 2400,
+    "icon": "assets/rooms/gifts/countries/eg.png",
+    "media_url": "assets/rooms/emojis/interactive_08_1fa82.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "eg",
+    "landmark": "أهرامات الجيزة"
+  },
+  {
+    "category": "countries",
+    "name": "السودان • أهرامات مروي",
+    "price": 2700,
+    "icon": "assets/rooms/gifts/countries/sd.png",
+    "media_url": "assets/rooms/emojis/interactive_09_1fac8.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "sd",
+    "landmark": "أهرامات مروي"
+  },
+  {
+    "category": "countries",
+    "name": "ليبيا • قوس ماركوس أوريليوس",
+    "price": 3000,
+    "icon": "assets/rooms/gifts/countries/ly.png",
+    "media_url": "assets/rooms/emojis/interactive_10_1f388.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "ly",
+    "landmark": "قوس ماركوس أوريليوس"
+  },
+  {
+    "category": "countries",
+    "name": "تونس • مدرج الجم",
+    "price": 3300,
+    "icon": "assets/rooms/gifts/countries/tn.png",
+    "media_url": "assets/rooms/emojis/interactive_11_1f382.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "tn",
+    "landmark": "مدرج الجم"
+  },
+  {
+    "category": "countries",
+    "name": "الجزائر • مقام الشهيد",
+    "price": 3600,
+    "icon": "assets/rooms/gifts/countries/dz.png",
+    "media_url": "assets/rooms/emojis/interactive_12_1f381.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "dz",
+    "landmark": "مقام الشهيد"
+  },
+  {
+    "category": "countries",
+    "name": "المغرب • ساحة جامع الفنا",
+    "price": 3900,
+    "icon": "assets/rooms/gifts/countries/ma.png",
+    "media_url": "assets/rooms/emojis/interactive_13_1f386.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "ma",
+    "landmark": "ساحة جامع الفنا"
+  },
+  {
+    "category": "countries",
+    "name": "موريتانيا • مدينة شنقيط",
+    "price": 4200,
+    "icon": "assets/rooms/gifts/countries/mr.png",
+    "media_url": "assets/rooms/emojis/interactive_14_1fa94.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "mr",
+    "landmark": "مدينة شنقيط"
+  },
+  {
+    "category": "countries",
+    "name": "الصومال • شاطئ ليدو",
+    "price": 4500,
+    "icon": "assets/rooms/gifts/countries/so.png",
+    "media_url": "assets/rooms/emojis/interactive_15_1fa85.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "so",
+    "landmark": "شاطئ ليدو"
+  },
+  {
+    "category": "countries",
+    "name": "جيبوتي • بحيرة عسل",
+    "price": 4800,
+    "icon": "assets/rooms/gifts/countries/dj.png",
+    "media_url": "assets/rooms/emojis/interactive_16_1faa9.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "dj",
+    "landmark": "بحيرة عسل"
+  },
+  {
+    "category": "countries",
+    "name": "جزر القمر • بركان كارتالا",
+    "price": 5100,
+    "icon": "assets/rooms/gifts/countries/km.png",
+    "media_url": "assets/rooms/emojis/interactive_17_1f947.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "km",
+    "landmark": "بركان كارتالا"
+  },
+  {
+    "category": "countries",
+    "name": "لبنان • أرز لبنان",
+    "price": 5400,
+    "icon": "assets/rooms/gifts/countries/lb.png",
+    "media_url": "assets/rooms/emojis/interactive_18_1f948.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "lb",
+    "landmark": "أرز لبنان"
+  },
+  {
+    "category": "countries",
+    "name": "سوريا • قلعة حلب",
+    "price": 5700,
+    "icon": "assets/rooms/gifts/countries/sy.png",
+    "media_url": "assets/rooms/emojis/interactive_19_1f949.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "sy",
+    "landmark": "قلعة حلب"
+  },
+  {
+    "category": "countries",
+    "name": "الأردن • البتراء",
+    "price": 6000,
+    "icon": "assets/rooms/gifts/countries/jo.png",
+    "media_url": "assets/rooms/emojis/interactive_20_1f3c6.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "jo",
+    "landmark": "البتراء"
+  },
+  {
+    "category": "countries",
+    "name": "العراق • زقورة أور",
+    "price": 6300,
+    "icon": "assets/rooms/gifts/countries/iq.png",
+    "media_url": "assets/rooms/emojis/interactive_21_26bd.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "iq",
+    "landmark": "زقورة أور"
+  },
+  {
+    "category": "countries",
+    "name": "فلسطين • قبة الصخرة",
+    "price": 6600,
+    "icon": "assets/rooms/gifts/countries/ps.png",
+    "media_url": "assets/rooms/emojis/interactive_22_26be.gif",
+    "media_type": "gif",
+    "duration_seconds": 10,
+    "country_code": "ps",
+    "landmark": "قبة الصخرة"
+  }
+]
