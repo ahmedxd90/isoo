@@ -1,4 +1,5 @@
 -- Real winner rankings for SAKI Farm (wheel game).
+-- The current-round function is updated below to use a 30s betting phase and 5s result phase.
 create or replace function public.saki_wheel_round_leaderboard(
   p_round_id bigint,
   p_limit integer default 3

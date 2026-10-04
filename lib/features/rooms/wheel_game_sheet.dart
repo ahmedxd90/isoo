@@ -84,6 +84,13 @@ class _WheelGameSheetState extends State<WheelGameSheet>
       try {
         history = await _service.wheelHistory(widget.roomId);
       } catch (_) {}
+      final roundId = int.tryParse(next['id']?.toString() ?? '');
+      Map<String, int> serverBets = const {};
+      if (roundId != null) {
+        try {
+          serverBets = await _service.wheelMyBets(roundId);
+        } catch (_) {}
+      }
       if (!mounted) return;
       final changed = _round?['id']?.toString() != next['id']?.toString();
       if (changed) {
@@ -98,6 +105,9 @@ class _WheelGameSheetState extends State<WheelGameSheet>
         _balance = (wallet['gold_coins'] as num?)?.toInt() ?? _balance;
         _history = history;
         _winner = winner;
+        _myBets
+          ..clear()
+          ..addAll(serverBets);
       });
       _errorShown = false;
       if (next['status'] == 'result' && winner != null) {
@@ -623,20 +633,9 @@ class _WheelBoard extends StatelessWidget {
     final x = center + math.cos(angle) * radius - 40;
     final y = center + math.sin(angle) * radius - 40;
     final isWinner = winner == item.key;
-    final isFlashing = flashProgress > 0;
-    final pulse = isFlashing
-        ? (math.sin(flashProgress * math.pi * 10 + index) + 1) / 2
-        : 0.0;
     final borderColor = isWinner && flashProgress >= .98
         ? Colors.white
-        : (isFlashing
-              ? HSVColor.fromAHSV(
-                  1,
-                  (index * 40 + flashProgress * 360) % 360,
-                  1,
-                  1,
-                ).toColor()
-              : const Color(0xFFEAB308));
+        : const Color(0xFFEAB308);
     return Positioned(
       left: x,
       top: y,
@@ -650,17 +649,12 @@ class _WheelBoard extends StatelessWidget {
             gradient: const LinearGradient(
               colors: [Color(0xFFFFEBA8), Color(0xFFFCD34D)],
             ),
-            border: Border.all(
-              color: borderColor,
-              width: isFlashing ? 4 + pulse * 4 : (isWinner ? 6 : 4),
-            ),
+            border: Border.all(color: borderColor, width: isWinner ? 6 : 4),
             boxShadow: [
               BoxShadow(
-                color: isFlashing
-                    ? borderColor.withValues(alpha: .8)
-                    : Colors.black38,
-                blurRadius: isFlashing ? 8 + pulse * 14 : 7,
-                spreadRadius: isFlashing ? pulse * 3 : 0,
+                color: isWinner ? Colors.yellowAccent : Colors.black38,
+                blurRadius: isWinner ? 18 : 7,
+                spreadRadius: isWinner ? 3 : 0,
               ),
             ],
           ),
@@ -729,20 +723,22 @@ class _WheelPainter extends CustomPainter {
       );
     }
     if (flashProgress > 0) {
-      final ring = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 8
-        ..color = HSVColor.fromAHSV(
-          1,
-          flashProgress * 360 % 360,
-          .9,
-          1,
-        ).toColor();
+      final angle = -math.pi / 2 + flashProgress * math.pi * 2;
+      final lightCenter =
+          center + Offset(math.cos(angle) * (r + 4), math.sin(angle) * (r + 4));
+      final color = HSVColor.fromAHSV(
+        1,
+        flashProgress * 360 % 360,
+        .9,
+        1,
+      ).toColor();
       canvas.drawCircle(
-        center,
-        r + 3 + math.sin(flashProgress * math.pi * 10) * 3,
-        ring,
+        lightCenter,
+        15,
+        Paint()..color = color.withValues(alpha: .28),
       );
+      canvas.drawCircle(lightCenter, 8, Paint()..color = color);
+      canvas.drawCircle(lightCenter, 3, Paint()..color = Colors.white);
     }
   }
 

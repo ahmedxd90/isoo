@@ -3097,6 +3097,22 @@ class SakiService {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  Future<Map<String, int>> wheelMyBets(int roundId) async {
+    final rows = await client
+        .from('saki_wheel_bets')
+        .select('food_key,amount')
+        .eq('round_id', roundId)
+        .eq('user_id', uid)
+        .limit(100);
+    final bets = <String, int>{};
+    for (final row in rows) {
+      final key = row['food_key']?.toString();
+      if (key == null) continue;
+      bets[key] = (bets[key] ?? 0) + ((row['amount'] as num?)?.toInt() ?? 0);
+    }
+    return bets;
+  }
+
   Future<List<Map<String, dynamic>>> wheelRoundLeaderboard(int roundId) async {
     final rows = await client.rpc(
       'saki_wheel_round_leaderboard',
