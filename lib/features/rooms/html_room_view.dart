@@ -122,6 +122,15 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       ..loadFlutterAsset('assets/rooms/room_html_template.html');
   }
 
+  @override
+  void didUpdateWidget(covariant HtmlRoomView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The parent mutates the shared seatEmojis map in place. Comparing the
+    // map references therefore misses the update; always resync the HTML
+    // seats when Flutter rebuilds this bridge.
+    if (_ready) _sync();
+  }
+
   Future<void> _run(String script) async {
     if (!_ready || !mounted) return;
     await _controller.runJavaScript(script);
@@ -208,7 +217,11 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
         'thumbnail_url',
       ]) {
         final source = map[key]?.toString();
-        if (source != null && source.isNotEmpty) return source;
+        if (source != null && source.isNotEmpty) {
+          return source.startsWith('assets/rooms/')
+              ? source.replaceFirst('assets/rooms/', '')
+              : source;
+        }
       }
     }
     return null;

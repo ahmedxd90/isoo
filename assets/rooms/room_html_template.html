@@ -669,7 +669,9 @@
     const previousTop = stream.scrollTop;
     stream.innerHTML = '';
     window.__playedGiftIds = window.__playedGiftIds || new Set();
-    const ordered = messages.slice().sort(function (a, b) {
+    const ordered = messages.filter(function (m) {
+      return m.type !== 'emoji';
+    }).slice().sort(function (a, b) {
       const left = Date.parse(a.created_at || a.createdAt || '') || 0;
       const right = Date.parse(b.created_at || b.createdAt || '') || 0;
       return left - right;
