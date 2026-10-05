@@ -2220,6 +2220,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _liveImageUrl;
   String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
+  Map<String, dynamic>? _activeLuckBanner;
+  Map<String, dynamic>? _activeGiftBanner;
+  Timer? _luckBannerTimer;
+  Timer? _giftBannerTimer;
   String? _shownGiftMessageId;
   Map<String, dynamic>? _activeBuffetWin;
   String? _shownBuffetWinId;
@@ -2528,15 +2532,41 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _activateSeatEmoji(senderId, emoji);
       }
     }
-    final gift = rows.lastWhere(
-      (row) => (row['message_type'] ?? row['type'])?.toString() == 'gift',
-      orElse: () => const <String, dynamic>{},
-    );
+    final gift = rows.lastWhere((row) {
+      final type = (row['message_type'] ?? row['type'])?.toString();
+      return type == 'gift' || type == 'luck_multiplier';
+    }, orElse: () => const <String, dynamic>{});
     if (gift.isEmpty || !mounted) return;
     final id = gift['id']?.toString();
     if (id == null || id.isEmpty || id == _shownGiftMessageId) return;
     _shownGiftMessageId = id;
-    setState(() => _activeGiftMessage = gift);
+    final payload = gift['payload'] is Map
+        ? Map<String, dynamic>.from(gift['payload'] as Map)
+        : <String, dynamic>{};
+    final profile = gift['profiles'] is Map
+        ? Map<String, dynamic>.from(gift['profiles'] as Map)
+        : <String, dynamic>{};
+    payload['sender_id'] ??= gift['sender_id'];
+    payload['sender_username'] ??=
+        profile['username'] ?? profile['display_name'];
+    payload['sender_avatar_url'] ??= profile['avatar_url'];
+    payload['sent_at'] ??= gift['created_at'];
+    final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
+    setState(() {
+      _activeGiftMessage = gift;
+      if (multiplier >= 500) {
+        _activeLuckBanner = payload;
+        _luckBannerTimer?.cancel();
+        _luckBannerTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) setState(() => _activeLuckBanner = null);
+        });
+      }
+      _activeGiftBanner = payload;
+      _giftBannerTimer?.cancel();
+      _giftBannerTimer = Timer(const Duration(seconds: 6), () {
+        if (mounted) setState(() => _activeGiftBanner = null);
+      });
+    });
   }
 
   int _numericUid(String value) {
@@ -2761,6 +2791,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _lastGift = gift;
           final payload = <String, dynamic>{
             'gift_id': gift['id'],
+            'quantity': 1,
             'icon': gift['icon'],
             'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
             'thumbnail_asset_path':
@@ -2781,6 +2812,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               recipientId: recipientId,
               giftId: gift['id'] as String,
             );
+            // The RPC already inserts the authoritative realtime room message
+            // and credits only the sender. Do not create a second client message.
             return;
           }
           final optimistic = _queueOptimisticMessage(
@@ -2862,6 +2895,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         );
         final payload = <String, dynamic>{
           'gift_id': gift['id'],
+          'quantity': 1,
           'icon': gift['icon'],
           'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
           'thumbnail_asset_path':
@@ -5112,6 +5146,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _musicStateSubscription?.cancel();
     _musicCompletionSubscription?.cancel();
+    _luckBannerTimer?.cancel();
+    _giftBannerTimer?.cancel();
     _roomChatChannel.dispose();
     if (!preservedSession) {
       _musicPlayer.dispose();
@@ -5177,8 +5213,180 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               if (mounted) setState(() => _activeGiftMessage = null);
             },
           ),
+        if (_activeGiftBanner != null)
+          RoomGiftAnnouncementBanner(payload: _activeGiftBanner!, luck: false),
+        if (_activeLuckBanner != null)
+          RoomGiftAnnouncementBanner(payload: _activeLuckBanner!, luck: true),
       ],
     );
+  }
+}
+
+class RoomGiftAnnouncementBanner extends StatefulWidget {
+  const RoomGiftAnnouncementBanner({
+    super.key,
+    required this.payload,
+    required this.luck,
+  });
+
+  final Map<String, dynamic> payload;
+  final bool luck;
+
+  @override
+  State<RoomGiftAnnouncementBanner> createState() =>
+      _RoomGiftAnnouncementBannerState();
+}
+
+class _RoomGiftAnnouncementBannerState extends State<RoomGiftAnnouncementBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: Duration(seconds: widget.luck ? 5 : 1),
+  )..forward();
+
+  String _text(String key, [String fallback = '']) =>
+      widget.payload[key]?.toString() ?? fallback;
+
+  Widget _giftImage() {
+    final source = _text('thumbnail_url', _text('icon'));
+    if (source.startsWith('http')) {
+      return Image.network(
+        source,
+        width: 38,
+        height: 38,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) =>
+            const Text('🎁', style: TextStyle(fontSize: 24)),
+      );
+    }
+    if (source.startsWith('assets/')) {
+      return Image.asset(
+        source,
+        width: 38,
+        height: 38,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) =>
+            const Text('🎁', style: TextStyle(fontSize: 24)),
+      );
+    }
+    return Text(
+      source.isEmpty ? '🎁' : source,
+      style: const TextStyle(fontSize: 24),
+    );
+  }
+
+  Widget _content() => Container(
+    margin: const EdgeInsets.symmetric(horizontal: 12),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: widget.luck
+            ? const [Color(0xFF32115E), Color(0xFFB52B75), Color(0xFF32115E)]
+            : const [Color(0xFF18233A), Color(0xFF315B8E)],
+      ),
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(
+        color: widget.luck ? const Color(0xFFFFD166) : Colors.white54,
+        width: 1.2,
+      ),
+      boxShadow: const [
+        BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4)),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SakiAvatar(
+          url: _text('sender_avatar_url').isEmpty
+              ? null
+              : _text('sender_avatar_url'),
+          label: _text('sender_username', '用户'),
+          radius: 18,
+        ),
+        const SizedBox(width: 7),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 150),
+          child: Text(
+            _text('sender_username', 'مستخدم'),
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 11,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          widget.luck
+              ? 'حصل على الحظ ×${_text('multiplier', '1')}'
+              : 'أرسل ${_text('name', 'هدية')} ×${_text('quantity', '1')}',
+          style: TextStyle(
+            color: widget.luck ? const Color(0xFFFFE08A) : Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 10,
+          ),
+        ),
+        const SizedBox(width: 7),
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.black26,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: _giftImage(),
+        ),
+        if (widget.luck) ...[
+          const SizedBox(width: 6),
+          Text(
+            '${_text('reward_gold', '0')} ذهب',
+            style: const TextStyle(
+              color: Color(0xFFFFE08A),
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: widget.luck ? 92 : 142,
+      left: 0,
+      right: 0,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (_, child) {
+          final t = _controller.value;
+          final x = widget.luck
+              ? (t < .18
+                    ? 1 - t / .18
+                    : t > .82
+                    ? -(t - .82) / .18
+                    : 0)
+              : Curves.easeOut.transform(t) - 1;
+          return FractionalTranslation(
+            translation: Offset(x.toDouble(), 0),
+            child: child,
+          );
+        },
+        child: Align(
+          alignment: widget.luck ? Alignment.center : Alignment.centerLeft,
+          child: _content(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }
 
