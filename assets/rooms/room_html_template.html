@@ -325,6 +325,8 @@
                     <input id="chatInput" 
                            type="text" 
                            placeholder="أدخل رسالة" 
+                           readonly
+                           onclick="RoomBridge.postMessage(JSON.stringify({type:'composer'}))"
                            class="w-full bg-transparent border-none outline-none text-right text-[11px] text-white placeholder-white/50 font-medium">
                 </form>
             </div>
@@ -334,6 +336,11 @@
                 <!-- Emoji Picker Icon -->
                 <button type="button" onclick="RoomBridge.postMessage(JSON.stringify({type:'emoji'}))" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition hover:text-white">
                     <i class="fa-regular fa-face-smile text-sm"></i>
+                </button>
+
+                <!-- Games -->
+                <button type="button" onclick="RoomBridge.postMessage(JSON.stringify({type:'games'}))" class="w-8 h-8 rounded-full glass-circle flex items-center justify-center text-white/80 active:scale-90 transition hover:text-white" aria-label="الألعاب">
+                    <i class="fa-solid fa-gamepad text-sm"></i>
                 </button>
 
                 <!-- Speaker Mute Icon (Replaced Star Icon) -->
@@ -620,6 +627,14 @@
   };
   window.renderRoomData = function (data) {
     data = data || {};
+    const micIcon = document.getElementById('micIcon');
+    const speakerIcon = document.getElementById('speakerIcon');
+    if (micIcon) micIcon.className = data.micMuted
+      ? 'fa-solid fa-microphone-slash text-red-400 text-sm'
+      : 'fa-solid fa-microphone text-sm';
+    if (speakerIcon) speakerIcon.className = data.speakerMuted
+      ? 'fa-solid fa-volume-xmark text-red-400 text-xs'
+      : 'fa-solid fa-volume-high text-xs';
     const title = document.querySelector('header .glass-pill span.text-white');
     if (title && data.title) title.textContent = data.title;
     const id = document.querySelector('header .glass-pill span.font-mono');

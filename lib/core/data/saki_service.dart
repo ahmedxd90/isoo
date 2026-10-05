@@ -1921,6 +1921,7 @@ class SakiService {
     String roomId, {
     DateTime? after,
   }) {
+    final profileCache = <String, Map<String, dynamic>?>{};
     return client
         .from('room_messages')
         .stream(primaryKey: ['id'])
@@ -1933,12 +1934,28 @@ class SakiService {
         )
         .order('created_at')
         .asyncMap((rows) async {
-          final result = <Map<String, dynamic>>[];
-          for (final row in rows) {
+          // Keep the active room lightweight while preserving newest-first chat
+          // history. Profile requests are cached and loaded in parallel instead
+          // of performing one sequential network request per message.
+          final visibleRows = rows.length > 120
+              ? rows.sublist(rows.length - 120)
+              : rows;
+          final ids = visibleRows
+              .map((row) => row['sender_id']?.toString())
+              .whereType<String>()
+              .where((id) => !profileCache.containsKey(id))
+              .toSet();
+          await Future.wait(
+            ids.map((id) async {
+              profileCache[id] = await userProfile(id);
+            }),
+          );
+          final result = visibleRows.map((row) {
             final copy = Map<String, dynamic>.from(row);
-            copy['profiles'] = await userProfile(row['sender_id'] as String);
-            result.add(copy);
-          }
+            final senderId = row['sender_id']?.toString();
+            copy['profiles'] = senderId == null ? null : profileCache[senderId];
+            return copy;
+          }).toList();
           return result;
         });
   }

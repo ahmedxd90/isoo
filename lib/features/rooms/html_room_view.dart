@@ -13,12 +13,14 @@ class HtmlRoomView extends StatefulWidget {
     required this.membersStream,
     required this.onSeatTap,
     required this.onMessage,
+    required this.onComposer,
     required this.onMic,
     required this.onSpeaker,
     required this.onEmoji,
     required this.onGift,
     required this.onGiftRanking,
     required this.onApps,
+    required this.onGames,
     required this.onMenu,
     required this.onOnline,
     required this.onRoomInfo,
@@ -33,12 +35,14 @@ class HtmlRoomView extends StatefulWidget {
   final Stream<List<Map<String, dynamic>>> membersStream;
   final ValueChanged<Map<String, dynamic>> onSeatTap;
   final ValueChanged<String> onMessage;
+  final VoidCallback onComposer;
   final VoidCallback onMic;
   final VoidCallback onSpeaker;
   final VoidCallback onEmoji;
   final VoidCallback onGift;
   final VoidCallback onGiftRanking;
   final VoidCallback onApps;
+  final VoidCallback onGames;
   final VoidCallback onMenu;
   final VoidCallback onOnline;
   final VoidCallback onRoomInfo;
@@ -56,6 +60,7 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   List<Map<String, dynamic>> _locks = const [];
   List<Map<String, dynamic>> _messages = const [];
   List<Map<String, dynamic>> _members = const [];
+  bool _syncQueued = false;
 
   @override
   void initState() {
@@ -84,6 +89,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
             case 'message':
               final body = raw['body']?.toString().trim();
               if (body != null && body.isNotEmpty) widget.onMessage(body);
+            case 'composer':
+              widget.onComposer();
             case 'mic':
               widget.onMic();
             case 'speaker':
@@ -96,6 +103,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
               widget.onGiftRanking();
             case 'apps':
               widget.onApps();
+            case 'games':
+              widget.onGames();
             case 'menu':
               widget.onMenu();
             case 'online':
@@ -137,6 +146,15 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   }
 
   void _sync() {
+    if (!_ready || _syncQueued) return;
+    _syncQueued = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncQueued = false;
+      if (mounted) _syncNow();
+    });
+  }
+
+  void _syncNow() {
     if (!_ready) return;
     final seats = <Map<String, dynamic>>[];
     final byNo = <int, Map<String, dynamic>>{
@@ -200,6 +218,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       'members': members,
       'seats': seats,
       'seatEmojis': widget.room['seatEmojis'] ?? const {},
+      'micMuted': widget.room['micMuted'] == true,
+      'speakerMuted': widget.room['speakerMuted'] == true,
     };
     _run(
       'renderRoomData(${jsonEncode(data)});renderRoomMessages(${jsonEncode(messages)});',

@@ -5175,6 +5175,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ...widget.room,
             'gold_total': _roomGoldTotal,
             'seatEmojis': _activeSeatEmojis,
+            'micMuted': _micMuted,
+            'speakerMuted': _listenMuted,
           },
           seatStream: _seatStream,
           lockStream: _seatLocksStream,
@@ -5193,6 +5195,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             _message.text = body;
             unawaited(_send());
           },
+          onComposer: () => unawaited(_showChatComposer()),
           onMic: _toggleRoomMic,
           onSpeaker: _toggleListenMute,
           onEmoji: _showEmojiPanel,
@@ -5204,6 +5207,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             (profile) => _showUserCard(profile),
           ),
           onApps: _showRoomTools,
+          onGames: () => unawaited(_showGamesSheet()),
           onMenu: () => unawaited(_confirmExit()),
           onOnline: _showOnline,
           onRoomInfo: _showRoomInfo,
