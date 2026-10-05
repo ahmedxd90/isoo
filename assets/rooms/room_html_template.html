@@ -77,6 +77,10 @@
         .chat-scroll {
             scrollbar-width: none;
             -ms-overflow-style: none;
+            min-height: 0;
+            overscroll-behavior-y: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
         }
 
         /* Bottom bar gradient background */
@@ -258,7 +262,7 @@
         </section>
 
         <!-- Chat Feed Stream Area -->
-        <main id="chatStream" class="flex-1 overflow-y-auto chat-scroll px-4 pt-2 pb-20 z-20 flex flex-col justify-end gap-3">
+        <main id="chatStream" class="min-h-0 flex-1 overflow-y-auto chat-scroll px-4 pt-2 pb-20 z-20 flex flex-col justify-start gap-3">
             
             <!-- System Notice (Teal Cyan Text) -->
             <div class="text-[#2dd4bf] text-[12px] font-medium leading-relaxed max-w-[95%] drop-shadow-md">
@@ -653,9 +657,24 @@
   window.renderRoomMessages = function (messages) {
     const stream = document.getElementById('chatStream');
     if (!stream || !Array.isArray(messages)) return;
+    if (!stream.dataset.scrollStateReady) {
+      stream.dataset.scrollStateReady = '1';
+      stream.addEventListener('scroll', function () {
+        stream.dataset.nearBottom = String(
+          stream.scrollHeight - stream.scrollTop - stream.clientHeight < 32
+        );
+      }, {passive: true});
+    }
+    const wasNearBottom = stream.dataset.nearBottom !== 'false';
+    const previousTop = stream.scrollTop;
     stream.innerHTML = '';
     window.__playedGiftIds = window.__playedGiftIds || new Set();
-    messages.slice(-80).forEach(function (m) {
+    const ordered = messages.slice().sort(function (a, b) {
+      const left = Date.parse(a.created_at || a.createdAt || '') || 0;
+      const right = Date.parse(b.created_at || b.createdAt || '') || 0;
+      return left - right;
+    }).slice(-80);
+    ordered.forEach(function (m) {
       const wrap = document.createElement('div');
       wrap.dataset.nativeMessage = '1';
       wrap.className = 'flex flex-col gap-1 items-start max-w-[85%]';
@@ -673,7 +692,13 @@
         playGiftOverlay(payload);
       }
     });
-    stream.scrollTop = stream.scrollHeight;
+    if (!stream.dataset.hasRendered || wasNearBottom) {
+      stream.scrollTop = stream.scrollHeight;
+      stream.dataset.nearBottom = 'true';
+      stream.dataset.hasRendered = '1';
+    } else {
+      stream.scrollTop = previousTop;
+    }
   };
   function playGiftOverlay(p) {
     const area = document.getElementById('giftAnimationArea'); if (!area) return;

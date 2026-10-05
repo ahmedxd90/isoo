@@ -167,6 +167,7 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       return {
         'id': map['id'],
         'messageId': row['id'],
+        'created_at': row['created_at'],
         'name': map['username'] ?? 'عضو',
         'avatar': map['avatar_url'],
         'vip': map['vip_level'] ?? 0,
