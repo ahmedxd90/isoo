@@ -71,6 +71,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
     try {
       final viewerId = SakiService.instance.currentUser?.id;
+      final viewingSelf = viewerId != null && viewerId == widget.userId;
       if (viewerId != null && viewerId != widget.userId) {
         unawaited(
           SakiService.instance
@@ -89,7 +90,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _safe(SakiService.instance.userBadges(widget.userId)),
         _safe(SakiService.instance.isShippingAgent(widget.userId)),
         _safe(SakiService.instance.profileCoverImages(widget.userId)),
-        _safe(SakiService.instance.profileCommunityBars(widget.userId)),
+        _safe(
+          viewingSelf
+              ? SakiService.instance.loveHouseState()
+              : SakiService.instance.profileCommunityBars(widget.userId),
+        ),
       ]);
       if (!mounted) return;
       var countryFlag = '🌍';
@@ -115,6 +120,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         final community = results[10] is Map
             ? Map<String, dynamic>.from(results[10] as Map)
             : const <String, dynamic>{};
+        final love = community['relationship'] ?? community['love'];
         _profile = base == null
             ? null
             : {
@@ -124,7 +130,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 'cover_images': results[9] is List
                     ? _mapList(results[9])
                     : <Map<String, dynamic>>[],
-                'love': community['love'],
+                'love': love,
               };
         _stats = results[2] is Map
             ? (results[2] as Map).map(
