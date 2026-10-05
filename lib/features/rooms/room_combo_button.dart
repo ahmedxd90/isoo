@@ -49,7 +49,6 @@ class _RoomComboButtonState extends State<RoomComboButton>
   }
 
   void _handleTap() {
-    if (widget.isSending) return;
     HapticFeedback.selectionClick();
     _countdown.forward(from: 0);
     widget.onTap();
@@ -77,14 +76,10 @@ class _RoomComboButtonState extends State<RoomComboButton>
         label: 'كومبو ${widget.count}، تبقى $secondsLeft ثوانٍ',
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: widget.isSending
-              ? null
-              : (_) => setState(() => _pressed = true),
-          onTapUp: widget.isSending
-              ? null
-              : (_) => setState(() => _pressed = false),
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
           onTapCancel: () => setState(() => _pressed = false),
-          onTap: widget.isSending ? null : _handleTap,
+          onTap: _handleTap,
           child: AnimatedScale(
             scale: _pressed ? .91 : 1,
             duration: const Duration(milliseconds: 100),

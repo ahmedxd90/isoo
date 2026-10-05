@@ -2211,6 +2211,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _isModerator = false;
   bool _comboActive = false;
   bool _comboSending = false;
+  int _comboPendingTaps = 0;
   int _comboCount = 0;
   String? _lastGiftRecipient;
   Map<String, dynamic>? _lastGift;
@@ -2567,6 +2568,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _giftBannerTimer = Timer(const Duration(seconds: 6), () {
         if (mounted) setState(() => _activeGiftBanner = null);
       });
+      final mediaType = payload['media_type']?.toString().toLowerCase() ?? '';
+      final isRichGift =
+          mediaType.contains('svga') ||
+          mediaType.contains('mp4') ||
+          mediaType.contains('video') ||
+          mediaType.contains('gif');
+      // Normal gifts are already animated by the HTML seat-flight layer.
+      // Queue only rich gifts here; otherwise a normal gift could occupy the
+      // native overlay queue without an onClose callback.
+      if (!isRichGift) continue;
       if (_activeGiftMessage == null) {
         _activeGiftMessage = gift;
       } else {
@@ -2886,11 +2897,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _comboActive = false;
       _comboSending = false;
       _comboCount = 0;
+      _comboPendingTaps = 0;
     });
   }
 
   Future<void> _sendComboAgain() async {
-    if (!_comboActive || _comboSending) return;
+    if (!_comboActive) return;
+    if (_comboSending) {
+      _comboPendingTaps++;
+      return;
+    }
     final recipient = _lastGiftRecipient;
     final gift = _lastGift;
     if (recipient == null || gift == null) return;
@@ -2943,10 +2959,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _comboSending = false;
         });
       }
+      if (mounted && _comboPendingTaps > 0 && _comboActive) {
+        _comboPendingTaps--;
+        unawaited(_sendComboAgain());
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _comboSending = false);
         _messageSnack(e.toString().replaceFirst('Exception: ', ''));
+      }
+      if (mounted && _comboPendingTaps > 0 && _comboActive) {
+        _comboPendingTaps--;
+        unawaited(_sendComboAgain());
       }
     }
   }
@@ -5567,7 +5591,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _flight = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 5000),
+    duration: const Duration(milliseconds: 2000),
   );
   late final SVGAAnimationController _svga = SVGAAnimationController(
     vsync: this,
@@ -5603,6 +5627,9 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   @override
   void initState() {
     super.initState();
+    _flight.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _close();
+    });
     if (_rich) {
       _startRichGift();
     } else {
@@ -5715,11 +5742,10 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     final screen = MediaQuery.sizeOf(context);
     final targetBox =
         widget.seatKey?.currentContext?.findRenderObject() as RenderBox?;
-    final target = targetBox == null
-        ? Offset(screen.width / 2, screen.height * .62)
-        : targetBox.localToGlobal(
-            Offset(targetBox.size.width / 2, targetBox.size.height / 2),
-          );
+    if (targetBox == null) return const SizedBox.shrink();
+    final target = targetBox.localToGlobal(
+      Offset(targetBox.size.width / 2, targetBox.size.height / 2),
+    );
     final center = Offset(screen.width / 2, screen.height / 2);
     final progress = _flight.value;
     // Hold at the center for 2.5s, fly for .5s, hold at the seat for 2s.
@@ -6780,6 +6806,8 @@ class _RoomMiniProfileSheet extends StatelessWidget {
     final isAdmin =
         profile['is_super_admin'] == true ||
         (profile['saki_id'] as num?)?.toInt() == 1000;
+    final vipGradient =
+        vipNameGradients[vip] ?? const [Color(0xFF334155), Color(0xFF111827)];
 
     return Container(
       width: double.infinity,
@@ -6794,10 +6822,14 @@ class _RoomMiniProfileSheet extends StatelessWidget {
               )
             : null,
         gradient: isVip
-            ? const LinearGradient(
+            ? LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xAA111321), Color(0xEE111321)],
+                colors: [
+                  vipGradient.first.withValues(alpha: .30),
+                  vipGradient.last.withValues(alpha: .12),
+                  const Color(0xEE111321),
+                ],
               )
             : null,
         borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
@@ -6823,10 +6855,14 @@ class _RoomMiniProfileSheet extends StatelessWidget {
           clipBehavior: Clip.none,
           children: [
             if (isVip)
-              Positioned.fill(
+              Positioned(
+                left: -36,
+                right: -36,
+                bottom: -38,
+                height: 210,
                 child: IgnorePointer(
                   child: Opacity(
-                    opacity: .16,
+                    opacity: .18,
                     child: VipSvgaAsset(
                       assetPath: 'assets/vip/user_center_svip$vip.svga',
                       fallbackAsset: 'assets/vip/title_vip$vip.png',

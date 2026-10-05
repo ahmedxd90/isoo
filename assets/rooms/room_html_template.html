@@ -625,6 +625,11 @@
       window.RoomBridge.postMessage(JSON.stringify({type, ...(payload || {})}));
     }
   };
+  const vipTextStyle = function (colors) {
+    if (!Array.isArray(colors) || !colors.length) return 'color:#F8FAFC;';
+    const gradient = colors.join(',');
+    return 'background-image:linear-gradient(90deg,' + gradient + ');-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 7px ' + colors[1 % colors.length] + '66;';
+  };
   window.renderRoomData = function (data) {
     data = data || {};
     const micIcon = document.getElementById('micIcon');
@@ -656,11 +661,13 @@
         const locked = !!seat.locked;
         const speaking = !!seat.speaking;
         const frame = (occupied ? 'bg-black/20 ' : '') + (speaking ? 'speaking-ripple ' : '') + 'w-10 h-10 rounded-full seat-frame flex items-center justify-center relative ' + (locked ? 'border-red-400' : '');
-        const avatar = occupied && seat.avatar ? '<img data-user-id="' + escapeHtml(seat.userId || '') + '" src="' + escapeHtml(seat.avatar) + '" class="w-full h-full rounded-full object-cover border-2 border-emerald-400">' : '';
+        const avatarBorder = Array.isArray(seat.vipColors) && seat.vipColors.length ? seat.vipColors[1 % seat.vipColors.length] : '#34D399';
+        const avatar = occupied && seat.avatar ? '<img data-user-id="' + escapeHtml(seat.userId || '') + '" src="' + escapeHtml(seat.avatar) + '" style="border-color:' + avatarBorder + ';box-shadow:0 0 8px ' + avatarBorder + '88" class="w-full h-full rounded-full object-cover border-2">' : '';
         const activeEmoji = occupied && seat.emoji ? '<img src="' + escapeHtml(seat.emoji) + '" class="absolute inset-0 z-10 w-full h-full rounded-full object-cover pointer-events-none drop-shadow-[0_0_6px_rgba(255,255,255,.9)]">' : '';
         const icon = locked && !occupied ? '<i class="fa-solid fa-lock text-red-300 text-sm"></i>' : (avatar ? '' : '<i class="fa-solid fa-couch text-white/80 text-sm"></i>');
         const label = occupied ? escapeHtml(seat.name || 'عضو') : (locked ? 'مقعد مقفول' : String(seat.no));
-        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + activeEmoji + '</div><span class="text-[10px] font-bold text-gray-200 mt-0.5 drop-shadow">' + label + '</span></div>';
+        const labelStyle = occupied ? vipTextStyle(seat.vipColors) : 'color:#E5E7EB;';
+        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + activeEmoji + '</div><span style="' + labelStyle + '" class="text-[10px] font-bold mt-0.5 drop-shadow">' + label + '</span></div>';
       }).join('');
       container.querySelectorAll('[data-user-id]').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); bridge('user',{userId:el.dataset.userId}); }; });
     }
@@ -701,13 +708,14 @@
       const payload = m.payload || {};
       const isGift = m.type === 'gift' || m.type === 'luck_multiplier';
       const vip = Number(m.vip || 0);
-      const vipStyle = vip >= 10 ? 'from-rose-500 via-amber-400 to-fuchsia-600 border-amber-200' : vip >= 7 ? 'from-violet-600 via-fuchsia-500 to-indigo-600 border-fuchsia-200' : vip >= 4 ? 'from-cyan-600 via-blue-500 to-violet-600 border-cyan-200' : 'from-black/60 to-black/45 border-white/15';
+      const nameStyle = vipTextStyle(m.vipColors);
+      const bubbleGradient = Array.isArray(m.vipColors) && m.vipColors.length ? 'linear-gradient(100deg,' + m.vipColors.join(',') + ')' : 'linear-gradient(100deg,rgba(0,0,0,.62),rgba(0,0,0,.45))';
+      const bubbleStyle = 'background:' + bubbleGradient + ';border-color:' + (vip ? (m.vipColors[1 % m.vipColors.length] || '#FFFFFF') : 'rgba(255,255,255,.15)') + ';box-shadow:0 0 14px ' + (vip ? ((m.vipColors[1 % m.vipColors.length] || '#FFFFFF') + '55') : 'rgba(0,0,0,.2)') + ';';
       const recipientName = escapeHtml(payload.recipient_username || 'المستلم');
       const recipientAvatar = payload.recipient_avatar_url ? '<img src="' + escapeHtml(payload.recipient_avatar_url) + '" class="w-5 h-5 rounded-full object-cover border border-white/70">' : '';
       const giftThumb = payload.thumbnail_url || payload.icon;
       const giftDetails = isGift ? '<div class="mt-1.5 flex items-center justify-end gap-1.5 rounded-xl bg-black/20 px-2 py-1 border border-white/15"><span class="text-white/90 text-[10px] font-bold">أرسل هدية إلى ' + recipientName + '</span>' + recipientAvatar + (giftThumb ? '<img src="' + escapeHtml(giftThumb) + '" class="w-8 h-8 object-contain">' : '') + '</div>' : '';
-      const bubble = isGift ? 'bg-gradient-to-r ' + vipStyle + ' border text-white shadow-[0_0_14px_rgba(168,85,247,.35)]' : 'bg-black/50 border-white/15 text-white';
-      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">VIP' + escapeHtml(vip) + ' · LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="' + bubble + ' text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && giftThumb ? ' <img src="' + escapeHtml(giftThumb) + '" class="inline-block w-8 h-8 object-contain align-middle">' : '') + giftDetails + '</div>';
+      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span style="' + nameStyle + '" class="font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">VIP' + escapeHtml(vip) + ' · LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div style="' + bubbleStyle + '" class="border text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && giftThumb ? ' <img src="' + escapeHtml(giftThumb) + '" class="inline-block w-8 h-8 object-contain align-middle">' : '') + giftDetails + '</div>';
       const image = wrap.querySelector('[data-user-id]');
       if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
       stream.appendChild(wrap);

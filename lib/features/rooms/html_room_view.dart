@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../shared/widgets/vip_identity.dart';
+
 class HtmlRoomView extends StatefulWidget {
   const HtmlRoomView({
     super.key,
@@ -171,7 +173,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       final profile = row?['profiles'];
       final map = profile is Map
           ? Map<String, dynamic>.from(profile)
-          : const {};
+          : <String, dynamic>{};
+      final vip = activeVipLevel(map);
       seats.add({
         'no': i,
         'locked': locked.contains(i),
@@ -179,6 +182,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
         'speaking': row?['is_speaking'] == true,
         'name': map['username'] ?? map['display_name'] ?? 'عضو',
         'avatar': map['avatar_url'],
+        'vip': vip,
+        'vipColors': _vipColors(vip),
         'emoji': _emojiSource(
           (widget.room['seatEmojis'] is Map)
               ? (widget.room['seatEmojis'] as Map)[row?['user_id']?.toString()]
@@ -190,14 +195,16 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
       final profile = row['profiles'];
       final map = profile is Map
           ? Map<String, dynamic>.from(profile)
-          : const {};
+          : <String, dynamic>{};
+      final vip = activeVipLevel(map);
       return {
         'id': map['id'],
         'messageId': row['id'],
         'created_at': row['created_at'],
         'name': map['username'] ?? 'عضو',
         'avatar': map['avatar_url'],
-        'vip': map['vip_level'] ?? 0,
+        'vip': vip,
+        'vipColors': _vipColors(vip),
         'wealth': map['wealth_level'] ?? 0,
         'body': row['body'] ?? '',
         'type': row['message_type'] ?? row['type'] ?? 'chat',
@@ -246,6 +253,10 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
     }
     return null;
   }
+
+  List<String> _vipColors(int level) => (vipNameGradients[level] ?? const [])
+      .map((color) => '#${color.value.toRadixString(16).substring(2)}')
+      .toList();
 
   @override
   Widget build(BuildContext context) {
