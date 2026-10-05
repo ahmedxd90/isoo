@@ -5275,6 +5275,40 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           RoomGiftAnnouncementBanner(payload: _activeGiftBanner!, luck: false),
         if (_activeLuckBanner != null)
           RoomGiftAnnouncementBanner(payload: _activeLuckBanner!, luck: true),
+        if (_entranceProfile != null)
+          RoomEntranceBanner(
+            key: ValueKey(_entranceProfile!['id']?.toString()),
+            profile: _entranceProfile!,
+            product: _entranceProduct,
+            onFinished: () {
+              if (!mounted) return;
+              setState(() {
+                _entranceProfile = null;
+                _entranceProduct = null;
+              });
+            },
+          ),
+        if (_entranceProfile != null && _entranceProduct != null)
+          GiftFullScreenOverlay(
+            key: ValueKey(
+              'entrance_${_entranceProfile!['id']}_${_entranceProduct!['id']}',
+            ),
+            message: {
+              'payload': {
+                ..._entranceProduct!,
+                'thumbnail_url':
+                    _entranceProduct!['thumbnail_url'] ??
+                    _entranceProduct!['media_url'],
+              },
+            },
+            onClose: () {
+              if (!mounted) return;
+              setState(() {
+                _entranceProfile = null;
+                _entranceProduct = null;
+              });
+            },
+          ),
         if (_comboActive)
           Positioned(
             left: 10,
@@ -5457,6 +5491,159 @@ class _RoomGiftAnnouncementBannerState extends State<RoomGiftAnnouncementBanner>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+}
+
+class RoomEntranceBanner extends StatefulWidget {
+  const RoomEntranceBanner({
+    super.key,
+    required this.profile,
+    required this.product,
+    required this.onFinished,
+  });
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic>? product;
+  final VoidCallback onFinished;
+
+  @override
+  State<RoomEntranceBanner> createState() => _RoomEntranceBannerState();
+}
+
+class _RoomEntranceBannerState extends State<RoomEntranceBanner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 4600),
+  )..forward();
+
+  int get _vip => activeVipLevel(widget.profile);
+  List<Color> get _colors => _vip > 0
+      ? (vipNameGradients[_vip] ?? const [Color(0xFF64748B), Color(0xFF334155)])
+      : const [Color(0xFF64748B), Color(0xFF374151), Color(0xFF9CA3AF)];
+
+  String get _name =>
+      widget.profile['display_name']?.toString().trim().isNotEmpty == true
+      ? widget.profile['display_name'].toString()
+      : widget.profile['username']?.toString() ?? 'مستخدم';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) widget.onFinished();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: MediaQuery.sizeOf(context).height * .42,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (_, child) {
+          final t = _controller.value;
+          final slide = t < .22
+              ? -1 + (t / .22)
+              : t > .78
+              ? (t - .78) / .22
+              : 0.0;
+          return FractionalTranslation(
+            translation: Offset(slide, 0),
+            child: child,
+          );
+        },
+        child: Align(
+          alignment: Alignment.center,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: _colors,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: _vip > 0
+                    ? Colors.white.withValues(alpha: .72)
+                    : Colors.white38,
+                width: 1.1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (_colors.length > 1 ? _colors[1] : _colors.first)
+                      .withValues(alpha: .55),
+                  blurRadius: 18,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SakiAvatar(
+                  url: widget.profile['avatar_url']?.toString(),
+                  label: _name,
+                  radius: 21,
+                ),
+                const SizedBox(width: 9),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 170),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        _vip > 0
+                            ? 'VIP $_vip • انضم إلى الغرفة'
+                            : 'انضم إلى الغرفة',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.product != null) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.auto_awesome, color: Colors.white, size: 17),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.product!['name']?.toString() ?? 'دخولية',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
