@@ -480,7 +480,12 @@ class _NativeProfileViewState extends State<_NativeProfileView> {
         (widget.profile['cover_images'] is List
                 ? (widget.profile['cover_images'] as List)
                       .whereType<Map>()
-                      .map((row) => row['image_url']?.toString() ?? '')
+                      .map(
+                        (row) =>
+                            (row['image_url'] ?? row['cover_url'] ?? row['url'])
+                                ?.toString() ??
+                            '',
+                      )
                       .where((url) => url.isNotEmpty)
                       .toList()
                 : <String>[])
@@ -671,186 +676,214 @@ class _ReferenceProfileHero extends StatelessWidget {
     final isSuperAdmin =
         profile['is_super_admin'] == true ||
         profile['admin_role']?.toString() == 'super_admin';
-    return Container(
-      constraints: const BoxConstraints(minHeight: 330),
-      decoration: const BoxDecoration(color: Color(0xFF111827)),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (coverImages.isNotEmpty)
-            PageView.builder(
-              itemCount: coverImages.length,
-              itemBuilder: (_, index) => Image.network(
-                coverImages[index],
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    final identity = {...profile, 'display_name': username};
+
+    return SizedBox(
+      height: 380,
+      child: ClipRect(
+        child: DecoratedBox(
+          decoration: const BoxDecoration(color: Color(0xFF111827)),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: coverImages.isNotEmpty
+                    ? PageView.builder(
+                        itemCount: coverImages.length,
+                        itemBuilder: (_, index) => Image.network(
+                          coverImages[index],
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) =>
+                              const _ProfileCoverFallback(),
+                        ),
+                      )
+                    : cover != null && cover!.isNotEmpty
+                    ? Image.network(
+                        cover!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) =>
+                            const _ProfileCoverFallback(),
+                      )
+                    : const _ProfileCoverFallback(),
               ),
-            )
-          else if (cover != null && cover!.isNotEmpty)
-            Image.network(cover!, fit: BoxFit.cover),
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Color(0xCC000000)],
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 34),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: onMenu,
-                      icon: const Icon(Icons.more_vert_rounded),
-                      color: Colors.white,
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: onBack,
-                      icon: const Icon(Icons.chevron_right_rounded),
-                      color: Colors.white,
-                      iconSize: 30,
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.all(2),
+              const Positioned.fill(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: .5),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xDD000000)],
                     ),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black45, blurRadius: 14),
-                    ],
-                  ),
-                  child: SakiAvatar(
-                    url: avatar,
-                    label: username,
-                    radius: 36,
-                    profile: profile,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(countryFlag, style: const TextStyle(fontSize: 17)),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: VipNameText(
-                        profile: {...profile, 'display_name': username},
-                        fontSize: 18,
-                        textAlign: TextAlign.start,
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: onMenu,
+                          icon: const Icon(Icons.more_vert_rounded),
+                          color: Colors.white,
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: onBack,
+                          icon: const Icon(Icons.chevron_right_rounded),
+                          color: Colors.white,
+                          iconSize: 30,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: .5),
+                          ),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black45, blurRadius: 14),
+                          ],
+                        ),
+                        child: SakiAvatar(
+                          url: avatar,
+                          label: username,
+                          radius: 36,
+                          profile: profile,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 5),
-                    WealthVipLabels(
-                      profile: {...profile, 'display_name': username},
-                      compact: true,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(countryFlag, style: const TextStyle(fontSize: 17)),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: VipNameText(
+                            profile: identity,
+                            fontSize: 18,
+                            textAlign: TextAlign.start,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        WealthVipLabels(profile: identity, compact: true),
+                        if (isSuperAdmin) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
+                              ),
+                              borderRadius: BorderRadius.circular(99),
+                              border: Border.all(color: Colors.white54),
+                            ),
+                            child: const Text(
+                              'Super Admin',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ],
+                        if (gender.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF3B82F6),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              gender,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (isSuperAdmin) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
-                          ),
-                          borderRadius: BorderRadius.circular(99),
-                          border: Border.all(color: Colors.white54),
-                        ),
-                        child: const Text(
-                          'Super Admin',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (gender.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF3B82F6),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          gender,
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Text(
+                          'ID: ${profile['saki_id'] ?? '—'}',
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
+                            color: Colors.white70,
+                            fontSize: 11,
                           ),
                         ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Text(
-                      'ID: ${profile['saki_id'] ?? '—'}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
+                        IconButton(
+                          onPressed: onCopy,
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          icon: const Icon(
+                            Icons.copy_rounded,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: onCopy,
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.copy_rounded,
-                        color: Colors.white70,
-                        size: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _ReferenceHeroStat(
-                      value: '${stats['followers'] ?? 0}',
-                      label: 'المتابعون',
-                    ),
-                    _ReferenceHeroDivider(),
-                    _ReferenceHeroStat(
-                      value: '${stats['following'] ?? 0}',
-                      label: 'الذين تتابعهم',
-                    ),
-                    _ReferenceHeroDivider(),
-                    _ReferenceHeroStat(
-                      value: '${stats['posts'] ?? 0}',
-                      label: 'اللحظات',
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _ReferenceHeroStat(
+                          value: '${stats['followers'] ?? 0}',
+                          label: 'المتابعون',
+                        ),
+                        _ReferenceHeroDivider(),
+                        _ReferenceHeroStat(
+                          value: '${stats['following'] ?? 0}',
+                          label: 'الذين تتابعهم',
+                        ),
+                        _ReferenceHeroDivider(),
+                        _ReferenceHeroStat(
+                          value: '${stats['posts'] ?? 0}',
+                          label: 'اللحظات',
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
+
+class _ProfileCoverFallback extends StatelessWidget {
+  const _ProfileCoverFallback();
+
+  @override
+  Widget build(BuildContext context) => const DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF1E3A8A), Color(0xFF312E81), Color(0xFF111827)],
+      ),
+    ),
+  );
 }
 
 class _ReferenceHeroStat extends StatelessWidget {
