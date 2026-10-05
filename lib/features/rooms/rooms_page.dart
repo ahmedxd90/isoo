@@ -5217,6 +5217,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           RoomGiftAnnouncementBanner(payload: _activeGiftBanner!, luck: false),
         if (_activeLuckBanner != null)
           RoomGiftAnnouncementBanner(payload: _activeLuckBanner!, luck: true),
+        if (_comboActive)
+          Positioned(
+            left: 10,
+            bottom: 104,
+            child: RoomComboButton(
+              count: _comboCount,
+              isSending: _comboSending,
+              duration: const Duration(seconds: 7),
+              onTap: _sendComboAgain,
+              onExpired: _expireGiftCombo,
+            ),
+          ),
       ],
     );
   }
