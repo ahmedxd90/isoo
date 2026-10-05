@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import 'dart:developer' as developer;
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -11,21 +10,12 @@ import '../../shared/widgets/profile_post_card.dart';
 import '../../shared/widgets/vip_identity.dart';
 import '../messages/messages_page.dart';
 import '../rooms/agora_room_page.dart';
-import 'html_profile_view.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
 const _profileYellow = Color(0xFFFFC107);
 const _profileBg = Color(0xFFF3F4F6);
 const _profileMuted = Color(0xFF9CA3AF);
-const _brandOrange = Color(0xFFF97316);
-const _brandCyan = Color(0xFF06B6D4);
-const _familyGreen = Color(0xFF4ADE80);
-const _referenceCoverImages = [
-  'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=1000',
-  'https://images.unsplash.com/photo-1557682250-33bd709cbe85?auto=format&fit=crop&q=80&w=1000',
-  'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=1000',
-];
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key, required this.userId});
@@ -42,7 +32,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _vehicles = [];
   List<Map<String, dynamic>> _badges = [];
-  Map<String, dynamic> _communityBars = {};
   String _countryFlag = '🌍';
   bool _following = false;
   bool _loading = true;
@@ -75,7 +64,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
         SakiService.instance.isFollowing(widget.userId),
         SakiService.instance.userBadges(widget.userId),
         SakiService.instance.isShippingAgent(widget.userId),
-        SakiService.instance.profileCommunityBars(widget.userId),
       ]);
       if (!mounted) return;
       var countryFlag = '🌍';
@@ -91,18 +79,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
       } catch (_) {
         countryFlag = '🌍';
       }
-      Map<String, dynamic>? activeFrame;
-      try {
-        activeFrame = await SakiService.instance.activeProfileFrame(
-          widget.userId,
-        );
-      } catch (_) {}
-      Map<String, dynamic> accountModules = const {};
-      try {
-        accountModules = await SakiService.instance.accountModulesForUser(
-          widget.userId,
-        );
-      } catch (_) {}
       setState(() {
         final base = results[0] is Map
             ? Map<String, dynamic>.from(results[0] as Map)
@@ -116,12 +92,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 ...base,
                 'family_badge': family,
                 'shipping_agent': results[8] == true,
-                'active_frame_url':
-                    activeFrame?['thumbnail_url'] ?? activeFrame?['media_url'],
-                'active_frame_media_type': activeFrame?['media_type'],
-                'vip_label': accountModules['vip_label'],
-                'wealth_level':
-                    accountModules['wealth_level'] ?? base['wealth_level'],
               };
         _stats = results[2] is Map
             ? Map<String, int>.from(
@@ -144,9 +114,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _badges = results[7] is List
             ? List<Map<String, dynamic>>.from(results[7] as List)
             : [];
-        _communityBars = results[9] is Map
-            ? Map<String, dynamic>.from(results[9] as Map)
-            : {};
         _countryFlag = countryFlag;
       });
     } catch (error) {
@@ -278,31 +245,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     detailsController.dispose();
   }
 
-  Future<void> _toggleProfilePostLike(String postId, bool newlyLiked) async {
-    await SakiService.instance.togglePostLike(postId, !newlyLiked);
-  }
-
-  Future<List<Map<String, dynamic>>> _profilePostComments(String postId) async {
-    final rows = await SakiService.instance.comments(postId);
-    return rows.map((row) {
-      final profile = row['profiles'] is Map
-          ? Map<String, dynamic>.from(row['profiles'] as Map)
-          : const <String, dynamic>{};
-      return {
-        'comment_id': row['id'],
-        'user_id': row['user_id'],
-        'username': profile['username'] ?? 'مستخدم SAKI',
-        'comment_imguser': profile['avatar_url'] ?? '',
-        'comment_text': row['content'] ?? '',
-        'timestamp': row['created_at'] ?? '',
-      };
-    }).toList();
-  }
-
-  Future<void> _addProfileComment(String postId, String content) async {
-    await SakiService.instance.addComment(postId, content);
-  }
-
   String _privateChatErrorDetails(Object error, StackTrace stackTrace) {
     final authUser = SakiService.instance.currentUser;
     final lines = <String>[
@@ -397,138 +339,32 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final gender = profile['gender'] as String? ?? '';
     final isSelf = widget.userId == SakiService.instance.currentUser?.id;
 
-    final covers = _profileCoverImages(profile);
-    final htmlProfile = <String, dynamic>{
-      ...profile,
-      'id': widget.userId,
-      'saki_id': profile['saki_id'] ?? widget.userId,
-      'name': username,
-      'avatar': avatar,
-      'cover': covers.isEmpty ? null : covers.first,
-      'country': country,
-      'countryFlag': _countryFlag,
-      'gender': gender,
-      'followers': _stats['followers'] ?? profile['followers_count'] ?? 0,
-      'following': _stats['following'] ?? profile['following_count'] ?? 0,
-      'visitors': _stats['visitors'] ?? profile['visitors_count'] ?? 0,
-      'level':
-          profile['wealth_level'] ??
-          profile['level'] ??
-          profile['level_number'] ??
-          0,
-      'wealthTitle': profile['wealth_title'] ?? 'مستوى الثروة',
-      'received': _gifts.fold<int>(
-        0,
-        (sum, gift) => sum + ((gift['received_value'] as num?)?.toInt() ?? 0),
-      ),
-      'isOwner': isSelf,
-      'isFollowing': _following,
-      'isVip': activeVipLevel(profile) > 0,
-      'vipCode': activeVipLevel(profile) > 0
-          ? 'vip${activeVipLevel(profile)}'
-          : '',
-      'frame': profile['active_frame_url'],
-      'vipTitle': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
-      'communityBars': _communityBars,
-      'roleBadges': profileRoleBadges(profile),
-    };
-    final htmlPosts = _posts.map((post) {
-      final item = <String, dynamic>{...post};
-      final nested = item['profiles'];
-      final author = nested is Map
-          ? Map<String, dynamic>.from(nested)
-          : const <String, dynamic>{};
-      return {
-        ...item,
-        'id': item['id']?.toString() ?? '',
-        'user_id_sender':
-            item['author_id'] ?? item['user_id_sender'] ?? widget.userId,
-        'text': item['text'] ?? item['content'] ?? '',
-        'avatar': item['avatar'] ?? author['avatar_url'] ?? avatar ?? '',
-        'username': item['username'] ?? author['username'] ?? username,
-        'user':
-            item['user'] ??
-            author['display_name'] ??
-            author['username'] ??
-            username,
-        'time': item['time'] ?? item['created_at'] ?? '',
-        'image': item['image'] ?? item['image_url'] ?? _firstPostImage(item),
-        'likes': item['_likes_count'] ?? item['likes'] ?? 0,
-        'comments': item['_comments_count'] ?? item['comments'] ?? 0,
-        'liked': item['_liked'] == true,
-      };
-    }).toList();
-    final viewer = <String, dynamic>{
-      'id': SakiService.instance.currentUser?.id ?? '',
-      'name': SakiService.instance.currentUser?.userMetadata?['username'] ?? '',
-      'avatar':
-          SakiService.instance.currentUser?.userMetadata?['avatar_url'] ?? '',
-    };
-    final htmlGifts = _gifts.map((gift) {
-      final item = <String, dynamic>{...gift};
-      final icon = item['icon']?.toString();
-      if (icon != null && icon.startsWith('assets/')) {
-        item['icon'] = 'file:///android_asset/flutter_assets/$icon';
-      }
-      return item;
-    }).toList();
-    final htmlBadges = <Map<String, dynamic>>[
-      ..._badges.map((badge) {
-        final item = <String, dynamic>{...badge};
-        final icon = item['icon']?.toString() ?? item['image_url']?.toString();
-        if (icon != null && icon.startsWith('assets/')) {
-          item['icon'] = 'file:///android_asset/flutter_assets/$icon';
-        }
-        return item;
-      }),
-      if (activeVipLevel(profile) > 0)
-        {
-          'name': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
-          'title': profile['vip_label'] ?? 'VIP ${activeVipLevel(profile)}',
-          'icon':
-              'file:///android_asset/flutter_assets/assets/vip/title_vip${activeVipLevel(profile)}.png',
-        },
-      if ((profile['wealth_level'] as num?)?.toInt() case final wealth?
-          when wealth > 0)
-        {'name': 'مستوى الثروة LV.$wealth', 'title': 'مستوى الثروة LV.$wealth'},
-    ];
-    return HtmlProfileView(
-      data: htmlProfile,
-      posts: htmlPosts,
-      gifts: htmlGifts,
-      badges: htmlBadges,
-      viewer: viewer,
+    return _NativeProfileView(
+      profile: profile,
+      stats: _stats,
+      posts: _posts,
+      gifts: _gifts,
+      vehicles: _vehicles,
+      badges: _badges,
+      countryFlag: _countryFlag,
+      username: username,
+      avatar: avatar,
+      country: country,
+      gender: gender,
+      isSelf: isSelf,
+      following: _following,
+      loading: _actionLoading,
       onBack: () => Navigator.maybePop(context),
+      onCopy: _copyId,
       onFollow: _toggleFollow,
       onMessage: _message,
       onReport: _report,
-      onOpenUser: (id) {
-        if (id == widget.userId) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => UserProfilePage(userId: id)),
-        );
-      },
-      onLikePost: _toggleProfilePostLike,
-      onGetComments: _profilePostComments,
-      onSendComment: _addProfileComment,
     );
-  }
-
-  String? _firstPostImage(Map<String, dynamic> post) {
-    final media = post['_media'];
-    if (media is List && media.isNotEmpty && media.first is Map) {
-      final path = (media.first as Map)['storage_path']?.toString();
-      if (path != null && path.isNotEmpty) {
-        return SakiService.instance.postMediaUrl(path);
-      }
-    }
-    return null;
   }
 }
 
-class _HtmlProfileView extends StatefulWidget {
-  const _HtmlProfileView({
+class _NativeProfileView extends StatefulWidget {
+  const _NativeProfileView({
     required this.profile,
     required this.stats,
     required this.posts,
@@ -538,7 +374,6 @@ class _HtmlProfileView extends StatefulWidget {
     required this.countryFlag,
     required this.username,
     required this.avatar,
-    required this.coverImages,
     required this.country,
     required this.gender,
     required this.isSelf,
@@ -557,21 +392,21 @@ class _HtmlProfileView extends StatefulWidget {
   final String countryFlag;
   final String username;
   final String? avatar, country;
-  final List<String> coverImages;
   final String gender;
   final bool isSelf, following, loading;
   final VoidCallback onBack, onCopy, onFollow, onMessage, onReport;
 
   @override
-  State<_HtmlProfileView> createState() => _HtmlProfileViewState();
+  State<_NativeProfileView> createState() => _NativeProfileViewState();
 }
 
-class _HtmlProfileViewState extends State<_HtmlProfileView> {
+class _NativeProfileViewState extends State<_NativeProfileView> {
   int tab = 0;
 
   @override
   Widget build(BuildContext context) {
-    final accent = _brandOrange;
+    final vip = (widget.profile['vip_level'] as num? ?? 0).toInt().clamp(0, 10);
+    final accent = vip > 0 ? vipAccent(vip) : const Color(0xFF10B981);
     final family = widget.profile['family_badge'] is Map
         ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)
         : null;
@@ -580,553 +415,425 @@ class _HtmlProfileViewState extends State<_HtmlProfileView> {
       widget.stats,
       widget.badges,
     );
+    final cover = widget.avatar;
 
     return Scaffold(
-      backgroundColor: _profileBg,
+      backgroundColor: const Color(0xFFE5E7EB),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 448),
-            child: SizedBox.expand(
-              child: Stack(
-                children: [
-                  Container(color: Colors.white),
-                  CustomScrollView(
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: _ReferenceProfileHero(
-                          username: widget.username,
-                          avatar: widget.avatar,
-                          coverImages: widget.coverImages,
-                          gender: widget.gender,
-                          countryFlag: widget.countryFlag,
-                          country: widget.country,
-                          profile: widget.profile,
-                          onCopy: widget.onCopy,
+        child: Stack(
+          children: [
+            CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _ReferenceProfileHero(
+                    username: widget.username,
+                    avatar: widget.avatar,
+                    cover: cover,
+                    gender: widget.gender,
+                    countryFlag: widget.countryFlag,
+                    profile: widget.profile,
+                    stats: widget.stats,
+                    onBack: widget.onBack,
+                    onMenu: widget.onReport,
+                    onCopy: widget.onCopy,
+                    accent: accent,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Transform.translate(
+                    offset: const Offset(0, -24),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(26),
                         ),
                       ),
-                      SliverToBoxAdapter(
-                        child: Container(
-                          color: Colors.white,
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 116),
-                          child: Column(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
+                      child: Column(
+                        children: [
+                          Row(
                             children: [
-                              _ReferenceFamilyCard(family: family),
-                              const SizedBox(height: 22),
-                              Row(
+                              _ReferenceTab(
+                                label: 'ملف التعريف',
+                                active: tab == 0,
+                                accent: accent,
+                                onTap: () => setState(() => tab = 0),
+                              ),
+                              _ReferenceTab(
+                                label: 'اللحظات',
+                                active: tab == 1,
+                                accent: accent,
+                                onTap: () => setState(() => tab = 1),
+                              ),
+                              _ReferenceTab(
+                                label: 'الأوسمة',
+                                active: tab == 2,
+                                accent: accent,
+                                onTap: () => setState(() => tab = 2),
+                              ),
+                              _ReferenceTab(
+                                label: 'الهدايا',
+                                active: tab == 3,
+                                accent: accent,
+                                onTap: () => setState(() => tab = 3),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 260),
+                            child: switch (tab) {
+                              1 => _NativeMoments(
+                                posts: widget.posts,
+                                accent: accent,
+                              ),
+                              2 => _ReferenceCollection(
+                                key: const ValueKey('badges'),
+                                title: 'الأوسمة المكتسبة',
+                                items: ownedBadges,
+                                kind: 'badge',
+                                accent: accent,
+                              ),
+                              3 => _ReferenceCollection(
+                                key: const ValueKey('gifts'),
+                                title: 'الهدايا المستلمة',
+                                items: widget.gifts,
+                                kind: 'gift',
+                                accent: accent,
+                              ),
+                              _ => Column(
+                                key: const ValueKey('profile'),
                                 children: [
-                                  _ReferenceTab(
-                                    icon: Icons.person_outline_rounded,
-                                    label: 'الأساسي',
-                                    active: tab == 0,
+                                  _ReferenceAbout(
+                                    bio:
+                                        widget.profile['bio']?.toString() ?? '',
+                                    isSelf: widget.isSelf,
                                     accent: accent,
-                                    iconColor: accent,
-                                    onTap: () => setState(() => tab = 0),
                                   ),
-                                  _ReferenceTab(
-                                    icon: Icons.workspace_premium_outlined,
-                                    label: 'الأوسمة',
-                                    active: tab == 1,
-                                    accent: accent,
-                                    iconColor: const Color(0xFFF59E0B),
-                                    onTap: () => setState(() => tab = 1),
+                                  _ReferenceSection(
+                                    title: 'عائلة',
+                                    child: _ReferenceFamilyCard(
+                                      family: family,
+                                      accent: accent,
+                                    ),
                                   ),
-                                  _ReferenceTab(
-                                    icon: Icons.photo_outlined,
-                                    label: 'اللحظات',
-                                    active: tab == 2,
-                                    accent: accent,
-                                    iconColor: _brandCyan,
-                                    onTap: () => setState(() => tab = 2),
-                                  ),
-                                  _ReferenceTab(
-                                    icon: Icons.card_giftcard_rounded,
-                                    label: 'الهدايا',
-                                    active: tab == 3,
-                                    accent: accent,
-                                    iconColor: const Color(0xFFEC4899),
-                                    onTap: () => setState(() => tab = 3),
+                                  _ReferenceSection(
+                                    title: 'CP',
+                                    child: const _ReferenceCpCard(),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 20),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 260),
-                                child: switch (tab) {
-                                  1 => _ReferenceCollection(
-                                    key: const ValueKey('badges'),
-                                    title: 'الأوسمة المكتسبة',
-                                    items: ownedBadges,
-                                    kind: 'badge',
-                                    accent: accent,
-                                  ),
-                                  2 => _HtmlMoments(
-                                    key: const ValueKey('moments'),
-                                    posts: widget.posts,
-                                    accent: accent,
-                                  ),
-                                  3 => _ReferenceCollection(
-                                    key: const ValueKey('gifts'),
-                                    title: 'الهدايا المستلمة',
-                                    items: widget.gifts,
-                                    kind: 'gift',
-                                    accent: accent,
-                                  ),
-                                  _ => Column(
-                                    key: const ValueKey('profile'),
-                                    children: [
-                                      _ReferenceAbout(
-                                        bio:
-                                            widget.profile['bio']?.toString() ??
-                                            '',
-                                        isSelf: widget.isSelf,
-                                        accent: _brandCyan,
-                                      ),
-                                      const SizedBox(height: 18),
-                                      _ReferenceStatsGrid(
-                                        profile: widget.profile,
-                                        stats: widget.stats,
-                                      ),
-                                      if (widget.vehicles.isNotEmpty) ...[
-                                        const SizedBox(height: 20),
-                                        _ReferenceVehicles(
-                                          vehicles: widget.vehicles,
-                                          accent: accent,
-                                        ),
-                                      ],
-                                      const SizedBox(height: 20),
-                                      _ReferenceSection(
-                                        title: 'CP',
-                                        child: const _ReferenceCpCard(),
-                                      ),
-                                    ],
-                                  ),
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _ReferenceTopBar(
-                      onBack: widget.onBack,
-                      onMenu: widget.onReport,
-                    ),
-                  ),
-                  if (!widget.isSelf)
-                    Positioned(
-                      left: 16,
-                      right: 16,
-                      bottom: 12,
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _ReferenceAction(
-                              label: 'رسالة',
-                              icon: Icons.chat_bubble_rounded,
-                              color: _brandCyan,
-                              loading: widget.loading,
-                              onTap: widget.onMessage,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _ReferenceAction(
-                              label: widget.following ? 'متابَع' : 'متابعة',
-                              icon: widget.following
-                                  ? Icons.check_rounded
-                                  : Icons.person_add_alt_1_rounded,
-                              color: accent,
-                              loading: widget.loading,
-                              onTap: widget.onFollow,
-                            ),
+                            },
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReferenceProfileHero extends StatefulWidget {
-  const _ReferenceProfileHero({
-    required this.username,
-    required this.avatar,
-    required this.coverImages,
-    required this.gender,
-    required this.countryFlag,
-    required this.country,
-    required this.profile,
-    required this.onCopy,
-  });
-
-  final String username;
-  final String? avatar, country;
-  final List<String> coverImages;
-  final String gender, countryFlag;
-  final Map<String, dynamic> profile;
-  final VoidCallback onCopy;
-
-  @override
-  State<_ReferenceProfileHero> createState() => _ReferenceProfileHeroState();
-}
-
-class _ReferenceProfileHeroState extends State<_ReferenceProfileHero> {
-  final PageController _coverController = PageController();
-  Timer? _coverTimer;
-  int _activeCover = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.coverImages.length > 1) {
-      _coverTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-        if (!mounted || !_coverController.hasClients) return;
-        final next = (_activeCover + 1) % widget.coverImages.length;
-        _coverController.animateToPage(
-          next,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _coverTimer?.cancel();
-    _coverController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isSuperAdmin =
-        widget.profile['is_super_admin'] == true ||
-        widget.profile['admin_role']?.toString() == 'super_admin';
-    final isFemale =
-        widget.gender.toLowerCase().contains('أنثى') ||
-        widget.gender.toLowerCase().contains('female');
-
-    return Column(
-      children: [
-        SizedBox(
-          height: 250,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              PageView.builder(
-                controller: _coverController,
-                itemCount: widget.coverImages.length,
-                onPageChanged: (index) => setState(() => _activeCover = index),
-                itemBuilder: (_, index) => Image.network(
-                  widget.coverImages[index],
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFFFFD6B2), Color(0xFFB6F0F6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (widget.coverImages.length > 1)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 15,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      widget.coverImages.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(
-                            alpha: index == _activeCover ? 1 : .5,
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Container(
-          height: 190,
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
+            if (!widget.isSelf)
               Positioned(
-                top: -64,
-                left: 0,
-                right: 0,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                left: 16,
+                right: 16,
+                bottom: 14,
+                child: Row(
                   children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            border: Border.all(color: Colors.white, width: 4),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x26000000),
-                                blurRadius: 14,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: SakiAvatar(
-                            url: widget.avatar,
-                            label: widget.username,
-                            radius: 60,
-                            profile: widget.profile,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 6,
-                          right: 6,
-                          child: Container(
-                            width: 17,
-                            height: 17,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF22C55E),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: VipNameText(
-                        profile: {
-                          ...widget.profile,
-                          'display_name': widget.username,
-                        },
-                        fontSize: 24,
-                        textAlign: TextAlign.center,
+                    Expanded(
+                      child: _ReferenceAction(
+                        label: 'رسالة',
+                        icon: Icons.chat_bubble_rounded,
+                        color: const Color(0xFF2563EB),
+                        loading: widget.loading,
+                        onTap: widget.onMessage,
                       ),
                     ),
-                    if (isSuperAdmin)
-                      Container(
-                        margin: const EdgeInsets.only(top: 3),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text(
-                          'Super Admin',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 7),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'ID: ${widget.profile['saki_id'] ?? '—'}',
-                            style: const TextStyle(
-                              color: Color(0xFF4B5563),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          GestureDetector(
-                            onTap: widget.onCopy,
-                            child: const Icon(
-                              Icons.copy_rounded,
-                              color: _brandCyan,
-                              size: 16,
-                            ),
-                          ),
-                          _profilePillDivider(),
-                          Tooltip(
-                            message: widget.country ?? '',
-                            child: Text(
-                              widget.countryFlag,
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ),
-                          _profilePillDivider(),
-                          Icon(
-                            isFemale
-                                ? Icons.female_rounded
-                                : Icons.male_rounded,
-                            size: 17,
-                            color: isFemale
-                                ? const Color(0xFFEC4899)
-                                : const Color(0xFF3B82F6),
-                          ),
-                        ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ReferenceAction(
+                        label: widget.following ? 'متابَع' : 'متابعة',
+                        icon: widget.following
+                            ? Icons.check_rounded
+                            : Icons.person_add_alt_1_rounded,
+                        color: accent,
+                        loading: widget.loading,
+                        onTap: widget.onFollow,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
 
-Widget _profilePillDivider() => Container(
-  height: 15,
-  width: 1,
-  margin: const EdgeInsets.symmetric(horizontal: 8),
-  color: const Color(0xFFD1D5DB),
-);
-
-class _ReferenceTopBar extends StatelessWidget {
-  const _ReferenceTopBar({required this.onBack, required this.onMenu});
-  final VoidCallback onBack, onMenu;
+class _ReferenceProfileHero extends StatelessWidget {
+  const _ReferenceProfileHero({
+    required this.username,
+    required this.avatar,
+    required this.cover,
+    required this.gender,
+    required this.countryFlag,
+    required this.profile,
+    required this.stats,
+    required this.onBack,
+    required this.onMenu,
+    required this.onCopy,
+    required this.accent,
+  });
+  final String username;
+  final String? avatar, cover;
+  final String gender, countryFlag;
+  final Map<String, dynamic> profile;
+  final Map<String, int> stats;
+  final VoidCallback onBack, onMenu, onCopy;
+  final Color accent;
 
   @override
-  Widget build(BuildContext context) => ClipRect(
-    child: BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .82),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x14000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
+  Widget build(BuildContext context) {
+    final image = cover == null || cover!.isEmpty ? null : NetworkImage(cover!);
+    final isSuperAdmin =
+        profile['is_super_admin'] == true ||
+        profile['admin_role']?.toString() == 'super_admin';
+    return Container(
+      constraints: const BoxConstraints(minHeight: 330),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        image: image == null
+            ? null
+            : DecorationImage(
+                image: image,
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomCenter,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: .42),
+                  BlendMode.darken,
+                ),
+              ),
+      ),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.transparent, Color(0xCC000000)],
+          ),
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: 4,
-              top: 0,
-              bottom: 0,
-              child: IconButton(
-                onPressed: onMenu,
-                tooltip: 'خيارات المستخدم',
-                icon: const Icon(Icons.more_vert_rounded),
-                color: const Color(0xFF374151),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 34),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: onMenu,
+                    icon: const Icon(Icons.more_vert_rounded),
+                    color: Colors.white,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: onBack,
+                    icon: const Icon(Icons.chevron_right_rounded),
+                    color: Colors.white,
+                    iconSize: 30,
+                  ),
+                ],
               ),
-            ),
-            Positioned(
-              right: 4,
-              top: 0,
-              bottom: 0,
-              child: IconButton(
-                onPressed: onBack,
-                tooltip: 'رجوع',
-                icon: const Icon(Icons.chevron_right_rounded),
-                color: const Color(0xFF374151),
-                iconSize: 30,
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: .5)),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black45, blurRadius: 14),
+                  ],
+                ),
+                child: SakiAvatar(
+                  url: avatar,
+                  label: username,
+                  radius: 36,
+                  profile: profile,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(countryFlag, style: const TextStyle(fontSize: 17)),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: VipNameText(
+                      profile: {...profile, 'display_name': username},
+                      fontSize: 18,
+                      textAlign: TextAlign.start,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  WealthVipLabels(
+                    profile: {...profile, 'display_name': username},
+                    compact: true,
+                  ),
+                  if (isSuperAdmin) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
+                        ),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(color: Colors.white54),
+                      ),
+                      child: const Text(
+                        'Super Admin',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (gender.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        gender,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Text(
+                    'ID: ${profile['saki_id'] ?? '—'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                  IconButton(
+                    onPressed: onCopy,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    icon: const Icon(
+                      Icons.copy_rounded,
+                      color: Colors.white70,
+                      size: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  _ReferenceHeroStat(
+                    value: '${stats['followers'] ?? 0}',
+                    label: 'المتابعون',
+                  ),
+                  _ReferenceHeroDivider(),
+                  _ReferenceHeroStat(
+                    value: '${stats['following'] ?? 0}',
+                    label: 'الذين تتابعهم',
+                  ),
+                  _ReferenceHeroDivider(),
+                  _ReferenceHeroStat(
+                    value: '${stats['posts'] ?? 0}',
+                    label: 'اللحظات',
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _ReferenceHeroStat extends StatelessWidget {
+  const _ReferenceHeroStat({required this.value, required this.label});
+  final String value, label;
+  @override
+  Widget build(BuildContext context) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 10),
+        ),
+      ],
     ),
   );
 }
 
+class _ReferenceHeroDivider extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: 28, width: 1, color: Colors.white38);
+}
+
 class _ReferenceTab extends StatelessWidget {
   const _ReferenceTab({
-    required this.icon,
     required this.label,
     required this.active,
     required this.accent,
-    required this.iconColor,
     required this.onTap,
   });
-  final IconData icon;
   final String label;
   final bool active;
-  final Color accent, iconColor;
+  final Color accent;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Expanded(
-    child: InkWell(
+    child: GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(2, 8, 2, 9),
+        padding: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
               color: active ? accent : const Color(0xFFE5E7EB),
-              width: active ? 2 : 1,
+              width: active ? 3 : 1,
             ),
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 19, color: active ? accent : iconColor),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: active ? accent : const Color(0xFF6B7280),
-                fontSize: 11,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: active ? const Color(0xFF111827) : const Color(0xFF6B7280),
+            fontSize: 13,
+            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+          ),
         ),
       ),
     ),
@@ -1143,235 +850,25 @@ class _ReferenceAbout extends StatelessWidget {
   final bool isSelf;
   final Color accent;
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        children: [
-          Container(width: 4, height: 19, color: accent),
-          const SizedBox(width: 8),
-          const Text(
-            'نبذة عني',
-            style: TextStyle(
-              color: Color(0xFF1F2937),
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 10),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFF3F4F6)),
-        ),
-        child: Text(
-          bio.isEmpty
-              ? (isSelf
-                    ? 'أضف نبذة قصيرة ليعرفك الآخرون أكثر.'
-                    : 'لا توجد نبذة مضافة حتى الآن.')
-              : bio,
-          textDirection: TextDirection.rtl,
-          style: const TextStyle(
-            color: Color(0xFF4B5563),
-            fontSize: 13,
-            height: 1.55,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
-class _ReferenceStatsGrid extends StatelessWidget {
-  const _ReferenceStatsGrid({required this.profile, required this.stats});
-  final Map<String, dynamic> profile;
-  final Map<String, int> stats;
-
-  @override
-  Widget build(BuildContext context) {
-    final level = (profile['wealth_level'] as num?)?.toInt() ?? 0;
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 2.25,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [
-        _ReferenceStatCard(
-          label: 'المستوى',
-          value: 'Lv. $level',
-          icon: Icons.local_fire_department_rounded,
-          accent: _brandOrange,
-          background: const Color(0xFFFFF7ED),
-          border: const Color(0xFFFFEDD5),
-        ),
-        _ReferenceStatCard(
-          label: 'المتابعون',
-          value: '${stats['followers'] ?? 0}',
-          icon: Icons.people_alt_rounded,
-          accent: _brandCyan,
-          background: const Color(0xFFECFEFF),
-          border: const Color(0xFFCFFAFE),
-        ),
-        _ReferenceStatCard(
-          label: 'الذين تتابعهم',
-          value: '${stats['following'] ?? 0}',
-          icon: Icons.person_add_alt_1_rounded,
-          accent: const Color(0xFF16A34A),
-          background: const Color(0xFFF0FDF4),
-          border: const Color(0xFFDCFCE7),
-        ),
-        _ReferenceStatCard(
-          label: 'اللحظات',
-          value: '${stats['posts'] ?? 0}',
-          icon: Icons.photo_library_rounded,
-          accent: const Color(0xFF8B5CF6),
-          background: const Color(0xFFF5F3FF),
-          border: const Color(0xFFEDE9FE),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReferenceStatCard extends StatelessWidget {
-  const _ReferenceStatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.accent,
-    required this.background,
-    required this.border,
-  });
-
-  final String label, value;
-  final IconData icon;
-  final Color accent, background, border;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: border),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: accent.withValues(alpha: .14),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: accent, size: 20),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF1F2937),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _ReferenceVehicles extends StatelessWidget {
-  const _ReferenceVehicles({required this.vehicles, required this.accent});
-  final List<Map<String, dynamic>> vehicles;
-  final Color accent;
-
-  @override
   Widget build(BuildContext context) => _ReferenceSection(
-    title: 'المركبات',
-    child: GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: vehicles.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 9,
-        mainAxisSpacing: 9,
-        childAspectRatio: .95,
+    title: 'عني',
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5F7),
+        borderRadius: BorderRadius.circular(16),
       ),
-      itemBuilder: (_, index) {
-        final vehicle = vehicles[index];
-        final asset = vehicle['asset_key']?.toString();
-        return Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: asset != null && asset.startsWith('assets/')
-                    ? Image.asset(
-                        asset,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => Icon(
-                          Icons.directions_car_filled_rounded,
-                          color: accent,
-                          size: 35,
-                        ),
-                      )
-                    : Icon(
-                        Icons.directions_car_filled_rounded,
-                        color: accent,
-                        size: 35,
-                      ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                vehicle['name']?.toString() ?? 'مركبة',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF374151),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      child: Text(
+        bio.isEmpty ? 'لا توجد نبذة مضافة حتى الآن.' : bio,
+        textDirection: TextDirection.rtl,
+        style: const TextStyle(
+          color: Color(0xFF4B5563),
+          fontSize: 13,
+          height: 1.5,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     ),
   );
 }
@@ -1402,125 +899,73 @@ class _ReferenceSection extends StatelessWidget {
 }
 
 class _ReferenceFamilyCard extends StatelessWidget {
-  const _ReferenceFamilyCard({required this.family});
+  const _ReferenceFamilyCard({required this.family, required this.accent});
   final Map<String, dynamic>? family;
-
+  final Color accent;
   @override
   Widget build(BuildContext context) {
     final hasFamily = family != null;
     final familyAvatar = family?['avatar_url']?.toString();
     return Container(
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF5EB),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFA3D9A5)),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF071739), Color(0xFF1868D9), Color(0xFF0A2552)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.blueAccent.withValues(alpha: .35)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 7,
-            offset: Offset(0, 3),
+            color: Color(0x441868D9),
+            blurRadius: 14,
+            offset: Offset(0, 7),
           ),
         ],
       ),
-      child: Stack(
-        clipBehavior: Clip.hardEdge,
+      child: Row(
         children: [
-          Positioned(
-            right: -26,
-            top: -30,
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .38),
-                shape: BoxShape.circle,
+          Container(
+            width: 54,
+            height: 54,
+            padding: const EdgeInsets.all(2),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Color(0xFF22D3EE), Color(0xFF6366F1)],
               ),
             ),
+            child: ClipOval(
+              child: familyAvatar == null || familyAvatar.isEmpty
+                  ? const Icon(Icons.groups_rounded, color: Colors.white)
+                  : Image.network(familyAvatar, fit: BoxFit.cover),
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
+                Text(
+                  hasFamily
+                      ? family!['name']?.toString() ?? 'عائلتي'
+                      : 'لا توجد عائلة',
+                  style: const TextStyle(
                     color: Colors.white,
-                  ),
-                  child: ClipOval(
-                    child: familyAvatar == null || familyAvatar.isEmpty
-                        ? Container(
-                            color: _familyGreen,
-                            child: const Icon(
-                              Icons.groups_rounded,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Image.network(
-                            familyAvatar,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const ColoredBox(
-                              color: _familyGreen,
-                              child: Icon(
-                                Icons.groups_rounded,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        hasFamily
-                            ? family!['name']?.toString() ?? 'عائلتي'
-                            : 'لا توجد عائلة',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF1F2937),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        hasFamily
-                            ? 'المستوى ${family!['level'] ?? 0}  •  ${family!['role'] ?? 'عضو'}'
-                            : 'انضم إلى مجتمع عائلي في SAKI',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF4B5563),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .58),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.chevron_left_rounded,
-                    color: Color(0xFF15803D),
-                    size: 19,
-                  ),
+                const SizedBox(height: 4),
+                Text(
+                  hasFamily
+                      ? 'Lv.${family!['level'] ?? 0}  •  ${family!['role'] ?? 'عضو'}'
+                      : 'يمكن الانضمام إلى عائلة من صفحة العائلات',
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
                 ),
               ],
             ),
           ),
+          const Icon(Icons.shield_rounded, color: Color(0xFFFBBF24)),
         ],
       ),
     );
@@ -1781,37 +1226,21 @@ List<Map<String, dynamic>> _ownedBadges(
   return result;
 }
 
-List<String> _profileCoverImages(Map<String, dynamic> profile) {
-  final rawImages = profile['cover_images'];
-  final customImages = rawImages is List
-      ? rawImages
-            .map((image) => image?.toString().trim() ?? '')
-            .where((image) => image.isNotEmpty)
-            .toList()
-      : <String>[];
-  final singleCover =
-      profile['cover_url']?.toString().trim() ??
-      profile['cover_image_url']?.toString().trim() ??
-      '';
-  if (customImages.isNotEmpty) return customImages.take(6).toList();
-  return [if (singleCover.isNotEmpty) singleCover, ..._referenceCoverImages];
-}
-
 // ignore: unused_element, used by the optional legacy badge renderer.
 String _badgeDate(dynamic value) {
   final date = DateTime.tryParse(value.toString())?.toLocal();
   return date == null ? '' : '${date.day}/${date.month}/${date.year}';
 }
 
-class _HtmlMoments extends StatefulWidget {
-  const _HtmlMoments({super.key, required this.posts, required this.accent});
+class _NativeMoments extends StatefulWidget {
+  const _NativeMoments({required this.posts, required this.accent});
   final List<Map<String, dynamic>> posts;
   final Color accent;
   @override
-  State<_HtmlMoments> createState() => _HtmlMomentsState();
+  State<_NativeMoments> createState() => _NativeMomentsState();
 }
 
-class _HtmlMomentsState extends State<_HtmlMoments> {
+class _NativeMomentsState extends State<_NativeMoments> {
   // ignore: unused_element, retained for the optional legacy comments sheet.
   Future<void> _comment(Map<String, dynamic> post) async {
     final controller = TextEditingController();
