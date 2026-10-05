@@ -2795,7 +2795,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         roomId: _roomId,
         onSent: (recipientId, gift, flyingBanner) async {
           _lastGiftRecipient = recipientId;
-          _lastGift = gift;
+          final recipientProfile = await _service.userProfile(recipientId);
+          _lastGift = {
+            ...gift,
+            '_recipient_profile': recipientProfile ?? const <String, dynamic>{},
+          };
           final payload = <String, dynamic>{
             'gift_id': gift['id'],
             'quantity': 1,
@@ -2811,6 +2815,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             'duration_seconds': 5,
             'category': gift['category'],
             'recipient_id': recipientId,
+            'recipient_username':
+                recipientProfile?['username'] ??
+                recipientProfile?['display_name'],
+            'recipient_avatar_url': recipientProfile?['avatar_url'],
             'flying_banner': false,
           };
           if (_isLuckGift(gift)) {
@@ -2915,6 +2923,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           'duration_seconds': 5,
           'category': gift['category'],
           'recipient_id': recipient,
+          'recipient_username':
+              (gift['_recipient_profile'] as Map?)?['username'] ??
+              (gift['_recipient_profile'] as Map?)?['display_name'],
+          'recipient_avatar_url':
+              (gift['_recipient_profile'] as Map?)?['avatar_url'],
           'flying_banner': false,
         };
         await _service.sendRoomMessage(

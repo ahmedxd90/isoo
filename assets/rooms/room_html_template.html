@@ -700,7 +700,14 @@
       const avatar = m.avatar ? '<img data-user-id="' + escapeHtml(m.id || '') + '" src="' + escapeHtml(m.avatar) + '" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">' : '';
       const payload = m.payload || {};
       const isGift = m.type === 'gift' || m.type === 'luck_multiplier';
-      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && payload.icon ? ' <img src="' + escapeHtml(payload.icon) + '" class="inline-block w-7 h-7 object-contain align-middle">' : '') + '</div>';
+      const vip = Number(m.vip || 0);
+      const vipStyle = vip >= 10 ? 'from-rose-500 via-amber-400 to-fuchsia-600 border-amber-200' : vip >= 7 ? 'from-violet-600 via-fuchsia-500 to-indigo-600 border-fuchsia-200' : vip >= 4 ? 'from-cyan-600 via-blue-500 to-violet-600 border-cyan-200' : 'from-black/60 to-black/45 border-white/15';
+      const recipientName = escapeHtml(payload.recipient_username || 'المستلم');
+      const recipientAvatar = payload.recipient_avatar_url ? '<img src="' + escapeHtml(payload.recipient_avatar_url) + '" class="w-5 h-5 rounded-full object-cover border border-white/70">' : '';
+      const giftThumb = payload.thumbnail_url || payload.icon;
+      const giftDetails = isGift ? '<div class="mt-1.5 flex items-center justify-end gap-1.5 rounded-xl bg-black/20 px-2 py-1 border border-white/15"><span class="text-white/90 text-[10px] font-bold">أرسل هدية إلى ' + recipientName + '</span>' + recipientAvatar + (giftThumb ? '<img src="' + escapeHtml(giftThumb) + '" class="w-8 h-8 object-contain">' : '') + '</div>' : '';
+      const bubble = isGift ? 'bg-gradient-to-r ' + vipStyle + ' border text-white shadow-[0_0_14px_rgba(168,85,247,.35)]' : 'bg-black/50 border-white/15 text-white';
+      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">VIP' + escapeHtml(vip) + ' · LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="' + bubble + ' text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && giftThumb ? ' <img src="' + escapeHtml(giftThumb) + '" class="inline-block w-8 h-8 object-contain align-middle">' : '') + giftDetails + '</div>';
       const image = wrap.querySelector('[data-user-id]');
       if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
       stream.appendChild(wrap);
@@ -720,7 +727,7 @@
   function playGiftOverlay(p) {
     const area = document.getElementById('giftAnimationArea'); if (!area) return;
     const src = p.media_url || p.icon || p.thumbnail_url; if (!src) return;
-    const thumb=document.createElement('img'); thumb.src=p.thumbnail_url || p.icon || src; thumb.className='absolute w-16 h-16 object-contain z-50 transition-all duration-[4000ms] ease-in-out'; thumb.style.left='50%'; thumb.style.top='48%'; area.appendChild(thumb);
+    const thumb=document.createElement('img'); thumb.src=p.thumbnail_url || p.icon || src; thumb.className='absolute w-16 h-16 object-contain z-50 transition-all duration-[2600ms] ease-out'; thumb.style.left='50%'; thumb.style.top='48%'; area.appendChild(thumb);
     const recipientId = String(p.recipient_id || '');
     const recipientSeat = (window.__roomSeats || []).find(function (seat) {
       return String(seat.userId || '') === recipientId;
@@ -728,8 +735,13 @@
     const target = recipientSeat
       ? document.getElementById('seat-frame-' + recipientSeat.no)
       : null;
-    setTimeout(function(){ if(target){ const r=target.getBoundingClientRect(), a=area.getBoundingClientRect(); thumb.style.left=(r.left-a.left+r.width/2-32)+'px'; thumb.style.top=(r.top-a.top+r.height/2-32)+'px'; } }, 80);
-    setTimeout(function(){thumb.remove();}, Math.max(5000, Number(p.duration_seconds||5)*1000));
+    setTimeout(function(){
+      if (!target) { thumb.remove(); return; }
+      const r=target.getBoundingClientRect(), a=area.getBoundingClientRect();
+      thumb.style.left=(r.left-a.left+r.width/2-32)+'px';
+      thumb.style.top=(r.top-a.top+r.height/2-32)+'px';
+    }, 40);
+    setTimeout(function(){thumb.remove();}, 2900);
   }
   window.handleSeatClick = function (seat) { const item=(window.__roomSeats||[]).find(function(x){return x.no===seat;})||{}; bridge('seat', {seat: seat, occupiedUserId: item.userId || null}); };
   window.handleMessageSubmit = function (e) { e.preventDefault(); const i=document.getElementById('chatInput'); const t=i.value.trim(); if(t){ bridge('message',{body:t}); i.value=''; } };
