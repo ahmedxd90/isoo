@@ -1400,6 +1400,15 @@ class SakiService {
     throw const FormatException('Invalid Love House response');
   }
 
+  Future<Map<String, dynamic>> profileLoveRelationship(String userId) async {
+    final result = await client.rpc(
+      'saki_profile_love_relationship',
+      params: {'p_user_id': userId},
+    );
+    if (result is Map) return Map<String, dynamic>.from(result);
+    throw const FormatException('Invalid profile Love House response');
+  }
+
   Future<List<Map<String, dynamic>>> loveMutualFriends() async {
     final result = await client.rpc('saki_love_mutual_friends');
     if (result is List) return List<Map<String, dynamic>>.from(result);

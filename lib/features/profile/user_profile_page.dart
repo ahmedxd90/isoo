@@ -90,11 +90,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _safe(SakiService.instance.userBadges(widget.userId)),
         _safe(SakiService.instance.isShippingAgent(widget.userId)),
         _safe(SakiService.instance.profileCoverImages(widget.userId)),
-        _safe(
-          viewingSelf
-              ? SakiService.instance.loveHouseState()
-              : SakiService.instance.profileCommunityBars(widget.userId),
-        ),
+        _safe(SakiService.instance.profileLoveRelationship(widget.userId)),
       ]);
       if (!mounted) return;
       var countryFlag = '🌍';
