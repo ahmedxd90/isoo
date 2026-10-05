@@ -2756,6 +2756,87 @@ class SakiService {
     await client.from('profiles').update(updates).eq('id', uid);
   }
 
+  Future<List<Map<String, dynamic>>> profileCoverImages(String userId) async {
+    final rows = await client
+        .from('profile_cover_images')
+        .select('id,user_id,image_url,storage_path,sort_order,created_at')
+        .eq('user_id', userId)
+        .order('sort_order')
+        .order('created_at');
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  Future<Map<String, dynamic>> uploadProfileCover(XFile image) async {
+    final bytes = await File(image.path).readAsBytes();
+    final extension = image.path.split('.').last.toLowerCase();
+    final safeExtension = extension == 'jpeg' ? 'jpg' : extension;
+    final contentType = safeExtension == 'png'
+        ? 'image/png'
+        : safeExtension == 'webp'
+        ? 'image/webp'
+        : 'image/jpeg';
+    final path =
+        '$uid/covers/cover_${DateTime.now().millisecondsSinceEpoch}.$safeExtension';
+    await client.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: false, contentType: contentType),
+        );
+    final url = client.storage.from('avatars').getPublicUrl(path);
+    final existing = await profileCoverImages(uid);
+    final nextOrder = existing.isEmpty
+        ? 0
+        : (existing
+                  .map((row) => (row['sort_order'] as num?)?.toInt() ?? 0)
+                  .reduce(max) +
+              1);
+    try {
+      final inserted = await client
+          .from('profile_cover_images')
+          .insert({
+            'user_id': uid,
+            'image_url': url,
+            'storage_path': path,
+            'sort_order': nextOrder,
+          })
+          .select('id,user_id,image_url,storage_path,sort_order,created_at')
+          .single();
+      return Map<String, dynamic>.from(inserted);
+    } catch (_) {
+      await client.storage
+          .from('avatars')
+          .remove([path])
+          .catchError((_) => <FileObject>[]);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteProfileCover({
+    required String id,
+    required String storagePath,
+  }) async {
+    await client
+        .from('profile_cover_images')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', uid);
+    if (storagePath.isNotEmpty) {
+      await client.storage.from('avatars').remove([storagePath]);
+    }
+  }
+
+  Future<void> reorderProfileCovers(List<String> orderedIds) async {
+    for (var index = 0; index < orderedIds.length; index++) {
+      await client
+          .from('profile_cover_images')
+          .update({'sort_order': index})
+          .eq('id', orderedIds[index])
+          .eq('user_id', uid);
+    }
+  }
+
   Future<void> toggleFollow(String otherUserId, bool following) async {
     if (following) {
       await client

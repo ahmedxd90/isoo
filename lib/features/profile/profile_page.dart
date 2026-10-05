@@ -1964,6 +1964,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   );
   final _picker = ImagePicker();
   XFile? _avatar;
+  final List<Map<String, dynamic>> _coverImages = [];
+  final List<XFile> _pendingCovers = [];
+  final List<Map<String, dynamic>> _deletedCovers = [];
   List<Map<String, dynamic>> _countries = const [];
   String? _country;
   String? _countryCode;
@@ -1987,6 +1990,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _country = widget.profile['country'] as String?;
     _countryCode = widget.profile['country_code'] as String?;
     _loadCountries();
+    _loadCoverImages();
+  }
+
+  int get _maxCovers => _vipLevel >= 7 ? 5 : 1;
+
+  Future<void> _loadCoverImages() async {
+    try {
+      final rows = await SakiService.instance.profileCoverImages(
+        SakiService.instance.uid,
+      );
+      if (mounted) {
+        setState(() {
+          _coverImages
+            ..clear()
+            ..addAll(rows);
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -2088,6 +2109,36 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (image != null && mounted) setState(() => _avatar = image);
   }
 
+  Future<void> _addCover() async {
+    final available = _maxCovers - _coverImages.length - _pendingCovers.length;
+    if (available <= 0) {
+      setState(
+        () => _error = _vipLevel >= 7
+            ? 'يمكن لمستخدم VIP7 أو أعلى إضافة 5 صور غلاف كحد أقصى.'
+            : 'المستخدم العادي يمكنه إضافة صورة غلاف واحدة فقط.',
+      );
+      return;
+    }
+    final images = await _picker.pickMultiImage(imageQuality: 90);
+    if (!mounted || images.isEmpty) return;
+    setState(() {
+      _pendingCovers.addAll(images.take(available));
+      _error = null;
+    });
+  }
+
+  void _removeCover(int index) {
+    setState(() {
+      if (index < _coverImages.length) {
+        final row = _coverImages[index];
+        _deletedCovers.add(row);
+        _coverImages.removeAt(index);
+      } else {
+        _pendingCovers.removeAt(index - _coverImages.length);
+      }
+    });
+  }
+
   Future<void> _save() async {
     if (_username.text.trim().length < 3) {
       setState(() => _error = 'اسم المستخدم قصير جدًا.');
@@ -2109,6 +2160,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
         countryCode: _countryCode,
         avatar: _avatar,
       );
+      for (final row in _deletedCovers) {
+        await SakiService.instance.deleteProfileCover(
+          id: row['id'].toString(),
+          storagePath: row['storage_path']?.toString() ?? '',
+        );
+      }
+      for (final image in _pendingCovers) {
+        await SakiService.instance.uploadProfileCover(image);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
@@ -2150,6 +2210,102 @@ class _EditProfilePageState extends State<EditProfilePage> {
               )
             : Image.network(remote, fit: BoxFit.cover),
       ),
+    );
+  }
+
+  Widget _coverGallery() {
+    final total = _coverImages.length + _pendingCovers.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.photo_library_outlined, color: _orange),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'صور الغلاف',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+              ),
+            ),
+            Text(
+              '$total/$_maxCovers',
+              style: const TextStyle(
+                color: _muted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 108,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: total + (total < _maxCovers ? 1 : 0),
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (_, index) {
+              if (index == total) {
+                return InkWell(
+                  onTap: _addCover,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 132,
+                    decoration: BoxDecoration(
+                      color: _orangeSoft,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: _orange.withValues(alpha: .35)),
+                    ),
+                    child: const Icon(
+                      Icons.add_photo_alternate_rounded,
+                      color: _orange,
+                      size: 30,
+                    ),
+                  ),
+                );
+              }
+              final isPending = index >= _coverImages.length;
+              final row = !isPending ? _coverImages[index] : null;
+              final child = isPending
+                  ? Image.file(
+                      File(_pendingCovers[index - _coverImages.length].path),
+                      fit: BoxFit.cover,
+                    )
+                  : Image.network(
+                      row?['image_url']?.toString() ?? '',
+                      fit: BoxFit.cover,
+                    );
+              return Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SizedBox(width: 132, height: 108, child: child),
+                  ),
+                  Positioned(
+                    top: 5,
+                    right: 5,
+                    child: InkWell(
+                      onTap: () => _removeCover(index),
+                      child: const CircleAvatar(
+                        radius: 13,
+                        backgroundColor: Colors.black54,
+                        child: Icon(Icons.close, size: 16, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _vipLevel >= 7
+              ? 'VIP7 أو أعلى: حتى 5 صور غلاف، وتظهر كمعرض متحرك.'
+              : 'المستخدم العادي: صورة غلاف واحدة فقط.',
+          style: const TextStyle(color: _muted, fontSize: 11),
+        ),
+      ],
     );
   }
 
@@ -2208,6 +2364,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             const SizedBox(height: 26),
+            _coverGallery(),
+            const SizedBox(height: 22),
             TextField(
               controller: _username,
               decoration: const InputDecoration(
