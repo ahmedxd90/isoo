@@ -212,6 +212,9 @@
         .btn-msg { background: #2A2A35; color: #fff; }
         .role-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:12px; background:rgba(255,255,255,.10); color:#fff; font-size:.72rem; font-weight:800; }
         .role-badge img { width:25px; height:25px; object-fit:contain; }
+        .medals-row { display:flex; gap:7px; justify-content:center; flex-wrap:wrap; margin:-12px 0 22px; }
+        .medal { display:flex; flex-direction:column; align-items:center; gap:3px; min-width:58px; color:#d9d9e4; font-size:.62rem; font-weight:700; }
+        .medal img { width:42px; height:42px; object-fit:contain; border-radius:50%; background:rgba(255,255,255,.08); padding:3px; }
 
     </style>
 </head>
@@ -238,8 +241,8 @@
         <span id="userId">UID: --------</span>
     </div>
 
-    <div class="badges-row" id="badgesContainer">
-    </div>
+    <div class="badges-row" id="badgesContainer"></div>
+    <div class="medals-row" id="medalsContainer"></div>
 
     <div class="stats-row">
         <div class="stat-item">
@@ -284,6 +287,7 @@
         document.getElementById('userCountry').innerText = data.countryIcon || '🌍';
         const badges = document.getElementById('badgesContainer'); badges.innerHTML = '';
         renderRoleBadges(data.roleBadges || []);
+        renderMedals(data.badges || []);
         const frame = document.getElementById('frameSvga');
         if (frame && data.frame) { frame.style.display = 'block'; frame.style.backgroundImage = 'url("' + data.frame + '")'; frame.style.backgroundSize = 'contain'; frame.style.backgroundPosition = 'center'; frame.style.backgroundRepeat = 'no-repeat'; }
         if (data.wealthLevel) badges.innerHTML += '<div class="badge b-wealth"><i class="fas fa-gem"></i> ثروة Lv.' + data.wealthLevel + '</div>';
@@ -304,6 +308,16 @@
             if (src.startsWith('assets/')) src = 'file:///android_asset/flutter_assets/' + src;
             const fallback = item.fallback && item.fallback.startsWith('assets/') ? 'file:///android_asset/flutter_assets/' + item.fallback : 'file:///android_asset/icon_room.webp';
             host.innerHTML += `<div class="role-badge"><img src="${src}" onerror="this.src='${fallback}'"><span>${item.name || ''}</span></div>`;
+        });
+    }
+    function renderMedals(items) {
+        const host = document.getElementById('medalsContainer'); if (!host) return;
+        host.innerHTML = '';
+        (items || []).slice(0, 3).forEach(item => {
+            const src = item.image_url || item.icon_url || item.asset || '';
+            const safeSrc = src.startsWith('assets/') ? 'file:///android_asset/flutter_assets/' + src : src;
+            const name = item.name || item.title || 'وسام';
+            host.innerHTML += `<div class="medal"><img src="${safeSrc || 'file:///android_asset/icon_room.webp'}" onerror="this.src='file:///android_asset/icon_room.webp'"><span>${name}</span></div>`;
         });
     }
     function callAndroid(functionName) { bridge(functionName, {userId: window.currentUserId || ''}); }

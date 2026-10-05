@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../profile/vip_widgets.dart';
-
 class HtmlUserProfileView extends StatefulWidget {
   const HtmlUserProfileView({
     super.key,
@@ -79,43 +77,13 @@ class _HtmlUserProfileViewState extends State<HtmlUserProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    final vip = (widget.data['vipLevel'] as num?)?.toInt() ?? 0;
-    final showUserCenter = vip >= 4 && vip <= 10;
     return SafeArea(
       bottom: true,
       maintainBottomViewPadding: true,
       child: Stack(
         fit: StackFit.expand,
         clipBehavior: Clip.none,
-        children: [
-          WebViewWidget(controller: _controller),
-          if (showUserCenter)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: FractionallySizedBox(
-                    heightFactor: .72,
-                    widthFactor: 1,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(35),
-                      ),
-                      child: Opacity(
-                        opacity: .34,
-                        child: VipSvgaAsset(
-                          assetPath: 'assets/vip/user_center_svip$vip.svga',
-                          fallbackAsset: 'assets/vip/title_vip$vip.png',
-                          size: double.infinity,
-                          loop: true,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+        children: [WebViewWidget(controller: _controller)],
       ),
     );
   }

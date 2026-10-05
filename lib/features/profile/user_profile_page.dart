@@ -36,6 +36,23 @@ class _UserProfilePageState extends State<UserProfilePage> {
   bool _following = false;
   bool _loading = true;
   bool _actionLoading = false;
+  String? _loadError;
+
+  Future<T?> _safe<T>(Future<T> request) async {
+    try {
+      return await request;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<Map<String, dynamic>> _mapList(Object? value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value
+        .whereType<Map>()
+        .map((row) => Map<String, dynamic>.from(row))
+        .toList(growable: false);
+  }
 
   @override
   void initState() {
@@ -44,7 +61,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
     try {
       final viewerId = SakiService.instance.currentUser?.id;
       if (viewerId != null && viewerId != widget.userId) {
@@ -56,15 +78,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
       }
       final results = await Future.wait<dynamic>([
         SakiService.instance.userProfile(widget.userId),
-        SakiService.instance.familyBadgeForUser(widget.userId),
-        SakiService.instance.userProfileStats(widget.userId),
-        SakiService.instance.userPosts(widget.userId),
-        SakiService.instance.userReceivedGifts(widget.userId),
-        SakiService.instance.userVehicles(widget.userId),
-        SakiService.instance.isFollowing(widget.userId),
-        SakiService.instance.userBadges(widget.userId),
-        SakiService.instance.isShippingAgent(widget.userId),
-        SakiService.instance.profileCoverImages(widget.userId),
+        _safe(SakiService.instance.familyBadgeForUser(widget.userId)),
+        _safe(SakiService.instance.userProfileStats(widget.userId)),
+        _safe(SakiService.instance.userPosts(widget.userId)),
+        _safe(SakiService.instance.userReceivedGifts(widget.userId)),
+        _safe(SakiService.instance.userVehicles(widget.userId)),
+        _safe(SakiService.instance.isFollowing(widget.userId)),
+        _safe(SakiService.instance.userBadges(widget.userId)),
+        _safe(SakiService.instance.isShippingAgent(widget.userId)),
+        _safe(SakiService.instance.profileCoverImages(widget.userId)),
       ]);
       if (!mounted) return;
       var countryFlag = '🌍';
@@ -98,31 +120,27 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     : <Map<String, dynamic>>[],
               };
         _stats = results[2] is Map
-            ? Map<String, int>.from(
-                (results[2] as Map).map(
-                  (key, value) =>
-                      MapEntry(key.toString(), (value as num).toInt()),
-                ),
+            ? (results[2] as Map).map(
+                (key, value) =>
+                    MapEntry(key.toString(), value is num ? value.toInt() : 0),
               )
             : <String, int>{};
-        _posts = results[3] is List
-            ? List<Map<String, dynamic>>.from(results[3] as List)
-            : [];
-        _gifts = results[4] is List
-            ? List<Map<String, dynamic>>.from(results[4] as List)
-            : [];
-        _vehicles = results[5] is List
-            ? List<Map<String, dynamic>>.from(results[5] as List)
-            : [];
+        _posts = _mapList(results[3]);
+        _gifts = _mapList(results[4]);
+        _vehicles = _mapList(results[5]);
         _following = results[6] == true;
-        _badges = results[7] is List
-            ? List<Map<String, dynamic>>.from(results[7] as List)
-            : [];
+        _badges = _mapList(results[7]);
         _countryFlag = countryFlag;
       });
-    } catch (error) {
+    } catch (error, stackTrace) {
+      developer.log(
+        'تعذر تحميل بروفايل المستخدم',
+        name: 'SAKI_PROFILE_LOAD',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (mounted) {
-        CustomToast.show(context, 'تعذر تحميل بروفايل المستخدم: $error');
+        setState(() => _loadError = 'تعذر تحميل بيانات المستخدم.');
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -324,6 +342,45 @@ class _UserProfilePageState extends State<UserProfilePage> {
 
     final profile = _profile;
     if (profile == null) {
+      if (_loadError != null) {
+        return Scaffold(
+          backgroundColor: _profileBg,
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.cloud_off_rounded,
+                    size: 54,
+                    color: Colors.deepPurple,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    _loadError!,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'تحقق من الاتصال ثم حاول مرة أخرى.',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('إعادة المحاولة'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
       return const Scaffold(
         backgroundColor: _profileBg,
         body: EmptyState(

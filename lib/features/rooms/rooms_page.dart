@@ -3496,6 +3496,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       profile['country'] as String?,
     );
     final modules = await _service.accountModulesForUser(userId);
+    final userBadges = await _service
+        .userBadges(userId)
+        .catchError((_) => <Map<String, dynamic>>[]);
     final frameProduct = await _service.activeProfileFrame(userId);
     final familyBadge = await _service.familyBadgeForUser(userId);
     final isShippingAgent = await _service.isShippingAgent(userId);
@@ -3541,6 +3544,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'isSelf': userId == _service.uid,
       'vipTitle': modules['vip_label'] ?? profile['vip_label'] ?? 'VIP $vip',
       'roleBadges': roleBadges,
+      'badges': userBadges.take(3).toList(growable: false),
       'frame': frameProduct?['thumbnail_url'] ?? frameProduct?['media_url'],
     };
     await showModalBottomSheet<void>(
@@ -6814,13 +6818,6 @@ class _RoomMiniProfileSheet extends StatelessWidget {
       constraints: const BoxConstraints(maxHeight: 620),
       decoration: BoxDecoration(
         color: _miniProfileBg,
-        image: isVip
-            ? DecorationImage(
-                image: AssetImage('assets/vip/profile_cards/vip$vip.jpg'),
-                fit: BoxFit.cover,
-                opacity: .42,
-              )
-            : null,
         gradient: isVip
             ? LinearGradient(
                 begin: Alignment.topCenter,
@@ -6854,23 +6851,6 @@ class _RoomMiniProfileSheet extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            if (isVip)
-              Positioned(
-                left: -36,
-                right: -36,
-                bottom: -38,
-                height: 210,
-                child: IgnorePointer(
-                  child: Opacity(
-                    opacity: .18,
-                    child: VipSvgaAsset(
-                      assetPath: 'assets/vip/user_center_svip$vip.svga',
-                      fallbackAsset: 'assets/vip/title_vip$vip.png',
-                      size: 420,
-                    ),
-                  ),
-                ),
-              ),
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
