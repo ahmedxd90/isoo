@@ -2220,6 +2220,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _liveImageUrl;
   String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
+  final List<Map<String, dynamic>> _giftMessageQueue = [];
+  final Set<String> _seenGiftMessageIds = <String>{};
   Map<String, dynamic>? _activeLuckBanner;
   Map<String, dynamic>? _activeGiftBanner;
   Timer? _luckBannerTimer;
@@ -2532,28 +2534,27 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _activateSeatEmoji(senderId, emoji);
       }
     }
-    final gift = rows.lastWhere((row) {
+    if (!mounted) return;
+    final gifts = rows.where((row) {
       final type = (row['message_type'] ?? row['type'])?.toString();
       return type == 'gift' || type == 'luck_multiplier';
-    }, orElse: () => const <String, dynamic>{});
-    if (gift.isEmpty || !mounted) return;
-    final id = gift['id']?.toString();
-    if (id == null || id.isEmpty || id == _shownGiftMessageId) return;
-    _shownGiftMessageId = id;
-    final payload = gift['payload'] is Map
-        ? Map<String, dynamic>.from(gift['payload'] as Map)
-        : <String, dynamic>{};
-    final profile = gift['profiles'] is Map
-        ? Map<String, dynamic>.from(gift['profiles'] as Map)
-        : <String, dynamic>{};
-    payload['sender_id'] ??= gift['sender_id'];
-    payload['sender_username'] ??=
-        profile['username'] ?? profile['display_name'];
-    payload['sender_avatar_url'] ??= profile['avatar_url'];
-    payload['sent_at'] ??= gift['created_at'];
-    final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
-    setState(() {
-      _activeGiftMessage = gift;
+    });
+    for (final gift in gifts) {
+      final id = gift['id']?.toString();
+      if (id == null || id.isEmpty || !_seenGiftMessageIds.add(id)) continue;
+      _shownGiftMessageId = id;
+      final payload = gift['payload'] is Map
+          ? Map<String, dynamic>.from(gift['payload'] as Map)
+          : <String, dynamic>{};
+      final profile = gift['profiles'] is Map
+          ? Map<String, dynamic>.from(gift['profiles'] as Map)
+          : <String, dynamic>{};
+      payload['sender_id'] ??= gift['sender_id'];
+      payload['sender_username'] ??=
+          profile['username'] ?? profile['display_name'];
+      payload['sender_avatar_url'] ??= profile['avatar_url'];
+      payload['sent_at'] ??= gift['created_at'];
+      final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
       if (multiplier >= 500) {
         _activeLuckBanner = payload;
         _luckBannerTimer?.cancel();
@@ -2566,7 +2567,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _giftBannerTimer = Timer(const Duration(seconds: 6), () {
         if (mounted) setState(() => _activeGiftBanner = null);
       });
-    });
+      if (_activeGiftMessage == null) {
+        _activeGiftMessage = gift;
+      } else {
+        _giftMessageQueue.add(gift);
+      }
+    }
+    if (mounted) setState(() {});
   }
 
   int _numericUid(String value) {
@@ -5208,9 +5215,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         ),
         if (_activeGiftMessage != null)
           GiftFullScreenOverlay(
+            key: ValueKey(_activeGiftMessage!['id']?.toString()),
             message: _activeGiftMessage!,
             onClose: () {
-              if (mounted) setState(() => _activeGiftMessage = null);
+              if (!mounted) return;
+              setState(() {
+                _activeGiftMessage = _giftMessageQueue.isEmpty
+                    ? null
+                    : _giftMessageQueue.removeAt(0);
+              });
             },
           ),
         if (_activeGiftBanner != null)

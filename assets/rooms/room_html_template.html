@@ -684,7 +684,7 @@
       const body = escapeHtml(m.body || '');
       const avatar = m.avatar ? '<img data-user-id="' + escapeHtml(m.id || '') + '" src="' + escapeHtml(m.avatar) + '" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">' : '';
       const payload = m.payload || {};
-      const isGift = m.type === 'gift';
+      const isGift = m.type === 'gift' || m.type === 'luck_multiplier';
       wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span class="text-amber-400 font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div class="bg-black/50 backdrop-blur-md border border-white/15 text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && payload.icon ? ' <img src="' + escapeHtml(payload.icon) + '" class="inline-block w-7 h-7 object-contain align-middle">' : '') + '</div>';
       const image = wrap.querySelector('[data-user-id]');
       if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
@@ -706,7 +706,13 @@
     const area = document.getElementById('giftAnimationArea'); if (!area) return;
     const src = p.media_url || p.icon || p.thumbnail_url; if (!src) return;
     const thumb=document.createElement('img'); thumb.src=p.thumbnail_url || p.icon || src; thumb.className='absolute w-16 h-16 object-contain z-50 transition-all duration-[4000ms] ease-in-out'; thumb.style.left='50%'; thumb.style.top='48%'; area.appendChild(thumb);
-    const target=document.querySelector('[data-user-id="'+escapeHtml(p.recipient_id || '')+'"]');
+    const recipientId = String(p.recipient_id || '');
+    const recipientSeat = (window.__roomSeats || []).find(function (seat) {
+      return String(seat.userId || '') === recipientId;
+    });
+    const target = recipientSeat
+      ? document.getElementById('seat-frame-' + recipientSeat.no)
+      : null;
     setTimeout(function(){ if(target){ const r=target.getBoundingClientRect(), a=area.getBoundingClientRect(); thumb.style.left=(r.left-a.left+r.width/2-32)+'px'; thumb.style.top=(r.top-a.top+r.height/2-32)+'px'; } }, 80);
     setTimeout(function(){thumb.remove();}, Math.max(5000, Number(p.duration_seconds||5)*1000));
   }
