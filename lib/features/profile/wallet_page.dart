@@ -57,8 +57,14 @@ class _WalletPageState extends State<WalletPage> {
         });
         _message('تم تحويل $amount ماسة إلى عملات ذهبية بنجاح.');
       }
-    } catch (_) {
-      if (mounted) _message('فشل التحويل أو أن رصيد الماس غير كافٍ.');
+    } catch (error) {
+      final detail = error.toString();
+      final message = detail.contains('insufficient_diamonds')
+          ? 'رصيد الألماس غير كافٍ.'
+          : detail.contains('invalid_amount')
+          ? 'أدخل كمية ألماس صحيحة.'
+          : 'تعذر تحويل الألماس الآن، حاول مرة أخرى.';
+      if (mounted) _message(message);
     } finally {
       if (mounted) setState(() => _converting = false);
     }

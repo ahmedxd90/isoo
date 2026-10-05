@@ -3639,13 +3639,17 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> convertDiamondsToGold(int amount) async {
-    final rows = await client.rpc(
-      'convert_diamonds_to_gold',
-      params: {'amount': amount},
-    );
-    final list = List<Map<String, dynamic>>.from(rows as List);
-    if (list.isEmpty) throw Exception('تعذر تنفيذ التحويل.');
-    return list.first;
+    try {
+      final rows = await client.rpc(
+        'convert_diamonds_to_gold',
+        params: {'amount': amount},
+      );
+      final list = List<Map<String, dynamic>>.from(rows as List);
+      if (list.isEmpty) throw Exception('empty_conversion_result');
+      return list.first;
+    } on PostgrestException catch (error) {
+      throw Exception('${error.code ?? 'rpc_error'}:${error.message}');
+    }
   }
 
   Future<bool> isShippingAgent(String userId) async {
