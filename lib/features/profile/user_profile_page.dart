@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -87,6 +89,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _safe(SakiService.instance.userBadges(widget.userId)),
         _safe(SakiService.instance.isShippingAgent(widget.userId)),
         _safe(SakiService.instance.profileCoverImages(widget.userId)),
+        _safe(SakiService.instance.profileCommunityBars(widget.userId)),
       ]);
       if (!mounted) return;
       var countryFlag = '🌍';
@@ -109,6 +112,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
         final family = results[1] is Map
             ? Map<String, dynamic>.from(results[1] as Map)
             : null;
+        final community = results[10] is Map
+            ? Map<String, dynamic>.from(results[10] as Map)
+            : const <String, dynamic>{};
         _profile = base == null
             ? null
             : {
@@ -116,8 +122,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 'family_badge': family,
                 'shipping_agent': results[8] == true,
                 'cover_images': results[9] is List
-                    ? List<Map<String, dynamic>>.from(results[9] as List)
+                    ? _mapList(results[9])
                     : <Map<String, dynamic>>[],
+                'love': community['love'],
               };
         _stats = results[2] is Map
             ? (results[2] as Map).map(
@@ -596,7 +603,14 @@ class _NativeProfileViewState extends State<_NativeProfileView> {
                                   ),
                                   _ReferenceSection(
                                     title: 'CP',
-                                    child: const _ReferenceCpCard(),
+                                    child: _ReferenceCpCard(
+                                      profile: widget.profile,
+                                      love: widget.profile['love'] is Map
+                                          ? Map<String, dynamic>.from(
+                                              widget.profile['love'] as Map,
+                                            )
+                                          : null,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1087,34 +1101,261 @@ class _ReferenceFamilyCard extends StatelessWidget {
   }
 }
 
-class _ReferenceCpCard extends StatelessWidget {
-  const _ReferenceCpCard();
+class _ReferenceCpCard extends StatefulWidget {
+  const _ReferenceCpCard({required this.profile, required this.love});
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic>? love;
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF3B020D), Color(0xFFB91C1C), Color(0xFF4C0519)],
-      ),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: const Color(0x66FB7185)),
-    ),
-    child: const Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.favorite_rounded, color: Color(0xFFF43F5E), size: 30),
-        SizedBox(width: 10),
-        Text(
-          'لا يوجد ارتباط CP حاليًا',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 13,
+  State<_ReferenceCpCard> createState() => _ReferenceCpCardState();
+}
+
+class _ReferenceCpCardState extends State<_ReferenceCpCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    super.dispose();
+  }
+
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  String _name(Map<String, dynamic> value) =>
+      value['display_name']?.toString().trim().isNotEmpty == true
+      ? value['display_name'].toString()
+      : value['username']?.toString() ?? 'مستخدم';
+
+  @override
+  Widget build(BuildContext context) {
+    final relationship = _map(widget.love?['relationship'] ?? widget.love);
+    final partner = _map(widget.love?['partner']);
+    final hasPartner = partner.isNotEmpty;
+    final me = widget.profile;
+    final started = DateTime.tryParse(
+      relationship['started_at']?.toString() ?? '',
+    );
+    final days = started == null
+        ? 0
+        : math.max(1, DateTime.now().difference(started).inDays + 1);
+    // The current Love House schema does not expose a separate CP level.
+    // Keep the label honest and derive a stable display level from the
+    // relationship age rather than inventing a database value.
+    final cpLevel = days == 0 ? 0 : math.min(99, 1 + (days ~/ 30));
+
+    if (!hasPartner) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3B020D), Color(0xFFB91C1C), Color(0xFF172554)],
           ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0x66FB7185)),
         ),
-      ],
-    ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.favorite_rounded, color: Color(0xFFF43F5E), size: 30),
+            SizedBox(width: 10),
+            Text(
+              'لا يوجد ارتباط CP حاليًا',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF5B0618), Color(0xFFC2185B), Color(0xFF123B78)],
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0x99FF9DB8), width: 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x553F0A2F),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.favorite_rounded,
+                color: Color(0xFFFFD1DC),
+                size: 17,
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'CP وبيت الحب',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xAA0B1B4D),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0x99A5D8FF)),
+                ),
+                child: Text(
+                  'LV CP $cpLevel',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 124,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _CpPerson(profile: me, name: _name(me)),
+                ),
+                SizedBox(
+                  width: 76,
+                  child: AnimatedBuilder(
+                    animation: _animation,
+                    builder: (_, _) => Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Positioned(
+                          top: 16 - (_animation.value * 9),
+                          child: Opacity(
+                            opacity: .45 + (_animation.value * .55),
+                            child: const Text(
+                              '♥  ♥',
+                              style: TextStyle(
+                                color: Color(0xFFFFB3C7),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Transform.scale(
+                          scale: .91 + (_animation.value * .12),
+                          child: Image.asset(
+                            'assets/love_house/royal_couple_ring.webp',
+                            width: 58,
+                            height: 68,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const Icon(
+                              Icons.favorite,
+                              color: Color(0xFFFFD77A),
+                              size: 44,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 7 + (_animation.value * 6),
+                          child: const Text(
+                            '♥  ♥  ♥',
+                            style: TextStyle(
+                              color: Color(0xFFFFD1DC),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _CpPerson(profile: partner, name: _name(partner)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            days > 0
+                ? 'مرتبطان منذ $days يومًا • خاتم بيت الحب الملكي'
+                : 'خاتم بيت الحب الملكي',
+            style: const TextStyle(
+              color: Color(0xFFFFE3EC),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CpPerson extends StatelessWidget {
+  const _CpPerson({required this.profile, required this.name});
+  final Map<String, dynamic> profile;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      SizedBox(
+        width: 82,
+        height: 82,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            SakiAvatar(
+              url: profile['avatar_url']?.toString(),
+              label: name,
+              radius: 27,
+              profile: profile,
+            ),
+            Image.asset(
+              'assets/love_house/royal_avatar_frame.webp',
+              width: 82,
+              height: 82,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 3),
+      Text(
+        name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ],
   );
 }
 
