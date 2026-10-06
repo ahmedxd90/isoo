@@ -29,7 +29,7 @@ import 'room_combo_button.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'room_global_gift_banner.dart';
 import 'html_room_view.dart';
-import 'html_user_profile_view.dart';
+import 'room_user_profile_card.dart';
 import 'luck_bag_widgets.dart';
 import 'buffet_game_sheet.dart';
 import '../profile/store_pages.dart';
@@ -3675,28 +3675,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
 
     if (!mounted) return;
-    final htmlData = <String, dynamic>{
-      'id': userId,
-      'sakiId': profile['saki_id'] ?? userId,
-      'name': username,
-      'avatar': profile['avatar_url'] ?? profile['avatar'],
-      'countryIcon': countryFlag,
-      'gender': gender,
-      'age': profile['age'],
-      'followers': followers,
-      'following': followingCount,
-      'visitors': visitors,
-      'isVip': vip > 0,
-      'vipLevel': vip,
-      'wealthLevel': modules['wealth_level'] ?? profile['wealth_level'] ?? 0,
-      'activeLevel': modules['active_level'] ?? profile['active_level'] ?? 0,
-      'followingMe': following,
-      'isSelf': userId == _service.uid,
-      'vipTitle': modules['vip_label'] ?? profile['vip_label'] ?? 'VIP $vip',
-      'roleBadges': roleBadges,
-      'badges': userBadges.take(3).toList(growable: false),
-      'frame': frameProduct?['thumbnail_url'] ?? frameProduct?['media_url'],
-    };
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -3704,13 +3682,25 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       barrierColor: Colors.black54,
       builder: (_) => SizedBox(
         height: MediaQuery.sizeOf(context).height * .72,
-        child: HtmlUserProfileView(
-          data: htmlData,
+        child: RoomUserProfileCard(
+          profile: {
+            ...profile,
+            ...modules,
+            'frame':
+                frameProduct?['thumbnail_url'] ?? frameProduct?['media_url'],
+          },
+          countryFlag: countryFlag,
+          modules: modules,
+          roleBadges: roleBadges,
+          badges: userBadges.take(8).toList(growable: false),
+          following: following,
+          isSelf: userId == _service.uid,
           onClose: () => Navigator.of(context).pop(),
           onFollow: () async {
             await _service.toggleFollow(userId, following);
+            following = !following;
             if (mounted)
-              _messageSnack(following ? 'تم إلغاء المتابعة.' : 'تمت المتابعة.');
+              _messageSnack(following ? 'تمت المتابعة.' : 'تم إلغاء المتابعة.');
           },
           onMessage: () async {
             Navigator.of(context).pop();
