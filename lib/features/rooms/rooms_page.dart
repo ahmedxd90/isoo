@@ -2234,6 +2234,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _isModerator = false;
   bool _comboActive = false;
   bool _comboSending = false;
+  bool _sendingChat = false;
   int _comboPendingTaps = 0;
   int _comboCount = 0;
   String? _lastGiftRecipient;
@@ -3305,8 +3306,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _send() async {
+    if (_sendingChat) return;
     final body = _message.text.trim();
     if (body.isEmpty) return;
+    _sendingChat = true;
     _message.clear();
     final optimistic = _queueOptimisticMessage(
       body: body,
@@ -3320,6 +3323,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (mounted) {
         _messageSnack(error.toString().replaceFirst('Exception: ', ''));
       }
+    } finally {
+      _sendingChat = false;
     }
   }
 

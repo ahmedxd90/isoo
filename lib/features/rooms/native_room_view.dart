@@ -435,13 +435,45 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     final payload = row['payload'] is Map
         ? Map<String, dynamic>.from(row['payload'] as Map)
         : <String, dynamic>{};
-    final body = row['body']?.toString() ?? '';
+    final rawBody = row['body']?.toString() ?? '';
+    final body = rawBody.startsWith('http') ? 'أرسل هدية' : rawBody;
     final image =
         payload['image_url']?.toString() ??
         payload['thumbnail_url']?.toString();
     final gift = type == 'gift' || type == 'luck_multiplier';
     final id = profile['id']?.toString();
     final name = profile['username']?.toString() ?? 'عضو';
+    Widget giftVisual() {
+      final source =
+          payload['thumbnail_asset_path']?.toString() ??
+          payload['thumbnail_url']?.toString() ??
+          payload['icon']?.toString();
+      if (source != null && source.startsWith('assets/')) {
+        return Image.asset(
+          source,
+          width: 24,
+          height: 24,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) =>
+              const Text('🎁', style: TextStyle(fontSize: 20)),
+        );
+      }
+      if (source != null && source.startsWith('http')) {
+        return Image.network(
+          source,
+          width: 24,
+          height: 24,
+          fit: BoxFit.contain,
+          errorBuilder: (_, _, _) =>
+              const Text('🎁', style: TextStyle(fontSize: 20)),
+        );
+      }
+      return Text(
+        source == null || source.isEmpty ? '🎁' : source,
+        style: const TextStyle(fontSize: 20),
+      );
+    }
+
     return GestureDetector(
       onTap: id == null || id.isEmpty ? null : () => widget.onUserTap(id),
       child: Padding(
@@ -533,13 +565,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                             ),
                           ),
                         ),
-                        if (gift) ...[
-                          const SizedBox(width: 7),
-                          Text(
-                            payload['icon']?.toString() ?? '🎁',
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                        ],
+                        if (gift) ...[const SizedBox(width: 7), giftVisual()],
                       ],
                     ),
             ),
@@ -645,9 +671,33 @@ class _NativeRoomViewState extends State<NativeRoomView> {
       final id = message['id']?.toString() ?? message['message_id']?.toString();
       if (id != null) visibleMessages[id] = message;
     }
+    bool sameMessage(Map<String, dynamic> a, Map<String, dynamic> b) {
+      final aType = (a['message_type'] ?? a['type'] ?? 'chat').toString();
+      final bType = (b['message_type'] ?? b['type'] ?? 'chat').toString();
+      if (aType != bType ||
+          a['sender_id']?.toString() != b['sender_id']?.toString() ||
+          a['body']?.toString() != b['body']?.toString()) {
+        return false;
+      }
+      final aTime = DateTime.tryParse(a['created_at']?.toString() ?? '');
+      final bTime = DateTime.tryParse(b['created_at']?.toString() ?? '');
+      return aTime != null &&
+          bTime != null &&
+          aTime.difference(bTime).inSeconds.abs() <= 20;
+    }
+
     for (final message in widget.optimisticMessages) {
       final id = message['id']?.toString();
-      if (id != null) visibleMessages[id] = message;
+      final alreadyConfirmed = messages.any((serverMessage) {
+        final created = DateTime.tryParse(
+          serverMessage['created_at']?.toString() ?? '',
+        );
+        return (created == null ||
+                widget.chatClearedAt == null ||
+                created.isAfter(widget.chatClearedAt!)) &&
+            sameMessage(message, serverMessage);
+      });
+      if (id != null && !alreadyConfirmed) visibleMessages[id] = message;
     }
     final visible = visibleMessages.values.toList()
       ..sort(
@@ -741,11 +791,14 @@ class _NativeRoomViewState extends State<NativeRoomView> {
           stream: widget.messageStream,
           builder: (_, messages) => StreamBuilder<List<Map<String, dynamic>>>(
             stream: widget.membersStream,
-            builder: (_, members) => _room(
-              seats.data ?? const [],
-              locks.data ?? const [],
-              messages.data ?? const [],
-              members.data ?? const [],
+            builder: (_, members) => DefaultTextStyle.merge(
+              style: const TextStyle(decoration: TextDecoration.none),
+              child: _room(
+                seats.data ?? const [],
+                locks.data ?? const [],
+                messages.data ?? const [],
+                members.data ?? const [],
+              ),
             ),
           ),
         ),
