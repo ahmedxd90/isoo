@@ -3216,6 +3216,48 @@ class SakiService {
     return grouped.values.toList();
   }
 
+  Future<List<Map<String, dynamic>>> userGiftSupporters(String userId) async {
+    final rows = await client
+        .from('room_gifts')
+        .select(
+          'sender_id,total_price,quantity,profiles:sender_id(id,username,display_name,avatar_url,saki_id,vip_level,vip_expires_at),room_gift_catalog:gift_id(name,icon)',
+        )
+        .eq('recipient_id', userId)
+        .limit(300);
+    final grouped = <String, Map<String, dynamic>>{};
+    for (final raw in List<Map<String, dynamic>>.from(rows)) {
+      final senderId = raw['sender_id']?.toString();
+      if (senderId == null || senderId.isEmpty) continue;
+      final profile = raw['profiles'] is Map
+          ? Map<String, dynamic>.from(raw['profiles'] as Map)
+          : <String, dynamic>{};
+      final gift = raw['room_gift_catalog'] is Map
+          ? Map<String, dynamic>.from(raw['room_gift_catalog'] as Map)
+          : <String, dynamic>{};
+      final current = grouped.putIfAbsent(
+        senderId,
+        () => {
+          'user_id': senderId,
+          'profile': profile,
+          'gift_value': 0,
+          'gift_count': 0,
+          'favorite_gift': gift['name']?.toString() ?? 'هدية',
+        },
+      );
+      current['gift_value'] =
+          (current['gift_value'] as int) +
+          ((raw['total_price'] as num?)?.toInt() ?? 0);
+      current['gift_count'] =
+          (current['gift_count'] as int) +
+          ((raw['quantity'] as num?)?.toInt() ?? 1);
+    }
+    final result = grouped.values.toList();
+    result.sort(
+      (a, b) => (b['gift_value'] as int).compareTo(a['gift_value'] as int),
+    );
+    return result;
+  }
+
   Future<List<Map<String, dynamic>>> userVehicles(String userId) async {
     final rows = await client
         .from('trace_store_inventory')

@@ -73,6 +73,7 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
+    - assets/profile_ui/
     - assets/rooms/cinema_background.png
     - assets/rooms/cinema_seat_icon.png
     - assets/rooms/cinema_bottom_bar.png
