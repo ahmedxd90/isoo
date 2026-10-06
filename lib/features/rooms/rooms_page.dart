@@ -3638,23 +3638,36 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (userId == null) return;
     final isOwner = widget.room['owner_id'] == _service.uid;
     final canModerate = isOwner && userId != _service.uid;
-    var following = await _service.isFollowing(userId);
-    final targetModerator = canModerate
-        ? await _service.isUserRoomModerator(_roomId, userId)
-        : false;
-    final countryFlag = await _service.countryFlag(
-      profile['country'] as String?,
-    );
-    final modules = await _service.accountModulesForUser(userId);
-    final userBadges = await _service
-        .userBadges(userId)
-        .catchError((_) => <Map<String, dynamic>>[]);
-    final frameProduct = await _service.activeProfileFrame(userId);
-    final familyBadge = await _service.familyBadgeForUser(userId);
-    final isShippingAgent = await _service.isShippingAgent(userId);
-    final moderation = canModerate
-        ? await _service.roomModerationStatus(_roomId, userId)
-        : const <String, dynamic>{};
+    final loaded = await Future.wait<dynamic>([
+      _service.isFollowing(userId),
+      canModerate
+          ? _service.isUserRoomModerator(_roomId, userId)
+          : Future<bool>.value(false),
+      _service.countryFlag(profile['country'] as String?),
+      _service.accountModulesForUser(userId),
+      _service.userBadges(userId).catchError((_) => <Map<String, dynamic>>[]),
+      _service.activeProfileFrame(userId),
+      _service.familyBadgeForUser(userId),
+      _service.isShippingAgent(userId),
+      canModerate
+          ? _service.roomModerationStatus(_roomId, userId)
+          : Future<Map<String, dynamic>>.value(const {}),
+      _service
+          .profileLoveRelationship(userId)
+          .catchError((_) => <String, dynamic>{}),
+    ]);
+    var following = loaded[0] == true;
+    final targetModerator = loaded[1] == true;
+    final countryFlag = loaded[2] as String;
+    final modules = Map<String, dynamic>.from(loaded[3] as Map);
+    final userBadges = List<Map<String, dynamic>>.from(loaded[4] as List);
+    final frameProduct = loaded[5] is Map
+        ? Map<String, dynamic>.from(loaded[5] as Map)
+        : null;
+    final familyBadge = loaded[6];
+    final isShippingAgent = loaded[7] == true;
+    final moderation = Map<String, dynamic>.from(loaded[8] as Map);
+    final love = Map<String, dynamic>.from(loaded[9] as Map);
     final voiceMuted = moderation['mute_voice'] == true;
     final chatMuted = moderation['mute_chat'] == true;
     final banned = moderation['banned'] == true;
@@ -3686,11 +3699,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           profile: {
             ...profile,
             ...modules,
-            'frame':
-                frameProduct?['thumbnail_url'] ?? frameProduct?['media_url'],
+            'active_frame_url':
+                frameProduct?['media_url'] ?? frameProduct?['thumbnail_url'],
+            'active_frame_media_type': frameProduct?['media_type'] ?? 'png',
           },
           countryFlag: countryFlag,
           modules: modules,
+          love: love,
           roleBadges: roleBadges,
           badges: userBadges.take(8).toList(growable: false),
           following: following,

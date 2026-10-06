@@ -11,6 +11,7 @@ class RoomUserProfileCard extends StatelessWidget {
     required this.profile,
     required this.countryFlag,
     required this.modules,
+    required this.love,
     required this.roleBadges,
     required this.badges,
     required this.following,
@@ -25,6 +26,7 @@ class RoomUserProfileCard extends StatelessWidget {
   final Map<String, dynamic> profile;
   final String countryFlag;
   final Map<String, dynamic> modules;
+  final Map<String, dynamic> love;
   final List<Map<String, dynamic>> roleBadges;
   final List<Map<String, dynamic>> badges;
   final bool following;
@@ -60,7 +62,6 @@ class RoomUserProfileCard extends StatelessWidget {
     final followingCount =
         profile['following_count'] ?? profile['following'] ?? 0;
     final visitors = profile['visitors_count'] ?? profile['visitors'] ?? 0;
-    final frame = profile['frame']?.toString();
 
     return SafeArea(
       top: false,
@@ -154,7 +155,12 @@ class RoomUserProfileCard extends StatelessWidget {
                       itemBuilder: (_, index) {
                         final all = [...roleBadges, ...badges];
                         final item = all[index];
-                        final asset = item['asset']?.toString();
+                        final asset =
+                            (item['asset'] ??
+                                    item['asset_path'] ??
+                                    item['media_url'] ??
+                                    item['icon'])
+                                ?.toString();
                         return Container(
                           width: 58,
                           padding: const EdgeInsets.all(6),
@@ -204,13 +210,29 @@ class RoomUserProfileCard extends StatelessWidget {
                       label: 'يتابع',
                       dark: isVip,
                     ),
-                    _RoomStat(
-                      value: 'LV.${merged['wealth_level'] ?? 0}',
-                      label: 'الثروة',
-                      dark: isVip,
+                    Expanded(
+                      child: Column(
+                        children: [
+                          WealthLevelBadge(profile: merged, compact: true),
+                          const SizedBox(height: 3),
+                          Text(
+                            'الثروة',
+                            style: TextStyle(
+                              color: isVip
+                                  ? Colors.white60
+                                  : const Color(0xFF9CA3AF),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
+                if (love.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  _RoomCpPair(profile: merged, love: love, dark: isVip),
+                ],
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -304,16 +326,6 @@ class RoomUserProfileCard extends StatelessWidget {
                           profile: merged,
                         ),
                       ),
-                      if (frame != null && frame.isNotEmpty)
-                        IgnorePointer(
-                          child: Image.network(
-                            frame,
-                            width: 112,
-                            height: 112,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -328,6 +340,123 @@ class RoomUserProfileCard extends StatelessWidget {
               icon: Icon(
                 Icons.close_rounded,
                 color: isVip ? Colors.white70 : const Color(0xFF6B7280),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoomCpPair extends StatefulWidget {
+  const _RoomCpPair({
+    required this.profile,
+    required this.love,
+    required this.dark,
+  });
+  final Map<String, dynamic> profile;
+  final Map<String, dynamic> love;
+  final bool dark;
+
+  @override
+  State<_RoomCpPair> createState() => _RoomCpPairState();
+}
+
+class _RoomCpPairState extends State<_RoomCpPair>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final relationship = widget.love['relationship'] is Map
+        ? Map<String, dynamic>.from(widget.love['relationship'] as Map)
+        : widget.love;
+    final partner = relationship['partner'] is Map
+        ? Map<String, dynamic>.from(relationship['partner'] as Map)
+        : <String, dynamic>{};
+    if (partner.isEmpty) return const SizedBox.shrink();
+    final ringScale = .90 + (_animation.value * .12);
+    final textColor = widget.dark ? Colors.white70 : const Color(0xFF6B7280);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: widget.dark
+            ? Colors.white.withValues(alpha: .08)
+            : const Color(0xFFFFF1F5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: widget.dark ? Colors.white24 : const Color(0xFFFBCFE8),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SakiAvatar(
+            url: widget.profile['avatar_url']?.toString(),
+            label: widget.profile['username']?.toString(),
+            radius: 23,
+            profile: widget.profile,
+          ),
+          SizedBox(
+            width: 54,
+            height: 58,
+            child: AnimatedBuilder(
+              animation: _animation,
+              builder: (_, _) => Stack(
+                alignment: Alignment.center,
+                children: [
+                  Transform.scale(
+                    scale: ringScale,
+                    child: Image.asset(
+                      'assets/love_house/royal_couple_ring.webp',
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  Positioned(
+                    top: 1 - (_animation.value * 7),
+                    child: Opacity(
+                      opacity: .45 + (_animation.value * .5),
+                      child: const Text(
+                        '♥',
+                        style: TextStyle(
+                          color: Color(0xFFFF86B6),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SakiAvatar(
+            url: partner['avatar_url']?.toString(),
+            label: partner['username']?.toString(),
+            radius: 23,
+            profile: partner,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              'CP • ${partner['display_name'] ?? partner['username'] ?? 'الشريك'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: textColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
