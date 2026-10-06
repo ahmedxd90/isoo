@@ -328,6 +328,8 @@ class _NativeRoomViewState extends State<NativeRoomView> {
           final seatKey = occupied && userId != null
               ? widget.seatKeys.putIfAbsent(userId, GlobalKey.new)
               : null;
+          final sessionGold =
+              (row?['session_gold_received'] as num?)?.toInt() ?? 0;
           final vip = activeVipLevel(profile);
           final accent = vipAccent(vip);
           final emoji = widget.room['seatEmojis'] is Map
@@ -419,6 +421,26 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                if (occupied)
+                  Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x992563EB),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '★ $sessionGold',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
               ],
             ),
           );
@@ -498,7 +520,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: .42),
+                    color: Colors.black.withValues(alpha: .40),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white12),
                   ),
@@ -529,12 +551,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: vip > 0
-                      ? (vipNameGradients[vip] ??
-                            [Colors.black54, Colors.black38])
-                      : [Colors.black54, Colors.black38],
-                ),
+                color: Colors.black.withValues(alpha: .40),
                 borderRadius: const BorderRadiusDirectional.only(
                   topEnd: Radius.circular(4),
                   topStart: Radius.circular(16),

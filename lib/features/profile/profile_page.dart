@@ -1379,65 +1379,75 @@ class _MyFamilyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = family?['avatar_url']?.toString();
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF071739), Color(0xFF1868D9), Color(0xFF0A2552)],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.blueAccent.withValues(alpha: .35)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x441868D9),
-            blurRadius: 14,
-            offset: Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Color(0xFF22D3EE), Color(0xFF6366F1)],
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: family == null
+          ? null
+          : () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => FamilyDetailsPage(family: family!),
               ),
             ),
-            child: ClipOval(
-              child: image == null || image.isEmpty
-                  ? const Icon(Icons.groups_rounded, color: Colors.white)
-                  : Image.network(image, fit: BoxFit.cover),
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF071739), Color(0xFF1868D9), Color(0xFF0A2552)],
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  family?['name']?.toString() ?? 'لا توجد عائلة',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.blueAccent.withValues(alpha: .35)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x441868D9),
+              blurRadius: 14,
+              offset: Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF22D3EE), Color(0xFF6366F1)],
+                ),
+              ),
+              child: ClipOval(
+                child: image == null || image.isEmpty
+                    ? const Icon(Icons.groups_rounded, color: Colors.white)
+                    : Image.network(image, fit: BoxFit.cover),
+              ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    family?['name']?.toString() ?? 'لا توجد عائلة',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  family == null
-                      ? 'لم يتم الانضمام إلى عائلة بعد'
-                      : 'Lv.${family?['level'] ?? 0}  •  ${family?['role'] ?? 'عضو'}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    family == null
+                        ? 'لم يتم الانضمام إلى عائلة بعد'
+                        : 'Lv.${family?['level'] ?? 0}  •  ${family?['role'] ?? 'عضو'}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(Icons.shield_rounded, color: Color(0xFFFBBF24)),
-        ],
+            const Icon(Icons.shield_rounded, color: Color(0xFFFBBF24)),
+          ],
+        ),
       ),
     );
   }

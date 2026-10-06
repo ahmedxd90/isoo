@@ -1743,7 +1743,9 @@ class SakiService {
   Future<List<Map<String, dynamic>>> roomSeats(String roomId) async {
     final data = await client
         .from('room_seats')
-        .select('seat_no,user_id,joined_at,is_speaking')
+        .select(
+          'seat_no,user_id,joined_at,is_speaking,session_gold_received,session_started_at',
+        )
         .eq('room_id', roomId)
         .order('seat_no');
     final seats = List<Map<String, dynamic>>.from(data);
@@ -3626,6 +3628,32 @@ class SakiService {
       'settle_family_weekly_rewards',
       params: {'p_family_id': familyId},
     );
+  }
+
+  Future<List<Map<String, dynamic>>> searchShippingAgents(String query) async {
+    final rows = await client.rpc(
+      'search_shipping_agents',
+      params: {'p_query': query.trim()},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  Future<Map<String, dynamic>> transferFamilyDiamondsToAgent({
+    required String familyId,
+    required String sourceUserId,
+    required String agentId,
+    required int diamonds,
+  }) async {
+    final result = await client.rpc(
+      'transfer_family_diamonds_to_agent',
+      params: {
+        'p_family_id': familyId,
+        'p_source_user_id': sourceUserId,
+        'p_agent_id': agentId,
+        'p_diamonds': diamonds,
+      },
+    );
+    return Map<String, dynamic>.from(result as Map);
   }
 
   Future<Map<String, dynamic>?> uploadFamilyImage(XFile image) async {

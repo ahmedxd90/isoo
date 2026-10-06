@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/data/saki_service.dart';
+import 'family_diamond_host_page.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
@@ -650,6 +651,23 @@ class _FamilyDetailsPageState extends State<FamilyDetailsPage>
                 padding: const EdgeInsets.fromLTRB(14, 0, 14, 32),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
+                    if (widget.family['owner_id']?.toString() == _service.uid)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: FilledButton.icon(
+                          onPressed: () => Navigator.push<void>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FamilyDiamondHostPage(
+                                family: widget.family,
+                                members: _members,
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.diamond_rounded),
+                          label: const Text('مضيف العائلة وتحويل الماس'),
+                        ),
+                      ),
                     Transform.translate(
                       offset: const Offset(0, -12),
                       child: _PremiumCard(
