@@ -76,6 +76,7 @@ flutter:
     - assets/profile_ui/
     - assets/profile_ui/icons/
     - assets/home_ui/
+    - assets/leaderboard_ui/
     - assets/room_profile/
     - assets/rooms/cinema_background.png
     - assets/rooms/cinema_seat_icon.png

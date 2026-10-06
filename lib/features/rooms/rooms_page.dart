@@ -21,6 +21,7 @@ import '../../core/room_background_bridge.dart';
 import '../../core/room_session.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
+import 'home_leaderboard_cards.dart';
 import 'room_settings_page.dart';
 import 'pk_battle_page.dart';
 import 'cinema_player.dart';
@@ -59,7 +60,6 @@ const _roomSecondary = Color(0xFF06B6D4);
 const _roomMuted = Color(0xFF64748B);
 const _homeViolet = Color(0xFF8B5CF6);
 const _homePink = Color(0xFFEC4899);
-const _homeInk = Color(0xFF0F172A);
 const _nativeRoomBg = Color(0xFF0D0E12);
 const _nativeRoomGlass = Color(0x73000000);
 const _nativeRoomBorder = Color(0x26FFFFFF);
@@ -1064,10 +1064,6 @@ class _RoomsPageState extends State<RoomsPage> {
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 2),
-            child: _AnimatedTrophyButton(onTap: () => _openRanking(0)),
-          ),
           IconButton(
             onPressed: _search,
             icon: const FaIcon(
@@ -1118,10 +1114,8 @@ class _RoomsPageState extends State<RoomsPage> {
                         ),
                       if (!_followingOnly)
                         SliverToBoxAdapter(
-                          child: _HomeQuickActions(
-                            onWealth: () => _openRanking(0),
-                            onRooms: () => _openRanking(1),
-                            onCreate: _create,
+                          child: HomeLeaderboardCards(
+                            onOpenRanking: _openRanking,
                           ),
                         ),
                       if (!_followingOnly)
@@ -1261,139 +1255,6 @@ class _HomeHeroBanner extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-class _HomeQuickActions extends StatelessWidget {
-  const _HomeQuickActions({
-    required this.onWealth,
-    required this.onRooms,
-    required this.onCreate,
-  });
-
-  final VoidCallback onWealth;
-  final VoidCallback onRooms;
-  final VoidCallback onCreate;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-    child: Row(
-      children: [
-        Expanded(
-          child: _HomeQuickActionTile(
-            image: 'assets/home_ui/icons/wealth.webp',
-            fallback: Icons.emoji_events_rounded,
-            title: 'الثروة',
-            subtitle: 'قائمة المتصدرين',
-            onTap: onWealth,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _HomeQuickActionTile(
-            image: 'assets/home_ui/icons/voice_rooms.webp',
-            fallback: Icons.graphic_eq_rounded,
-            title: 'الغرف',
-            subtitle: 'ترتيب الغرف',
-            onTap: onRooms,
-          ),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: _HomeQuickActionTile(
-            image: 'assets/home_ui/icons/create_room.webp',
-            fallback: Icons.add_to_queue_rounded,
-            title: 'إنشاء غرفة',
-            subtitle: 'ابدأ جلسة صوتية',
-            onTap: onCreate,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _HomeQuickActionTile extends StatelessWidget {
-  const _HomeQuickActionTile({
-    required this.image,
-    required this.fallback,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final String image;
-  final IconData fallback;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(18),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        height: 104,
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE9D5FF)),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Color(0xFFFAF5FF)],
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D6D28D9),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              image,
-              width: 39,
-              height: 39,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) =>
-                  Icon(fallback, color: _homeViolet, size: 31),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: _homeInk,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF7C3AED),
-                fontSize: 8.5,
-                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -1637,65 +1498,6 @@ String _flagForCountry(String country) {
     'km': '🇰🇲',
   };
   return flags[key] ?? '🌐';
-}
-
-class _AnimatedTrophyButton extends StatefulWidget {
-  const _AnimatedTrophyButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  State<_AnimatedTrophyButton> createState() => _AnimatedTrophyButtonState();
-}
-
-class _AnimatedTrophyButtonState extends State<_AnimatedTrophyButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: widget.onTap,
-    child: AnimatedBuilder(
-      animation: _controller,
-      builder: (_, child) => Transform.translate(
-        offset: Offset(0, -1.5 * _controller.value),
-        child: Transform.rotate(
-          angle: (_controller.value - .5) * .10,
-          child: child,
-        ),
-      ),
-      child: Container(
-        width: 42,
-        height: 42,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: _homeViolet.withValues(alpha: .10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _homeViolet.withValues(alpha: .28)),
-        ),
-        child: Image.asset(
-          'assets/home_ui/icons/wealth.webp',
-          width: 34,
-          height: 34,
-          fit: BoxFit.contain,
-        ),
-      ),
-    ),
-  );
 }
 
 class RoomBannerCarousel extends StatefulWidget {
