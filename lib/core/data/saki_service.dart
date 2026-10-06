@@ -3788,6 +3788,33 @@ class SakiService {
     await client.rpc('ensure_room_membership', params: {'p_room_id': roomId});
   }
 
+  Future<dynamic> _roomGiftRpc(
+    String function,
+    Map<String, dynamic> params,
+  ) async {
+    Object? lastError;
+    for (var attempt = 0; attempt < 4; attempt++) {
+      try {
+        return await client.rpc(function, params: params);
+      } catch (error) {
+        lastError = error;
+        final message = error.toString().toLowerCase();
+        final retryable =
+            message.contains('timeout') ||
+            message.contains('connection') ||
+            message.contains('network') ||
+            message.contains('socket') ||
+            message.contains('429') ||
+            message.contains('502') ||
+            message.contains('503') ||
+            message.contains('504');
+        if (!retryable || attempt == 3) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 250 * (attempt + 1)));
+      }
+    }
+    throw lastError ?? Exception('gift_send_failed');
+  }
+
   Future<Map<String, dynamic>> sendRoomGift({
     required String roomId,
     required String recipientId,
@@ -3795,15 +3822,12 @@ class SakiService {
     int quantity = 1,
   }) async {
     await ensureRoomMembership(roomId);
-    final rows = await client.rpc(
-      'send_room_gift',
-      params: {
-        'p_room_id': roomId,
-        'p_recipient_id': recipientId,
-        'p_gift_id': giftId,
-        'p_quantity': quantity,
-      },
-    );
+    final rows = await _roomGiftRpc('send_room_gift', {
+      'p_room_id': roomId,
+      'p_recipient_id': recipientId,
+      'p_gift_id': giftId,
+      'p_quantity': quantity,
+    });
     final list = List<Map<String, dynamic>>.from(rows as List);
     if (list.isEmpty) throw Exception('تعذر إرسال الهدية');
     return list.first;
@@ -3816,15 +3840,12 @@ class SakiService {
     int quantity = 1,
   }) async {
     await ensureRoomMembership(roomId);
-    final rows = await client.rpc(
-      'send_room_luck_gift',
-      params: {
-        'p_room_id': roomId,
-        'p_recipient_id': recipientId,
-        'p_gift_id': giftId,
-        'p_quantity': quantity,
-      },
-    );
+    final rows = await _roomGiftRpc('send_room_luck_gift', {
+      'p_room_id': roomId,
+      'p_recipient_id': recipientId,
+      'p_gift_id': giftId,
+      'p_quantity': quantity,
+    });
     final list = List<Map<String, dynamic>>.from(rows as List);
     if (list.isEmpty) throw Exception('تعذر إرسال هدية الحظ');
     return list.first;

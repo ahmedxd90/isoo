@@ -324,6 +324,10 @@ class _NativeRoomViewState extends State<NativeRoomView> {
               ? Map<String, dynamic>.from(row!['profiles'] as Map)
               : <String, dynamic>{};
           final occupied = row != null && row['user_id'] != null;
+          final userId = row?['user_id']?.toString();
+          final seatKey = occupied && userId != null
+              ? widget.seatKeys.putIfAbsent(userId, GlobalKey.new)
+              : null;
           final vip = activeVipLevel(profile);
           final accent = vipAccent(vip);
           final emoji = widget.room['seatEmojis'] is Map
@@ -345,9 +349,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                     alignment: Alignment.center,
                     children: [
                       Container(
-                        key: occupied
-                            ? widget.seatKeys[row?['user_id']?.toString()]
-                            : null,
+                        key: seatKey,
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(

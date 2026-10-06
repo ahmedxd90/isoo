@@ -143,7 +143,8 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
 
   Widget _giftVisual(Map<String, dynamic> gift, {double size = 38}) {
     final icon = gift['icon'] as String? ?? '🎁';
-    final localAsset = gift['thumbnail_asset_path']?.toString() ??
+    final localAsset =
+        gift['thumbnail_asset_path']?.toString() ??
         (icon.startsWith('assets/') ? icon : null);
     if (localAsset != null) {
       return Image.asset(
@@ -186,12 +187,32 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
       return;
     }
     setState(() => _sending = true);
+    var sentCount = 0;
+    String? firstError;
     try {
       for (final recipientId in _selectedIds.toList()) {
-        await widget.onSent(recipientId, gift, true);
+        try {
+          await widget.onSent(recipientId, gift, true);
+          sentCount++;
+          if (mounted) {
+            setState(() {
+              _selectedIds.remove(recipientId);
+              _gold -= price;
+            });
+          }
+        } catch (error) {
+          firstError ??= error.toString().replaceFirst('Exception: ', '');
+        }
       }
-      if (mounted) setState(() => _gold -= requiredGold);
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+      if (_selectedIds.isEmpty) {
+        Navigator.pop(context, true);
+      } else {
+        setState(() => _sending = false);
+        _message(
+          'تم إرسال $sentCount هدية، وتعذر إرسال ${_selectedIds.length}. ${firstError ?? ''}',
+        );
+      }
     } catch (error) {
       if (mounted) {
         final message = error.toString().replaceFirst('Exception: ', '');

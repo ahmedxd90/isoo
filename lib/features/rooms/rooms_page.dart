@@ -3011,12 +3011,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               recipientId: recipientId,
               giftId: gift['id'] as String,
             );
-            await _service.sendRoomMessage(
-              _roomId,
-              'أرسل هدية ${gift['name'] ?? 'هدية'}',
-              type: 'gift',
-              payload: payload,
-            );
+            try {
+              await _service.sendRoomMessage(
+                _roomId,
+                'أرسل هدية ${gift['name'] ?? 'هدية'}',
+                type: 'gift',
+                payload: payload,
+              );
+            } catch (_) {
+              // The gift RPC is authoritative. A presentation message failure
+              // must never cause the paid gift to be sent again.
+            }
           } catch (_) {
             _removeOptimisticMessage(optimistic);
             rethrow;
@@ -3051,6 +3056,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   void _expireGiftCombo() {
     if (!mounted) return;
+    if (_comboSending || _comboPendingTaps > 0) {
+      setState(() => _comboActive = false);
+      return;
+    }
     setState(() {
       _comboActive = false;
       _comboSending = false;
@@ -3060,7 +3069,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _sendComboAgain() async {
-    if (!_comboActive) return;
+    if (!_comboActive && !_comboSending && _comboPendingTaps == 0) return;
     if (_comboSending) {
       _comboPendingTaps++;
       return;
@@ -3104,12 +3113,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               (gift['_recipient_profile'] as Map?)?['avatar_url'],
           'flying_banner': false,
         };
-        await _service.sendRoomMessage(
-          _roomId,
-          'أرسل هدية ${gift['name'] ?? 'هدية'}',
-          type: 'gift',
-          payload: payload,
-        );
+        try {
+          await _service.sendRoomMessage(
+            _roomId,
+            'أرسل هدية ${gift['name'] ?? 'هدية'}',
+            type: 'gift',
+            payload: payload,
+          );
+        } catch (_) {
+          // Do not retry the paid RPC because only the chat presentation failed.
+        }
       }
       if (mounted) {
         setState(() {
@@ -3117,7 +3130,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _comboSending = false;
         });
       }
-      if (mounted && _comboPendingTaps > 0 && _comboActive) {
+      if (mounted && _comboPendingTaps > 0) {
         _comboPendingTaps--;
         unawaited(_sendComboAgain());
       }
@@ -3126,7 +3139,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         setState(() => _comboSending = false);
         _messageSnack(e.toString().replaceFirst('Exception: ', ''));
       }
-      if (mounted && _comboPendingTaps > 0 && _comboActive) {
+      if (mounted && _comboPendingTaps > 0) {
         _comboPendingTaps--;
         unawaited(_sendComboAgain());
       }
@@ -3607,7 +3620,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       builder: (_) => _RoomInfoSheet(
         bundle: bundle,
         followed: _followed,
-        canSettings: owner || _isModerator,
+        canSettings: owner,
         onToggleFollow: () async {
           await _service.toggleRoomFollow(_roomId, _followed);
           if (mounted) setState(() => _followed = !_followed);
@@ -4412,12 +4425,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   void _messageSnack(String value) => CustomToast.show(context, value);
 
-  bool get _canOpenMusic => _isOnSeat;
+  bool get _canOpenMusic => _isRoomOwner || _isModerator;
 
   bool get _isRoomOwner => widget.room['owner_id']?.toString() == _service.uid;
 
-  bool get _canControlMusic =>
-      _isRoomOwner || _activeMusic?['owner_id']?.toString() == _service.uid;
+  bool get _canControlMusic => _isRoomOwner || _isModerator;
 
   Future<void> _loadRoomMusic() async {
     try {
@@ -4474,7 +4486,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _syncMusicSeatAccess(bool seated) async {
-    if (seated || !_musicPlaying) return;
+    if (seated || _canControlMusic || !_musicPlaying) return;
     await _stopRoomMusic(broadcastOnly: true);
   }
 
@@ -4615,7 +4627,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
-    if (!_isOnSeat) {
+    if (!_isOnSeat && !_canControlMusic) {
       await _syncMusicSeatAccess(false);
       return;
     }
@@ -4695,8 +4707,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (action == 'play' &&
         _activeMusic != null &&
         _activeMusic?['owner_id']?.toString() != _service.uid &&
-        !_isRoomOwner) {
-      _messageSnack('صاحب الأغنية الحالية يتحكم بها.');
+        !_canControlMusic) {
+      _messageSnack('مالك الغرفة أو المشرف يستطيع التحكم بالموسيقى.');
       return;
     }
     final changingTrack =
@@ -4828,7 +4840,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _showMusicSheet() async {
     if (!_canOpenMusic) {
-      _messageSnack('يجب الجلوس على مقعد لفتح موسيقى الغرفة.');
+      _messageSnack(
+        'الموسيقى متاحة لمالك الغرفة والمشرفين أو الجالس على المقعد.',
+      );
       return;
     }
     await showModalBottomSheet<void>(
@@ -4903,7 +4917,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             spacing: 18,
             runSpacing: 14,
             children: [
-              if (_isOnSeat)
+              if (_canOpenMusic)
                 _toolButton(Icons.music_note, 'موسيقى', () {
                   Navigator.pop(context);
                   _showMusicSheet();
@@ -5397,6 +5411,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             final seat = (payload['seat'] as num?)?.toInt();
             if (seat == null) return;
             final userId = payload['user_id']?.toString();
+            if (userId != null && userId.isNotEmpty && userId != _service.uid) {
+              unawaited(() async {
+                final profile = await _service.userProfile(userId);
+                if (profile != null && mounted) await _showUserCard(profile);
+              }());
+              return;
+            }
             _seatAction(
               seat,
               userId == null ? null : <String, dynamic>{'user_id': userId},
@@ -8176,6 +8197,8 @@ class _RoomInfoSheetState extends State<_RoomInfoSheet> {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              _buildPeopleStrip(),
               const SizedBox(height: 14),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -8204,6 +8227,76 @@ class _RoomInfoSheetState extends State<_RoomInfoSheet> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPeopleStrip() {
+    final seen = <String>{};
+    final people = <Map<String, dynamic>>[];
+    for (final profile in [owner, ...moderators, ...members]) {
+      final id = profile['id']?.toString();
+      if (id != null && id.isNotEmpty && seen.add(id)) people.add(profile);
+    }
+    return Container(
+      height: 82,
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0x0F0F172A),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0x1F64748B)),
+      ),
+      child: people.isEmpty
+          ? const Center(
+              child: Text(
+                'لا توجد أعضاء ظاهرون',
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
+              ),
+            )
+          : ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: people.take(20).length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (_, index) {
+                final profile = people[index];
+                final id = profile['id']?.toString();
+                final isOwner = id == owner['id']?.toString();
+                final isMod = moderators.any((m) => m['id']?.toString() == id);
+                return SizedBox(
+                  width: 54,
+                  child: Column(
+                    children: [
+                      SakiAvatar(
+                        url: profile['avatar_url']?.toString(),
+                        label: profile['username']?.toString(),
+                        radius: 22,
+                        profile: profile,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        isOwner
+                            ? 'المالك'
+                            : isMod
+                            ? 'مشرف'
+                            : (profile['username']?.toString() ?? 'عضو'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: isOwner
+                              ? const Color(0xFFF97316)
+                              : isMod
+                              ? const Color(0xFF7C3AED)
+                              : const Color(0xFF475569),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 
