@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -63,6 +64,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   List<Map<String, dynamic>> _messages = const [];
   List<Map<String, dynamic>> _members = const [];
   bool _syncQueued = false;
+  Timer? _syncTimer;
+  String? _lastFingerprint;
 
   @override
   void initState() {
@@ -148,16 +151,41 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   }
 
   void _sync() {
-    if (!_ready || _syncQueued) return;
-    _syncQueued = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncQueued = false;
-      if (mounted) _syncNow();
+    if (!_ready || !mounted) return;
+    // Coalesce bursts from Realtime into one WebView update.
+    _syncTimer?.cancel();
+    _syncTimer = Timer(const Duration(milliseconds: 70), () {
+      if (!_ready || !mounted || _syncQueued) return;
+      _syncQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _syncQueued = false;
+        if (mounted) _syncNow();
+      });
     });
   }
 
   void _syncNow() {
     if (!_ready) return;
+    final fingerprint = [
+      _seats.length,
+      _seats
+          .take(12)
+          .map(
+            (row) =>
+                '${row['seat_no']}:${row['user_id']}:${row['is_speaking']}',
+          )
+          .join('|'),
+      _locks.map((row) => row['seat_no']).join(','),
+      _messages.length,
+      _messages.isEmpty ? '' : _messages.last['id'],
+      _members.length,
+      _members.take(5).map((row) => row['id']).join(','),
+      widget.room['micMuted'],
+      widget.room['speakerMuted'],
+      widget.room['gold_total'],
+    ].join('¦');
+    if (_lastFingerprint == fingerprint) return;
+    _lastFingerprint = fingerprint;
     final seats = <Map<String, dynamic>>[];
     final byNo = <int, Map<String, dynamic>>{
       for (final row in _seats)
@@ -257,6 +285,13 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   List<String> _vipColors(int level) => (vipNameGradients[level] ?? const [])
       .map((color) => '#${color.value.toRadixString(16).substring(2)}')
       .toList();
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    _controller.clearCache();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

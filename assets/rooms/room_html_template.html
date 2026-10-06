@@ -585,21 +585,9 @@
 
         function sendGift(giftName, emojiIcon) {
             closeGiftModal();
-            showToast(`أرسلت ${giftName} ${emojiIcon}`);
-
-            // Animated Gift Effect
-            const giftContainer = document.getElementById('giftAnimationArea');
-            const giftEl = document.createElement('div');
-            giftEl.className = 'absolute bottom-20 left-1/2 -translate-x-1/2 text-6xl animated-gift flex flex-col items-center gap-1';
-            giftEl.innerHTML = `
-                <span>${emojiIcon}</span>
-                <span class="text-xs bg-black/70 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-400/40">${giftName}</span>
-            `;
-
-            giftContainer.appendChild(giftEl);
-            setTimeout(() => giftEl.remove(), 2300);
+            // Flutter owns the real Supabase gift transaction.
+            bridge('gift', {name: giftName, icon: emojiIcon});
         }
-
         function showToast(msg) {
             const toast = document.getElementById('toastBox');
             const toastMsg = document.getElementById('toastMsg');
@@ -719,9 +707,19 @@
       const image = wrap.querySelector('[data-user-id]');
       if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
       stream.appendChild(wrap);
+      // Gift flight is rendered by this HTML design layer only once.
+      // Native Flutter handles rich MP4/GIF/SVGA overlays separately.
       if (isGift && m.messageId && !window.__playedGiftIds.has(String(m.messageId))) {
-        window.__playedGiftIds.add(String(m.messageId));
-        playGiftOverlay(payload);
+        const giftId = String(m.messageId);
+        window.__playedGiftIds.add(giftId);
+        if (window.__playedGiftIds.size > 600) {
+          const first = window.__playedGiftIds.values().next().value;
+          if (first) window.__playedGiftIds.delete(first);
+        }
+        setTimeout(function(){ window.__playedGiftIds.delete(giftId); }, 20000);
+        if (!rich.includes('mp4') && !rich.includes('gif') && !rich.includes('svga') && !rich.includes('video')) {
+          playGiftOverlay(payload);
+        }
       }
     });
     if (!stream.dataset.hasRendered || wasNearBottom) {
@@ -735,7 +733,7 @@
   function playGiftOverlay(p) {
     const area = document.getElementById('giftAnimationArea'); if (!area) return;
     const src = p.media_url || p.icon || p.thumbnail_url; if (!src) return;
-    const thumb=document.createElement('img'); thumb.src=p.thumbnail_url || p.icon || src; thumb.className='absolute w-16 h-16 object-contain z-50 transition-all duration-[2600ms] ease-out'; thumb.style.left='50%'; thumb.style.top='48%'; area.appendChild(thumb);
+    const thumb=document.createElement('img'); thumb.src=p.thumbnail_url || p.icon || src; thumb.className='absolute w-16 h-16 object-contain z-50 transition-all duration-[1250ms] ease-out'; thumb.style.left='50%'; thumb.style.top='48%'; area.appendChild(thumb);
     const recipientId = String(p.recipient_id || '');
     const recipientSeat = (window.__roomSeats || []).find(function (seat) {
       return String(seat.userId || '') === recipientId;
@@ -749,7 +747,7 @@
       thumb.style.left=(r.left-a.left+r.width/2-32)+'px';
       thumb.style.top=(r.top-a.top+r.height/2-32)+'px';
     }, 40);
-    setTimeout(function(){thumb.remove();}, 2900);
+    setTimeout(function(){thumb.remove();}, 1350);
   }
   window.handleSeatClick = function (seat) { const item=(window.__roomSeats||[]).find(function(x){return x.no===seat;})||{}; bridge('seat', {seat: seat, occupiedUserId: item.userId || null}); };
   window.handleMessageSubmit = function (e) { e.preventDefault(); const i=document.getElementById('chatInput'); const t=i.value.trim(); if(t){ bridge('message',{body:t}); i.value=''; } };

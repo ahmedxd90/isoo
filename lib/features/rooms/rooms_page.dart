@@ -2530,6 +2530,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       final payload = row['payload'];
       if (id == null || senderId == null || payload is! Map) continue;
       if (!_seenAnimatedEmojiMessages.add(id)) continue;
+      if (_seenAnimatedEmojiMessages.length > 600) {
+        _seenAnimatedEmojiMessages.remove(_seenAnimatedEmojiMessages.first);
+      }
       final emoji = Map<String, dynamic>.from(payload);
       if (emoji['asset_path'] != null || emoji['gif_url'] != null) {
         _activateSeatEmoji(senderId, emoji);
@@ -2543,6 +2546,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     for (final gift in gifts) {
       final id = gift['id']?.toString();
       if (id == null || id.isEmpty || !_seenGiftMessageIds.add(id)) continue;
+      // Keep deduplication bounded during long rooms; old message IDs cannot
+      // reappear because the message stream is scoped to this room session.
+      if (_seenGiftMessageIds.length > 600) {
+        _seenGiftMessageIds.remove(_seenGiftMessageIds.first);
+      }
       _shownGiftMessageId = id;
       final payload = gift['payload'] is Map
           ? Map<String, dynamic>.from(gift['payload'] as Map)
@@ -2584,7 +2592,23 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _giftMessageQueue.add(gift);
       }
     }
-    if (mounted) setState(() {});
+    // Normal gift thumbnails are rendered once by the HTML design layer.
+    // Do not rebuild the whole native room for every normal gift event.
+    if (mounted &&
+        gifts.any((row) {
+          final type = (row['message_type'] ?? row['type'])?.toString();
+          final payload = row['payload'];
+          final media = payload is Map
+              ? payload['media_type']?.toString().toLowerCase() ?? ''
+              : '';
+          return type == 'luck_multiplier' ||
+              media.contains('svga') ||
+              media.contains('mp4') ||
+              media.contains('video') ||
+              media.contains('gif');
+        })) {
+      setState(() {});
+    }
   }
 
   int _numericUid(String value) {
@@ -5307,6 +5331,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 _entranceProfile = null;
                 _entranceProduct = null;
               });
+            },
+          ),
+        if (_luckBags.isNotEmpty)
+          LuckBagCard(
+            key: ValueKey('luck_card_${_luckBags.first['id']}'),
+            bag: _luckBags.first,
+            onClaim: _claimLuckBag,
+          ),
+        if (_newLuckBag != null)
+          LuckBagFlyBanner(
+            key: ValueKey('luck_fly_${_newLuckBag!['id']}'),
+            bag: _newLuckBag!,
+            onGo: () => unawaited(_goToLuckBag(_newLuckBag!)),
+            onDone: () {
+              if (mounted) setState(() => _newLuckBag = null);
             },
           ),
         if (_comboActive)
