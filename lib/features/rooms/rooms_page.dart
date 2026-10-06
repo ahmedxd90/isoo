@@ -2245,6 +2245,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
   final List<Map<String, dynamic>> _giftMessageQueue = [];
+  final List<Map<String, dynamic>> _activeGiftFlights = [];
   final Set<String> _seenGiftMessageIds = <String>{};
   Map<String, dynamic>? _activeLuckBanner;
   Map<String, dynamic>? _activeGiftBanner;
@@ -2688,27 +2689,30 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       payload['sender_avatar_url'] ??= profile['avatar_url'];
       payload['sent_at'] ??= gift['created_at'];
       final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
-      if (multiplier >= 500 && !_hideGiftBanners) {
+      final isLuckResult = multiplier >= 500;
+      if (isLuckResult && !_hideGiftBanners) {
         _activeLuckBanner = payload;
         _luckBannerTimer?.cancel();
         _luckBannerTimer = Timer(const Duration(seconds: 5), () {
           if (mounted) setState(() => _activeLuckBanner = null);
         });
       }
-      if (!_hideGiftBanners) _activeGiftBanner = payload;
-      _giftBannerTimer?.cancel();
-      _giftBannerTimer = Timer(const Duration(seconds: 6), () {
-        if (mounted) setState(() => _activeGiftBanner = null);
-      });
+      if (!_hideGiftBanners && !isLuckResult) {
+        _activeGiftBanner = payload;
+        _giftBannerTimer?.cancel();
+        _giftBannerTimer = Timer(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _activeGiftBanner = null);
+        });
+      }
       final mediaType = payload['media_type']?.toString().toLowerCase() ?? '';
       final isRichGift =
           mediaType.contains('svga') ||
           mediaType.contains('mp4') ||
           mediaType.contains('video') ||
           mediaType.contains('gif');
-      // Normal gifts are already animated by the HTML seat-flight layer.
-      // Queue only rich gifts here; otherwise a normal gift could occupy the
-      // native overlay queue without an onClose callback.
+      if (!isRichGift && !_hideGiftSeatFlights) {
+        _activeGiftFlights.add(gift);
+      }
       if (!isRichGift) continue;
       if (!_hideFullGiftEffects) {
         if (_activeGiftMessage == null) {
@@ -2745,7 +2749,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   void _applyChatClear(DateTime clearedAt) {
     if (!mounted) return;
-    setState(() => _chatClearedAt = clearedAt.toUtc());
+    setState(() {
+      _chatClearedAt = clearedAt.toUtc();
+      _optimisticMessages.clear();
+    });
   }
 
   Future<void> _clearRoomChatForEveryone() async {
@@ -5374,6 +5381,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             'speakerMuted': _listenMuted,
             'hideGiftSeatFlights': _hideGiftSeatFlights,
           },
+          seatKeys: _seatKeys,
+          optimisticMessages: _optimisticMessages,
+          chatClearedAt: _chatClearedAt,
           seatStream: _seatStream,
           lockStream: _seatLocksStream,
           messageStream: _messageStream,
@@ -5430,10 +5440,37 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               });
             },
           ),
+        ..._activeGiftFlights.map(
+          (gift) => GiftFullScreenOverlay(
+            key: ValueKey('gift_flight_${gift['id']}'),
+            message: gift,
+            seatKey: _seatKeyForGift(gift),
+            onClose: () {
+              if (!mounted) return;
+              setState(() {
+                _activeGiftFlights.removeWhere(
+                  (item) => item['id']?.toString() == gift['id']?.toString(),
+                );
+              });
+            },
+          ),
+        ),
         if (_activeGiftBanner != null && !_hideGiftBanners)
-          RoomGiftAnnouncementBanner(payload: _activeGiftBanner!, luck: false),
+          RoomGiftAnnouncementBanner(
+            key: ValueKey(
+              'gift_banner_${_activeGiftBanner!['sent_at'] ?? _activeGiftBanner!['gift_id']}',
+            ),
+            payload: _activeGiftBanner!,
+            luck: false,
+          ),
         if (_activeLuckBanner != null && !_hideGiftBanners)
-          RoomGiftAnnouncementBanner(payload: _activeLuckBanner!, luck: true),
+          RoomGiftAnnouncementBanner(
+            key: ValueKey(
+              'luck_banner_${_activeLuckBanner!['sent_at'] ?? _activeLuckBanner!['gift_id']}',
+            ),
+            payload: _activeLuckBanner!,
+            luck: true,
+          ),
         if (_entranceProfile != null)
           RoomEntranceBanner(
             key: ValueKey(_entranceProfile!['id']?.toString()),

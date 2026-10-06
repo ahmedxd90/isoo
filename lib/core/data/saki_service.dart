@@ -3784,12 +3784,17 @@ class SakiService {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  Future<void> ensureRoomMembership(String roomId) async {
+    await client.rpc('ensure_room_membership', params: {'p_room_id': roomId});
+  }
+
   Future<Map<String, dynamic>> sendRoomGift({
     required String roomId,
     required String recipientId,
     required String giftId,
     int quantity = 1,
   }) async {
+    await ensureRoomMembership(roomId);
     final rows = await client.rpc(
       'send_room_gift',
       params: {
@@ -3810,6 +3815,7 @@ class SakiService {
     required String giftId,
     int quantity = 1,
   }) async {
+    await ensureRoomMembership(roomId);
     final rows = await client.rpc(
       'send_room_luck_gift',
       params: {

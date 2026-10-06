@@ -28,6 +28,9 @@ class NativeRoomView extends StatefulWidget {
     required this.onRoomInfo,
     required this.onUserTap,
     required this.onExit,
+    this.seatKeys = const {},
+    this.optimisticMessages = const [],
+    this.chatClearedAt,
   });
 
   final Map<String, dynamic> room;
@@ -50,6 +53,9 @@ class NativeRoomView extends StatefulWidget {
   final VoidCallback onRoomInfo;
   final ValueChanged<String> onUserTap;
   final VoidCallback onExit;
+  final Map<String, GlobalKey> seatKeys;
+  final List<Map<String, dynamic>> optimisticMessages;
+  final DateTime? chatClearedAt;
 
   @override
   State<NativeRoomView> createState() => _NativeRoomViewState();
@@ -339,6 +345,9 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                     alignment: Alignment.center,
                     children: [
                       Container(
+                        key: occupied
+                            ? widget.seatKeys[row?['user_id']?.toString()]
+                            : null,
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
@@ -623,16 +632,43 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     List<Map<String, dynamic>> members,
   ) {
     final background = widget.room['background_url']?.toString();
-    final messageKey = messages.isEmpty
+    final visibleMessages = <String, Map<String, dynamic>>{};
+    for (final message in messages) {
+      final created = DateTime.tryParse(
+        message['created_at']?.toString() ?? '',
+      );
+      if (widget.chatClearedAt != null &&
+          created != null &&
+          !created.isAfter(widget.chatClearedAt!)) {
+        continue;
+      }
+      final id = message['id']?.toString() ?? message['message_id']?.toString();
+      if (id != null) visibleMessages[id] = message;
+    }
+    for (final message in widget.optimisticMessages) {
+      final id = message['id']?.toString();
+      if (id != null) visibleMessages[id] = message;
+    }
+    final visible = visibleMessages.values.toList()
+      ..sort(
+        (a, b) =>
+            (DateTime.tryParse(a['created_at']?.toString() ?? '') ??
+                    DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(
+                  DateTime.tryParse(b['created_at']?.toString() ?? '') ??
+                      DateTime.fromMillisecondsSinceEpoch(0),
+                ),
+      );
+    final messageKey = visible.isEmpty
         ? ''
-        : '${messages.length}:${messages.last['id'] ?? messages.last['message_id'] ?? messages.last['created_at'] ?? ''}';
+        : '${visible.length}:${visible.last['id'] ?? visible.last['message_id'] ?? visible.last['created_at'] ?? ''}:${widget.chatClearedAt?.millisecondsSinceEpoch ?? 0}';
     if (_previousMessageKey != messageKey) {
-      _messages = messages;
+      _messages = visible;
       _previousMessageKey = messageKey;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _chatScroll.hasClients)
           _chatScroll.animateTo(
-            _chatScroll.position.maxScrollExtent,
+            0,
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
           );
@@ -676,12 +712,14 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                 child: RepaintBoundary(
                   child: ListView.builder(
                     controller: _chatScroll,
+                    reverse: true,
                     padding: const EdgeInsets.only(top: 5, bottom: 10),
                     cacheExtent: 420,
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     itemCount: _messages.length,
-                    itemBuilder: (_, i) => _message(_messages[i]),
+                    itemBuilder: (_, i) =>
+                        _message(_messages[_messages.length - 1 - i]),
                   ),
                 ),
               ),
