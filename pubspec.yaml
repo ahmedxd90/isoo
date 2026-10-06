@@ -74,6 +74,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/profile_ui/
+    - assets/profile_ui/icons/
     - assets/room_profile/
     - assets/rooms/cinema_background.png
     - assets/rooms/cinema_seat_icon.png
