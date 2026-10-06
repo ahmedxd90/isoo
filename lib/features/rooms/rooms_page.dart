@@ -28,7 +28,7 @@ import 'room_gifts_sheet.dart';
 import 'room_combo_button.dart';
 import 'room_gift_ranking_sheet.dart';
 import 'room_global_gift_banner.dart';
-import 'html_room_view.dart';
+import 'native_room_view.dart';
 import 'room_user_profile_card.dart';
 import 'luck_bag_widgets.dart';
 import 'buffet_game_sheet.dart';
@@ -5365,7 +5365,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        HtmlRoomView(
+        NativeRoomView(
           room: {
             ...widget.room,
             'gold_total': _roomGoldTotal,
