@@ -1014,6 +1014,16 @@ class _RoomsPageState extends State<RoomsPage> {
     }
   }
 
+  Future<void> _openGlobalGiftFromList(Map<String, dynamic> room) async {
+    final id = room['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    final resolved = await _service.roomById(id);
+    if (!mounted || resolved == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => RoomDetailPage(room: resolved)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1083,57 +1093,65 @@ class _RoomsPageState extends State<RoomsPage> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _roomPrimary))
-          : RefreshIndicator(
-              color: _roomPrimary,
-              onRefresh: _load,
-              child: CustomScrollView(
-                slivers: [
-                  if (!_followingOnly && _banners.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: RoomBannerCarousel(banners: _banners),
-                    ),
-                  if (!_followingOnly)
-                    SliverToBoxAdapter(
-                      child: _TrendCountryBar(
-                        countries: _availableCountries,
-                        selected: _country,
-                        onSelected: (value) => setState(() => _country = value),
-                      ),
-                    ),
-                  if (_visibleRooms.isEmpty)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: EmptyState(
-                        icon: Icons.mic_none_rounded,
-                        title: 'لا توجد غرف الآن',
-                        subtitle: 'أنشئ غرفة صوتية وابدأ الحوار.',
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
-                      sliver: SliverGrid(
-                        delegate: SliverChildBuilderDelegate(
-                          (_, index) => RoomGridCard(
-                            room: _visibleRooms[index],
-                            rank: index + 1,
-                          ),
-                          childCount: _visibleRooms.length,
+      body: Stack(
+        children: [
+          _loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: _roomPrimary),
+                )
+              : RefreshIndicator(
+                  color: _roomPrimary,
+                  onRefresh: _load,
+                  child: CustomScrollView(
+                    slivers: [
+                      if (!_followingOnly && _banners.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: RoomBannerCarousel(banners: _banners),
                         ),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                              childAspectRatio: .72,
+                      if (!_followingOnly)
+                        SliverToBoxAdapter(
+                          child: _TrendCountryBar(
+                            countries: _availableCountries,
+                            selected: _country,
+                            onSelected: (value) =>
+                                setState(() => _country = value),
+                          ),
+                        ),
+                      if (_visibleRooms.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: EmptyState(
+                            icon: Icons.mic_none_rounded,
+                            title: 'لا توجد غرف الآن',
+                            subtitle: 'أنشئ غرفة صوتية وابدأ الحوار.',
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
+                          sliver: SliverGrid(
+                            delegate: SliverChildBuilderDelegate(
+                              (_, index) => RoomGridCard(
+                                room: _visibleRooms[index],
+                                rank: index + 1,
+                              ),
+                              childCount: _visibleRooms.length,
                             ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 10,
+                                  mainAxisSpacing: 10,
+                                  childAspectRatio: .72,
+                                ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+          RoomGlobalGiftBanner(onOpenRoom: _openGlobalGiftFromList),
+        ],
+      ),
     );
   }
 }
@@ -5390,7 +5408,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           },
           onExit: () => unawaited(_confirmExit()),
         ),
-        if (_activeGiftMessage != null)
+        RoomGlobalGiftBanner(
+          hidden: _hideGiftBanners,
+          onOpenRoom: _openGlobalGiftRoom,
+        ),
+        if (_activeGiftMessage != null && !_hideFullGiftEffects)
           GiftFullScreenOverlay(
             key: ValueKey(_activeGiftMessage!['id']?.toString()),
             message: _activeGiftMessage!,
