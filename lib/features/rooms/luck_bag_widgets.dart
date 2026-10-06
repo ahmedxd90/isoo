@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -228,8 +229,8 @@ class _LuckBagCardState extends State<LuckBagCard> {
               }
             : null,
         child: Container(
-          width: 154,
-          padding: const EdgeInsets.all(10),
+          width: 112,
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: _bagRed,
             borderRadius: BorderRadius.circular(18),
@@ -239,15 +240,19 @@ class _LuckBagCardState extends State<LuckBagCard> {
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: _bagGold,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: const Icon(Icons.card_giftcard, color: _bagRed),
+                child: const Icon(
+                  Icons.card_giftcard,
+                  color: _bagRed,
+                  size: 17,
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 5),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,13 +262,14 @@ class _LuckBagCardState extends State<LuckBagCard> {
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
+                        fontSize: 11,
                       ),
                     ),
                     Text(
                       '${widget.bag['claimed_count']}/${widget.bag['recipient_limit']} • ${open ? '${_left.inMinutes}:${(_left.inSeconds % 60).toString().padLeft(2, '0')}' : 'انتهت'}',
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 10,
+                        fontSize: 8,
                       ),
                     ),
                   ],
@@ -328,8 +334,8 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
         child: Transform.translate(
           offset: Offset(x * MediaQuery.sizeOf(context).width, 0),
           child: Container(
-            width: MediaQuery.sizeOf(context).width - 20,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            width: math.min(MediaQuery.sizeOf(context).width - 56, 360),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
@@ -339,7 +345,7 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
                   Color(0xFFFF8F00),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.white, width: 1.2),
               boxShadow: const [
                 BoxShadow(color: Color(0xCCFFB300), blurRadius: 18),
@@ -406,7 +412,7 @@ class _SenderAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
-      radius: 22,
+      radius: 16,
       backgroundColor: Colors.white,
       backgroundImage: url != null && url!.isNotEmpty
           ? NetworkImage(url!)

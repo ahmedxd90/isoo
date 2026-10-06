@@ -661,6 +661,7 @@
     }
     const online = document.querySelector('header .text-emerald-400 + span');
     if (online && data.onlineCount != null) online.textContent = String(data.onlineCount);
+    window.__hideGiftSeatFlights = data.hideGiftSeatFlights === true;
     const trophy = document.getElementById('trophyCount');
     if (trophy && data.goldTotal != null) trophy.textContent = String(data.goldTotal);
   };
@@ -694,6 +695,11 @@
       const body = escapeHtml(m.body || '');
       const avatar = m.avatar ? '<img data-user-id="' + escapeHtml(m.id || '') + '" src="' + escapeHtml(m.avatar) + '" class="w-6 h-6 rounded-full object-cover border border-white/40 shadow-sm">' : '';
       const payload = m.payload || {};
+      const isImage = m.type === 'image';
+      const imageUrl = payload.image_url || payload.thumbnail_url || '';
+      const imageContent = isImage && imageUrl
+        ? '<div class=\"mt-1 rounded-xl overflow-hidden border border-white/20 bg-black/20\"><img src=\"' + escapeHtml(imageUrl) + '\" class=\"max-w-full max-h-48 object-contain\" loading=\"lazy\"></div>'
+        : '';
       const isGift = m.type === 'gift' || m.type === 'luck_multiplier';
       const vip = Number(m.vip || 0);
       const nameStyle = vipTextStyle(m.vipColors);
@@ -703,7 +709,7 @@
       const recipientAvatar = payload.recipient_avatar_url ? '<img src="' + escapeHtml(payload.recipient_avatar_url) + '" class="w-5 h-5 rounded-full object-cover border border-white/70">' : '';
       const giftThumb = payload.thumbnail_url || payload.icon;
       const giftDetails = isGift ? '<div class="mt-1.5 flex items-center justify-end gap-1.5 rounded-xl bg-black/20 px-2 py-1 border border-white/15"><span class="text-white/90 text-[10px] font-bold">أرسل هدية إلى ' + recipientName + '</span>' + recipientAvatar + (giftThumb ? '<img src="' + escapeHtml(giftThumb) + '" class="w-8 h-8 object-contain">' : '') + '</div>' : '';
-      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span style="' + nameStyle + '" class="font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">VIP' + escapeHtml(vip) + ' · LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div style="' + bubbleStyle + '" class="border text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + body + (isGift && giftThumb ? ' <img src="' + escapeHtml(giftThumb) + '" class="inline-block w-8 h-8 object-contain align-middle">' : '') + giftDetails + '</div>';
+      wrap.innerHTML = '<div class="flex items-center gap-1.5">' + avatar + '<div class="flex items-center gap-1 bg-black/40 rounded-full px-2 py-0.5 backdrop-blur-md border border-white/10"><span style="' + nameStyle + '" class="font-bold text-xs px-0.5">' + name + '</span><span class="text-[9px] text-white/60">VIP' + escapeHtml(vip) + ' · LV' + escapeHtml(m.wealth || 0) + '</span></div></div><div style="' + bubbleStyle + '" class="border text-white text-[13px] font-medium px-3.5 py-2 rounded-2xl rounded-tr-none shadow-lg text-right break-words leading-relaxed">' + (isImage ? imageContent : body) + (isGift && giftThumb ? ' <img src="' + escapeHtml(giftThumb) + '" class="inline-block w-8 h-8 object-contain align-middle">' : '') + giftDetails + '</div>';
       const image = wrap.querySelector('[data-user-id]');
       if (image) image.onclick=function(){ bridge('user',{userId:image.dataset.userId}); };
       stream.appendChild(wrap);
@@ -717,9 +723,9 @@
           if (first) window.__playedGiftIds.delete(first);
         }
         setTimeout(function(){ window.__playedGiftIds.delete(giftId); }, 20000);
-        if (!rich.includes('mp4') && !rich.includes('gif') && !rich.includes('svga') && !rich.includes('video')) {
-          playGiftOverlay(payload);
-        }
+        // The thumbnail flight is independent from the rich full-screen effect.
+        // It must still reach the recipient seat for MP4/GIF/SVGA gifts.
+        if (!window.__hideGiftSeatFlights) playGiftOverlay(payload);
       }
     });
     if (!stream.dataset.hasRendered || wasNearBottom) {
@@ -747,7 +753,7 @@
       thumb.style.left=(r.left-a.left+r.width/2-32)+'px';
       thumb.style.top=(r.top-a.top+r.height/2-32)+'px';
     }, 40);
-    setTimeout(function(){thumb.remove();}, 1350);
+    setTimeout(function(){thumb.remove();}, 4000);
   }
   window.handleSeatClick = function (seat) { const item=(window.__roomSeats||[]).find(function(x){return x.no===seat;})||{}; bridge('seat', {seat: seat, occupiedUserId: item.userId || null}); };
   window.handleMessageSubmit = function (e) { e.preventDefault(); const i=document.getElementById('chatInput'); const t=i.value.trim(); if(t){ bridge('message',{body:t}); i.value=''; } };

@@ -14,6 +14,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../core/room_background_bridge.dart';
@@ -2207,6 +2208,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _isOnSeat = false;
   bool _micMuted = true;
   bool _listenMuted = false;
+  bool _hideFullGiftEffects = false;
+  bool _hideGiftSeatFlights = false;
+  bool _hideGiftBanners = false;
+  bool _hideLuckBagBanners = false;
   String _micPermission = 'everyone';
   bool _isModerator = false;
   bool _comboActive = false;
@@ -2326,6 +2331,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadRoomEffectPreferences());
     // Stop the external bubble only after this room page has actually started.
     RoomBackgroundBridge.stop();
     final session = RoomSessionController.instance;
@@ -2521,6 +2527,106 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (mounted) setState(() => _luckBags = visible);
   }
 
+  Future<void> _loadRoomEffectPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _hideFullGiftEffects =
+          prefs.getBool('saki_hide_full_gift_effects') ?? false;
+      _hideGiftSeatFlights =
+          prefs.getBool('saki_hide_gift_seat_flights') ?? false;
+      _hideGiftBanners = prefs.getBool('saki_hide_gift_banners') ?? false;
+      _hideLuckBagBanners =
+          prefs.getBool('saki_hide_luck_bag_banners') ?? false;
+    });
+  }
+
+  Future<void> _saveRoomEffectPreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  Future<void> _showRoomEffectsSettings() async {
+    var full = _hideFullGiftEffects;
+    var seat = _hideGiftSeatFlights;
+    var gifts = _hideGiftBanners;
+    var luck = _hideLuckBagBanners;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (_, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'تأثيرات الغرفة',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'هذه الإعدادات تخصك فقط ولا تؤثر على بقية المستخدمين.',
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+                SwitchListTile.adaptive(
+                  title: const Text('إخفاء شاشة الهدية الكاملة'),
+                  value: full,
+                  onChanged: (v) {
+                    setSheetState(() => full = v);
+                    setState(() {
+                      _hideFullGiftEffects = v;
+                      if (v) {
+                        _activeGiftMessage = null;
+                        _giftMessageQueue.clear();
+                      }
+                    });
+                    _saveRoomEffectPreference('saki_hide_full_gift_effects', v);
+                  },
+                ),
+                SwitchListTile.adaptive(
+                  title: const Text('إخفاء الصورة المتحركة إلى المقعد'),
+                  value: seat,
+                  onChanged: (v) {
+                    setSheetState(() => seat = v);
+                    setState(() => _hideGiftSeatFlights = v);
+                    _saveRoomEffectPreference('saki_hide_gift_seat_flights', v);
+                  },
+                ),
+                SwitchListTile.adaptive(
+                  title: const Text('إخفاء أشرطة الهدايا الطائرة'),
+                  value: gifts,
+                  onChanged: (v) {
+                    setSheetState(() => gifts = v);
+                    setState(() {
+                      _hideGiftBanners = v;
+                      if (v) {
+                        _activeGiftBanner = null;
+                        _activeLuckBanner = null;
+                      }
+                    });
+                    _saveRoomEffectPreference('saki_hide_gift_banners', v);
+                  },
+                ),
+                SwitchListTile.adaptive(
+                  title: const Text('إخفاء شريط حقيبة الحظ الطائر'),
+                  value: luck,
+                  onChanged: (v) {
+                    setSheetState(() => luck = v);
+                    setState(() => _hideLuckBagBanners = v);
+                    _saveRoomEffectPreference('saki_hide_luck_bag_banners', v);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _handleRoomMessages(List<Map<String, dynamic>> rows) {
     for (final row in rows) {
       final type = (row['message_type'] ?? row['type'])?.toString();
@@ -2564,14 +2670,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       payload['sender_avatar_url'] ??= profile['avatar_url'];
       payload['sent_at'] ??= gift['created_at'];
       final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
-      if (multiplier >= 500) {
+      if (multiplier >= 500 && !_hideGiftBanners) {
         _activeLuckBanner = payload;
         _luckBannerTimer?.cancel();
         _luckBannerTimer = Timer(const Duration(seconds: 5), () {
           if (mounted) setState(() => _activeLuckBanner = null);
         });
       }
-      _activeGiftBanner = payload;
+      if (!_hideGiftBanners) _activeGiftBanner = payload;
       _giftBannerTimer?.cancel();
       _giftBannerTimer = Timer(const Duration(seconds: 6), () {
         if (mounted) setState(() => _activeGiftBanner = null);
@@ -2586,10 +2692,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       // Queue only rich gifts here; otherwise a normal gift could occupy the
       // native overlay queue without an onClose callback.
       if (!isRichGift) continue;
-      if (_activeGiftMessage == null) {
-        _activeGiftMessage = gift;
-      } else {
-        _giftMessageQueue.add(gift);
+      if (!_hideFullGiftEffects) {
+        if (_activeGiftMessage == null) {
+          _activeGiftMessage = gift;
+        } else {
+          _giftMessageQueue.add(gift);
+        }
       }
     }
     // Normal gift thumbnails are rendered once by the HTML design layer.
@@ -4770,11 +4878,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   Navigator.pop(context);
                   _confirmClearChat();
                 }),
-              _toolButton(
-                Icons.card_giftcard,
-                'هدايا',
-                () => Navigator.pop(context),
-              ),
+              _toolButton(Icons.auto_awesome_rounded, 'تأثيرات', () {
+                Navigator.pop(context);
+                _showRoomEffectsSettings();
+              }),
               _toolButton(Icons.image_rounded, 'رفع صورة VIP4+', () {
                 Navigator.pop(context);
                 _sendRoomImage();
@@ -5242,6 +5349,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             'seatEmojis': _activeSeatEmojis,
             'micMuted': _micMuted,
             'speakerMuted': _listenMuted,
+            'hideGiftSeatFlights': _hideGiftSeatFlights,
           },
           seatStream: _seatStream,
           lockStream: _seatLocksStream,
@@ -5295,9 +5403,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               });
             },
           ),
-        if (_activeGiftBanner != null)
+        if (_activeGiftBanner != null && !_hideGiftBanners)
           RoomGiftAnnouncementBanner(payload: _activeGiftBanner!, luck: false),
-        if (_activeLuckBanner != null)
+        if (_activeLuckBanner != null && !_hideGiftBanners)
           RoomGiftAnnouncementBanner(payload: _activeLuckBanner!, luck: true),
         if (_entranceProfile != null)
           RoomEntranceBanner(
@@ -5339,7 +5447,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             bag: _luckBags.first,
             onClaim: _claimLuckBag,
           ),
-        if (_newLuckBag != null)
+        if (_newLuckBag != null && !_hideLuckBagBanners)
           LuckBagFlyBanner(
             key: ValueKey('luck_fly_${_newLuckBag!['id']}'),
             bag: _newLuckBag!,
