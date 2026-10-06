@@ -1030,6 +1030,32 @@ class _RoomsPageState extends State<RoomsPage> {
     if (id == null || id.isEmpty) return;
     final resolved = await _service.roomById(id);
     if (!mounted || resolved == null) return;
+    final current = RoomSessionController.instance.room;
+    if (current?['id']?.toString() == id) return;
+    if (current != null) {
+      final move = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('الانتقال إلى الغرفة؟'),
+          content: Text(
+            'أنت الآن في غرفة أخرى. هل تريد الانتقال إلى ${resolved['name'] ?? 'الغرفة'} التي أُرسلت فيها الهدية؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('انتقال'),
+            ),
+          ],
+        ),
+      );
+      if (move != true) return;
+      await RoomSessionController.instance.close();
+      if (!mounted) return;
+    }
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => RoomDetailPage(room: resolved)),
     );
@@ -2803,14 +2829,19 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       payload['sent_at'] ??= gift['created_at'];
       final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
       final isLuckResult = multiplier >= 500;
-      if (isLuckResult && !_hideGiftBanners) {
+      final rawGiftGold = payload['gift_price'] ?? payload['total_price'];
+      final giftGold = rawGiftGold is num
+          ? rawGiftGold.toInt()
+          : int.tryParse(rawGiftGold?.toString() ?? '') ?? 0;
+      final hasGlobalGiftRibbon = giftGold >= 100000;
+      if (!hasGlobalGiftRibbon && isLuckResult && !_hideGiftBanners) {
         _activeLuckBanner = payload;
         _luckBannerTimer?.cancel();
         _luckBannerTimer = Timer(const Duration(seconds: 5), () {
           if (mounted) setState(() => _activeLuckBanner = null);
         });
       }
-      if (!_hideGiftBanners && !isLuckResult) {
+      if (!hasGlobalGiftRibbon && !_hideGiftBanners && !isLuckResult) {
         _activeGiftBanner = payload;
         _giftBannerTimer?.cancel();
         _giftBannerTimer = Timer(const Duration(seconds: 4), () {

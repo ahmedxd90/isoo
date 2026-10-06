@@ -311,11 +311,16 @@ class LuckBagFlyBanner extends StatefulWidget {
 }
 
 class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 5200),
   )..forward();
+  late final AnimationController _coins = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1250),
+  )..repeat();
+
   @override
   void initState() {
     super.initState();
@@ -327,91 +332,181 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
   @override
   void dispose() {
     _c.dispose();
+    _coins.dispose();
     super.dispose();
   }
+
+  String _formatGold(dynamic value) {
+    final gold = value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+    return gold.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => ',',
+    );
+  }
+
+  Map<String, dynamic> _nested(String key) {
+    final value = widget.bag[key];
+    return value is Map
+        ? Map<String, dynamic>.from(value)
+        : <String, dynamic>{};
+  }
+
+  Widget _flyingCoin(double right, double top, double phase) => AnimatedBuilder(
+    animation: _coins,
+    builder: (_, _) {
+      final t = (_coins.value + phase) % 1;
+      return Positioned(
+        right: right + math.sin(t * math.pi * 2) * 3,
+        top: top - t * 8,
+        child: Transform.rotate(
+          angle: t * math.pi * 1.7,
+          child: Icon(
+            Icons.monetization_on_rounded,
+            size: 13,
+            color: Color.lerp(_bagGold, const Color(0xFFFFF1B2), t),
+            shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
+          ),
+        ),
+      );
+    },
+  );
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: _c,
     builder: (_, _) {
       final t = _c.value;
-      final x = t < .25
-          ? 1 - t / .25
-          : t < .75
-          ? 0
-          : (t - .75) / .25 - 1;
+      final x = t < .18
+          ? 1 - t / .18
+          : t > .84
+          ? -(t - .84) / .16
+          : 0;
+      final sender = _nested('_sender');
+      final room = _nested('_room');
+      final senderName =
+          (sender['display_name'] ?? sender['username'] ?? 'مستخدم').toString();
+      final roomName = (room['name'] ?? 'غرفة').toString();
+      final gold = _formatGold(widget.bag['total_gold']);
+
       return Positioned(
         top: 92,
-        left: x == 0 ? 10 : null,
-        right: x == 0 ? 10 : null,
+        left: 8,
+        right: 8,
         child: Transform.translate(
           offset: Offset(x * MediaQuery.sizeOf(context).width, 0),
-          child: Container(
-            width: math.min(MediaQuery.sizeOf(context).width - 28, 340),
-            height: 56,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF5B2A86), Color(0xFFB52B75)],
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: _bagGold.withValues(alpha: .72),
-                width: 1,
-              ),
-              boxShadow: const [
-                BoxShadow(color: Color(0x664A1D68), blurRadius: 16),
-                BoxShadow(color: Colors.black45, blurRadius: 8),
-              ],
-            ),
-            child: Row(
-              children: [
-                _SenderAvatar(
-                  url: (widget.bag['_sender'] as Map?)?['avatar_url']
-                      ?.toString(),
+          child: Center(
+            child: GestureDetector(
+              onTap: widget.onGo,
+              child: Container(
+                width: math.min(MediaQuery.sizeOf(context).width - 20, 380),
+                height: 82,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3D2107),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: _bagGold, width: 1.25),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x8877460B),
+                      blurRadius: 19,
+                      offset: Offset(0, 5),
+                    ),
+                    BoxShadow(
+                      color: Colors.black54,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(21),
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Text(
-                        '${(widget.bag['_sender'] as Map?)?['username'] ?? 'مستخدم'} أرسل حقيبة حظ',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
+                      Image.asset(
+                        'assets/room_effects/luck_bag_ribbon.webp',
+                        fit: BoxFit.fill,
+                      ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF492905).withValues(alpha: .04),
+                              const Color(0xFF241202).withValues(alpha: .34),
+                            ],
+                            begin: AlignmentDirectional.topCenter,
+                            end: AlignmentDirectional.bottomCenter,
+                          ),
                         ),
                       ),
-                      Text(
-                        'في ${(widget.bag['_room'] as Map?)?['name'] ?? 'غرفة SAKI'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                      _flyingCoin(76, 13, 0),
+                      _flyingCoin(55, 23, .42),
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(
+                          88,
+                          8,
+                          14,
+                          8,
+                        ),
+                        child: Row(
+                          children: [
+                            _SenderAvatar(
+                              url: sender['avatar_url']?.toString(),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '$senderName أرسل حقيبة حظ',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black87,
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.monetization_on_rounded,
+                                        color: Color(0xFFFFE27A),
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          '$gold ذهبية · $roomName',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Color(0xFFFFE7A0),
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 5),
-                FilledButton(
-                  onPressed: widget.onGo,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0x66202030),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 11),
-                    minimumSize: const Size(0, 34),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(17),
-                    ),
-                  ),
-                  child: const Text('GO'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
