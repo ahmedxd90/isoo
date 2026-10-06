@@ -681,6 +681,11 @@ class _SakiPremiumUserProfileState extends State<_SakiPremiumUserProfile> {
                                     onCopy: widget.onCopy,
                                   ),
                                   const SizedBox(height: 16),
+                                  _PremiumExcellenceCard(
+                                    profile: widget.profile,
+                                    badges: ownedBadges,
+                                  ),
+                                  const SizedBox(height: 16),
                                   _PremiumSupporters(
                                     supporters: widget.supporters,
                                     compact: true,
@@ -1077,6 +1082,96 @@ class _PremiumInfo extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _PremiumExcellenceCard extends StatelessWidget {
+  const _PremiumExcellenceCard({required this.profile, required this.badges});
+  final Map<String, dynamic> profile;
+  final List<Map<String, dynamic>> badges;
+
+  @override
+  Widget build(BuildContext context) {
+    final level =
+        (profile['wealth_level'] as num? ?? profile['level'] as num? ?? 0)
+            .toInt();
+    final excellence =
+        (profile['excellence'] as num? ??
+                profile['excellence_stars'] as num? ??
+                badges.length)
+            .toInt();
+    final shown = badges.take(8).toList();
+    return _PremiumCard(
+      title: 'الامتياز',
+      icon: Icons.stars_rounded,
+      trailing: '$excellence نجمة',
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Color(0xFFFFD166), Color(0xFFF59E0B)],
+              ),
+            ),
+            child: Center(
+              child: Text(
+                'LV.$level',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SizedBox(
+              height: 62,
+              child: shown.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'لا توجد أوسمة امتياز بعد',
+                        style: TextStyle(
+                          color: Color(0xFF9CA3AF),
+                          fontSize: 11,
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: shown.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, index) {
+                        final item = shown[index];
+                        final asset = item['asset']?.toString();
+                        return Container(
+                          width: 54,
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFFDE68A)),
+                          ),
+                          child: asset != null && asset.startsWith('assets/')
+                              ? Image.asset(asset, fit: BoxFit.contain)
+                              : Icon(
+                                  item['icon'] is IconData
+                                      ? item['icon'] as IconData
+                                      : Icons.workspace_premium_rounded,
+                                  color: const Color(0xFFD97706),
+                                ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PremiumSupporters extends StatelessWidget {
