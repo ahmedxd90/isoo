@@ -1,0 +1,31 @@
+{
+  "name": "saki_glass_room",
+  "direction": "rtl",
+  "colors": {
+    "background": "#0D0E12",
+    "glass": "#73000000",
+    "glassCircle": "#59000000",
+    "glassBorder": "#24FFFFFF",
+    "text": "#FFFFFFFF",
+    "muted": "#99FFFFFF",
+    "success": "#34D399",
+    "giftStart": "#F43F5E",
+    "giftEnd": "#F59E0B",
+    "luckStart": "#5B2A86",
+    "luckEnd": "#B52B75",
+    "luckAccent": "#FFD166"
+  },
+  "dimensions": {
+    "headerRadius": 25,
+    "buttonSize": 36,
+    "seatSize": 44,
+    "bannerHeight": 56,
+    "bannerRadius": 24,
+    "chatRadius": 16
+  },
+  "motion": {
+    "bannerMilliseconds": 900,
+    "seatPulseMilliseconds": 1500,
+    "giftMilliseconds": 2200
+  }
+}

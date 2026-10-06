@@ -5554,18 +5554,19 @@ class _RoomGiftAnnouncementBannerState extends State<RoomGiftAnnouncementBanner>
   }
 
   Widget _content() => Container(
+    constraints: const BoxConstraints(minHeight: 56, maxHeight: 60),
     margin: const EdgeInsets.symmetric(horizontal: 12),
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
     decoration: BoxDecoration(
       gradient: LinearGradient(
         colors: widget.luck
             ? const [Color(0xFF32115E), Color(0xFFB52B75), Color(0xFF32115E)]
-            : const [Color(0xFF18233A), Color(0xFF315B8E)],
+            : const [Color(0xFF121A2C), Color(0xFF315B8E)],
       ),
       borderRadius: BorderRadius.circular(24),
       border: Border.all(
         color: widget.luck ? const Color(0xFFFFD166) : Colors.white54,
-        width: 1.2,
+        width: 1,
       ),
       boxShadow: const [
         BoxShadow(color: Colors.black54, blurRadius: 12, offset: Offset(0, 4)),
@@ -5595,14 +5596,18 @@ class _RoomGiftAnnouncementBannerState extends State<RoomGiftAnnouncementBanner>
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          widget.luck
-              ? 'حصل على الحظ ×${_text('multiplier', '1')}'
-              : 'أرسل ${_text('name', 'هدية')} ×${_text('quantity', '1')}',
-          style: TextStyle(
-            color: widget.luck ? const Color(0xFFFFE08A) : Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 10,
+        Flexible(
+          child: Text(
+            widget.luck
+                ? 'حصل على الحظ ×${_text('multiplier', '1')}'
+                : 'أرسل ${_text('name', 'هدية')} ×${_text('quantity', '1')}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: widget.luck ? const Color(0xFFFFE08A) : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 10,
+            ),
           ),
         ),
         const SizedBox(width: 7),
@@ -5620,6 +5625,8 @@ class _RoomGiftAnnouncementBannerState extends State<RoomGiftAnnouncementBanner>
           const SizedBox(width: 6),
           Text(
             '${_text('reward_gold', '0')} ذهب',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFFFFE08A),
               fontSize: 9,
@@ -5634,7 +5641,7 @@ class _RoomGiftAnnouncementBannerState extends State<RoomGiftAnnouncementBanner>
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: widget.luck ? 92 : 142,
+      top: widget.luck ? 94 : 156,
       left: 0,
       right: 0,
       child: AnimatedBuilder(
@@ -5687,7 +5694,7 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 4600),
+    duration: const Duration(milliseconds: 3600),
   )..forward();
 
   int get _vip => activeVipLevel(widget.profile);
@@ -5719,7 +5726,7 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
     return Positioned(
       left: 0,
       right: 0,
-      top: MediaQuery.sizeOf(context).height * .42,
+      top: MediaQuery.sizeOf(context).height * .40,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (_, child) {
@@ -5738,7 +5745,8 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
           alignment: Alignment.center,
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 18),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            constraints: const BoxConstraints(minHeight: 56, maxHeight: 60),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../shared/widgets/saki_widgets.dart';
@@ -60,7 +58,7 @@ class NativeRoomView extends StatefulWidget {
 class _NativeRoomViewState extends State<NativeRoomView> {
   final ScrollController _chatScroll = ScrollController();
   List<Map<String, dynamic>> _messages = const [];
-  int _previousMessageCount = 0;
+  String _previousMessageKey = '';
 
   @override
   void dispose() {
@@ -74,11 +72,6 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return n.toInt().toString();
-  }
-
-  Color _vipColor(Map<String, dynamic> profile) {
-    final level = activeVipLevel(profile);
-    return vipAccent(level);
   }
 
   Widget _glass({
@@ -630,9 +623,12 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     List<Map<String, dynamic>> members,
   ) {
     final background = widget.room['background_url']?.toString();
-    if (_previousMessageCount != messages.length) {
+    final messageKey = messages.isEmpty
+        ? ''
+        : '${messages.length}:${messages.last['id'] ?? messages.last['message_id'] ?? messages.last['created_at'] ?? ''}';
+    if (_previousMessageKey != messageKey) {
       _messages = messages;
-      _previousMessageCount = messages.length;
+      _previousMessageKey = messageKey;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _chatScroll.hasClients)
           _chatScroll.animateTo(
@@ -677,11 +673,16 @@ class _NativeRoomViewState extends State<NativeRoomView> {
               _header(members),
               _seats(seats, locks),
               Expanded(
-                child: ListView.builder(
-                  controller: _chatScroll,
-                  padding: const EdgeInsets.only(top: 5, bottom: 10),
-                  itemCount: _messages.length,
-                  itemBuilder: (_, i) => _message(_messages[i]),
+                child: RepaintBoundary(
+                  child: ListView.builder(
+                    controller: _chatScroll,
+                    padding: const EdgeInsets.only(top: 5, bottom: 10),
+                    cacheExtent: 420,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    itemCount: _messages.length,
+                    itemBuilder: (_, i) => _message(_messages[i]),
+                  ),
                 ),
               ),
               _toolbar(),

@@ -7,8 +7,8 @@ import '../../core/data/saki_service.dart';
 
 import '../../shared/widgets/custom_toast.dart';
 
-const _bagRed = Color(0xFFE73855);
-const _bagGold = Color(0xFFFFC857);
+const _bagRed = Color(0xFFF43F5E);
+const _bagGold = Color(0xFFFFD166);
 
 class LuckBagComposer extends StatefulWidget {
   const LuckBagComposer({
@@ -229,13 +229,26 @@ class _LuckBagCardState extends State<LuckBagCard> {
               }
             : null,
         child: Container(
-          width: 112,
-          padding: const EdgeInsets.all(6),
+          width: 126,
+          height: 56,
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
           decoration: BoxDecoration(
-            color: _bagRed,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: _bagGold, width: 1.5),
-            boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 12)],
+            gradient: const LinearGradient(
+              colors: [Color(0xFF5B2A86), Color(0xFFB52B75)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: _bagGold.withValues(alpha: .72),
+              width: 1,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x664A1D68),
+                blurRadius: 16,
+                offset: Offset(0, 4),
+              ),
+              BoxShadow(color: Colors.black45, blurRadius: 8),
+            ],
           ),
           child: Row(
             children: [
@@ -243,13 +256,13 @@ class _LuckBagCardState extends State<LuckBagCard> {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: _bagGold,
-                  borderRadius: BorderRadius.circular(9),
+                  color: Colors.black26,
+                  shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.card_giftcard,
-                  color: _bagRed,
-                  size: 17,
+                  Icons.auto_awesome,
+                  color: _bagGold,
+                  size: 16,
                 ),
               ),
               const SizedBox(width: 5),
@@ -301,12 +314,12 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(seconds: 12),
+    duration: const Duration(milliseconds: 5200),
   )..forward();
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 12), () {
+    Future.delayed(const Duration(milliseconds: 5200), () {
       if (mounted) widget.onDone();
     });
   }
@@ -328,27 +341,26 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
           ? 0
           : (t - .75) / .25 - 1;
       return Positioned(
-        top: 72,
+        top: 92,
         left: x == 0 ? 10 : null,
         right: x == 0 ? 10 : null,
         child: Transform.translate(
           offset: Offset(x * MediaQuery.sizeOf(context).width, 0),
           child: Container(
-            width: math.min(MediaQuery.sizeOf(context).width - 56, 360),
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+            width: math.min(MediaQuery.sizeOf(context).width - 28, 340),
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFFFD54F),
-                  Color(0xFFFFA000),
-                  Color(0xFFFFE082),
-                  Color(0xFFFF8F00),
-                ],
+                colors: [Color(0xFF5B2A86), Color(0xFFB52B75)],
               ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white, width: 1.2),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: _bagGold.withValues(alpha: .72),
+                width: 1,
+              ),
               boxShadow: const [
-                BoxShadow(color: Color(0xCCFFB300), blurRadius: 18),
+                BoxShadow(color: Color(0x664A1D68), blurRadius: 16),
                 BoxShadow(color: Colors.black45, blurRadius: 8),
               ],
             ),
@@ -368,7 +380,7 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Color(0xFF4A2500),
+                          color: Colors.white,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -377,7 +389,7 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Color(0xFF6D3B00),
+                          color: Colors.white70,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -389,10 +401,13 @@ class _LuckBagFlyBannerState extends State<LuckBagFlyBanner>
                 FilledButton(
                   onPressed: widget.onGo,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF6D2100),
+                    backgroundColor: const Color(0x66202030),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
                     minimumSize: const Size(0, 34),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(17),
+                    ),
                   ),
                   child: const Text('GO'),
                 ),
