@@ -31,6 +31,10 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
     vsync: this,
     duration: const Duration(milliseconds: 1900),
   );
+  late final AnimationController _coins = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1450),
+  );
 
   final Set<String> _seenAnnouncementIds = <String>{};
   final List<Map<String, dynamic>> _pendingRows = <Map<String, dynamic>>[];
@@ -48,7 +52,11 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
     super.initState();
     _flight.addStatusListener((status) {
       if (status != AnimationStatus.completed || !mounted) return;
-      setState(() => _event = null);
+      setState(() {
+        _event = null;
+        _coins.stop();
+        _coins.reset();
+      });
       _scheduleNext();
     });
     _shine.repeat();
@@ -78,6 +86,8 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
       _event = null;
       _pendingRows.clear();
       _flight.stop();
+      _coins.stop();
+      _coins.reset();
       _queueTimer?.cancel();
       _queueTimer = null;
     } else {
@@ -90,11 +100,28 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
     _queueTimer?.cancel();
     _flight.dispose();
     _shine.dispose();
+    _coins.dispose();
     super.dispose();
   }
 
   int _price(Map<String, dynamic> row) =>
       ((row['total_price'] ?? row['gift_price']) as num?)?.toInt() ?? 0;
+
+  int _multiplier(Map<String, dynamic> row) {
+    final value = row['multiplier'];
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  int _rewardGold(Map<String, dynamic> row) {
+    final value = row['reward_gold'] ?? row['recipient_diamonds'];
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  bool _isFeaturedLuck(Map<String, dynamic> row) =>
+      row['event_type']?.toString() == 'luck_multiplier' &&
+      const {250, 500, 1000}.contains(_multiplier(row));
 
   void _ingest(List<Map<String, dynamic>> rows) {
     if (!_streamPrimed) {
@@ -111,7 +138,7 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
       final id = row['id']?.toString();
       if (id == null || id.isEmpty || !_seenAnnouncementIds.add(id)) continue;
       final price = _price(row);
-      if (price >= 100000) fresh.add(row);
+      if (_isFeaturedLuck(row) || price >= 100000) fresh.add(row);
     }
     if (_seenAnnouncementIds.length > 500) {
       final currentIds = rows
@@ -198,6 +225,10 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
     try {
       final loaded = await _load(row);
       if (mounted && !_isHidden) {
+        final eventRow = Map<String, dynamic>.from(loaded['row'] as Map);
+        _coins.stop();
+        _coins.reset();
+        if (_isFeaturedLuck(eventRow)) _coins.repeat();
         setState(() => _event = loaded);
         _flight.forward();
       }
@@ -273,24 +304,41 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
     final gift = Map<String, dynamic>.from(event['gift'] as Map);
     final room = Map<String, dynamic>.from(event['room'] as Map);
     final gold = _price(row);
-    final isMega = gold >= 1000000;
-    final accent = isMega ? const Color(0xFFFFD66B) : const Color(0xFFFF777A);
-    final base = isMega ? const Color(0xFF442508) : const Color(0xFF5E0715);
-    final image = isMega
+    final featuredLuck = _isFeaturedLuck(row);
+    final multiplier = _multiplier(row);
+    final rewardGold = _rewardGold(row);
+    final isMega = !featuredLuck && gold >= 1000000;
+    final accent = featuredLuck
+        ? const Color(0xFF8DEBFF)
+        : isMega
+        ? const Color(0xFFFFD66B)
+        : const Color(0xFFFF777A);
+    final base = featuredLuck
+        ? const Color(0xFF073B73)
+        : isMega
+        ? const Color(0xFF442508)
+        : const Color(0xFF5E0715);
+    final image = featuredLuck
+        ? 'assets/room_effects/luck_multiplier_blue.webp'
+        : isMega
         ? 'assets/room_effects/gift_gold_ribbon.webp'
         : 'assets/room_effects/gift_red_ribbon.webp';
     final senderName = _name(sender);
     final recipientName = _name(recipient);
     final giftName = gift['name']?.toString().trim();
     final roomName = room['name']?.toString().trim();
-    final headline = row['event_type']?.toString() == 'luck_multiplier'
-        ? 'أرسل هدية حظ'
+    final headline = featuredLuck
+        ? '$recipientName حصل على مضاعف ×$multiplier'
         : 'أرسل هدية';
+    final details = featuredLuck
+        ? 'ربح ${_formatGold(rewardGold)} ذهب · ${roomName ?? 'غرفة'}'
+        : '${giftName == null || giftName.isEmpty ? 'هدية' : giftName} · ${_formatGold(gold)} ذهب · ${roomName ?? 'غرفة'}';
 
     return Semantics(
       button: true,
-      label:
-          '$senderName $headline إلى $recipientName، ${_formatGold(gold)} ذهب، ${roomName ?? 'غرفة'}',
+      label: featuredLuck
+          ? '$headline من $senderName، ${_formatGold(rewardGold)} ذهب، ${roomName ?? 'غرفة'}'
+          : '$senderName $headline إلى $recipientName، ${_formatGold(gold)} ذهب، ${roomName ?? 'غرفة'}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -365,6 +413,7 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
                       ),
                     ),
                   ),
+                  if (featuredLuck) ..._fallingCoins(accent),
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(80, 8, 15, 8),
                     child: Row(
@@ -381,7 +430,9 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '$senderName · $headline',
+                                featuredLuck
+                                    ? headline
+                                    : '$senderName · $headline',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -401,7 +452,9 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      'إلى $recipientName',
+                                      featuredLuck
+                                          ? 'هدية من $senderName · إلى $recipientName'
+                                          : 'إلى $recipientName',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -415,7 +468,7 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${giftName == null || giftName.isEmpty ? 'هدية' : giftName} · ${_formatGold(gold)} ذهب · ${roomName ?? 'غرفة'}',
+                                details,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -458,6 +511,36 @@ class _RoomGlobalGiftBannerState extends State<RoomGlobalGiftBanner>
       ),
     );
   }
+
+  List<Widget> _fallingCoins(Color accent) => List.generate(4, (index) {
+    return AnimatedBuilder(
+      animation: _coins,
+      builder: (_, _) {
+        final progress = (_coins.value + index * .24) % 1;
+        final sway = math.sin((progress * math.pi * 2) + index).toDouble() * 5;
+        return Positioned(
+          right: 76 + (index % 2) * 18 + sway,
+          top: 3 + progress * 68,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: .35 + .6 * (1 - progress),
+              child: Transform.rotate(
+                angle: progress * math.pi * 2,
+                child: Icon(
+                  Icons.monetization_on_rounded,
+                  size: 11 + (index % 2) * 3,
+                  color: index.isEven ? const Color(0xFFFFD65B) : accent,
+                  shadows: const [
+                    Shadow(color: Color(0xAAFFB300), blurRadius: 7),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  });
 
   @override
   Widget build(BuildContext context) =>

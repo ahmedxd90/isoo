@@ -2611,8 +2611,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomMembersSubscription = _membersStream.listen((members) {
       if (!mounted) return;
       final previousIds = _roomMembers.map((m) => m['id']).toSet();
+      final currentUserId = _service.currentUser?.id;
       final entrant = members
-          .where((m) => _membersInitialized && !previousIds.contains(m['id']))
+          .where(
+            (m) =>
+                _membersInitialized &&
+                !previousIds.contains(m['id']) &&
+                m['id']?.toString() != currentUserId,
+          )
           .firstOrNull;
       setState(() {
         _roomMembers = members;
@@ -2829,19 +2835,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       payload['sent_at'] ??= gift['created_at'];
       final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
       final isLuckResult = multiplier >= 500;
+      final isFeaturedLuck = const {250, 500, 1000}.contains(multiplier);
       final rawGiftGold = payload['gift_price'] ?? payload['total_price'];
       final giftGold = rawGiftGold is num
           ? rawGiftGold.toInt()
           : int.tryParse(rawGiftGold?.toString() ?? '') ?? 0;
       final hasGlobalGiftRibbon = giftGold >= 100000;
-      if (!hasGlobalGiftRibbon && isLuckResult && !_hideGiftBanners) {
+      if (!hasGlobalGiftRibbon &&
+          isLuckResult &&
+          !isFeaturedLuck &&
+          !_hideGiftBanners) {
         _activeLuckBanner = payload;
         _luckBannerTimer?.cancel();
         _luckBannerTimer = Timer(const Duration(seconds: 5), () {
           if (mounted) setState(() => _activeLuckBanner = null);
         });
       }
-      if (!hasGlobalGiftRibbon && !_hideGiftBanners && !isLuckResult) {
+      if (!hasGlobalGiftRibbon &&
+          !_hideGiftBanners &&
+          !isLuckResult &&
+          !isFeaturedLuck) {
         _activeGiftBanner = payload;
         _giftBannerTimer?.cancel();
         _giftBannerTimer = Timer(const Duration(seconds: 4), () {
@@ -5897,16 +5910,23 @@ class RoomEntranceBanner extends StatefulWidget {
 }
 
 class _RoomEntranceBannerState extends State<RoomEntranceBanner>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 3600),
   )..forward();
+  late final AnimationController _shine = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1900),
+  )..repeat();
 
   int get _vip => activeVipLevel(widget.profile);
-  List<Color> get _colors => _vip > 0
-      ? (vipNameGradients[_vip] ?? const [Color(0xFF64748B), Color(0xFF334155)])
-      : const [Color(0xFF64748B), Color(0xFF374151), Color(0xFF9CA3AF)];
+  List<Color> get _vipColors =>
+      vipNameGradients[_vip] ?? const [Color(0xFF64748B), Color(0xFF334155)];
+  Color get _accent => _vipColors.first;
+  String get _entryAsset => _vip >= 4 && _vip <= 10
+      ? 'assets/room_effects/entry_vip$_vip.webp'
+      : 'assets/room_effects/entry_normal.webp';
 
   String get _name =>
       widget.profile['display_name']?.toString().trim().isNotEmpty == true
@@ -5924,15 +5944,23 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
   @override
   void dispose() {
     _controller.dispose();
+    _shine.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final screen = MediaQuery.sizeOf(context);
+    final width = math
+        .min(420.0, screen.width - 24)
+        .clamp(240.0, 420.0)
+        .toDouble();
+    final height = width * 686 / 1600;
+    final hasVipArt = _vip >= 4 && _vip <= 10;
     return Positioned(
       left: 0,
       right: 0,
-      top: MediaQuery.sizeOf(context).height * .40,
+      top: screen.height * .40,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (_, child) {
@@ -5947,85 +5975,164 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
             child: child,
           );
         },
-        child: Align(
-          alignment: Alignment.center,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 18),
-            constraints: const BoxConstraints(minHeight: 56, maxHeight: 60),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: _colors,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: _vip > 0
-                    ? Colors.white.withValues(alpha: .72)
-                    : Colors.white38,
-                width: 1.1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: (_colors.length > 1 ? _colors[1] : _colors.first)
-                      .withValues(alpha: .55),
-                  blurRadius: 18,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        child: Center(
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                SakiAvatar(
-                  url: widget.profile['avatar_url']?.toString(),
-                  label: _name,
-                  radius: 21,
+                Image.asset(
+                  _entryAsset,
+                  fit: BoxFit.fill,
+                  errorBuilder: (_, _, _) => DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: .55),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 9),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 170),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                AnimatedBuilder(
+                  animation: _shine,
+                  builder: (_, _) => Align(
+                    alignment: Alignment(-1.8 + 3.6 * _shine.value, 0),
+                    child: IgnorePointer(
+                      child: Transform.rotate(
+                        angle: -.16,
+                        child: Container(
+                          width: width * .075,
+                          height: height * .76,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withValues(alpha: 0),
+                                Colors.white.withValues(
+                                  alpha: hasVipArt ? .22 : .12,
+                                ),
+                                Colors.white.withValues(alpha: 0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_vip == 9)
+                  Positioned(
+                    left: width * .16,
+                    right: width * .16,
+                    top: height * .29,
+                    bottom: height * .29,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .48),
+                        borderRadius: BorderRadius.circular(height * .18),
+                        border: Border.all(
+                          color: _accent.withValues(alpha: .56),
+                        ),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: width * .15,
+                    vertical: height * .22,
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        _name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
+                      SakiAvatar(
+                        url: widget.profile['avatar_url']?.toString(),
+                        label: _name,
+                        radius: 22,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                shadows: [
+                                  Shadow(color: Colors.black87, blurRadius: 5),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'انضم إلى الغرفة',
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                shadows: [
+                                  Shadow(color: Colors.black87, blurRadius: 5),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        _vip > 0
-                            ? 'VIP $_vip • انضم إلى الغرفة'
-                            : 'انضم إلى الغرفة',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                      if (hasVipArt) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: _vipColors),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: .78),
+                              width: .8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _accent.withValues(alpha: .5),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.workspace_premium_rounded,
+                                color: Colors.white,
+                                size: 13,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'VIP $_vip',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-                if (widget.product != null) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.auto_awesome, color: Colors.white, size: 17),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.product!['name']?.toString() ?? 'دخولية',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
