@@ -2610,16 +2610,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     });
     _roomMembersSubscription = _membersStream.listen((members) {
       if (!mounted) return;
-      final previousIds = _roomMembers.map((m) => m['id']).toSet();
+      final previousIds = _roomMembers
+          .map((m) => m['id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final wasInitialized = _membersInitialized;
       final currentUserId = _service.currentUser?.id;
-      final entrant = members
-          .where(
-            (m) =>
-                _membersInitialized &&
-                !previousIds.contains(m['id']) &&
-                m['id']?.toString() != currentUserId,
-          )
-          .firstOrNull;
+      final entrant = members.where((member) {
+        final id = member['id']?.toString();
+        if (id == null || id.isEmpty) return false;
+        if (!wasInitialized) return id == currentUserId;
+        return !previousIds.contains(id);
+      }).firstOrNull;
       setState(() {
         _roomMembers = members;
         _membersInitialized = true;
@@ -5653,40 +5655,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             payload: _activeLuckBanner!,
             luck: true,
           ),
-        if (_entranceProfile != null)
-          RoomEntranceBanner(
-            key: ValueKey(_entranceProfile!['id']?.toString()),
-            profile: _entranceProfile!,
-            product: _entranceProduct,
-            onFinished: () {
-              if (!mounted) return;
-              setState(() {
-                _entranceProfile = null;
-                _entranceProduct = null;
-              });
-            },
-          ),
-        if (_entranceProfile != null && _entranceProduct != null)
-          GiftFullScreenOverlay(
-            key: ValueKey(
-              'entrance_${_entranceProfile!['id']}_${_entranceProduct!['id']}',
-            ),
-            message: {
-              'payload': {
-                ..._entranceProduct!,
-                'thumbnail_url':
-                    _entranceProduct!['thumbnail_url'] ??
-                    _entranceProduct!['media_url'],
-              },
-            },
-            onClose: () {
-              if (!mounted) return;
-              setState(() {
-                _entranceProfile = null;
-                _entranceProduct = null;
-              });
-            },
-          ),
         if (_luckBags.isNotEmpty)
           LuckBagCard(
             key: ValueKey('luck_card_${_luckBags.first['id']}'),
@@ -5713,6 +5681,37 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               onTap: _sendComboAgain,
               onExpired: _expireGiftCombo,
             ),
+          ),
+        if (_entranceProfile != null && _entranceProduct != null)
+          GiftFullScreenOverlay(
+            key: ValueKey(
+              'entrance_${_entranceProfile!['id']}_${_entranceProduct!['id']}',
+            ),
+            message: {
+              'payload': {
+                ..._entranceProduct!,
+                'thumbnail_url':
+                    _entranceProduct!['thumbnail_url'] ??
+                    _entranceProduct!['media_url'],
+              },
+            },
+            onClose: () {
+              if (!mounted) return;
+              setState(() => _entranceProduct = null);
+            },
+          ),
+        if (_entranceProfile != null)
+          RoomEntranceBanner(
+            key: ValueKey(_entranceProfile!['id']?.toString()),
+            profile: _entranceProfile!,
+            product: _entranceProduct,
+            onFinished: () {
+              if (!mounted) return;
+              setState(() {
+                _entranceProfile = null;
+                _entranceProduct = null;
+              });
+            },
           ),
       ],
     );
