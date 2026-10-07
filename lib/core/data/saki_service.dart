@@ -2381,6 +2381,18 @@ class SakiService {
     return List<Map<String, dynamic>>.from(rows);
   }
 
+  Future<List<Map<String, dynamic>>> myMusicLibrary() async {
+    final rows = await client
+        .from('room_music')
+        .select(
+          'id,room_id,owner_id,title,artist,cover_url,audio_url,duration_seconds,storage_path,created_at',
+        )
+        .eq('owner_id', uid)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
   Future<List<Map<String, dynamic>>> roomPlaylist(String roomId) async {
     final rows = await client
         .from('room_playlist')
@@ -2406,7 +2418,7 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>> uploadRoomMusic(
-    String roomId,
+    String? roomId,
     String title,
     List<int> bytes,
     String extension,
@@ -2425,7 +2437,7 @@ class SakiService {
     final row = await client
         .from('room_music')
         .insert({
-          'room_id': roomId,
+          'room_id': null,
           'owner_id': uid,
           'title': title,
           'artist': 'SAKI Creator',
@@ -4097,15 +4109,18 @@ class SakiService {
     int quantity = 1,
   }) async {
     await ensureRoomMembership(roomId);
-    return _sendRoomGiftInChunks(
-      function: 'send_room_luck_gift',
-      params: {
-        'p_room_id': roomId,
-        'p_recipient_id': recipientId,
-        'p_gift_id': giftId,
-      },
-      quantity: quantity,
-    );
+    if (quantity < 1 || quantity > 777) {
+      throw Exception('invalid_quantity');
+    }
+    final result = await _roomGiftRpc('send_room_luck_gift', {
+      'p_room_id': roomId,
+      'p_recipient_id': recipientId,
+      'p_gift_id': giftId,
+      'p_quantity': quantity,
+    });
+    final rows = List<Map<String, dynamic>>.from(result as List);
+    if (rows.isEmpty) throw Exception('تعذر إرسال هدية الحظ');
+    return rows.first;
   }
 
   Future<int> luckDailyPercent() async {
