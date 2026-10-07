@@ -331,7 +331,7 @@ class _WalletPageState extends State<WalletPage> {
 
   Widget _diamondInfoCard() => Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFDBEAFE))), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.verified_user_rounded, color: _blue, size: 20), const SizedBox(width: 9), Expanded(child: Text('التحويل يتم داخل معاملة آمنة في Supabase. يتم التحقق من رصيدك قبل الخصم، ولا يمكن للتطبيق إنشاء ألماس أو ذهبيات من تلقاء نفسه.', style: _cairo.copyWith(color: const Color(0xFF1D4ED8), fontSize: 10, height: 1.7, fontWeight: FontWeight.w700)))]));
 
-  Widget _securityNote() => Padding(padding: const EdgeInsets.only(top: 8), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.lock_outline_rounded, color: Color(0xFF9CA3AF), size: 14), const SizedBox(width: 5), Text('الرصيد والمعاملات محمية عبر Supabase', style: _cairo.copyWith(color: const Color(0xFF9CA3AF), fontSize: 10, fontWeight: FontWeight.w700))]));
+  Widget _securityNote() => Padding(padding: const EdgeInsets.only(top: 8), child: Column(children: [Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.lock_outline_rounded, color: Color(0xFF9CA3AF), size: 14), const SizedBox(width: 5), Text('الرصيد والمعاملات محمية عبر Supabase', style: _cairo.copyWith(color: const Color(0xFF9CA3AF), fontSize: 10, fontWeight: FontWeight.w700))]), const SizedBox(height: 4), Text('إصدار التطبيق 3.3.85', style: _cairo.copyWith(color: const Color(0xFFCBD5E1), fontSize: 9, fontWeight: FontWeight.w700))]));
 }
 
 class _HistorySheet extends StatelessWidget {
