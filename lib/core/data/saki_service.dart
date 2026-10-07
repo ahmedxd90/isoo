@@ -4030,6 +4030,30 @@ class SakiService {
     throw lastError ?? Exception('gift_send_failed');
   }
 
+  Future<Map<String, dynamic>> _sendRoomGiftInChunks({
+    required String function,
+    required Map<String, dynamic> params,
+    required int quantity,
+  }) async {
+    if (quantity < 1) throw Exception('invalid_quantity');
+    var remaining = quantity;
+    Map<String, dynamic>? first;
+    // Supabase currently guards each RPC call at 99 items. Split larger UI
+    // quantities (such as 777) without changing the user's requested total.
+    while (remaining > 0) {
+      final chunk = remaining > 99 ? 99 : remaining;
+      final rows = await _roomGiftRpc(function, {
+        ...params,
+        'p_quantity': chunk,
+      });
+      final list = List<Map<String, dynamic>>.from(rows as List);
+      if (list.isEmpty) throw Exception('تعذر إرسال الهدية');
+      first ??= list.first;
+      remaining -= chunk;
+    }
+    return first!;
+  }
+
   Future<Map<String, dynamic>> sendRoomGift({
     required String roomId,
     required String recipientId,
@@ -4037,15 +4061,15 @@ class SakiService {
     int quantity = 1,
   }) async {
     await ensureRoomMembership(roomId);
-    final rows = await _roomGiftRpc('send_room_gift', {
-      'p_room_id': roomId,
-      'p_recipient_id': recipientId,
-      'p_gift_id': giftId,
-      'p_quantity': quantity,
-    });
-    final list = List<Map<String, dynamic>>.from(rows as List);
-    if (list.isEmpty) throw Exception('تعذر إرسال الهدية');
-    return list.first;
+    return _sendRoomGiftInChunks(
+      function: 'send_room_gift',
+      params: {
+        'p_room_id': roomId,
+        'p_recipient_id': recipientId,
+        'p_gift_id': giftId,
+      },
+      quantity: quantity,
+    );
   }
 
   Future<Map<String, dynamic>> sendRoomLuckGift({
@@ -4055,15 +4079,15 @@ class SakiService {
     int quantity = 1,
   }) async {
     await ensureRoomMembership(roomId);
-    final rows = await _roomGiftRpc('send_room_luck_gift', {
-      'p_room_id': roomId,
-      'p_recipient_id': recipientId,
-      'p_gift_id': giftId,
-      'p_quantity': quantity,
-    });
-    final list = List<Map<String, dynamic>>.from(rows as List);
-    if (list.isEmpty) throw Exception('تعذر إرسال هدية الحظ');
-    return list.first;
+    return _sendRoomGiftInChunks(
+      function: 'send_room_luck_gift',
+      params: {
+        'p_room_id': roomId,
+        'p_recipient_id': recipientId,
+        'p_gift_id': giftId,
+      },
+      quantity: quantity,
+    );
   }
 
   Future<int> luckDailyPercent() async {
