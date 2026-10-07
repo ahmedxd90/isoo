@@ -333,6 +333,20 @@ class _LuckBagClaimDialogState extends State<LuckBagClaimDialog>
           .toString()
           .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
 
+  String _friendlyError(Object error) {
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('luck_bag_already_claimed')) {
+      return 'لقد استلمت هذه الحقيبة بالفعل';
+    }
+    if (raw.contains('luck_bag_closed') || raw.contains('luck_bag_empty')) {
+      return 'انتهت هذه الحقيبة أو لم تعد متاحة';
+    }
+    if (raw.contains('not_room_member')) {
+      return 'يجب أن تكون داخل الغرفة لاستلام الحقيبة';
+    }
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
   Future<void> _claim() async {
     if (_claiming || _result != null) return;
     setState(() {
@@ -350,7 +364,7 @@ class _LuckBagClaimDialogState extends State<LuckBagClaimDialog>
       if (mounted) {
         setState(() {
           _claiming = false;
-          _error = error.toString().replaceFirst('Exception: ', '');
+          _error = _friendlyError(error);
         });
       }
     }
