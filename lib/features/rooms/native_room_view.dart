@@ -758,7 +758,22 @@ class _NativeRoomViewState extends State<NativeRoomView> {
         ? Map<String, dynamic>.from(row['payload'] as Map)
         : <String, dynamic>{};
     final rawBody = row['body']?.toString() ?? '';
-    final body = rawBody.startsWith('http') ? 'أرسل هدية' : rawBody;
+    var body = rawBody.startsWith('http') ? 'أرسل هدية' : rawBody;
+    final isLuckGift = type == 'luck_multiplier' || payload['category'] == 'luck';
+    if (isLuckGift) {
+      final luckName = payload['name']?.toString() ?? 'هدية الحظ';
+      final multiplierRaw = payload['multiplier'];
+      final multiplier = multiplierRaw is num
+          ? multiplierRaw.toInt()
+          : int.tryParse(multiplierRaw?.toString() ?? '') ?? 1;
+      final rewardRaw = payload['reward_gold'];
+      final reward = rewardRaw is num
+          ? rewardRaw.toInt()
+          : int.tryParse(rewardRaw?.toString() ?? '') ?? 0;
+      body = multiplier > 1 && reward > 0
+          ? 'لقد حصلت على $luckName ×$multiplier وربحت ${_number(reward)} عملة ذهبية'
+          : 'أرسل هدية $luckName';
+    }
     final image =
         payload['image_url']?.toString() ??
         payload['thumbnail_url']?.toString();
