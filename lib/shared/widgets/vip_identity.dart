@@ -19,6 +19,12 @@ const vipNameGradients = <int, List<Color>>{
     Color(0xFFFFF1D0),
     Color(0xFFB145E9),
   ],
+  11: [
+    Color(0xFF8B5CF6),
+    Color(0xFFE9D5FF),
+    Color(0xFFFFD700),
+    Color(0xFF6D28D9),
+  ],
 };
 
 Color vipAccent(int level) =>
@@ -33,6 +39,7 @@ Color vipAccent(int level) =>
       8: const Color(0xFF26C6DA),
       9: const Color(0xFFFFC107),
       10: const Color(0xFFFF4500),
+      11: const Color(0xFF9B6BFF),
     }[level] ??
     Colors.white70;
 
@@ -40,7 +47,7 @@ int activeVipLevel(Map<String, dynamic> profile) {
   final level = (profile['vip_level'] as num?)?.toInt() ?? 0;
   final expiry = DateTime.tryParse(profile['vip_expires_at']?.toString() ?? '');
   return level > 0 && (expiry == null || expiry.isAfter(DateTime.now()))
-      ? level.clamp(0, 10)
+      ? level.clamp(0, 11)
       : 0;
 }
 
@@ -55,7 +62,9 @@ List<Map<String, dynamic>> profileRoleBadges(
     result.add({
       'key': 'vip',
       'name': merged['vip_label'] ?? 'VIP $vip',
-      'asset': 'assets/vip/title_vip$vip.png',
+      'asset': vip == 11
+          ? 'assets/vip/title_vip11.webp'
+          : 'assets/vip/title_vip$vip.png',
     });
   }
   final wealth = (merged['wealth_level'] as num?)?.toInt() ?? 0;

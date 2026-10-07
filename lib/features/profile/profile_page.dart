@@ -23,7 +23,6 @@ import 'family_square_page.dart';
 import 'tasks_page.dart';
 import 'redeem_code_page.dart';
 import 'user_profile_page.dart';
-import 'native_profile_destinations.dart';
 import 'love_house_page.dart';
 import '../../shared/widgets/vip_identity.dart';
 
@@ -150,13 +149,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     if (type == 'shipping_agent') {
       await _openShippingAgency();
-      return;
-    }
-    if (type == 'agency') {
-      await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const HostAgencyDashboardPage()),
-      );
-      if (mounted) _load();
       return;
     }
     if (type == 'level') {
@@ -490,30 +482,14 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
     final username = widget.profile['username']?.toString() ?? 'مستخدم SAKI';
     final avatar = widget.profile['avatar_url']?.toString();
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF5F6FA),
       body: SafeArea(
         bottom: false,
         child: Stack(
           children: [
             Positioned.fill(
-              child: DecoratedBox(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFFD3F9F2),
-                      Color(0xFFF4FBF9),
-                      Color(0xFFF8FAFC),
-                    ],
-                    stops: [0, .25, 1],
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 72, 16, 30),
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 30),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 448),
@@ -535,14 +511,22 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
                             }
                           },
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 10),
+                        _WalletBanner(onTap: () => widget.onModule('wallet')),
+                        const SizedBox(height: 12),
+                        _LevelVipBanners(
+                          wealthLevel: widget.wealthLevel,
+                          vipLevel: widget.vipLevel,
+                          onLevel: () => widget.onModule('level'),
+                          onVip: () => widget.onModule('vip'),
+                        ),
+                        const SizedBox(height: 12),
                         _MyShortcutGrid(
                           onTap: widget.onModule,
                           onMenu: widget.onMenu,
                         ),
                         const SizedBox(height: 12),
                         _MyProfileOptions(
-                          vipLevel: widget.vipLevel,
                           badgeCount: widget.badges.length,
                           isShippingAgent: widget.isShippingAgent,
                           isSuperAdmin: widget.isSuperAdmin,
@@ -551,7 +535,6 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
                         ),
                         const SizedBox(height: 12),
                         _MyExtraOptions(
-                          onFamily: () => _openOption('العائلة'),
                           onRedeem: () => _openOption('كود الاسترداد'),
                           onLogout: widget.onLogout,
                         ),
@@ -570,23 +553,16 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
                   constraints: const BoxConstraints(maxWidth: 448),
                   child: ClipRect(
                     child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                      filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
                       child: Container(
                         width: double.infinity,
-                        height: 56,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        height: 60,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: .85),
+                          color: const Color(0xFF6C1EB2).withValues(alpha: .24),
                           border: const Border(
-                            bottom: BorderSide(color: Color(0x80E2E8F0)),
+                            bottom: BorderSide(color: Color(0x33FFFFFF)),
                           ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x080F172A),
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Row(
                           children: [
@@ -594,25 +570,43 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
                               tooltip: 'رجوع',
                               onPressed: widget.onBack,
                               icon: const Icon(Icons.chevron_right_rounded),
-                              color: const Color(0xFF475569),
+                              color: Colors.white,
                             ),
                             const Expanded(
                               child: Text(
-                                'الملف الشخصي',
+                                'أنا',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Color(0xFF1E293B),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: .2,
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
                             ),
-                            IconButton(
-                              tooltip: 'تعديل الملف الشخصي',
+                            TextButton.icon(
                               onPressed: widget.onEdit,
-                              icon: const Icon(Icons.manage_accounts_outlined),
-                              color: const Color(0xFF0F766E),
+                              icon: const Icon(Icons.edit_rounded, size: 16),
+                              label: const Text('تعديل الملف الشخصي'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFFFFE08A),
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: .14,
+                                ),
+                                side: const BorderSide(
+                                  color: Color(0x66FFE08A),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -645,90 +639,407 @@ class _MyProfileCover extends StatelessWidget {
   final VoidCallback onAvatarTap, onCopy;
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      GestureDetector(
-        onTap: onAvatarTap,
-        child: Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: .12),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+  Widget build(BuildContext context) => SizedBox(
+    height: 326,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 190,
+          child: DecoratedBox(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF6C1EB2),
+                  Color(0xFFA83AF0),
+                  Color(0xFFCA68FF),
+                  Color(0x00F5F6FA),
+                ],
+                stops: [0, .42, .70, 1],
               ),
-            ],
-          ),
-          child: SakiAvatar(
-            url: avatar,
-            label: username,
-            radius: 44,
-            profile: profile,
-          ),
-        ),
-      ),
-      const SizedBox(height: 11),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Flexible(
-            child: VipNameText(
-              profile: {...profile, 'display_name': username},
-              fontSize: 20,
-              textAlign: TextAlign.center,
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: -78,
+                  left: -52,
+                  child: Container(
+                    width: 220,
+                    height: 220,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: .12),
+                        width: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 16,
+                  right: 22,
+                  child: Icon(
+                    Icons.auto_awesome,
+                    size: 23,
+                    color: Colors.white.withValues(alpha: .38),
+                  ),
+                ),
+                Positioned(
+                  top: 92,
+                  right: 142,
+                  child: Icon(
+                    Icons.auto_awesome,
+                    size: 14,
+                    color: Colors.white.withValues(alpha: .28),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 5),
-          WealthVipLabels(profile: profile, compact: true),
-        ],
-      ),
-      const SizedBox(height: 7),
-      InkWell(
-        onTap: onCopy,
-        borderRadius: BorderRadius.circular(30),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .68),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: const Color(0x80E2E8F0)),
-          ),
+        ),
+        Positioned(
+          top: 104,
+          left: 20,
+          right: 20,
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.copy_rounded,
-                size: 14,
-                color: Color(0xFF94A3B8),
+              GestureDetector(
+                onTap: onAvatarTap,
+                child: Container(
+                  width: 88,
+                  height: 88,
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        Color(0xFFFFE08A),
+                        Color(0xFFE6A836),
+                        Color(0xFFFFF1B8),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x330F111A),
+                        blurRadius: 14,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: SakiAvatar(
+                      url: avatar,
+                      label: username,
+                      radius: 41,
+                      profile: profile,
+                    ),
+                  ),
+                ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                'ID: ${profile['saki_id'] ?? '—'}',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: .35,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    VipNameText(
+                      profile: {...profile, 'display_name': username},
+                      fontSize: 19,
+                      textAlign: TextAlign.start,
+                    ),
+                    const SizedBox(height: 5),
+                    if ((profile['country']?.toString() ?? '').isNotEmpty)
+                      Text(
+                        profile['country'].toString(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF6B536E),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: onCopy,
+                      borderRadius: BorderRadius.circular(30),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .76),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: const Color(0x55FFFFFF)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.copy_rounded,
+                              size: 13,
+                              color: Color(0xFF8B6C91),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'ID: ${profile['saki_id'] ?? '—'}',
+                              style: const TextStyle(
+                                color: Color(0xFF63476C),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
+        Positioned(
+          top: 220,
+          left: 18,
+          right: 18,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .82),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFE8E2EC)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x100F172A),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    _MyHeroStat(
+                      value: '${stats['following'] ?? 0}',
+                      label: 'متابعة',
+                    ),
+                    _MyHeroDivider(),
+                    _MyHeroStat(
+                      value: '${stats['followers'] ?? 0}',
+                      label: 'متابعين',
+                    ),
+                    _MyHeroDivider(),
+                    _MyHeroStat(
+                      value: '${stats['visitors'] ?? 0}',
+                      label: 'زوار',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _WalletBanner extends StatelessWidget {
+  const _WalletBanner({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(23),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(23),
+        child: Container(
+          height: 116,
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [Color(0xFFFFD76A), Color(0xFFF2A922), Color(0xFFE88D17)],
+            ),
+            borderRadius: BorderRadius.circular(23),
+            border: Border.all(color: const Color(0xFFFFE9AE), width: 1.2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33D88911),
+                blurRadius: 14,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Image.asset(
+                'assets/profile_ui/icons/wallet_icon.webp',
+                width: 88,
+                height: 88,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'محفظة الذهب',
+                      style: TextStyle(
+                        color: Color(0xFF573208),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'الرصيد والذهب والماس',
+                      style: TextStyle(
+                        color: Color(0xFF704718),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_left_rounded, color: Color(0xFF75470F)),
+            ],
+          ),
+        ),
       ),
-      const SizedBox(height: 22),
-      Row(
-        children: [
-          _MyHeroStat(value: '${stats['visitors'] ?? 0}', label: 'زائر'),
-          _MyHeroDivider(),
-          _MyHeroStat(value: '${stats['following'] ?? 0}', label: 'متابعة'),
-          _MyHeroDivider(),
-          _MyHeroStat(value: '${stats['followers'] ?? 0}', label: 'متابعين'),
-        ],
+    ),
+  );
+}
+
+class _LevelVipBanners extends StatelessWidget {
+  const _LevelVipBanners({
+    required this.wealthLevel,
+    required this.vipLevel,
+    required this.onLevel,
+    required this.onVip,
+  });
+  final int wealthLevel, vipLevel;
+  final VoidCallback onLevel, onVip;
+
+  Widget _card({
+    required String title,
+    required String value,
+    required String image,
+    required List<Color> colors,
+    required VoidCallback onTap,
+  }) => Expanded(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            height: 82,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: colors,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: .7)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x140F172A),
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        value,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .88),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Image.asset(
+                  image,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-    ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 11),
+    child: Row(
+      children: [
+        _card(
+          title: 'المستوى',
+          value: 'LV.$wealthLevel',
+          image: 'assets/profile_ui/icons/level_icon.webp',
+          colors: const [Color(0xFF5AA7F7), Color(0xFF1768D2)],
+          onTap: onLevel,
+        ),
+        _card(
+          title: 'VIP',
+          value: 'VIP$vipLevel',
+          image: 'assets/profile_ui/icons/vip_icon.webp',
+          colors: const [Color(0xFF43C78D), Color(0xFF16824E)],
+          onTap: onVip,
+        ),
+      ],
+    ),
   );
 }
 
@@ -766,48 +1077,50 @@ class _MyShortcutGrid extends StatelessWidget {
   const _MyShortcutGrid({required this.onTap, required this.onMenu});
   final Future<void> Function(String) onTap;
   final Future<void> Function(String) onMenu;
+
   @override
   Widget build(BuildContext context) {
-    final items = <(String, String, IconData, Color, bool)>[
-      (
-        'المحفظة',
-        'wallet',
-        Icons.account_balance_wallet_rounded,
-        const Color(0xFFF59E0B),
-        true,
-      ),
+    final items = <(String, String, String, Color, bool)>[
       (
         'المهام',
         'المهام',
-        Icons.check_box_outlined,
+        'assets/profile_ui/icons/tasks_icon.webp',
         const Color(0xFF0EA5E9),
         false,
       ),
       (
         'المتجر',
         'store',
-        Icons.shopping_bag_outlined,
+        'assets/profile_ui/icons/store_icon.webp',
         const Color(0xFFF43F5E),
         true,
       ),
       (
-        'المستوى',
-        'level',
-        Icons.workspace_premium_outlined,
-        const Color(0xFF10B981),
-        true,
+        'العائلة',
+        'العائلة',
+        'assets/profile_ui/icons/family_icon.webp',
+        const Color(0xFF4F46E5),
+        false,
+      ),
+      (
+        'بيت الحب',
+        'بيت الحب',
+        'assets/profile_ui/icons/love_house_icon.webp',
+        const Color(0xFFE11D48),
+        false,
       ),
     ];
     return Container(
-      padding: const EdgeInsets.all(15),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF0EAF3)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x080F172A),
-            blurRadius: 8,
+            blurRadius: 9,
             offset: Offset(0, 3),
           ),
         ],
@@ -816,14 +1129,14 @@ class _MyShortcutGrid extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         crossAxisCount: 4,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 1.08,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 4,
+        childAspectRatio: 1.04,
         children: items
             .map(
               (item) => _ShortcutItem(
                 label: item.$1,
-                icon: item.$3,
+                imageAsset: item.$3,
                 color: item.$4,
                 onTap: () => item.$5 ? onTap(item.$2) : onMenu(item.$2),
               ),
@@ -837,14 +1150,14 @@ class _MyShortcutGrid extends StatelessWidget {
 class _ShortcutItem extends StatelessWidget {
   const _ShortcutItem({
     required this.label,
-    required this.icon,
+    required this.imageAsset,
     required this.color,
     required this.onTap,
   });
-  final String label;
-  final IconData icon;
+  final String label, imageAsset;
   final Color color;
   final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
@@ -853,23 +1166,28 @@ class _ShortcutItem extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: 48,
-          height: 48,
+          width: 52,
+          height: 52,
+          padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: .08),
-            borderRadius: BorderRadius.circular(16),
+            color: color.withValues(alpha: .09),
+            borderRadius: BorderRadius.circular(17),
           ),
-          child: Icon(icon, color: color, size: 23),
+          child: Image.asset(
+            imageAsset,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 6),
         Text(
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Color(0xFF334155),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -879,14 +1197,13 @@ class _ShortcutItem extends StatelessWidget {
 
 class _MyProfileOptions extends StatelessWidget {
   const _MyProfileOptions({
-    required this.vipLevel,
     required this.badgeCount,
     required this.isShippingAgent,
     required this.isSuperAdmin,
     required this.language,
     required this.onTap,
   });
-  final int vipLevel, badgeCount;
+  final int badgeCount;
   final bool isShippingAgent, isSuperAdmin;
   final String language;
   final Future<void> Function(String) onTap;
@@ -894,22 +1211,6 @@ class _MyProfileOptions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[
-      _MyOptionRow(
-        title: 'VIP',
-        icon: Icons.workspace_premium_rounded,
-        color: const Color(0xFFD97706),
-        background: const Color(0xFFFFF7E6),
-        trailing: vipLevel > 0 ? 'VIP $vipLevel' : 'انضم الآن',
-        trailingColor: const Color(0xFFD97706),
-        onTap: () => onTap('VIP'),
-      ),
-      _MyOptionRow(
-        title: 'بيت الحب',
-        icon: Icons.favorite_rounded,
-        color: const Color(0xFFE11D48),
-        background: const Color(0xFFFFF1F2),
-        onTap: () => onTap('بيت الحب'),
-      ),
       _MyOptionRow(
         title: 'الشارة',
         icon: Icons.verified_user_outlined,
@@ -921,7 +1222,7 @@ class _MyProfileOptions extends StatelessWidget {
       if (isShippingAgent)
         _MyOptionRow(
           title: 'وكالة شحن',
-          icon: Icons.credit_card_rounded,
+          imageAsset: 'assets/profile_ui/icons/shipping_icon.webp',
           color: const Color(0xFF0F9F8D),
           background: const Color(0xFFE9FBF7),
           trailing: 'نشطة',
@@ -930,7 +1231,7 @@ class _MyProfileOptions extends StatelessWidget {
       if (isSuperAdmin)
         _MyOptionRow(
           title: 'لوحة التحكم',
-          icon: Icons.dashboard_outlined,
+          imageAsset: 'assets/profile_ui/icons/dashboard_icon.webp',
           color: const Color(0xFFEA580C),
           background: const Color(0xFFFFF7ED),
           trailing: 'مشرف',
@@ -953,6 +1254,7 @@ class _MyProfileOptions extends StatelessWidget {
       ),
     ];
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -986,21 +1288,17 @@ class _MyProfileOptions extends StatelessWidget {
 }
 
 class _MyExtraOptions extends StatelessWidget {
-  const _MyExtraOptions({
-    required this.onFamily,
-    required this.onRedeem,
-    required this.onLogout,
-  });
-  final VoidCallback onFamily, onRedeem, onLogout;
+  const _MyExtraOptions({required this.onRedeem, required this.onLogout});
+  final VoidCallback onRedeem, onLogout;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       const Padding(
-        padding: EdgeInsets.fromLTRB(4, 1, 4, 8),
+        padding: EdgeInsets.fromLTRB(20, 1, 20, 8),
         child: Text(
-          'خدمات حسابي',
+          'خدمات الحساب',
           style: TextStyle(
             color: Color(0xFF475569),
             fontSize: 13,
@@ -1009,6 +1307,7 @@ class _MyExtraOptions extends StatelessWidget {
         ),
       ),
       Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -1018,22 +1317,8 @@ class _MyExtraOptions extends StatelessWidget {
         child: Column(
           children: [
             _MyOptionRow(
-              title: 'العائلة',
-              icon: Icons.groups_2_outlined,
-              color: const Color(0xFF4F46E5),
-              background: const Color(0xFFEEF2FF),
-              onTap: onFamily,
-            ),
-            const Divider(
-              height: 1,
-              thickness: .6,
-              color: Color(0xFFF1F5F9),
-              indent: 12,
-              endIndent: 12,
-            ),
-            _MyOptionRow(
               title: 'كود الاسترداد',
-              icon: Icons.confirmation_number_outlined,
+              imageAsset: 'assets/profile_ui/icons/redeem_icon.webp',
               color: const Color(0xFFE11D48),
               background: const Color(0xFFFFF1F2),
               onTap: onRedeem,
@@ -1062,18 +1347,18 @@ class _MyExtraOptions extends StatelessWidget {
 class _MyOptionRow extends StatelessWidget {
   const _MyOptionRow({
     required this.title,
-    required this.icon,
+    this.icon,
+    this.imageAsset,
     required this.color,
     required this.background,
     required this.onTap,
     this.trailing,
-    this.trailingColor = const Color(0xFF64748B),
   });
   final String title;
-  final IconData icon;
+  final IconData? icon;
+  final String? imageAsset;
   final Color color, background;
   final String? trailing;
-  final Color trailingColor;
   final VoidCallback onTap;
 
   @override
@@ -1089,11 +1374,23 @@ class _MyOptionRow extends StatelessWidget {
             Container(
               width: 36,
               height: 36,
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: background,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: color, size: 19),
+              child: imageAsset == null
+                  ? Icon(icon ?? Icons.circle, color: color, size: 19)
+                  : Image.asset(
+                      imageAsset!,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (_, _, _) => Icon(
+                        icon ?? Icons.auto_awesome,
+                        color: color,
+                        size: 19,
+                      ),
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1110,7 +1407,7 @@ class _MyOptionRow extends StatelessWidget {
               Text(
                 trailing!,
                 style: TextStyle(
-                  color: trailingColor,
+                  color: const Color(0xFF64748B),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -2341,29 +2638,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             Center(
               child: GestureDetector(
                 onTap: _chooseAvatar,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _avatarPreview(),
-                    Positioned(
-                      bottom: -2,
-                      right: -2,
-                      child: Container(
-                        width: 34,
-                        height: 34,
-                        decoration: const BoxDecoration(
-                          color: _orange,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                child: _avatarPreview(),
               ),
             ),
             const SizedBox(height: 14),

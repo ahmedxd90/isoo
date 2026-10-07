@@ -789,7 +789,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                             final user = _users[index];
                             final level =
                                 ((user['vip_level'] as num?)?.toInt() ?? 0)
-                                    .clamp(0, 10);
+                                    .clamp(0, 11);
                             final banned = user['is_banned'] == true;
                             return Container(
                               padding: const EdgeInsets.all(12),

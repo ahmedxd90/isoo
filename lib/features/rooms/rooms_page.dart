@@ -21,6 +21,7 @@ import '../../core/room_background_bridge.dart';
 import '../../core/room_session.dart';
 import '../search/search_page.dart';
 import 'ranking_page.dart';
+import 'home_leaderboard_cards.dart';
 import 'room_settings_page.dart';
 import 'pk_battle_page.dart';
 import 'cinema_player.dart';
@@ -56,10 +57,9 @@ class _NoopRoomBroadcastChannel {
 
 const _roomPrimary = Color(0xFFFF6B35);
 const _roomSecondary = Color(0xFF06B6D4);
-const _roomTrophyGold = Color(0xFFF3B83F);
-const _roomTrendOrange = Color(0xFFFF6B35);
-const _roomBg = Colors.white;
 const _roomMuted = Color(0xFF64748B);
+const _homeViolet = Color(0xFF8B5CF6);
+const _homePink = Color(0xFFEC4899);
 const _nativeRoomBg = Color(0xFF0D0E12);
 const _nativeRoomGlass = Color(0x73000000);
 const _nativeRoomBorder = Color(0x26FFFFFF);
@@ -892,7 +892,7 @@ class _RoomsPageState extends State<RoomsPage> {
   Set<String> _followedRoomIds = <String>{};
   bool _loading = true;
   bool _followingOnly = false;
-  String _country = 'الترند';
+  String _country = 'الكل';
   StreamSubscription<void>? _roomPresenceSubscription;
   Timer? _roomRefreshTimer;
 
@@ -964,7 +964,7 @@ class _RoomsPageState extends State<RoomsPage> {
     return _rooms.where((room) {
       final country = (room['country'] as String? ?? '').toLowerCase();
       final matchesCountry =
-          _country == 'الترند' || country.contains(_country.toLowerCase());
+          _country == 'الكل' || country.contains(_country.toLowerCase());
       final matchesFollowing =
           !_followingOnly || _followedRoomIds.contains(room['id']?.toString());
       return matchesCountry && matchesFollowing;
@@ -975,7 +975,10 @@ class _RoomsPageState extends State<RoomsPage> {
     final values = <String>{};
     for (final room in _rooms) {
       final value = (room['country'] as String? ?? '').trim();
-      if (value.isNotEmpty && value != 'الكل' && value != 'ترند') {
+      if (value.isNotEmpty &&
+          value != 'الكل' &&
+          value != 'ترند' &&
+          value != 'الترند') {
         values.add(value);
       }
     }
@@ -985,6 +988,14 @@ class _RoomsPageState extends State<RoomsPage> {
   Future<void> _search() async =>
       Navigator.of(context)
           .push(MaterialPageRoute(builder: (_) => const SearchPage()));
+
+  Future<void> _openRanking(int initialIndex) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => RankingPage(initialIndex: initialIndex),
+      ),
+    );
+  }
 
   Future<void> _create() async {
     try {
@@ -1019,6 +1030,32 @@ class _RoomsPageState extends State<RoomsPage> {
     if (id == null || id.isEmpty) return;
     final resolved = await _service.roomById(id);
     if (!mounted || resolved == null) return;
+    final current = RoomSessionController.instance.room;
+    if (current?['id']?.toString() == id) return;
+    if (current != null) {
+      final move = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('الانتقال إلى الغرفة؟'),
+          content: Text(
+            'أنت الآن في غرفة أخرى. هل تريد الانتقال إلى ${resolved['name'] ?? 'الغرفة'} التي أُرسلت فيها الهدية؟',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('انتقال'),
+            ),
+          ],
+        ),
+      );
+      if (move != true) return;
+      await RoomSessionController.instance.close();
+      if (!mounted) return;
+    }
     await Navigator.of(context).push<void>(
       MaterialPageRoute(builder: (_) => RoomDetailPage(room: resolved)),
     );
@@ -1027,7 +1064,7 @@ class _RoomsPageState extends State<RoomsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _roomBg,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white.withValues(alpha: .95),
         surfaceTintColor: Colors.white,
@@ -1041,7 +1078,7 @@ class _RoomsPageState extends State<RoomsPage> {
               selected: !_followingOnly,
               onTap: () => setState(() {
                 _followingOnly = false;
-                _country = 'الترند';
+                _country = 'الكل';
               }),
             ),
             const SizedBox(width: 24),
@@ -1053,13 +1090,6 @@ class _RoomsPageState extends State<RoomsPage> {
           ],
         ),
         actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 2),
-            child: _AnimatedTrophyButton(
-              onTap: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const RankingPage())),
-            ),
-          ),
           IconButton(
             onPressed: _search,
             icon: const FaIcon(
@@ -1077,9 +1107,7 @@ class _RoomsPageState extends State<RoomsPage> {
                 height: 42,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [_roomPrimary, _roomSecondary],
-                  ),
+                  gradient: LinearGradient(colors: [_homeViolet, _homePink]),
                 ),
                 child: const Center(
                   child: FaIcon(
@@ -1104,9 +1132,17 @@ class _RoomsPageState extends State<RoomsPage> {
                   onRefresh: _load,
                   child: CustomScrollView(
                     slivers: [
-                      if (!_followingOnly && _banners.isNotEmpty)
+                      if (!_followingOnly)
                         SliverToBoxAdapter(
-                          child: RoomBannerCarousel(banners: _banners),
+                          child: _banners.isEmpty
+                              ? _HomeHeroBanner(roomCount: _rooms.length)
+                              : RoomBannerCarousel(banners: _banners),
+                        ),
+                      if (!_followingOnly)
+                        SliverToBoxAdapter(
+                          child: HomeLeaderboardCards(
+                            onOpenRanking: _openRanking,
+                          ),
                         ),
                       if (!_followingOnly)
                         SliverToBoxAdapter(
@@ -1128,22 +1164,18 @@ class _RoomsPageState extends State<RoomsPage> {
                         )
                       else
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 120),
-                          sliver: SliverGrid(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                          sliver: SliverList(
                             delegate: SliverChildBuilderDelegate(
-                              (_, index) => RoomGridCard(
-                                room: _visibleRooms[index],
-                                rank: index + 1,
+                              (_, index) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _ReferenceRoomCard(
+                                  room: _visibleRooms[index],
+                                  rank: index + 1,
+                                ),
                               ),
                               childCount: _visibleRooms.length,
                             ),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 10,
-                                  mainAxisSpacing: 10,
-                                  childAspectRatio: .72,
-                                ),
                           ),
                         ),
                     ],
@@ -1154,6 +1186,108 @@ class _RoomsPageState extends State<RoomsPage> {
       ),
     );
   }
+}
+
+class _HomeHeroBanner extends StatelessWidget {
+  const _HomeHeroBanner({required this.roomCount});
+  final int roomCount;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: SizedBox(
+        height: 142,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/home_ui/hero_banner.webp',
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF312E81), Color(0xFF831843)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                ),
+              ),
+            ),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xD91A102B),
+                    Color(0x552C1238),
+                    Color(0x221A102B),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+              ),
+            ),
+            Positioned(
+              left: 18,
+              top: 23,
+              child: SizedBox(
+                width: 245,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: .16),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: const Text(
+                        'SAKI • غرف صوتية',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'مساحتك لصوتٍ أقرب',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      roomCount == 0
+                          ? 'استكشف مجتمع SAKI الصوتي'
+                          : '$roomCount غرفة ظاهرة من الخادم الآن',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF5D0FE),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _RoomHeaderTab extends StatelessWidget {
@@ -1175,7 +1309,7 @@ class _RoomHeaderTab extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: selected ? _roomPrimary : Colors.transparent,
+            color: selected ? _homeViolet : Colors.transparent,
             width: 3,
           ),
         ),
@@ -1213,10 +1347,14 @@ class _TrendCountryBar extends StatelessWidget {
       itemBuilder: (_, index) {
         if (index == 0) {
           return _TrendPill(
-            selected: selected == 'الترند',
-            onTap: () => onSelected('الترند'),
-            label: 'الترند',
-            child: const _TrendFlame(),
+            selected: selected == 'الكل',
+            onTap: () => onSelected('الكل'),
+            label: 'الكل',
+            child: const Icon(
+              Icons.public_rounded,
+              color: _homeViolet,
+              size: 21,
+            ),
           );
         }
         final country = countries[index - 1];
@@ -1255,19 +1393,19 @@ class _TrendPill extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: selected
             ? const LinearGradient(
-                colors: [Color(0xFFFFF1EB), Color(0xFFFFD6C7)],
+                colors: [Color(0xFFF5F3FF), Color(0xFFFCE7F3)],
               )
             : null,
         color: selected ? null : Colors.white,
         borderRadius: BorderRadius.circular(17),
         border: Border.all(
-          color: selected ? _roomTrendOrange : const Color(0xFFE8EAF0),
+          color: selected ? _homeViolet : const Color(0xFFE8EAF0),
           width: selected ? 1.4 : 1,
         ),
         boxShadow: [
           BoxShadow(
             color: selected
-                ? _roomTrendOrange.withValues(alpha: .18)
+                ? _homeViolet.withValues(alpha: .18)
                 : Colors.black.withValues(alpha: .05),
             blurRadius: selected ? 12 : 7,
             offset: const Offset(0, 3),
@@ -1283,7 +1421,7 @@ class _TrendPill extends StatelessWidget {
             label,
             style: TextStyle(
               color: selected
-                  ? const Color(0xFFB83D18)
+                  ? const Color(0xFF6D28D9)
                   : const Color(0xFF374151),
               fontSize: 11,
               fontWeight: FontWeight.w900,
@@ -1295,7 +1433,7 @@ class _TrendPill extends StatelessWidget {
               width: 5,
               height: 5,
               decoration: const BoxDecoration(
-                color: _roomTrendOrange,
+                color: _homePink,
                 shape: BoxShape.circle,
               ),
             ),
@@ -1306,135 +1444,86 @@ class _TrendPill extends StatelessWidget {
   );
 }
 
-class _TrendFlame extends StatefulWidget {
-  const _TrendFlame();
-  @override
-  State<_TrendFlame> createState() => _TrendFlameState();
-}
-
-class _TrendFlameState extends State<_TrendFlame>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _controller,
-    builder: (_, child) => Transform.translate(
-      offset: Offset(0, -1.5 * _controller.value),
-      child: Transform.rotate(
-        angle: (_controller.value - .5) * .08,
-        child: child,
-      ),
-    ),
-    child: Image.asset(
-      'assets/saki_trending_flame.png',
-      width: 27,
-      height: 27,
-      fit: BoxFit.contain,
-    ),
-  );
-}
-
 String _flagForCountry(String country) {
+  final indicators = country.runes
+      .where((rune) => rune >= 0x1F1E6 && rune <= 0x1F1FF)
+      .take(2)
+      .toList();
+  if (indicators.length == 2) return String.fromCharCodes(indicators);
+  final key = country.trim().toLowerCase();
   const flags = {
     'السعودية': '🇸🇦',
+    'saudi arabia': '🇸🇦',
+    'saudi': '🇸🇦',
+    'sa': '🇸🇦',
     'المغرب': '🇲🇦',
+    'morocco': '🇲🇦',
+    'ma': '🇲🇦',
     'مصر': '🇪🇬',
+    'egypt': '🇪🇬',
+    'eg': '🇪🇬',
     'الإمارات': '🇦🇪',
+    'الامارات': '🇦🇪',
+    'united arab emirates': '🇦🇪',
+    'uae': '🇦🇪',
+    'ae': '🇦🇪',
     'العراق': '🇮🇶',
+    'iraq': '🇮🇶',
+    'iq': '🇮🇶',
     'الكويت': '🇰🇼',
+    'kuwait': '🇰🇼',
+    'kw': '🇰🇼',
     'قطر': '🇶🇦',
+    'qatar': '🇶🇦',
+    'qa': '🇶🇦',
     'البحرين': '🇧🇭',
+    'bahrain': '🇧🇭',
+    'bh': '🇧🇭',
     'عمان': '🇴🇲',
+    'oman': '🇴🇲',
+    'om': '🇴🇲',
     'الأردن': '🇯🇴',
+    'الاردن': '🇯🇴',
+    'jordan': '🇯🇴',
+    'jo': '🇯🇴',
     'لبنان': '🇱🇧',
+    'lebanon': '🇱🇧',
+    'lb': '🇱🇧',
     'سوريا': '🇸🇾',
+    'syria': '🇸🇾',
+    'sy': '🇸🇾',
     'اليمن': '🇾🇪',
+    'yemen': '🇾🇪',
+    'ye': '🇾🇪',
     'الجزائر': '🇩🇿',
+    'algeria': '🇩🇿',
+    'dz': '🇩🇿',
     'تونس': '🇹🇳',
+    'tunisia': '🇹🇳',
+    'tn': '🇹🇳',
     'ليبيا': '🇱🇾',
+    'libya': '🇱🇾',
+    'ly': '🇱🇾',
     'السودان': '🇸🇩',
+    'sudan': '🇸🇩',
+    'sd': '🇸🇩',
     'فلسطين': '🇵🇸',
+    'palestine': '🇵🇸',
+    'ps': '🇵🇸',
     'موريتانيا': '🇲🇷',
+    'mauritania': '🇲🇷',
+    'mr': '🇲🇷',
     'الصومال': '🇸🇴',
+    'somalia': '🇸🇴',
+    'so': '🇸🇴',
     'جيبوتي': '🇩🇯',
+    'djibouti': '🇩🇯',
+    'dj': '🇩🇯',
     'جزر القمر': '🇰🇲',
+    'comoros': '🇰🇲',
+    'km': '🇰🇲',
   };
-  return flags[country] ?? '🌐';
-}
-
-class _AnimatedTrophyButton extends StatefulWidget {
-  const _AnimatedTrophyButton({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  State<_AnimatedTrophyButton> createState() => _AnimatedTrophyButtonState();
-}
-
-class _AnimatedTrophyButtonState extends State<_AnimatedTrophyButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1800),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: widget.onTap,
-    child: AnimatedBuilder(
-      animation: _controller,
-      builder: (_, child) => Transform.translate(
-        offset: Offset(0, -1.5 * _controller.value),
-        child: Transform.rotate(
-          angle: (_controller.value - .5) * .10,
-          child: child,
-        ),
-      ),
-      child: Container(
-        width: 42,
-        height: 42,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: _roomTrophyGold.withValues(alpha: .10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _roomTrophyGold.withValues(alpha: .35)),
-        ),
-        child: Image.asset(
-          'assets/saki_leaderboard_trophy.png',
-          width: 34,
-          height: 34,
-          fit: BoxFit.contain,
-        ),
-      ),
-    ),
-  );
+  return flags[key] ?? '🌐';
 }
 
 class RoomBannerCarousel extends StatefulWidget {
@@ -1450,33 +1539,14 @@ class _RoomBannerCarouselState extends State<RoomBannerCarousel> {
   Timer? _timer;
   int _index = 0;
 
-  final _fallback = const [
-    {
-      'image': 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=800&q=80',
-      'title': 'مهرجان الصيف',
-      'subtitle': 'جوائز كبرى بانتظارك',
-    },
-    {
-      'image': 'https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&w=800&q=80',
-      'title': 'تحدي المواهب',
-      'subtitle': 'كن النجم الأول',
-    },
-    {
-      'image': 'https://images.unsplash.com/photo-1516280440502-37f8e10bc2eb?auto=format&fit=crop&w=800&q=80',
-      'title': 'صداقات جديدة',
-      'subtitle': 'استكشف غرف الدردشة',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
     _controller = PageController();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!mounted) return;
-      final count = widget.banners.isEmpty
-          ? _fallback.length
-          : widget.banners.length;
+      final count = widget.banners.length;
+      if (count < 2) return;
       _index = (_index + 1) % count;
       _controller.animateToPage(
         _index,
@@ -1495,7 +1565,8 @@ class _RoomBannerCarouselState extends State<RoomBannerCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    final data = widget.banners.isEmpty ? _fallback : widget.banners;
+    final data = widget.banners;
+    if (data.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 164,
       child: PageView.builder(
@@ -1578,6 +1649,16 @@ class _ReferenceRoomCard extends StatelessWidget {
     final name = room['name'] as String? ?? 'غرفة SAKI';
     final image = room['image_url'] as String?;
     final country = room['country'] as String? ?? '';
+    final rawOwner = room['profiles'];
+    final owner = rawOwner is Map
+        ? Map<String, dynamic>.from(rawOwner)
+        : const <String, dynamic>{};
+    final ownerName = (owner['username'] ?? room['owner_username'] ?? '')
+        .toString()
+        .trim();
+    final ownerAvatar = (owner['avatar_url'] ?? room['owner_avatar_url'] ?? '')
+        .toString()
+        .trim();
     final members = room['_members_count'] as int? ?? 0;
     final description = (room['description'] as String?)?.trim();
     final official =
@@ -1589,7 +1670,7 @@ class _ReferenceRoomCard extends StatelessWidget {
         ? const Color(0xFF94A3B8)
         : rank == 3
         ? const Color(0xFFD97706)
-        : const Color(0xFFE2E8F0);
+        : const Color(0xFFE9D5FF);
     final badgeIcon = rank == 1
         ? FontAwesomeIcons.crown
         : rank == 2
@@ -1658,35 +1739,36 @@ class _ReferenceRoomCard extends StatelessWidget {
                             ),
                           ),
                   ),
-                  Positioned(
-                    left: 4,
-                    right: 4,
-                    bottom: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .92),
-                        borderRadius: BorderRadius.circular(7),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const _ReferenceWave(),
-                          const Text(
-                            'مباشر',
-                            style: TextStyle(
-                              color: Color(0xFFDB2777),
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
+                  if (members > 0)
+                    Positioned(
+                      left: 4,
+                      right: 4,
+                      bottom: 4,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .92),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const _ReferenceWave(),
+                            const Text(
+                              'مباشر',
+                              style: TextStyle(
+                                color: Color(0xFFDB2777),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -1729,6 +1811,62 @@ class _ReferenceRoomCard extends StatelessWidget {
                         ),
                     ],
                   ),
+                  if (ownerName.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        ClipOval(
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: ownerAvatar.isEmpty
+                                ? const ColoredBox(
+                                    color: Color(0xFFF3F4F6),
+                                    child: Icon(
+                                      Icons.person_rounded,
+                                      color: Color(0xFF8B5CF6),
+                                      size: 14,
+                                    ),
+                                  )
+                                : Image.network(
+                                    ownerAvatar,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const ColoredBox(
+                                      color: Color(0xFFF3F4F6),
+                                      child: Icon(
+                                        Icons.person_rounded,
+                                        color: Color(0xFF8B5CF6),
+                                        size: 14,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        const Text(
+                          'المالك:',
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            ownerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFF6D28D9),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (official)
                     Container(
                       margin: const EdgeInsets.only(top: 5, bottom: 4),
@@ -1750,19 +1888,19 @@ class _ReferenceRoomCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (!official) const SizedBox(height: 8),
-                  Text(
-                    description == null || description.isEmpty
-                        ? 'انضم الآن وشارك في الحوار الصوتي المباشر.'
-                        : description,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                  if (description != null && description.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 9),
                   Container(
                     padding: const EdgeInsets.only(top: 7),
@@ -2472,10 +2610,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     });
     _roomMembersSubscription = _membersStream.listen((members) {
       if (!mounted) return;
-      final previousIds = _roomMembers.map((m) => m['id']).toSet();
-      final entrant = members
-          .where((m) => _membersInitialized && !previousIds.contains(m['id']))
-          .firstOrNull;
+      final previousIds = _roomMembers
+          .map((m) => m['id']?.toString())
+          .whereType<String>()
+          .toSet();
+      final wasInitialized = _membersInitialized;
+      final currentUserId = _service.currentUser?.id;
+      final entrant = members.where((member) {
+        final id = member['id']?.toString();
+        if (id == null || id.isEmpty) return false;
+        if (!wasInitialized) return id == currentUserId;
+        return !previousIds.contains(id);
+      }).firstOrNull;
       setState(() {
         _roomMembers = members;
         _membersInitialized = true;
@@ -2691,14 +2837,26 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       payload['sent_at'] ??= gift['created_at'];
       final multiplier = (payload['multiplier'] as num?)?.toInt() ?? 0;
       final isLuckResult = multiplier >= 500;
-      if (isLuckResult && !_hideGiftBanners) {
+      final isFeaturedLuck = const {250, 500, 1000}.contains(multiplier);
+      final rawGiftGold = payload['gift_price'] ?? payload['total_price'];
+      final giftGold = rawGiftGold is num
+          ? rawGiftGold.toInt()
+          : int.tryParse(rawGiftGold?.toString() ?? '') ?? 0;
+      final hasGlobalGiftRibbon = giftGold >= 100000;
+      if (!hasGlobalGiftRibbon &&
+          isLuckResult &&
+          !isFeaturedLuck &&
+          !_hideGiftBanners) {
         _activeLuckBanner = payload;
         _luckBannerTimer?.cancel();
         _luckBannerTimer = Timer(const Duration(seconds: 5), () {
           if (mounted) setState(() => _activeLuckBanner = null);
         });
       }
-      if (!_hideGiftBanners && !isLuckResult) {
+      if (!hasGlobalGiftRibbon &&
+          !_hideGiftBanners &&
+          !isLuckResult &&
+          !isFeaturedLuck) {
         _activeGiftBanner = payload;
         _giftBannerTimer?.cancel();
         _giftBannerTimer = Timer(const Duration(seconds: 4), () {
@@ -5497,40 +5655,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             payload: _activeLuckBanner!,
             luck: true,
           ),
-        if (_entranceProfile != null)
-          RoomEntranceBanner(
-            key: ValueKey(_entranceProfile!['id']?.toString()),
-            profile: _entranceProfile!,
-            product: _entranceProduct,
-            onFinished: () {
-              if (!mounted) return;
-              setState(() {
-                _entranceProfile = null;
-                _entranceProduct = null;
-              });
-            },
-          ),
-        if (_entranceProfile != null && _entranceProduct != null)
-          GiftFullScreenOverlay(
-            key: ValueKey(
-              'entrance_${_entranceProfile!['id']}_${_entranceProduct!['id']}',
-            ),
-            message: {
-              'payload': {
-                ..._entranceProduct!,
-                'thumbnail_url':
-                    _entranceProduct!['thumbnail_url'] ??
-                    _entranceProduct!['media_url'],
-              },
-            },
-            onClose: () {
-              if (!mounted) return;
-              setState(() {
-                _entranceProfile = null;
-                _entranceProduct = null;
-              });
-            },
-          ),
         if (_luckBags.isNotEmpty)
           LuckBagCard(
             key: ValueKey('luck_card_${_luckBags.first['id']}'),
@@ -5557,6 +5681,37 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               onTap: _sendComboAgain,
               onExpired: _expireGiftCombo,
             ),
+          ),
+        if (_entranceProfile != null && _entranceProduct != null)
+          GiftFullScreenOverlay(
+            key: ValueKey(
+              'entrance_${_entranceProfile!['id']}_${_entranceProduct!['id']}',
+            ),
+            message: {
+              'payload': {
+                ..._entranceProduct!,
+                'thumbnail_url':
+                    _entranceProduct!['thumbnail_url'] ??
+                    _entranceProduct!['media_url'],
+              },
+            },
+            onClose: () {
+              if (!mounted) return;
+              setState(() => _entranceProduct = null);
+            },
+          ),
+        if (_entranceProfile != null)
+          RoomEntranceBanner(
+            key: ValueKey(_entranceProfile!['id']?.toString()),
+            profile: _entranceProfile!,
+            product: _entranceProduct,
+            onFinished: () {
+              if (!mounted) return;
+              setState(() {
+                _entranceProfile = null;
+                _entranceProduct = null;
+              });
+            },
           ),
       ],
     );
@@ -5754,16 +5909,23 @@ class RoomEntranceBanner extends StatefulWidget {
 }
 
 class _RoomEntranceBannerState extends State<RoomEntranceBanner>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 3600),
   )..forward();
+  late final AnimationController _shine = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1900),
+  )..repeat();
 
   int get _vip => activeVipLevel(widget.profile);
-  List<Color> get _colors => _vip > 0
-      ? (vipNameGradients[_vip] ?? const [Color(0xFF64748B), Color(0xFF334155)])
-      : const [Color(0xFF64748B), Color(0xFF374151), Color(0xFF9CA3AF)];
+  List<Color> get _vipColors =>
+      vipNameGradients[_vip] ?? const [Color(0xFF64748B), Color(0xFF334155)];
+  Color get _accent => _vipColors.first;
+  String get _entryAsset => _vip >= 4 && _vip <= 11
+      ? 'assets/room_effects/entry_vip$_vip.webp'
+      : 'assets/room_effects/entry_normal.webp';
 
   String get _name =>
       widget.profile['display_name']?.toString().trim().isNotEmpty == true
@@ -5781,15 +5943,23 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
   @override
   void dispose() {
     _controller.dispose();
+    _shine.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final screen = MediaQuery.sizeOf(context);
+    final width = math
+        .min(420.0, screen.width - 24)
+        .clamp(240.0, 420.0)
+        .toDouble();
+    final height = width * 686 / 1600;
+    final hasVipArt = _vip >= 4 && _vip <= 11;
     return Positioned(
       left: 0,
       right: 0,
-      top: MediaQuery.sizeOf(context).height * .40,
+      top: screen.height * .40,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (_, child) {
@@ -5804,85 +5974,164 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
             child: child,
           );
         },
-        child: Align(
-          alignment: Alignment.center,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 18),
-            constraints: const BoxConstraints(minHeight: 56, maxHeight: 60),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: _colors,
-              ),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: _vip > 0
-                    ? Colors.white.withValues(alpha: .72)
-                    : Colors.white38,
-                width: 1.1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: (_colors.length > 1 ? _colors[1] : _colors.first)
-                      .withValues(alpha: .55),
-                  blurRadius: 18,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        child: Center(
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                SakiAvatar(
-                  url: widget.profile['avatar_url']?.toString(),
-                  label: _name,
-                  radius: 21,
+                Image.asset(
+                  _entryAsset,
+                  fit: BoxFit.fill,
+                  errorBuilder: (_, _, _) => DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: .55),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 9),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 170),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                AnimatedBuilder(
+                  animation: _shine,
+                  builder: (_, _) => Align(
+                    alignment: Alignment(-1.8 + 3.6 * _shine.value, 0),
+                    child: IgnorePointer(
+                      child: Transform.rotate(
+                        angle: -.16,
+                        child: Container(
+                          width: width * .075,
+                          height: height * .76,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.white.withValues(alpha: 0),
+                                Colors.white.withValues(
+                                  alpha: hasVipArt ? .22 : .12,
+                                ),
+                                Colors.white.withValues(alpha: 0),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_vip == 9)
+                  Positioned(
+                    left: width * .16,
+                    right: width * .16,
+                    top: height * .29,
+                    bottom: height * .29,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .48),
+                        borderRadius: BorderRadius.circular(height * .18),
+                        border: Border.all(
+                          color: _accent.withValues(alpha: .56),
+                        ),
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: width * .15,
+                    vertical: height * .22,
+                  ),
+                  child: Row(
                     children: [
-                      Text(
-                        _name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
+                      SakiAvatar(
+                        url: widget.profile['avatar_url']?.toString(),
+                        label: _name,
+                        radius: 22,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                shadows: [
+                                  Shadow(color: Colors.black87, blurRadius: 5),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            const Text(
+                              'انضم إلى الغرفة',
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                shadows: [
+                                  Shadow(color: Colors.black87, blurRadius: 5),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        _vip > 0
-                            ? 'VIP $_vip • انضم إلى الغرفة'
-                            : 'انضم إلى الغرفة',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
+                      if (hasVipArt) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: _vipColors),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: .78),
+                              width: .8,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _accent.withValues(alpha: .5),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.workspace_premium_rounded,
+                                color: Colors.white,
+                                size: 13,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'VIP $_vip',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
-                if (widget.product != null) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.auto_awesome, color: Colors.white, size: 17),
-                  const SizedBox(width: 4),
-                  Text(
-                    widget.product!['name']?.toString() ?? 'دخولية',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -7532,7 +7781,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
     vsync: this,
   );
   int get _vip =>
-      ((widget.profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+      ((widget.profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 11);
   Color get _color => vipEntranceColors[_vip] ?? const Color(0xFF7C4DFF);
   String get _asset => _vip >= 4
       ? 'assets/vip/user_center_svip$_vip.svga'
@@ -7545,7 +7794,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
   }
 
   Future<void> _load() async {
-    if (_vip < 1) return;
+    if (_vip < 1 || _vip == 11) return;
     try {
       final movie = await SVGAParser.shared.decodeFromAssets(_asset);
       if (!mounted) return;

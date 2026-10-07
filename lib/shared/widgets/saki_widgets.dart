@@ -218,9 +218,29 @@ class _SakiAvatarState extends State<SakiAvatar>
     );
   }
 
+  bool get _hasVip11Frame {
+    final profile = widget.profile;
+    final level = (profile?['vip_level'] as num?)?.toInt() ?? 0;
+    final expiry = DateTime.tryParse(
+      profile?['vip_expires_at']?.toString() ?? '',
+    );
+    return level >= 11 && (expiry == null || expiry.isAfter(DateTime.now()));
+  }
+
+  Widget _vip11Frame(double size) => IgnorePointer(
+    child: Image.asset(
+      'assets/vip/frame_vip11.webp',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final activeFrameUrl = _frame?['media_url']?.toString();
+    final hasVip11Frame = _hasVip11Frame;
     final avatar = SizedBox(
       width: widget.radius * 2,
       height: widget.radius * 2,
@@ -253,7 +273,19 @@ class _SakiAvatarState extends State<SakiAvatar>
           children: [
             avatar,
             IgnorePointer(child: _frameWidget(context, frameSize)),
+            if (hasVip11Frame) _vip11Frame(frameSize),
           ],
+        ),
+      );
+    }
+    if (hasVip11Frame) {
+      final frameSize = widget.radius * 2 + 8;
+      return SizedBox(
+        width: frameSize,
+        height: frameSize,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [avatar, _vip11Frame(frameSize)],
         ),
       );
     }

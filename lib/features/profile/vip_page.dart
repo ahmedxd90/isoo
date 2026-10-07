@@ -23,6 +23,7 @@ class _VipPageState extends State<VipPage> {
     8: 10000000,
     9: 12000000,
     10: 20000000,
+    11: 500000000,
   };
   static const benefits = <VipBenefit>[
     VipBenefit(Icons.crop_rounded, 'إطار وصورة VIP', 1),
@@ -35,6 +36,9 @@ class _VipPageState extends State<VipPage> {
     VipBenefit(Icons.gif_box_rounded, 'صورة GIF للملف', 7),
     VipBenefit(Icons.graphic_eq_rounded, 'موجة صوت VIP8', 8),
     VipBenefit(Icons.workspace_premium_rounded, 'شارة VIP9 وVIP10', 9),
+    VipBenefit(Icons.workspace_premium_rounded, 'شارة وإطار ملكي VIP11', 11),
+    VipBenefit(Icons.color_lens_rounded, 'اسم VIP11 بتدرج حصري', 11),
+    VipBenefit(Icons.auto_awesome_rounded, 'دخول VIP11 ملكي', 11),
   ];
 
   final _service = SakiService.instance;
@@ -49,7 +53,7 @@ class _VipPageState extends State<VipPage> {
       _profile['vip_expires_at']?.toString() ?? '',
     );
     return expiry != null && expiry.isAfter(DateTime.now())
-        ? level.clamp(0, 10)
+        ? level.clamp(0, 11)
         : 0;
   }
 
@@ -97,7 +101,7 @@ class _VipPageState extends State<VipPage> {
       profile['vip_expires_at']?.toString() ?? '',
     );
     return expiry != null && expiry.isAfter(DateTime.now())
-        ? ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(1, 10)
+        ? ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(1, 11)
         : 0;
   }
 
@@ -221,7 +225,7 @@ class _VipPageState extends State<VipPage> {
             Expanded(
               child: PageView.builder(
                 controller: _pages,
-                itemCount: 10,
+                itemCount: 11,
                 onPageChanged: (i) => setState(() => _selected = i + 1),
                 itemBuilder: (_, index) {
                   final level = index + 1;
