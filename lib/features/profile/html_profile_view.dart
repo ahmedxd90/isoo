@@ -133,8 +133,9 @@ class _HtmlProfileViewState extends State<HtmlProfileView> {
   @override
   void didUpdateWidget(covariant HtmlProfileView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.data != widget.data || oldWidget.posts != widget.posts)
+    if (oldWidget.data != widget.data || oldWidget.posts != widget.posts) {
       _sync();
+    }
   }
 
   @override

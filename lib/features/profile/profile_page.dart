@@ -7,7 +7,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/data/saki_service.dart';
 import '../../shared/widgets/saki_widgets.dart';
@@ -127,11 +126,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
     if (updated == true) _load();
-  }
-
-  Future<void> _logout() async {
-    await SakiService.instance.logout();
-    if (mounted) context.go('/login');
   }
 
   Future<void> _openModule(String type) async {
@@ -306,7 +300,6 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         onModule: _openModule,
         onMenu: _openMenu,
-        onLogout: _logout,
       ),
     );
   }
@@ -329,14 +322,13 @@ class _MyHtmlProfileView extends StatefulWidget {
     required this.onAvatarTap,
     required this.onModule,
     required this.onMenu,
-    required this.onLogout,
   });
   final Map<String, dynamic> profile;
   final Map<String, int> stats;
   final List<Map<String, dynamic>> posts, reels, gifts, badges;
   final int wealthLevel, vipLevel;
   final bool isSuperAdmin, isShippingAgent;
-  final VoidCallback onBack, onEdit, onAvatarTap, onLogout;
+  final VoidCallback onBack, onEdit, onAvatarTap;
   final Future<void> Function(String) onModule;
   final Future<void> Function(String) onMenu;
 
@@ -345,97 +337,6 @@ class _MyHtmlProfileView extends StatefulWidget {
 }
 
 class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
-  String _language = 'العربية';
-
-  @override
-  void initState() {
-    super.initState();
-    _restoreLanguage();
-  }
-
-  Future<void> _restoreLanguage() async {
-    try {
-      final preferences = await SharedPreferences.getInstance();
-      if (!mounted) return;
-      setState(
-        () => _language =
-            preferences.getString('saki_profile_language') ?? 'العربية',
-      );
-    } catch (_) {}
-  }
-
-  Future<void> _chooseLanguage() async {
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 448),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 22, 24, 26),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'اختر اللغة',
-                          style: TextStyle(
-                            color: Color(0xFF1E293B),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(sheetContext),
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                    ],
-                  ),
-                  const Divider(color: Color(0xFFF1F5F9)),
-                  for (final language in const ['العربية', 'English', 'Türkçe'])
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                      title: Text(
-                        language,
-                        style: TextStyle(
-                          color: language == _language
-                              ? const Color(0xFF0F766E)
-                              : const Color(0xFF475569),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      trailing: language == _language
-                          ? const Icon(
-                              Icons.check_circle_rounded,
-                              color: Color(0xFF0F9F8D),
-                            )
-                          : null,
-                      onTap: () => Navigator.pop(sheetContext, language),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    if (selected == null || !mounted) return;
-    setState(() => _language = selected);
-    try {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setString('saki_profile_language', selected);
-    } catch (_) {}
-    if (mounted) CustomToast.show(context, 'تم تغيير اللغة إلى $selected');
-  }
-
   Future<void> _openMyContent({int initialTab = 0}) async {
     final family = widget.profile['family_badge'] is Map
         ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)
@@ -460,10 +361,6 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
   Future<void> _openOption(String title) async {
     if (title == 'الشارة') {
       await _openMyContent(initialTab: 2);
-      return;
-    }
-    if (title == 'اللغة') {
-      await _chooseLanguage();
       return;
     }
     if (title == 'لوحة التحكم') {
@@ -530,13 +427,11 @@ class _MyHtmlProfileViewState extends State<_MyHtmlProfileView> {
                           badgeCount: widget.badges.length,
                           isShippingAgent: widget.isShippingAgent,
                           isSuperAdmin: widget.isSuperAdmin,
-                          language: _language,
                           onTap: _openOption,
                         ),
                         const SizedBox(height: 12),
                         _MyExtraOptions(
                           onRedeem: () => _openOption('كود الاسترداد'),
-                          onLogout: widget.onLogout,
                         ),
                       ],
                     ),
@@ -1200,12 +1095,10 @@ class _MyProfileOptions extends StatelessWidget {
     required this.badgeCount,
     required this.isShippingAgent,
     required this.isSuperAdmin,
-    required this.language,
     required this.onTap,
   });
   final int badgeCount;
   final bool isShippingAgent, isSuperAdmin;
-  final String language;
   final Future<void> Function(String) onTap;
 
   @override
@@ -1237,14 +1130,6 @@ class _MyProfileOptions extends StatelessWidget {
           trailing: 'مشرف',
           onTap: () => onTap('لوحة التحكم'),
         ),
-      _MyOptionRow(
-        title: 'اللغة',
-        icon: Icons.language_rounded,
-        color: const Color(0xFF0F9F8D),
-        background: const Color(0xFFE9FBF7),
-        trailing: language,
-        onTap: () => onTap('اللغة'),
-      ),
       _MyOptionRow(
         title: 'الإعدادات',
         icon: Icons.settings_outlined,
@@ -1288,8 +1173,8 @@ class _MyProfileOptions extends StatelessWidget {
 }
 
 class _MyExtraOptions extends StatelessWidget {
-  const _MyExtraOptions({required this.onRedeem, required this.onLogout});
-  final VoidCallback onRedeem, onLogout;
+  const _MyExtraOptions({required this.onRedeem});
+  final VoidCallback onRedeem;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -1322,20 +1207,6 @@ class _MyExtraOptions extends StatelessWidget {
               color: const Color(0xFFE11D48),
               background: const Color(0xFFFFF1F2),
               onTap: onRedeem,
-            ),
-            const Divider(
-              height: 1,
-              thickness: .6,
-              color: Color(0xFFF1F5F9),
-              indent: 12,
-              endIndent: 12,
-            ),
-            _MyOptionRow(
-              title: 'تسجيل الخروج',
-              icon: Icons.logout_rounded,
-              color: const Color(0xFFDC2626),
-              background: const Color(0xFFFEF2F2),
-              onTap: onLogout,
             ),
           ],
         ),

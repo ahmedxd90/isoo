@@ -44,8 +44,9 @@ Future<void> main() async {
       final active = RoomSessionController.instance.room;
       if (active?['id']?.toString() == roomId) return;
       if (active != null) await RoomSessionController.instance.close();
-      await navigator.push(
+      await navigator.pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
+        (route) => route.isFirst,
       );
     } catch (error) {
       messenger?.showSnackBar(

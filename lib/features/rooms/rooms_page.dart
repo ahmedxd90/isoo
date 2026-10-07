@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -23,8 +21,6 @@ import '../search/search_page.dart';
 import 'ranking_page.dart';
 import 'home_leaderboard_cards.dart';
 import 'room_settings_page.dart';
-import 'pk_battle_page.dart';
-import 'cinema_player.dart';
 import 'room_gifts_sheet.dart';
 import 'room_combo_button.dart';
 import 'room_gift_ranking_sheet.dart';
@@ -33,7 +29,6 @@ import 'native_room_view.dart';
 import 'room_user_profile_card.dart';
 import 'luck_bag_widgets.dart';
 import 'buffet_game_sheet.dart';
-import '../profile/store_pages.dart';
 import '../profile/user_profile_page.dart';
 import '../messages/messages_page.dart';
 import '../profile/vip_widgets.dart';
@@ -60,77 +55,6 @@ const _roomSecondary = Color(0xFF06B6D4);
 const _roomMuted = Color(0xFF64748B);
 const _homeViolet = Color(0xFF8B5CF6);
 const _homePink = Color(0xFFEC4899);
-const _nativeRoomBg = Color(0xFF0D0E12);
-const _nativeRoomGlass = Color(0x73000000);
-const _nativeRoomBorder = Color(0x26FFFFFF);
-const _nativeRoomGreen = Color(0xFF22C55E);
-
-class _NativeRoomGlass extends StatelessWidget {
-  const _NativeRoomGlass({
-    required this.child,
-    this.padding = EdgeInsets.zero,
-    this.borderRadius = 18,
-    this.color = _nativeRoomGlass,
-  });
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final double borderRadius;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-    borderRadius: BorderRadius.circular(borderRadius),
-    child: BackdropFilter(
-      filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: Container(
-        padding: padding,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(borderRadius),
-          border: Border.all(color: _nativeRoomBorder),
-        ),
-        child: child,
-      ),
-    ),
-  );
-}
-
-class _NativeRoomCircleButton extends StatelessWidget {
-  const _NativeRoomCircleButton({
-    required this.icon,
-    required this.onTap,
-    this.color = Colors.white,
-    this.tooltip,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final Color color;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final button = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: _NativeRoomGlass(
-          borderRadius: 18,
-          color: const Color(0x59000000),
-          padding: EdgeInsets.zero,
-          child: SizedBox(
-            width: 36,
-            height: 36,
-            child: Icon(icon, color: color, size: 17),
-          ),
-        ),
-      ),
-    );
-    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
-  }
-}
 
 const _localRoomEmojiTabs = <Map<String, dynamic>>[
   {
@@ -1683,8 +1607,10 @@ class _ReferenceRoomCard extends StatelessWidget {
         await RoomSessionController.instance.close();
       }
       if (!context.mounted) return;
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)));
+      await Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => RoomDetailPage(room: room)),
+        (route) => route.isFirst,
+      );
     }
 
     return GestureDetector(
@@ -2063,8 +1989,9 @@ class _RoomGridCardState extends State<RoomGridCard>
       await RoomSessionController.instance.close();
     }
     if (!mounted) return;
-    await Navigator.of(context).push(
+    await Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => RoomDetailPage(room: widget.room)),
+      (route) => route.isFirst,
     );
   }
 
@@ -2349,6 +2276,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   late final String _roomId = widget.room['id'] as String;
   late final DateTime _roomOpenedAt = DateTime.now().toUtc();
   late final Stream<List<Map<String, dynamic>>> _seatStream;
+  late final Stream<List<Map<String, dynamic>>> _specialSeatStream;
   late final Stream<List<Map<String, dynamic>>> _seatLocksStream;
   late final Stream<List<Map<String, dynamic>>> _roomSettingsStream;
   StreamSubscription<List<Map<String, dynamic>>>? _roomSettingsSubscription;
@@ -2361,7 +2289,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _busy = false;
   bool _followed = false;
   RtcEngine? _engine;
+  bool _audioStarting = false;
+  bool _audioRecovering = false;
+  Timer? _audioRecoveryTimer;
   bool _isOnSeat = false;
+  String? _activeSpecialSeatKind;
   bool _micMuted = true;
   bool _listenMuted = false;
   bool _hideFullGiftEffects = false;
@@ -2380,8 +2312,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final Set<int> _remoteUsers = <int>{};
   late int _liveSeatCount;
   String _liveThemeKey = 'default';
-  String? _liveImageUrl;
-  String? _liveBackgroundUrl;
   Map<String, dynamic>? _activeGiftMessage;
   final List<Map<String, dynamic>> _giftMessageQueue = [];
   final List<Map<String, dynamic>> _activeGiftFlights = [];
@@ -2390,9 +2320,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Map<String, dynamic>? _activeGiftBanner;
   Timer? _luckBannerTimer;
   Timer? _giftBannerTimer;
-  String? _shownGiftMessageId;
-  Map<String, dynamic>? _activeBuffetWin;
-  String? _shownBuffetWinId;
   List<Map<String, dynamic>> _roomMembers = [];
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
@@ -2407,27 +2334,53 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final Set<int> _lockedSeatNos = <int>{};
   List<Map<String, dynamic>> _roomEmojis = [];
   int _roomGoldTotal = 0;
+  int _roomOwnerVipLevel = 0;
   Map<String, dynamic>? _entranceProfile;
   Map<String, dynamic>? _entranceProduct;
   Timer? _entranceTimer;
   StreamSubscription<List<Map<String, dynamic>>>? _musicStateSubscription;
   StreamSubscription<ProcessingState>? _musicCompletionSubscription;
+  Timer? _musicReloadTimer;
   bool _membersInitialized = false;
   late AudioPlayer _musicPlayer;
   List<Map<String, dynamic>> _roomMusic = [];
   List<Map<String, dynamic>> _roomPlaylist = [];
   Map<String, dynamic>? _activeMusic;
   bool _musicPlaying = false;
+  bool _musicPanelOpen = false;
   String _musicRepeatMode = 'off';
   bool _musicShuffle = false;
   bool _closingRoom = false;
+  bool _sessionMinimized = false;
   bool _handlingRoomBan = false;
   bool _localActuallySpeaking = false;
   double _musicVolume = 1;
   double _musicDurationSeconds = 0;
   String? _musicOwnerId;
-  Set<String> _previousSeatUserIds = <String>{};
-  bool _seatStopPending = false;
+  String? _loadedMusicUrl;
+
+  int _ownerVipFromRoomPayload() {
+    final direct =
+        widget.room['owner_vip_level'] ??
+        (widget.room['profiles'] is Map
+            ? (widget.room['profiles'] as Map)['vip_level']
+            : null);
+    final level = direct is num
+        ? direct.toInt()
+        : int.tryParse(direct?.toString() ?? '') ?? 0;
+    return level.clamp(0, 11);
+  }
+
+  Future<void> _loadRoomOwnerVipLevel() async {
+    final ownerId = widget.room['owner_id']?.toString() ?? '';
+    if (ownerId.isEmpty) return;
+    try {
+      final level = await _service.roomOwnerVipLevel(ownerId);
+      if (mounted) setState(() => _roomOwnerVipLevel = level);
+    } catch (_) {
+      // The room remains usable if the owner profile is temporarily unavailable.
+    }
+  }
 
   Future<void> _openGlobalGiftRoom(Map<String, dynamic> room) async {
     if (!mounted || room['id'] == null) return;
@@ -2463,6 +2416,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (move != true) return;
       await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
       await _service.leaveRoomSeat(_roomId).catchError((_) {});
+      await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
       await _service.leaveRoom(_roomId).catchError((_) {});
       await RoomSessionController.instance.close().catchError((_) {});
       if (!mounted) return;
@@ -2478,7 +2432,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Timer? _seatTaskTimer;
-  Map<String, dynamic>? _optimisticSeatRow;
   List<Map<String, dynamic>> _luckBags = [];
   Map<String, dynamic>? _newLuckBag;
   StreamSubscription<List<Map<String, dynamic>>>? _globalLuckBagSubscription;
@@ -2486,9 +2439,45 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   final Set<String> _seenGlobalLuckBagIds = <String>{};
   bool _globalLuckBagsInitialized = false;
 
+  Future<void> _initializeVoiceSession() async {
+    final controller = RoomSessionController.instance;
+    final activeId = controller.roomId;
+    if (activeId != null && activeId != _roomId) {
+      final previousExit = controller.onExitRequested;
+      try {
+        if (previousExit != null) {
+          await previousExit();
+        } else {
+          await _service.setRoomSpeaking(activeId, false).catchError((_) {});
+          await _service.leaveRoomSeat(activeId).catchError((_) {});
+          await _service.leaveRoomSpecialSeat(activeId).catchError((_) {});
+          await _service.leaveRoom(activeId).catchError((_) {});
+        }
+      } catch (_) {
+        // Local resources are closed below even if server cleanup fails.
+      }
+      await controller.close().catchError((_) {});
+    }
+    if (!mounted || _closingRoom) return;
+    final existingEngine = controller.engine;
+    final restoredSession =
+        existingEngine != null && controller.isSameRoom(_roomId);
+    if (restoredSession) {
+      _engine = existingEngine;
+      _isOnSeat = controller.isOnSeat;
+      _micMuted = controller.micMuted;
+      _joined = true;
+      controller.hideBubble();
+      return;
+    }
+    final allowed = await _join();
+    if (allowed && mounted && !_closingRoom) await _startRoomAudio();
+  }
+
   @override
   void initState() {
     super.initState();
+    _roomOwnerVipLevel = _ownerVipFromRoomPayload();
     unawaited(_loadRoomEffectPreferences());
     // Stop the external bubble only after this room page has actually started.
     RoomBackgroundBridge.stop();
@@ -2502,6 +2491,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (state == ProcessingState.completed) _handleMusicCompleted();
     });
     _seatStream = _service.roomSeatsStream(_roomId);
+    _specialSeatStream = _service.roomSpecialSeatsStream(_roomId);
     _seatLocksStream = _service.roomSeatLocksStream(_roomId);
     _seatLocksSubscription = _seatLocksStream.listen((rows) {
       if (!mounted) return;
@@ -2518,8 +2508,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomSettingsStream = _service.roomSettingsStream(_roomId);
     _liveSeatCount = (widget.room['seat_count'] as num?)?.toInt() ?? 10;
     _liveThemeKey = widget.room['theme_key']?.toString() ?? 'default';
-    _liveImageUrl = widget.room['image_url'] as String?;
-    _liveBackgroundUrl = widget.room['background_url'] as String?;
     _micPermission = widget.room['mic_permission'] as String? ?? 'everyone';
     _roomSettingsSubscription = _roomSettingsStream.listen((rows) {
       if (!mounted || rows.isEmpty) return;
@@ -2528,14 +2516,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _liveSeatCount =
             (updated['seat_count'] as num?)?.toInt() ?? _liveSeatCount;
         _liveThemeKey = updated['theme_key']?.toString() ?? _liveThemeKey;
-        _liveImageUrl = updated['image_url'] as String?;
-        _liveBackgroundUrl = updated['background_url'] as String?;
         _micPermission = updated['mic_permission'] as String? ?? _micPermission;
       });
     });
     _messageStream = _service.roomMessagesStream(_roomId, after: _roomOpenedAt);
     _roomMessageSubscription = _messageStream.listen(_handleRoomMessages);
     _membersStream = _service.roomMembersStream(_roomId);
+    unawaited(_loadRoomOwnerVipLevel());
     _service.roomEmojis().then((items) {
       if (mounted) {
         final localItems = _localRoomEmojiTabs
@@ -2584,29 +2571,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _handleRoomBan();
       }
     });
-    final existingEngine = RoomSessionController.instance.engine;
-    final restoredSession =
-        existingEngine != null &&
-        RoomSessionController.instance.isSameRoom(_roomId);
-    if (restoredSession) {
-      _engine = existingEngine;
-      final session = RoomSessionController.instance;
-      _isOnSeat = session.isOnSeat;
-      _micMuted = session.micMuted;
-      _joined = true;
-      RoomSessionController.instance.hideBubble();
-    }
-    if (!restoredSession) {
-      _join().then((allowed) {
-        if (allowed) _startRoomAudio();
-      });
-    }
+    unawaited(_initializeVoiceSession());
     _loadRoomState();
     _loadRoomMusic();
     _musicStateSubscription = _service.roomMusicStateStream(_roomId).listen((
       _,
     ) {
-      _loadRoomMusic();
+      _musicReloadTimer?.cancel();
+      _musicReloadTimer = Timer(const Duration(milliseconds: 250), () {
+        if (mounted) unawaited(_loadRoomMusic());
+      });
     });
     _roomMembersSubscription = _membersStream.listen((members) {
       if (!mounted) return;
@@ -2823,7 +2797,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (_seenGiftMessageIds.length > 600) {
         _seenGiftMessageIds.remove(_seenGiftMessageIds.first);
       }
-      _shownGiftMessageId = id;
       final payload = gift['payload'] is Map
           ? Map<String, dynamic>.from(gift['payload'] as Map)
           : <String, dynamic>{};
@@ -2925,6 +2898,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _startRoomAudio() async {
+    if (_audioStarting || _closingRoom || !mounted) return;
+    _audioStarting = true;
     try {
       final uid = _numericUid(_service.uid);
       final data = await _service.agoraRoomToken(_roomId, uid);
@@ -2943,7 +2918,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
       engine.registerEventHandler(
         RtcEngineEventHandler(
-          onJoinChannelSuccess: (_, _) {},
+          onJoinChannelSuccess: (_, _) {
+            _audioStarting = false;
+          },
+          onConnectionStateChanged: (_, state, _) {
+            if (state == ConnectionStateType.connectionStateDisconnected &&
+                mounted &&
+                !_closingRoom &&
+                _joined) {
+              _scheduleRoomAudioRecovery();
+            }
+          },
           onUserJoined: (_, remoteUid, _) {
             if (mounted) setState(() => _remoteUsers.add(remoteUid));
             RoomSessionController.instance.updateVoiceState(
@@ -2969,7 +2954,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     ((local.vad ?? 0) == 1 || (local.volume ?? 0) >= 18);
                 if (speaking == _localActuallySpeaking) return;
                 _localActuallySpeaking = speaking;
-                _service.setRoomSpeaking(_roomId, speaking).catchError((_) {});
+                if (mounted) setState(() {});
+                if (_activeSpecialSeatKind != null) {
+                  _service
+                      .setRoomSpecialSeatSpeaking(_roomId, speaking)
+                      .catchError((_) {});
+                } else {
+                  _service
+                      .setRoomSpeaking(_roomId, speaking)
+                      .catchError((_) {});
+                }
               },
           onTokenPrivilegeWillExpire: (_, _) => _refreshRoomToken(),
         ),
@@ -2977,7 +2971,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await engine.setClientRole(role: ClientRoleType.clientRoleAudience);
       await engine.enableAudio();
       await engine.enableAudioVolumeIndication(
-        interval: 200,
+        interval: 500,
         smooth: 3,
         reportVad: true,
       );
@@ -3004,6 +2998,34 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
     } catch (_) {
       // Audio errors must not prevent the text room from loading.
+      final failed = _engine;
+      _engine = null;
+      await failed?.release().catchError((_) {});
+    } finally {
+      _audioStarting = false;
+    }
+  }
+
+  void _scheduleRoomAudioRecovery() {
+    if (_audioRecovering || _closingRoom || !mounted) return;
+    _audioRecoveryTimer?.cancel();
+    _audioRecoveryTimer = Timer(const Duration(seconds: 2), () {
+      unawaited(_recoverRoomAudio());
+    });
+  }
+
+  Future<void> _recoverRoomAudio() async {
+    if (_audioRecovering || _closingRoom || !mounted || !_joined) return;
+    _audioRecovering = true;
+    try {
+      final old = _engine;
+      _engine = null;
+      await old?.leaveChannel().catchError((_) {});
+      await old?.release().catchError((_) {});
+      _remoteUsers.clear();
+      await _startRoomAudio();
+    } finally {
+      _audioRecovering = false;
     }
   }
 
@@ -3017,6 +3039,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Future<void> _minimizeRoom() async {
     final engine = _engine;
     if (engine == null) return;
+    _sessionMinimized = true;
     RoomSessionController.instance.minimize(
       room: widget.room,
       engine: engine,
@@ -3046,6 +3069,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     RoomSessionController.instance.updateVoiceState(isOnSeat: seated);
     await _syncMusicSeatAccess(seated);
     if (!seated) {
+      if (_activeSpecialSeatKind != null) {
+        await _service
+            .setRoomSpecialSeatSpeaking(_roomId, false)
+            .catchError((_) {});
+      }
       _seatTaskTimer?.cancel();
       _seatTaskTimer = null;
       _micMuted = true;
@@ -3100,7 +3128,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     await _engine?.muteLocalAudioStream(_micMuted);
     _localActuallySpeaking = false;
-    await _service.setRoomSpeaking(_roomId, false);
+    if (_activeSpecialSeatKind != null) {
+      await _service.setRoomSpecialSeatSpeaking(_roomId, false);
+    } else {
+      await _service.setRoomSpeaking(_roomId, false);
+    }
     if (mounted) setState(() {});
   }
 
@@ -3336,6 +3368,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     try {
       await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
       await _service.leaveRoomSeat(_roomId).catchError((_) {});
+      await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
       await _service.leaveRoom(_roomId).catchError((_) {});
       await RoomBackgroundBridge.setPipEligible(false).catchError((_) {});
       await RoomBackgroundBridge.stop().catchError((_) {});
@@ -3630,51 +3663,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
   }
 
-  Future<void> _openRoomImage(String url) async {
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: .94),
-      builder: (_) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(12),
-        child: Stack(
-          children: [
-            InteractiveViewer(child: Image.network(url, fit: BoxFit.contain)),
-            PositionedDirectional(
-              top: 8,
-              end: 8,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: Colors.black87),
-                onPressed: () async {
-                  try {
-                    final request = await HttpClient().getUrl(Uri.parse(url));
-                    final response = await request.close();
-                    final bytes = await consolidateHttpClientResponseBytes(
-                      response,
-                    );
-                    await const MethodChannel(
-                      'saki/media',
-                    ).invokeMethod<bool>('saveImage', {
-                      'bytes': bytes,
-                      'name':
-                          'saki_room_${DateTime.now().millisecondsSinceEpoch}',
-                    });
-                    if (mounted) _messageSnack('تم حفظ الصورة في الاستديو');
-                  } catch (_) {
-                    if (mounted) _messageSnack('تعذر حفظ الصورة');
-                  }
-                },
-                icon: const Icon(Icons.download_rounded),
-                label: const Text('حفظ'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Map<String, dynamic> _queueOptimisticMessage({
     required String body,
     required String type,
@@ -3731,6 +3719,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         await RoomBackgroundBridge.setPipEligible(false);
         await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
         await _service.leaveRoomSeat(_roomId).catchError((_) {});
+        await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
         await _service.leaveRoom(_roomId).catchError((_) {});
       } finally {
         await RoomBackgroundBridge.stop().catchError((_) {});
@@ -3800,18 +3789,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  Future<void> _openPkBattle() async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => PkBattlePage(
-          roomId: _roomId,
-          channelName: widget.room['room_id']?.toString() ?? _roomId,
-          title: widget.room['name']?.toString() ?? 'غرفة SAKI',
-        ),
-      ),
-    );
-  }
-
   Future<void> _showUserCard(
     Map<String, dynamic> profile, {
     bool selfSeat = false,
@@ -3847,27 +3824,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final frameProduct = loaded[5] is Map
         ? Map<String, dynamic>.from(loaded[5] as Map)
         : null;
-    final familyBadge = loaded[6];
     final isShippingAgent = loaded[7] == true;
     final moderation = Map<String, dynamic>.from(loaded[8] as Map);
     final love = Map<String, dynamic>.from(loaded[9] as Map);
     final voiceMuted = moderation['mute_voice'] == true;
     final chatMuted = moderation['mute_chat'] == true;
     final banned = moderation['banned'] == true;
-    final vip = activeVipLevel({...profile, ...modules});
     final roleBadges = profileRoleBadges({
       ...profile,
       'is_shipping_agent': isShippingAgent,
     }, modules: modules);
-    final followers = profile['followers_count'] ?? profile['followers'] ?? 0;
-    final followingCount =
-        profile['following_count'] ?? profile['following'] ?? 0;
-    final visitors = profile['visitors_count'] ?? profile['visitors'] ?? 0;
-    final gender =
-        (profile['gender']?.toString().toLowerCase() == 'male' ||
-            profile['gender']?.toString() == 'ذكر')
-        ? '♂'
-        : '♀';
     final username = profile['username'] as String? ?? 'مستخدم SAKI';
 
     if (!mounted) return;
@@ -3897,8 +3863,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           onFollow: () async {
             await _service.toggleFollow(userId, following);
             following = !following;
-            if (mounted)
+            if (mounted) {
               _messageSnack(following ? 'تمت المتابعة.' : 'تم إلغاء المتابعة.');
+            }
           },
           onMessage: () async {
             Navigator.of(context).pop();
@@ -3941,161 +3908,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
     );
     return;
-
-    // Kept below as the complete native fallback implementation.
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          Future<void> toggleFollow() async {
-            await _service.toggleFollow(userId, following);
-            if (sheetContext.mounted) {
-              setSheetState(() => following = !following);
-            }
-            if (mounted) {
-              _messageSnack(
-                following ? 'تمت متابعة المستخدم.' : 'تم إلغاء المتابعة.',
-              );
-            }
-          }
-
-          void openMainProfile() {
-            Navigator.pop(dialogContext);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => UserProfilePage(userId: userId),
-              ),
-            );
-          }
-
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: MediaQuery.sizeOf(context).height * .28,
-                  width: double.infinity,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => Navigator.pop(dialogContext),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-                _RoomMiniProfileSheet(
-                  username: username,
-                  profile: {...profile, ...modules, 'vip_level': vip},
-                  countryFlag: countryFlag,
-                  gender: gender,
-                  vip: vip,
-                  familyBadge: familyBadge,
-                  isShippingAgent: isShippingAgent,
-                  followers: followers,
-                  following: followingCount,
-                  isFollowing: following,
-                  visitors: visitors,
-                  modules: modules,
-                  selfSeat: selfSeat,
-                  canModerate: canModerate,
-                  targetModerator: targetModerator,
-                  voiceMuted: voiceMuted,
-                  chatMuted: chatMuted,
-                  banned: banned,
-                  onClose: () => Navigator.pop(dialogContext),
-                  onOpenProfile: openMainProfile,
-                  onFollow: toggleFollow,
-                  onGift: () {
-                    Navigator.pop(dialogContext);
-                    _showGiftPanel();
-                  },
-                  onMention: () async {
-                    Navigator.pop(dialogContext);
-                    if (selfSeat) return;
-                    final conversationId = await _service.createConversation(
-                      userId,
-                    );
-                    if (!mounted) return;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatPage(
-                          conversationId: conversationId,
-                          participant: profile,
-                        ),
-                      ),
-                    );
-                  },
-                  onLeaveSeat: () async {
-                    final left = await _confirmLeaveSeat();
-                    if (!left || !mounted) return;
-                    await _leaveOwnSeat();
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                  onModerator: () async {
-                    if (targetModerator) {
-                      await _service.removeRoomModerator(_roomId, userId);
-                    } else {
-                      await _service.addRoomModerator(_roomId, userId);
-                    }
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                  onVoiceMute: () async {
-                    if (voiceMuted) {
-                      await _service.roomUnmute(_roomId, userId, 'voice');
-                    } else {
-                      await _service.roomMute(
-                        _roomId,
-                        userId,
-                        null,
-                        kind: 'voice',
-                      );
-                    }
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                  onChatMute: () async {
-                    if (chatMuted) {
-                      await _service.roomUnmute(_roomId, userId, 'chat');
-                    } else {
-                      await _service.roomMute(
-                        _roomId,
-                        userId,
-                        null,
-                        kind: 'chat',
-                      );
-                    }
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                  onBan: () async {
-                    if (banned) {
-                      await _service.removeRoomBan(_roomId, userId);
-                    } else {
-                      await _service.roomBan(_roomId, userId, null);
-                    }
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                  onInvite: () async {
-                    await _service.inviteToRoomSeat(_roomId, userId);
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                  onReport: () => _showRoomReportSheet(userId, username),
-                  onBlock: () async {
-                    final duration = await _banDuration();
-                    if (duration != null) {
-                      await _service.roomBan(_roomId, userId, duration);
-                    }
-                    if (dialogContext.mounted) Navigator.pop(dialogContext);
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
   }
 
   Future<void> _showRoomUserActions({
@@ -4374,29 +4186,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     details.dispose();
   }
 
-  Future<Duration?> _banDuration() => showModalBottomSheet<Duration?>(
-    context: context,
-    backgroundColor: const Color(0xFF24131A),
-    builder: (_) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final item in const [
-            ('دقيقة', Duration(minutes: 1)),
-            ('ساعة', Duration(hours: 1)),
-            ('يوم', Duration(days: 1)),
-            ('7 أيام', Duration(days: 7)),
-            ('دائم', Duration(days: 36500)),
-          ])
-            ListTile(
-              title: Text(item.$1, style: const TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(context, item.$2),
-            ),
-        ],
-      ),
-    ),
-  );
-
   Future<void> _showEmojiPanel() async {
     if (!_isOnSeat) {
       _messageSnack('اصعد إلى مقعد لاستخدام الإيموجي.');
@@ -4611,9 +4400,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       });
       final nested = _activeMusic?['room_music'];
       if (_isOnSeat && nested is Map) {
-        final duration = await _musicPlayer.setUrl(
-          nested['audio_url'] as String,
-        );
+        final url = nested['audio_url']?.toString() ?? '';
+        Duration? duration;
+        if (url.isNotEmpty && _loadedMusicUrl != url) {
+          duration = await _musicPlayer.setUrl(url);
+          _loadedMusicUrl = url;
+        } else {
+          duration = _musicPlayer.duration;
+        }
         _musicDurationSeconds = duration?.inMilliseconds.toDouble() == null
             ? 0
             : duration!.inMilliseconds / 1000;
@@ -4690,6 +4484,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     await _broadcastMusic('play', tracks[index]);
   }
 
+  Future<void> _toggleCurrentMusic() async {
+    final nested = _activeMusic?['room_music'];
+    if (nested is! Map) return;
+    await _broadcastMusic(
+      _musicPlaying ? 'pause' : 'play',
+      Map<String, dynamic>.from(nested),
+    );
+  }
+
   Future<void> _nextRoomMusic() async {
     if (!_canControlMusic) {
       _messageSnack('لا تملك صلاحية تغيير الأغنية.');
@@ -4715,24 +4518,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
     final index = current <= 0 ? tracks.length - 1 : current - 1;
     await _broadcastMusic('play', tracks[index]);
-  }
-
-  Future<void> _addMusicToPlaylist(Map<String, dynamic> music) async {
-    try {
-      await _service.addRoomPlaylistTrack(_roomId, music['id'].toString());
-      await _loadRoomMusic();
-    } catch (error) {
-      if (mounted) _messageSnack('تعذر إضافة الأغنية إلى القائمة: $error');
-    }
-  }
-
-  Future<void> _removeMusicFromPlaylist(Map<String, dynamic> row) async {
-    try {
-      await _service.removeRoomPlaylistTrack(row['id'].toString());
-      await _loadRoomMusic();
-    } catch (error) {
-      if (mounted) _messageSnack('تعذر حذف الأغنية من القائمة: $error');
-    }
   }
 
   Future<void> _toggleMusicRepeat() async {
@@ -4996,31 +4781,31 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
   }
 
-  Future<void> _showMusicSheet() async {
-    if (!_canOpenMusic) {
-      _messageSnack(
-        'الموسيقى متاحة لمالك الغرفة والمشرفين أو الجالس على المقعد.',
-      );
-      return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => RoomMusicSheet(
+  void _showMusicSheet() {
+    if (!mounted) return;
+    setState(() => _musicPanelOpen = true);
+  }
+
+  Widget _musicPanel() => Positioned(
+    left: 0,
+    right: 0,
+    bottom: 0,
+    child: PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && mounted) setState(() => _musicPanelOpen = false);
+      },
+      child: RoomMusicSheet(
         music: _roomMusic,
-        playlist: _roomPlaylist,
         activeMusic: _activeMusic,
         playing: _musicPlaying,
         volume: _musicVolume,
         onUpload: _uploadRoomMusic,
         onPlay: (music) => _broadcastMusic('play', music),
         onPause: (music) => _broadcastMusic('pause', music),
-        onStop: _stopRoomMusic,
+        onTogglePlay: _toggleCurrentMusic,
         onNext: _nextRoomMusic,
         onPrevious: _previousRoomMusic,
-        onAddToPlaylist: _addMusicToPlaylist,
-        onRemoveFromPlaylist: _removeMusicFromPlaylist,
         onRepeat: _toggleMusicRepeat,
         onShuffle: _toggleMusicShuffle,
         canControl: _canControlMusic,
@@ -5028,9 +4813,12 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         onSeek: _broadcastMusicSeek,
         positionSeconds: _musicPlayer.position.inMilliseconds / 1000,
         durationSeconds: _musicDurationSeconds,
+        positionStream: _musicPlayer.positionStream,
+        durationStream: _musicPlayer.durationStream,
+        onClose: () => setState(() => _musicPanelOpen = false),
       ),
-    );
-  }
+    ),
+  );
 
   Future<void> _confirmClearChat() async {
     final yes = await showDialog<bool>(
@@ -5162,111 +4950,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     );
   }
 
-  Future<bool> _confirmLeaveSeat() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: const Color(0xFF06B6D4), width: 1.5),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x6606B6D4),
-                blurRadius: 22,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFF97316), Color(0xFF06B6D4)],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.mic_off_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 14),
-              const Text(
-                'النزول من المقعد؟',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF172033),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'سيتم إيقاف المايك وإخلاء مقعدك للآخرين داخل الغرفة.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF64748B), height: 1.45),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(dialogContext, false),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF06B6D4),
-                        side: const BorderSide(color: Color(0xFF06B6D4)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('إلغاء'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => Navigator.pop(dialogContext, true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFF97316),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('نعم، انزل'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    return result == true;
-  }
-
   Future<void> _leaveOwnSeat() async {
     if (_busy) return;
     setState(() {
       _busy = true;
-      _optimisticSeatRow = null;
       _isOnSeat = false;
     });
     unawaited(_setSeatAudio(false));
     try {
       await _service.leaveRoomSeat(_roomId);
+      await _service.leaveRoomSpecialSeat(_roomId);
       unawaited(
         _service
             .sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat')
@@ -5275,6 +4968,55 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (mounted) _messageSnack('تم النزول من المقعد بنجاح.');
     } catch (error) {
       if (mounted) _messageSnack('تعذر النزول من المقعد: $error');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _specialSeatAction(Map<String, dynamic> payload) async {
+    if (_busy) return;
+    final kind = payload['seat_kind']?.toString();
+    if (kind == null || (kind != 'host' && kind != 'legend')) return;
+    final userId = payload['user_id']?.toString();
+    if (userId != null && userId.isNotEmpty && userId != _service.uid) {
+      final profile = await _service.userProfile(userId);
+      if (profile != null && mounted) await _showUserCard(profile);
+      return;
+    }
+    if (userId == _service.uid) {
+      setState(() => _busy = true);
+      try {
+        _activeSpecialSeatKind = null;
+        await _setSeatAudio(false);
+        await _service.leaveRoomSpecialSeat(_roomId);
+        if (mounted) _messageSnack('تم النزول من المقعد الملكي.');
+      } catch (_) {
+        if (mounted) _messageSnack('تعذر النزول من المقعد الملكي.');
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
+    if (!_isRoomOwner && !_isModerator) {
+      _messageSnack('المقعد الملكي مخصص لمالك الغرفة والمشرفين فقط.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await _service.claimRoomSpecialSeat(_roomId, kind);
+      _activeSpecialSeatKind = kind;
+      await _setSeatAudio(true);
+      if (mounted) {
+        _messageSnack(
+          kind == 'host'
+              ? 'تم احتلال مقعد المضيف.'
+              : 'تم احتلال مقعد الأسطورة.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        _messageSnack('لا تملك صلاحية هذا المقعد أو أنه مستخدم حاليًا.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -5394,11 +5136,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     try {
       if (action == 'leave') {
         setState(() {
-          _optimisticSeatRow = null;
           _isOnSeat = false;
         });
         unawaited(_setSeatAudio(false));
         await _service.leaveRoomSeat(_roomId);
+        await _service.leaveRoomSpecialSeat(_roomId);
         unawaited(
           _service
               .sendRoomMessage(_roomId, 'نزل من المقعد', type: 'seat')
@@ -5415,19 +5157,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           _messageSnack('المالك لا يسمح لك بأخذ المايك حاليًا.');
           return;
         }
-        final profile = occupied?['profiles'] ?? <String, dynamic>{};
-        setState(() {
-          _optimisticSeatRow = {
-            'room_id': _roomId,
-            'seat_no': seatNo,
-            'user_id': _service.uid,
-            'is_speaking': false,
-            'profiles': profile,
-          };
-          _isOnSeat = true;
-        });
-        unawaited(_setSeatAudio(true));
+        // Confirm the server seat first, then publish audio. This prevents
+        // the old race where audio started before the seat was granted.
+        _activeSpecialSeatKind = null;
         await _service.claimRoomSeat(_roomId, seatNo);
+        await _setSeatAudio(true);
         unawaited(
           _service
               .sendRoomMessage(_roomId, 'صعد إلى المقعد', type: 'seat')
@@ -5437,10 +5171,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     } catch (error) {
       if (mounted) {
         setState(() {
-          _optimisticSeatRow = null;
           _isOnSeat = false;
         });
-        unawaited(_setSeatAudio(false));
+        await _setSeatAudio(false).catchError((_) {});
       }
       if (mounted) _messageSnack('تعذر استخدام المقعد: $error');
     } finally {
@@ -5505,9 +5238,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   @override
   void dispose() {
+    final controller = RoomSessionController.instance;
     final preservedSession =
-        RoomSessionController.instance.isSameRoom(_roomId) &&
-        RoomSessionController.instance.engine == _engine;
+        _sessionMinimized &&
+        controller.isSameRoom(_roomId) &&
+        controller.engine == _engine;
     _message.dispose();
     _roomMessageSubscription?.cancel();
     _entranceTimer?.cancel();
@@ -5523,23 +5258,27 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     _roomSettingsSubscription?.cancel();
     _seatTaskTimer?.cancel();
-    if (_musicPlaying && !preservedSession) {
-      _roomChatChannel.sendBroadcastMessage(
-        event: 'music',
-        payload: {'action': 'stop', 'reason': 'room_exit'},
-      );
-      _musicPlayer.stop();
-    }
+    _audioRecoveryTimer?.cancel();
+    _closingRoom = true;
     _musicStateSubscription?.cancel();
     _musicCompletionSubscription?.cancel();
+    _musicReloadTimer?.cancel();
     _luckBannerTimer?.cancel();
     _giftBannerTimer?.cancel();
     _roomChatChannel.dispose();
     if (!preservedSession) {
-      _musicPlayer.dispose();
-      if (_joined) _service.leaveRoom(_roomId);
-      _engine?.leaveChannel();
-      _engine?.release();
+      unawaited(_service.setRoomSpeaking(_roomId, false).catchError((_) {}));
+      unawaited(_service.leaveRoomSeat(_roomId).catchError((_) {}));
+      unawaited(_service.leaveRoomSpecialSeat(_roomId).catchError((_) {}));
+      unawaited(_service.leaveRoom(_roomId).catchError((_) {}));
+      if (controller.engine == _engine || controller.isSameRoom(_roomId)) {
+        unawaited(controller.close().catchError((_) {}));
+      } else {
+        unawaited(_musicPlayer.dispose());
+        unawaited(_engine?.leaveChannel().catchError((_) {}));
+        unawaited(_engine?.release().catchError((_) {}));
+        unawaited(RoomBackgroundBridge.stop());
+      }
     }
     super.dispose();
   }
@@ -5553,6 +5292,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           room: {
             ...widget.room,
             'gold_total': _roomGoldTotal,
+            'owner_vip_level': _roomOwnerVipLevel > _ownerVipFromRoomPayload()
+                ? _roomOwnerVipLevel
+                : _ownerVipFromRoomPayload(),
+            'local_user_id': _service.uid,
+            'local_speaking': _localActuallySpeaking,
             'seatEmojis': _activeSeatEmojis,
             'micMuted': _micMuted,
             'speakerMuted': _listenMuted,
@@ -5562,9 +5306,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           optimisticMessages: _optimisticMessages,
           chatClearedAt: _chatClearedAt,
           seatStream: _seatStream,
+          specialSeatStream: _specialSeatStream,
           lockStream: _seatLocksStream,
           messageStream: _messageStream,
           membersStream: _membersStream,
+          onSpecialSeatTap: (payload) => unawaited(_specialSeatAction(payload)),
           onSeatTap: (payload) {
             final seat = (payload['seat'] as num?)?.toInt();
             if (seat == null) return;
@@ -5607,6 +5353,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           },
           onExit: () => unawaited(_confirmExit()),
         ),
+        if (_musicPanelOpen) _musicPanel(),
         RoomGlobalGiftBanner(
           hidden: _hideGiftBanners,
           onOpenRoom: _openGlobalGiftRoom,
@@ -6535,34 +6282,6 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   }
 }
 
-class _DiceFace extends StatelessWidget {
-  const _DiceFace({required this.value});
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 8)],
-      ),
-      child: Center(
-        child: Text(
-          '$value',
-          style: const TextStyle(
-            color: Color(0xFF8A1C30),
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class CreateRoomPage extends StatefulWidget {
   const CreateRoomPage({super.key});
 
@@ -7014,22 +6733,19 @@ class _VipVoiceWaveState extends State<_VipVoiceWave>
   }
 }
 
-class RoomMusicSheet extends StatelessWidget {
+class RoomMusicSheet extends StatefulWidget {
   const RoomMusicSheet({
     super.key,
     required this.music,
-    required this.playlist,
     required this.activeMusic,
     required this.playing,
     required this.volume,
     required this.onUpload,
     required this.onPlay,
     required this.onPause,
-    required this.onStop,
+    required this.onTogglePlay,
     required this.onNext,
     required this.onPrevious,
-    required this.onAddToPlaylist,
-    required this.onRemoveFromPlaylist,
     required this.onRepeat,
     required this.onShuffle,
     required this.onVolume,
@@ -7037,21 +6753,21 @@ class RoomMusicSheet extends StatelessWidget {
     required this.canControl,
     required this.positionSeconds,
     required this.durationSeconds,
+    required this.positionStream,
+    required this.durationStream,
+    required this.onClose,
   });
 
   final List<Map<String, dynamic>> music;
-  final List<Map<String, dynamic>> playlist;
   final Map<String, dynamic>? activeMusic;
   final bool playing;
   final double volume;
   final Future<void> Function() onUpload;
   final Future<void> Function(Map<String, dynamic>) onPlay;
   final Future<void> Function(Map<String, dynamic>) onPause;
-  final Future<void> Function() onStop;
+  final Future<void> Function() onTogglePlay;
   final Future<void> Function() onNext;
   final Future<void> Function() onPrevious;
-  final Future<void> Function(Map<String, dynamic>) onAddToPlaylist;
-  final Future<void> Function(Map<String, dynamic>) onRemoveFromPlaylist;
   final Future<void> Function() onRepeat;
   final Future<void> Function() onShuffle;
   final ValueChanged<double> onVolume;
@@ -7059,351 +6775,239 @@ class RoomMusicSheet extends StatelessWidget {
   final bool canControl;
   final double positionSeconds;
   final double durationSeconds;
+  final Stream<Duration> positionStream;
+  final Stream<Duration?> durationStream;
+  final VoidCallback onClose;
+
+  @override
+  State<RoomMusicSheet> createState() => _RoomMusicSheetState();
+}
+
+class _RoomMusicSheetState extends State<RoomMusicSheet> {
+  final _search = TextEditingController();
+  double? _dragPosition;
+  String _query = '';
 
   Map<String, dynamic>? get _active {
-    final nested = activeMusic?['room_music'];
+    final nested = widget.activeMusic?['room_music'];
     return nested is Map ? Map<String, dynamic>.from(nested) : null;
+  }
+
+  List<Map<String, dynamic>> get _filteredMusic {
+    final needle = _query.trim().toLowerCase();
+    if (needle.isEmpty) return widget.music;
+    return widget.music
+        .where((item) {
+          final title = item['title']?.toString().toLowerCase() ?? '';
+          final artist = item['artist']?.toString().toLowerCase() ?? '';
+          return title.contains(needle) || artist.contains(needle);
+        })
+        .toList(growable: false);
+  }
+
+  String _time(double value) {
+    final total = value.isFinite && value >= 0 ? value.floor() : 0;
+    return '${total ~/ 60}:${(total % 60).toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final active = _active;
+    final tracks = _filteredMusic;
     return SafeArea(
       child: Container(
-        height: MediaQuery.sizeOf(context).height * .72,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF24144D), Color(0xFF0D1029)],
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        height: MediaQuery.sizeOf(context).height * .80,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFAFAFA),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 20,
+              offset: Offset(0, -5),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            const SizedBox(height: 10),
             Container(
-              width: 44,
+              width: 42,
               height: 4,
+              margin: const EdgeInsets.only(top: 10),
               decoration: BoxDecoration(
-                color: Colors.white38,
-                borderRadius: BorderRadius.circular(9),
+                color: const Color(0xFFD1D5DB),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 15, 18, 12),
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 10),
               child: Row(
                 children: [
+                  IconButton(
+                    tooltip: 'إضافة موسيقى مشتركة',
+                    onPressed: widget.canControl ? widget.onUpload : null,
+                    icon: const Icon(
+                      Icons.add_circle_outline_rounded,
+                      color: Color(0xFF9CA3AF),
+                      size: 27,
+                    ),
+                  ),
                   const Expanded(
                     child: Text(
-                      'موسيقى الغرفة',
+                      'الموسيقى الخاصة بي',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF333333),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: 'بحث عن أغنية',
-                    onPressed: () => showSearch<void>(
-                      context: context,
-                      delegate: _RoomMusicSearchDelegate(music),
-                    ),
+                    tooltip: 'إغلاق الموسيقى',
+                    onPressed: widget.onClose,
                     icon: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: onUpload,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 13,
-                        vertical: 9,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFE9B949), Color(0xFFB87916)],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.file_upload_rounded,
-                            color: Colors.white,
-                            size: 17,
-                          ),
-                          SizedBox(width: 6),
-                          Text(
-                            'رفع موسيقى',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
+                      Icons.close_rounded,
+                      color: Color(0xFF555B66),
+                      size: 25,
                     ),
                   ),
                 ],
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+              child: TextField(
+                controller: _search,
+                onChanged: (value) => setState(() => _query = value),
+                textDirection: TextDirection.rtl,
+                decoration: InputDecoration(
+                  hintText: 'ابحث عن الأغاني',
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 13,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Color(0xFF9CA3AF),
+                    size: 20,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF1F3F5),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(22),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
             Expanded(
-              child: music.isEmpty
+              child: tracks.isEmpty
                   ? const Center(
                       child: Text(
-                        'لم تتم إضافة موسيقى بعد\nارفع ملفات صوتية لتشغيلها للجميع',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white54, height: 1.7),
+                        'اختر + لإضافة موسيقى حقيقية للغرفة',
+                        style: TextStyle(color: Color(0xFF777777)),
                       ),
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-                      itemCount: music.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 9),
+                      padding: const EdgeInsets.fromLTRB(18, 2, 18, 12),
+                      itemCount: tracks.length,
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, color: Color(0xFFF0F0F0)),
                       itemBuilder: (_, index) {
-                        final item = music[index];
+                        final item = tracks[index];
                         final selected =
                             active?['id']?.toString() == item['id']?.toString();
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? const Color(0xFF6D4AFF).withValues(alpha: .3)
-                                : Colors.white.withValues(alpha: .07),
-                            borderRadius: BorderRadius.circular(17),
-                            border: Border.all(
-                              color: selected
-                                  ? const Color(0xFFE9B949)
-                                  : Colors.white12,
+                        return InkWell(
+                          onTap: () => selected && widget.playing
+                              ? widget.onPause(item)
+                              : widget.onPlay(item),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  child: Text(
+                                    '${index + 1}',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Color(0xFFD1D5DB),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    item['title']?.toString() ?? 'موسيقى',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: selected
+                                          ? const Color(0xFFF2B900)
+                                          : const Color(0xFF555555),
+                                      fontSize: 13,
+                                      fontWeight: selected
+                                          ? FontWeight.w800
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                if (selected && widget.playing)
+                                  const SizedBox(
+                                    width: 24,
+                                    height: 18,
+                                    child: _MusicEqualizer(),
+                                  )
+                                else
+                                  Icon(
+                                    selected
+                                        ? Icons.volume_down_rounded
+                                        : Icons.music_note_outlined,
+                                    color: selected
+                                        ? const Color(0xFFF2B900)
+                                        : const Color(0xFFD1D5DB),
+                                    size: 19,
+                                  ),
+                              ],
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 42,
-                                height: 42,
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? const Color(0xFFE9B949)
-                                      : Colors.white10,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  selected && playing
-                                      ? Icons.equalizer_rounded
-                                      : Icons.music_note_rounded,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 11),
-                              Expanded(
-                                child: Text(
-                                  item['title']?.toString() ?? 'موسيقى',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => selected && playing
-                                    ? onPause(item)
-                                    : onPlay(item),
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF7658FF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    selected && playing
-                                        ? Icons.pause_rounded
-                                        : Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         );
                       },
                     ),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
-              decoration: const BoxDecoration(
-                color: Color(0xCC11142E),
-                border: Border(top: BorderSide(color: Colors.white12)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.graphic_eq_rounded,
-                        color: Color(0xFFE9B949),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          active?['title']?.toString() ??
-                              'لا توجد موسيقى تعمل الآن',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      if (active != null && !canControl)
-                        const Text(
-                          'تحكم المالك',
-                          style: TextStyle(
-                            color: Colors.white54,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      GestureDetector(
-                        onTap: onStop,
-                        child: const Text(
-                          'إيقاف',
-                          style: TextStyle(
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  if (active != null && durationSeconds > 0)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.fast_forward_rounded,
-                          color: Colors.white54,
-                          size: 16,
-                        ),
-                        Expanded(
-                          child: SliderTheme(
-                            data: SliderTheme.of(context).copyWith(
-                              activeTrackColor: const Color(0xFF8B7BFF),
-                              inactiveTrackColor: Colors.white12,
-                              thumbColor: Colors.white,
-                              trackHeight: 3,
-                            ),
-                            child: Slider(
-                              value: positionSeconds.clamp(
-                                0.0,
-                                durationSeconds,
-                              ),
-                              min: 0,
-                              max: durationSeconds,
-                              onChanged: canControl ? onSeek : null,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${positionSeconds.floor()}s',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 9,
-                          ),
-                        ),
-                      ],
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        tooltip: 'Shuffle',
-                        onPressed: canControl ? onShuffle : null,
-                        icon: const Icon(
-                          Icons.shuffle_rounded,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'السابق',
-                        onPressed: canControl ? onPrevious : null,
-                        icon: const Icon(
-                          Icons.skip_previous_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'التالي',
-                        onPressed: canControl ? onNext : null,
-                        icon: const Icon(
-                          Icons.skip_next_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'تكرار',
-                        onPressed: canControl ? onRepeat : null,
-                        icon: const Icon(
-                          Icons.repeat_rounded,
-                          color: Color(0xFFE9B949),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      IconButton(
-                        onPressed: canControl
-                            ? () => onVolume((volume - .1).clamp(0.0, 1.0))
-                            : null,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(
-                          Icons.volume_down_rounded,
-                          color: Colors.white60,
-                          size: 19,
-                        ),
-                      ),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            activeTrackColor: const Color(0xFFE9B949),
-                            inactiveTrackColor: Colors.white12,
-                            thumbColor: Colors.white,
-                            overlayColor: const Color(0x33E9B949),
-                            trackHeight: 4,
-                          ),
-                          child: Slider(
-                            value: volume.clamp(0.0, 1.0),
-                            min: 0,
-                            max: 1,
-                            onChanged: canControl ? onVolume : null,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: canControl
-                            ? () => onVolume((volume + .1).clamp(0.0, 1.0))
-                            : null,
-                        visualDensity: VisualDensity.compact,
-                        icon: const Icon(
-                          Icons.volume_up_rounded,
-                          color: Colors.white60,
-                          size: 19,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            _RoomMusicControls(
+              active: active,
+              playing: widget.playing,
+              volume: widget.volume,
+              canControl: widget.canControl,
+              positionSeconds: widget.positionSeconds,
+              durationSeconds: widget.durationSeconds,
+              positionStream: widget.positionStream,
+              durationStream: widget.durationStream,
+              dragPosition: _dragPosition,
+              onTogglePlay: widget.onTogglePlay,
+              onNext: widget.onNext,
+              onPrevious: widget.onPrevious,
+              onRepeat: widget.onRepeat,
+              onShuffle: widget.onShuffle,
+              onVolume: widget.onVolume,
+              onSeekStart: (value) => setState(() => _dragPosition = value),
+              onSeekEnd: (value) {
+                setState(() => _dragPosition = null);
+                widget.onSeek(value);
+              },
+              time: _time,
             ),
           ],
         ),
@@ -7412,356 +7016,262 @@ class RoomMusicSheet extends StatelessWidget {
   }
 }
 
-const _miniProfileBg = Color(0xFF16151A);
-const _miniProfilePanel = Color(0xFF211F27);
-const _miniProfileMuted = Color(0xFF92909A);
-const _miniProfilePurple = Color(0xFF7C4DFF);
+class _MusicEqualizer extends StatefulWidget {
+  const _MusicEqualizer();
+  @override
+  State<_MusicEqualizer> createState() => _MusicEqualizerState();
+}
 
-class _RoomMiniProfileSheet extends StatelessWidget {
-  const _RoomMiniProfileSheet({
-    required this.username,
-    required this.profile,
-    required this.countryFlag,
-    required this.gender,
-    required this.vip,
-    required this.familyBadge,
-    required this.isShippingAgent,
-    required this.followers,
-    required this.following,
-    required this.isFollowing,
-    required this.visitors,
-    required this.modules,
-    required this.selfSeat,
-    required this.canModerate,
-    required this.targetModerator,
-    required this.voiceMuted,
-    required this.chatMuted,
-    required this.banned,
-    required this.onClose,
-    required this.onOpenProfile,
-    required this.onFollow,
-    required this.onGift,
-    required this.onMention,
-    required this.onLeaveSeat,
-    required this.onModerator,
-    required this.onVoiceMute,
-    required this.onChatMute,
-    required this.onBan,
-    required this.onInvite,
-    required this.onBlock,
-    required this.onReport,
+class _MusicEqualizerState extends State<_MusicEqualizer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (_, _) => Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(3, (index) {
+        final height = 5 + (((_controller.value + index / 3) % 1) * 12);
+        return Container(
+          width: 3,
+          height: height,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          color: const Color(0xFFF2B900),
+        );
+      }),
+    ),
+  );
+}
+
+class _RoomMusicControls extends StatelessWidget {
+  const _RoomMusicControls({
+    required this.active,
+    required this.playing,
+    required this.volume,
+    required this.canControl,
+    required this.positionSeconds,
+    required this.durationSeconds,
+    required this.positionStream,
+    required this.durationStream,
+    required this.dragPosition,
+    required this.onTogglePlay,
+    required this.onNext,
+    required this.onPrevious,
+    required this.onRepeat,
+    required this.onShuffle,
+    required this.onVolume,
+    required this.onSeekStart,
+    required this.onSeekEnd,
+    required this.time,
   });
 
-  final String username;
-  final Map<String, dynamic> profile;
-  final String countryFlag;
-  final String gender;
-  final int vip;
-  final Map<String, dynamic>? familyBadge;
-  final bool isShippingAgent;
-  final dynamic followers;
-  final dynamic following;
-  final bool isFollowing;
-  final dynamic visitors;
-  final Map<String, dynamic> modules;
-  final bool selfSeat;
-  final bool canModerate;
-  final bool targetModerator;
-  final bool voiceMuted;
-  final bool chatMuted;
-  final bool banned;
-  final VoidCallback onClose;
-  final VoidCallback onOpenProfile;
-  final VoidCallback onFollow;
-  final VoidCallback onGift;
-  final VoidCallback onMention;
-  final VoidCallback onLeaveSeat;
-  final VoidCallback onModerator;
-  final VoidCallback onVoiceMute;
-  final VoidCallback onChatMute;
-  final VoidCallback onBan;
-  final VoidCallback onInvite;
-  final VoidCallback onBlock;
-  final VoidCallback onReport;
+  final Map<String, dynamic>? active;
+  final bool playing;
+  final double volume;
+  final bool canControl;
+  final double positionSeconds;
+  final double durationSeconds;
+  final Stream<Duration> positionStream;
+  final Stream<Duration?> durationStream;
+  final double? dragPosition;
+  final Future<void> Function() onTogglePlay;
+  final Future<void> Function() onNext;
+  final Future<void> Function() onPrevious;
+  final Future<void> Function() onRepeat;
+  final Future<void> Function() onShuffle;
+  final ValueChanged<double> onVolume;
+  final ValueChanged<double> onSeekStart;
+  final ValueChanged<double> onSeekEnd;
+  final String Function(double) time;
 
   @override
   Widget build(BuildContext context) {
-    final isVip = vip > 0;
-    final wealth = modules['wealth_level'] ?? profile['wealth_level'] ?? 0;
-    final isAdmin =
-        profile['is_super_admin'] == true ||
-        (profile['saki_id'] as num?)?.toInt() == 1000;
-    final vipGradient =
-        vipNameGradients[vip] ?? const [Color(0xFF334155), Color(0xFF111827)];
-
     return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(maxHeight: 620),
-      decoration: BoxDecoration(
-        color: _miniProfileBg,
-        gradient: isVip
-            ? LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  vipGradient.first.withValues(alpha: .30),
-                  vipGradient.last.withValues(alpha: .12),
-                  const Color(0xEE111321),
-                ],
-              )
-            : null,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(35)),
-        border: isVip
-            ? Border.all(
-                color: vipAccent(vip).withValues(alpha: .72),
-                width: 1.3,
-              )
-            : null,
-        boxShadow: isVip
-            ? [
-                BoxShadow(
-                  color: vipAccent(vip).withValues(alpha: .25),
-                  blurRadius: 28,
-                  spreadRadius: 2,
-                ),
-              ]
-            : null,
+      padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Color(0x12000000), blurRadius: 14)],
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 54, 20, 24),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
+      child: StreamBuilder<Duration>(
+        stream: positionStream,
+        initialData: Duration(milliseconds: (positionSeconds * 1000).round()),
+        builder: (_, positionSnapshot) => StreamBuilder<Duration?>(
+          stream: durationStream,
+          initialData: Duration(milliseconds: (durationSeconds * 1000).round()),
+          builder: (_, durationSnapshot) {
+            final duration =
+                (durationSnapshot.data?.inMilliseconds ??
+                    (durationSeconds * 1000).round()) /
+                1000;
+            final live = (positionSnapshot.data?.inMilliseconds ?? 0) / 1000;
+            final position = (dragPosition ?? live).clamp(
+              0.0,
+              duration > 0 ? duration : double.maxFinite,
+            );
+            return Column(
               children: [
-                GestureDetector(
-                  onTap: onOpenProfile,
-                  child: _RoomProfileAvatar(profile: profile),
-                ),
-                const SizedBox(height: 10),
-                VipNameText(
-                  profile: {
-                    ...profile,
-                    'display_name': username,
-                    'vip_level': vip,
-                  },
-                  fontSize: 21,
+                Text(
+                  active?['title']?.toString() ?? 'اختر أغنية للتشغيل',
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                const SizedBox(height: 6),
-                VipSakiId(profile: {...profile, 'vip_level': vip}),
-                const SizedBox(height: 5),
-                VipTitleBadge(profile: {...profile, 'vip_level': vip}),
-                WealthLevelBadge(profile: profile, compact: true),
-                if (isShippingAgent) ...[
-                  const SizedBox(height: 5),
-                  const RoleTitleBadge(label: 'وكيل شحن', compact: true),
-                ],
-                const SizedBox(height: 8),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  children: [
-                    Text(countryFlag, style: const TextStyle(fontSize: 14)),
-                    const Text('|', style: TextStyle(color: _miniProfileMuted)),
-                    Text(
-                      gender,
-                      style: const TextStyle(
-                        color: _miniProfileMuted,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: [
-                    _RoomProfileBadge(
-                      icon: Icons.diamond_rounded,
-                      label: '$wealth',
-                      color: const Color(0xFF00C853),
-                    ),
-                    if (familyBadge != null)
-                      _RoomProfileBadge(
-                        icon: Icons.groups_rounded,
-                        label: familyBadge!['name']?.toString() ?? 'عائلة',
-                        color: const Color(0xFF3949AB),
-                      ),
-                    if (isAdmin)
-                      const _RoomProfileBadge(
-                        icon: Icons.verified_rounded,
-                        label: 'Super Admin',
-                        color: Color(0xFFE91E63),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 22),
                 Row(
                   children: [
-                    _RoomProfileStat(value: visitors, label: 'الزوار'),
-                    _RoomProfileStat(value: followers, label: 'المتابعين'),
-                    _RoomProfileStat(value: following, label: 'يتابع'),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                if (!selfSeat)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _RoomProfileButton(
-                          icon: Icons.chat_bubble_rounded,
-                          label: 'رسالة',
-                          color: _miniProfilePanel,
-                          onTap: onMention,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _RoomProfileButton(
-                          icon: isFollowing
-                              ? Icons.check_rounded
-                              : Icons.person_add_alt_1_rounded,
-                          label: isFollowing ? 'متابَع' : 'متابعة',
-                          color: _miniProfilePurple,
-                          onTap: onFollow,
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 12),
-                _RoomProfileButton(
-                  icon: Icons.card_giftcard_rounded,
-                  label: 'إرسال هدية',
-                  color: const Color(0xFF2A2A35),
-                  onTap: onGift,
-                ),
-                if (selfSeat) ...[
-                  const SizedBox(height: 10),
-                  _RoomProfileButton(
-                    icon: Icons.mic_off_rounded,
-                    label: 'النزول من المقعد',
-                    color: const Color(0xFFB63D55),
-                    onTap: onLeaveSeat,
-                  ),
-                ],
-                if (canModerate) ...[
-                  const SizedBox(height: 18),
-                  const Divider(color: Color(0x22FFFFFF), height: 1),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'إدارة المستخدم',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: .7),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                    Text(
+                      time(position),
+                      style: const TextStyle(
+                        color: Color(0xFF999999),
+                        fontSize: 10,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 10,
-                    children: [
-                      _RoomProfileAdminAction(
-                        icon: targetModerator
-                            ? Icons.shield_outlined
-                            : Icons.shield_rounded,
-                        label: targetModerator ? 'إلغاء مشرف' : 'مشرف',
-                        onTap: onModerator,
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: const Color(0xFFF2C200),
+                          inactiveTrackColor: const Color(0xFFE5E7EB),
+                          thumbColor: const Color(0xFFF2C200),
+                          overlayColor: const Color(0x22F2C200),
+                          trackHeight: 4,
+                        ),
+                        child: Slider(
+                          value: position,
+                          min: 0,
+                          max: duration > 0 ? duration : 1,
+                          onChanged: canControl ? onSeekStart : null,
+                          onChangeEnd: canControl ? onSeekEnd : null,
+                        ),
                       ),
-                      _RoomProfileAdminAction(
-                        icon: voiceMuted
-                            ? Icons.mic_rounded
-                            : Icons.mic_off_rounded,
-                        label: voiceMuted ? 'إلغاء مايك' : 'كتم مايك',
-                        onTap: onVoiceMute,
+                    ),
+                    Text(
+                      time(duration),
+                      style: const TextStyle(
+                        color: Color(0xFF999999),
+                        fontSize: 10,
                       ),
-                      _RoomProfileAdminAction(
-                        icon: chatMuted
-                            ? Icons.chat_bubble_rounded
-                            : Icons.chat_bubble_outline_rounded,
-                        label: chatMuted ? 'إلغاء دردشة' : 'كتم دردشة',
-                        onTap: onChatMute,
-                      ),
-                      _RoomProfileAdminAction(
-                        icon: banned
-                            ? Icons.person_add_rounded
-                            : Icons.logout_rounded,
-                        label: banned ? 'إلغاء طرد' : 'طرد',
-                        onTap: onBan,
-                      ),
-                      _RoomProfileAdminAction(
-                        icon: Icons.phone_disabled_rounded,
-                        label: 'دعوة',
-                        onTap: onInvite,
-                      ),
-                      _RoomProfileAdminAction(
-                        icon: Icons.block_rounded,
-                        label: 'حظر',
-                        onTap: onBlock,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-            Positioned(
-              top: -38,
-              left: 0,
-              child: _RoomProfileCircleAction(
-                icon: Icons.more_vert_rounded,
-                onTap: () => _showRoomProfileNotice(context),
-              ),
-            ),
-            Positioned(
-              top: -38,
-              right: 0,
-              child: _RoomProfileCircleAction(
-                icon: Icons.alternate_email_rounded,
-                onTap: selfSeat ? onClose : onMention,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRoomProfileNotice(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-        decoration: const BoxDecoration(
-          color: Color(0xFF20202D),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-        ),
-        child: GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-            onReport();
-          },
-          child: const Row(
-            children: [
-              Icon(Icons.flag_rounded, color: Color(0xFFFF6B6B)),
-              SizedBox(width: 12),
-              Text(
-                'إبلاغ عن المستخدم',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: canControl
+                          ? () => onVolume((volume - .1).clamp(0.0, 1.0))
+                          : null,
+                      icon: const Icon(
+                        Icons.volume_down_outlined,
+                        color: Color(0xFF9CA3AF),
+                        size: 20,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: canControl ? onShuffle : null,
+                      icon: const Icon(
+                        Icons.shuffle_rounded,
+                        color: Color(0xFF9CA3AF),
+                        size: 20,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: canControl ? onPrevious : null,
+                      icon: const Icon(
+                        Icons.skip_previous_rounded,
+                        color: Color(0xFF555555),
+                        size: 26,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: active == null || !canControl
+                          ? null
+                          : onTogglePlay,
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFFF2C200),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: Icon(
+                        playing
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: canControl ? onNext : null,
+                      icon: const Icon(
+                        Icons.skip_next_rounded,
+                        color: Color(0xFF555555),
+                        size: 26,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: canControl ? onRepeat : null,
+                      icon: const Icon(
+                        Icons.repeat_rounded,
+                        color: Color(0xFF9CA3AF),
+                        size: 20,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: canControl
+                          ? () => onVolume((volume + .1).clamp(0.0, 1.0))
+                          : null,
+                      icon: const Icon(
+                        Icons.volume_up_outlined,
+                        color: Color(0xFF9CA3AF),
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.volume_down_rounded,
+                      color: Color(0xFF9CA3AF),
+                      size: 17,
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: const Color(0xFFF2C200),
+                          inactiveTrackColor: const Color(0xFFE5E7EB),
+                          thumbColor: const Color(0xFFF2C200),
+                          trackHeight: 3,
+                        ),
+                        child: Slider(
+                          value: volume.clamp(0.0, 1.0),
+                          onChanged: canControl ? onVolume : null,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${(volume * 100).round()}%',
+                      style: const TextStyle(
+                        color: Color(0xFF999999),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -7850,212 +7360,6 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
       ],
     ),
   );
-}
-
-class _RoomProfileBadge extends StatelessWidget {
-  const _RoomProfileBadge({
-    required this.icon,
-    required this.label,
-    required this.color,
-  }) : darkText = false;
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool darkText;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: darkText ? Colors.black : Colors.white),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: darkText ? Colors.black : Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _RoomProfileStat extends StatelessWidget {
-  const _RoomProfileStat({required this.value, required this.label});
-  final dynamic value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Column(
-      children: [
-        Text(
-          '$value',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 19,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(color: _miniProfileMuted, fontSize: 11),
-        ),
-      ],
-    ),
-  );
-}
-
-class _RoomProfileButton extends StatelessWidget {
-  const _RoomProfileButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 48,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _RoomProfileCircleAction extends StatelessWidget {
-  const _RoomProfileCircleAction({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 36,
-      height: 36,
-      decoration: const BoxDecoration(
-        color: Color(0x14FFFFFF),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: Colors.white70, size: 18),
-    ),
-  );
-}
-
-class _RoomProfileAdminAction extends StatelessWidget {
-  const _RoomProfileAdminAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: SizedBox(
-      width: 68,
-      child: Column(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(
-              color: Color(0xFF2A2A35),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white70, size: 16),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: _miniProfileMuted, fontSize: 9),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _RoomMusicSearchDelegate extends SearchDelegate<void> {
-  _RoomMusicSearchDelegate(this.tracks);
-  final List<Map<String, dynamic>> tracks;
-
-  @override
-  List<Widget>? buildActions(BuildContext context) => [
-    IconButton(onPressed: () => query = '', icon: const Icon(Icons.clear)),
-  ];
-
-  @override
-  Widget? buildLeading(BuildContext context) => IconButton(
-    onPressed: () => close(context, null),
-    icon: const Icon(Icons.arrow_back),
-  );
-
-  @override
-  Widget buildResults(BuildContext context) => _results();
-
-  @override
-  Widget buildSuggestions(BuildContext context) => _results();
-
-  Widget _results() {
-    final needle = query.trim().toLowerCase();
-    final result = tracks.where((track) {
-      final title = track['title']?.toString().toLowerCase() ?? '';
-      final artist = track['artist']?.toString().toLowerCase() ?? '';
-      return needle.isEmpty ||
-          title.contains(needle) ||
-          artist.contains(needle);
-    }).toList();
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: result.length,
-      separatorBuilder: (_, _) => const Divider(),
-      itemBuilder: (_, index) => ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.music_note)),
-        title: Text(result[index]['title']?.toString() ?? 'موسيقى'),
-        subtitle: Text(result[index]['artist']?.toString() ?? 'SAKI Creator'),
-      ),
-    );
-  }
 }
 
 class BuffetBigWinBanner extends StatefulWidget {

@@ -72,7 +72,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
     try {
       final viewerId = SakiService.instance.currentUser?.id;
-      final viewingSelf = viewerId != null && viewerId == widget.userId;
       if (viewerId != null && viewerId != widget.userId) {
         unawaited(
           SakiService.instance
@@ -100,11 +99,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
         final profileMap = results[0] is Map
             ? Map<String, dynamic>.from(results[0] as Map)
             : <String, dynamic>{};
-        countryFlag = await SakiService.instance.countryFlag(
-          profileMap['country']?.toString().trim().isNotEmpty == true
-              ? profileMap['country']?.toString()
-              : profileMap['country_code']?.toString(),
-        );
+        countryFlag = profileMap['hide_country'] == true
+            ? ''
+            : await SakiService.instance.countryFlag(
+                profileMap['country']?.toString().trim().isNotEmpty == true
+                    ? profileMap['country']?.toString()
+                    : profileMap['country_code']?.toString(),
+              );
       } catch (_) {
         countryFlag = '🌍';
       }
@@ -119,30 +120,45 @@ class _UserProfilePageState extends State<UserProfilePage> {
             ? Map<String, dynamic>.from(results[10] as Map)
             : const <String, dynamic>{};
         final love = community['relationship'] ?? community['love'];
+        final hiddenIdentity = base?['is_private_identity'] == true;
         _profile = base == null
             ? null
             : {
                 ...base,
-                'family_badge': family,
-                'shipping_agent': results[8] == true,
-                'cover_images': results[9] is List
+                'family_badge': hiddenIdentity ? null : family,
+                'shipping_agent': hiddenIdentity ? false : results[8] == true,
+                'cover_images': hiddenIdentity
+                    ? <Map<String, dynamic>>[]
+                    : results[9] is List
                     ? _mapList(results[9])
                     : <Map<String, dynamic>>[],
-                'love': love,
+                'love': hiddenIdentity ? null : love,
               };
-        _stats = results[2] is Map
+        _stats = hiddenIdentity
+            ? <String, int>{}
+            : results[2] is Map
             ? (results[2] as Map).map(
                 (key, value) =>
                     MapEntry(key.toString(), value is num ? value.toInt() : 0),
               )
             : <String, int>{};
-        _posts = _mapList(results[3]);
-        _gifts = _mapList(results[4]);
-        _vehicles = _mapList(results[5]);
-        _following = results[6] == true;
-        _badges = _mapList(results[7]);
-        _countryFlag = countryFlag;
-        _supporters = _mapList(results[11]);
+        _posts = hiddenIdentity
+            ? <Map<String, dynamic>>[]
+            : _mapList(results[3]);
+        _gifts = hiddenIdentity
+            ? <Map<String, dynamic>>[]
+            : _mapList(results[4]);
+        _vehicles = hiddenIdentity
+            ? <Map<String, dynamic>>[]
+            : _mapList(results[5]);
+        _following = hiddenIdentity ? false : results[6] == true;
+        _badges = hiddenIdentity
+            ? <Map<String, dynamic>>[]
+            : _mapList(results[7]);
+        _countryFlag = hiddenIdentity ? '' : countryFlag;
+        _supporters = hiddenIdentity
+            ? <Map<String, dynamic>>[]
+            : _mapList(results[11]);
       });
     } catch (error, stackTrace) {
       developer.log(
@@ -411,6 +427,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     final country = profile['country'] as String? ?? '—';
     final gender = profile['gender'] as String? ?? '';
     final isSelf = widget.userId == SakiService.instance.currentUser?.id;
+    final identityHidden = profile['is_private_identity'] == true;
 
     return _NativeProfileView(
       profile: profile,
@@ -426,6 +443,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       country: country,
       gender: gender,
       isSelf: isSelf,
+      identityHidden: identityHidden,
       following: _following,
       loading: _actionLoading,
       onBack: () => Navigator.maybePop(context),
@@ -452,6 +470,7 @@ class _NativeProfileView extends StatefulWidget {
     required this.country,
     required this.gender,
     required this.isSelf,
+    required this.identityHidden,
     required this.following,
     required this.loading,
     required this.onBack,
@@ -469,7 +488,7 @@ class _NativeProfileView extends StatefulWidget {
   final String username;
   final String? avatar, country;
   final String gender;
-  final bool isSelf, following, loading;
+  final bool isSelf, identityHidden, following, loading;
   final VoidCallback onBack, onCopy, onFollow, onMessage, onReport;
 
   @override
@@ -493,6 +512,7 @@ class _NativeProfileViewState extends State<_NativeProfileView> {
       countryFlag: widget.countryFlag,
       gender: widget.gender,
       isSelf: widget.isSelf,
+      identityHidden: widget.identityHidden,
       following: widget.following,
       loading: widget.loading,
       onBack: widget.onBack,
@@ -517,6 +537,7 @@ class _SakiPremiumUserProfile extends StatefulWidget {
     required this.countryFlag,
     required this.gender,
     required this.isSelf,
+    required this.identityHidden,
     required this.following,
     required this.loading,
     required this.onBack,
@@ -531,7 +552,7 @@ class _SakiPremiumUserProfile extends StatefulWidget {
   final String username;
   final String? avatar;
   final String countryFlag, gender;
-  final bool isSelf, following, loading;
+  final bool isSelf, identityHidden, following, loading;
   final VoidCallback onBack, onCopy, onFollow, onMessage, onReport;
 
   @override
@@ -541,20 +562,6 @@ class _SakiPremiumUserProfile extends StatefulWidget {
 
 class _SakiPremiumUserProfileState extends State<_SakiPremiumUserProfile> {
   int _tab = 0;
-
-  String _name(Map<String, dynamic> value) {
-    final display = value['display_name']?.toString().trim() ?? '';
-    return display.isNotEmpty
-        ? display
-        : value['username']?.toString() ?? 'مستخدم';
-  }
-
-  String _compact(dynamic value) {
-    final number = (value as num?)?.toDouble() ?? 0;
-    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
-    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
-    return number.toInt().toString();
-  }
 
   List<String> _covers() {
     final raw = widget.profile['cover_images'];
@@ -712,7 +719,7 @@ class _SakiPremiumUserProfileState extends State<_SakiPremiumUserProfile> {
                 ),
               ],
             ),
-            if (!widget.isSelf)
+            if (!widget.isSelf && !widget.identityHidden)
               Positioned(
                 left: 16,
                 right: 16,
@@ -854,8 +861,10 @@ class _PremiumProfileHero extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(countryFlag, style: const TextStyle(fontSize: 17)),
-                    const SizedBox(width: 6),
+                    if (countryFlag.isNotEmpty) ...[
+                      Text(countryFlag, style: const TextStyle(fontSize: 17)),
+                      const SizedBox(width: 6),
+                    ],
                     VipNameText(
                       profile: {...profile, 'display_name': username},
                       fontSize: 20,
@@ -1575,230 +1584,6 @@ class _PremiumActionButton extends StatelessWidget {
   );
 }
 
-class _ReferenceProfileHero extends StatelessWidget {
-  const _ReferenceProfileHero({
-    required this.username,
-    required this.avatar,
-    required this.cover,
-    required this.coverImages,
-    required this.gender,
-    required this.countryFlag,
-    required this.profile,
-    required this.stats,
-    required this.onBack,
-    required this.onMenu,
-    required this.onCopy,
-    required this.accent,
-  });
-  final String username;
-  final String? avatar, cover;
-  final List<String> coverImages;
-  final String gender, countryFlag;
-  final Map<String, dynamic> profile;
-  final Map<String, int> stats;
-  final VoidCallback onBack, onMenu, onCopy;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    final isSuperAdmin =
-        profile['is_super_admin'] == true ||
-        profile['admin_role']?.toString() == 'super_admin';
-    final identity = {...profile, 'display_name': username};
-
-    return SizedBox(
-      height: 380,
-      child: ClipRect(
-        child: DecoratedBox(
-          decoration: const BoxDecoration(color: Color(0xFF111827)),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: coverImages.isNotEmpty
-                    ? PageView.builder(
-                        itemCount: coverImages.length,
-                        itemBuilder: (_, index) => Image.network(
-                          coverImages[index],
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              const _ProfileCoverFallback(),
-                        ),
-                      )
-                    : cover != null && cover!.isNotEmpty
-                    ? Image.network(
-                        cover!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            const _ProfileCoverFallback(),
-                      )
-                    : const _ProfileCoverFallback(),
-              ),
-              const Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Color(0xDD000000)],
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: onMenu,
-                          icon: const Icon(Icons.more_vert_rounded),
-                          color: Colors.white,
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: onBack,
-                          icon: const Icon(Icons.chevron_right_rounded),
-                          color: Colors.white,
-                          iconSize: 30,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: .5),
-                          ),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black45, blurRadius: 14),
-                          ],
-                        ),
-                        child: SakiAvatar(
-                          url: avatar,
-                          label: username,
-                          radius: 36,
-                          profile: profile,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(countryFlag, style: const TextStyle(fontSize: 17)),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: VipNameText(
-                            profile: identity,
-                            fontSize: 18,
-                            textAlign: TextAlign.start,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        WealthVipLabels(profile: identity, compact: true),
-                        if (isSuperAdmin) ...[
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF7C3AED), Color(0xFFEC4899)],
-                              ),
-                              borderRadius: BorderRadius.circular(99),
-                              border: Border.all(color: Colors.white54),
-                            ),
-                            child: const Text(
-                              'Super Admin',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ],
-                        if (gender.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              gender,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text(
-                          'ID: ${profile['saki_id'] ?? '—'}',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: onCopy,
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(
-                            Icons.copy_rounded,
-                            color: Colors.white70,
-                            size: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _ReferenceHeroStat(
-                          value: '${stats['followers'] ?? 0}',
-                          label: 'المتابعون',
-                        ),
-                        _ReferenceHeroDivider(),
-                        _ReferenceHeroStat(
-                          value: '${stats['following'] ?? 0}',
-                          label: 'الذين تتابعهم',
-                        ),
-                        _ReferenceHeroDivider(),
-                        _ReferenceHeroStat(
-                          value: '${stats['posts'] ?? 0}',
-                          label: 'اللحظات',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ProfileCoverFallback extends StatelessWidget {
   const _ProfileCoverFallback();
 
@@ -1812,207 +1597,6 @@ class _ProfileCoverFallback extends StatelessWidget {
       ),
     ),
   );
-}
-
-class _ReferenceHeroStat extends StatelessWidget {
-  const _ReferenceHeroStat({required this.value, required this.label});
-  final String value, label;
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(color: Colors.white70, fontSize: 10),
-        ),
-      ],
-    ),
-  );
-}
-
-class _ReferenceHeroDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) =>
-      Container(height: 28, width: 1, color: Colors.white38);
-}
-
-class _ReferenceTab extends StatelessWidget {
-  const _ReferenceTab({
-    required this.label,
-    required this.active,
-    required this.accent,
-    required this.onTap,
-  });
-  final String label;
-  final bool active;
-  final Color accent;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? accent : const Color(0xFFE5E7EB),
-              width: active ? 3 : 1,
-            ),
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: active ? const Color(0xFF111827) : const Color(0xFF6B7280),
-            fontSize: 13,
-            fontWeight: active ? FontWeight.w800 : FontWeight.w600,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _ReferenceAbout extends StatelessWidget {
-  const _ReferenceAbout({
-    required this.bio,
-    required this.isSelf,
-    required this.accent,
-  });
-  final String bio;
-  final bool isSelf;
-  final Color accent;
-  @override
-  Widget build(BuildContext context) => _ReferenceSection(
-    title: 'عني',
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F7),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        bio.isEmpty ? 'لا توجد نبذة مضافة حتى الآن.' : bio,
-        textDirection: TextDirection.rtl,
-        style: const TextStyle(
-          color: Color(0xFF4B5563),
-          fontSize: 13,
-          height: 1.5,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ),
-  );
-}
-
-class _ReferenceSection extends StatelessWidget {
-  const _ReferenceSection({required this.title, required this.child});
-  final String title;
-  final Widget child;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 20),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF111827),
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 9),
-        child,
-      ],
-    ),
-  );
-}
-
-class _ReferenceFamilyCard extends StatelessWidget {
-  const _ReferenceFamilyCard({required this.family, required this.accent});
-  final Map<String, dynamic>? family;
-  final Color accent;
-  @override
-  Widget build(BuildContext context) {
-    final hasFamily = family != null;
-    final familyAvatar = family?['avatar_url']?.toString();
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF071739), Color(0xFF1868D9), Color(0xFF0A2552)],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.blueAccent.withValues(alpha: .35)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x441868D9),
-            blurRadius: 14,
-            offset: Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            padding: const EdgeInsets.all(2),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Color(0xFF22D3EE), Color(0xFF6366F1)],
-              ),
-            ),
-            child: ClipOval(
-              child: familyAvatar == null || familyAvatar.isEmpty
-                  ? const Icon(Icons.groups_rounded, color: Colors.white)
-                  : Image.network(familyAvatar, fit: BoxFit.cover),
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasFamily
-                      ? family!['name']?.toString() ?? 'عائلتي'
-                      : 'لا توجد عائلة',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  hasFamily
-                      ? 'Lv.${family!['level'] ?? 0}  •  ${family!['role'] ?? 'عضو'}'
-                      : 'يمكن الانضمام إلى عائلة من صفحة العائلات',
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.shield_rounded, color: Color(0xFFFBBF24)),
-        ],
-      ),
-    );
-  }
 }
 
 class _ReferenceCpCard extends StatefulWidget {
@@ -2415,42 +1999,6 @@ class _ReferenceCollection extends StatelessWidget {
               ),
             ),
     ],
-  );
-}
-
-class _ReferenceAction extends StatelessWidget {
-  const _ReferenceAction({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.loading,
-    required this.onTap,
-  });
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool loading;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => ElevatedButton.icon(
-    onPressed: loading ? null : onTap,
-    icon: loading
-        ? const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          )
-        : Icon(icon, size: 17),
-    label: Text(label),
-    style: ElevatedButton.styleFrom(
-      backgroundColor: color,
-      foregroundColor: Colors.white,
-      minimumSize: const Size.fromHeight(48),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    ),
   );
 }
 

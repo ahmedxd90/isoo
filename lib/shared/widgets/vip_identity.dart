@@ -44,7 +44,11 @@ Color vipAccent(int level) =>
     Colors.white70;
 
 int activeVipLevel(Map<String, dynamic> profile) {
-  final level = (profile['vip_level'] as num?)?.toInt() ?? 0;
+  // Realtime/cache rows can serialize vip_level as either a number or string.
+  final rawLevel = profile['vip_level'] ?? profile['vip'];
+  final level = rawLevel is num
+      ? rawLevel.toInt()
+      : int.tryParse(rawLevel?.toString() ?? '') ?? 0;
   final expiry = DateTime.tryParse(profile['vip_expires_at']?.toString() ?? '');
   return level > 0 && (expiry == null || expiry.isAfter(DateTime.now()))
       ? level.clamp(0, 11)

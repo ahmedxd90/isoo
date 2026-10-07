@@ -65,6 +65,24 @@
             transform: scale(0.92);
         }
 
+        .vip11-seat-art {
+            position: absolute;
+            inset: -13px;
+            width: calc(100% + 26px);
+            height: calc(100% + 26px);
+            object-fit: contain;
+            z-index: 0;
+            pointer-events: none;
+            filter: drop-shadow(0 0 5px rgba(168, 85, 247, .9));
+        }
+
+        .vip11-seat-avatar {
+            position: relative;
+            z-index: 1;
+            width: 26px;
+            height: 26px;
+        }
+
         .speaking-ripple {
             box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.8), 0 0 15px rgba(34, 197, 94, 0.6);
             animation: pulse-ring 1.5s infinite;
@@ -655,14 +673,16 @@
         const occupied = !!seat.userId;
         const locked = !!seat.locked;
         const speaking = !!seat.speaking;
-        const frame = (occupied ? 'bg-black/20 ' : '') + (speaking ? 'speaking-ripple ' : '') + 'w-10 h-10 rounded-full seat-frame flex items-center justify-center relative ' + (locked ? 'border-red-400' : '');
+        const isVip11 = occupied && Number(seat.vip || 0) >= 11 && seat.vip11SeatAsset;
+        const frame = (occupied ? 'bg-black/20 ' : '') + (speaking ? 'speaking-ripple ' : '') + (isVip11 ? 'w-16 h-16 ' : 'w-10 h-10 ') + 'rounded-full seat-frame flex items-center justify-center relative ' + (locked ? 'border-red-400' : '');
         const avatarBorder = Array.isArray(seat.vipColors) && seat.vipColors.length ? seat.vipColors[1 % seat.vipColors.length] : '#34D399';
-        const avatar = occupied && seat.avatar ? '<img data-user-id="' + escapeHtml(seat.userId || '') + '" src="' + escapeHtml(seat.avatar) + '" style="border-color:' + avatarBorder + ';box-shadow:0 0 8px ' + avatarBorder + '88" class="w-full h-full rounded-full object-cover border-2">' : '';
+        const art = isVip11 ? '<img src="' + escapeHtml(seat.vip11SeatAsset) + '" class="vip11-seat-art">' : '';
+        const avatar = occupied && seat.avatar ? '<img data-user-id="' + escapeHtml(seat.userId || '') + '" src="' + escapeHtml(seat.avatar) + '" style="border-color:' + avatarBorder + ';box-shadow:0 0 8px ' + avatarBorder + '88" class="' + (isVip11 ? 'vip11-seat-avatar' : 'w-full h-full') + ' rounded-full object-cover border-2">' : '';
         const activeEmoji = occupied && seat.emoji ? '<img src="' + escapeHtml(seat.emoji) + '" class="absolute inset-0 z-10 w-full h-full rounded-full object-cover pointer-events-none drop-shadow-[0_0_6px_rgba(255,255,255,.9)]">' : '';
         const icon = locked && !occupied ? '<i class="fa-solid fa-lock text-red-300 text-sm"></i>' : (avatar ? '' : '<i class="fa-solid fa-couch text-white/80 text-sm"></i>');
         const label = occupied ? escapeHtml(seat.name || 'عضو') : (locked ? 'مقعد مقفول' : String(seat.no));
         const labelStyle = occupied ? vipTextStyle(seat.vipColors) : 'color:#E5E7EB;';
-        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + icon + avatar + activeEmoji + '</div><span style="' + labelStyle + '" class="text-[10px] font-bold mt-0.5 drop-shadow">' + label + '</span></div>';
+        return '<div onclick="handleSeatClick(' + seat.no + ')" class="flex flex-col items-center justify-center cursor-pointer group"><div id="seat-frame-' + seat.no + '" class="' + frame + '">' + art + icon + avatar + activeEmoji + '</div><span style="' + labelStyle + '" class="text-[10px] font-bold mt-0.5 drop-shadow">' + label + '</span></div>';
       }).join('');
       container.querySelectorAll('[data-user-id]').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); bridge('user',{userId:el.dataset.userId}); }; });
     }

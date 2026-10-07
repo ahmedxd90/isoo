@@ -1,11 +1,11 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/config/supabase_config.dart';
 import '../../core/data/saki_service.dart';
-
 import '../../shared/widgets/custom_toast.dart';
+import 'account_page.dart';
+import 'vip_page.dart';
 
 class UserSettingsPage extends StatefulWidget {
   const UserSettingsPage({super.key, required this.profile});
@@ -24,10 +24,10 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
   static const _page = Color(0xFFF7F7F9);
 
   final _service = SakiService.instance;
-  bool _notifications = true;
   bool _privateProfile = false;
-  bool _saving = false;
   bool _loading = true;
+  bool _loggingOut = false;
+  String _language = 'العربية';
   List<Map<String, dynamic>> _blocked = [];
 
   @override
@@ -43,10 +43,11 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
         account['settings'] as Map? ?? const {},
       );
       final blocked = await _service.blockedUsers();
+      final preferences = await SharedPreferences.getInstance();
       if (!mounted) return;
       setState(() {
-        _notifications = settings['notifications_enabled'] != false;
         _privateProfile = settings['private_profile'] == true;
+        _language = preferences.getString('saki_profile_language') ?? 'العربية';
         _blocked = blocked;
         _loading = false;
       });
@@ -56,232 +57,65 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     }
   }
 
-  Future<void> _saveSettings() async {
-    if (_saving) return;
-    setState(() => _saving = true);
-    try {
-      await _service.accountModules();
-      await _service.updateAccountSettings({
-        'notifications_enabled': _notifications,
-        'private_profile': _privateProfile,
-      });
-      if (mounted) _toast('تم حفظ إعدادات الحساب بنجاح');
-    } catch (_) {
-      if (mounted) _toast('تعذر حفظ إعدادات الحساب');
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  Future<void> _toggleNotifications(bool value) async {
-    setState(() => _notifications = value);
-    await _saveSettings();
-  }
-
   Future<void> _togglePrivacy(bool value) async {
     setState(() => _privateProfile = value);
-    await _saveSettings();
-  }
-
-  Future<void> _unblock(Map<String, dynamic> row) async {
-    final id = row['blocked_id']?.toString();
-    if (id == null) return;
     try {
-      await _service.unblockUser(id);
-      if (mounted) {
-        setState(() => _blocked.remove(row));
-        _toast('تم إلغاء حظر المستخدم');
-      }
+      await _service.updateAccountSettings({'private_profile': value});
+      _toast('تم تحديث إعدادات الخصوصية');
     } catch (_) {
-      _toast('تعذر إلغاء الحظر');
+      if (mounted) setState(() => _privateProfile = !value);
+      _toast('تعذر حفظ إعدادات الخصوصية');
     }
   }
 
-  Future<void> _clearCache() async {
-    imageCache.clear();
-    imageCache.clearLiveImages();
-    _toast('تم تنظيف الذاكرة المؤقتة من الجهاز');
-  }
-
-  Future<void> _checkNetwork() async {
-    _toast('جارٍ فحص الاتصال...');
-    try {
-      final host = Uri.parse(supabaseUrl).host;
-      await InternetAddress.lookup(host);
-      if (mounted) _toast('الاتصال بمشروع Supabase يعمل على مستوى الشبكة');
-    } catch (_) {
-      if (mounted) _toast('تعذر الوصول إلى الخادم، تحقق من الإنترنت');
-    }
-  }
-
-  Future<void> _deleteChatRecords() async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _chooseLanguage() async {
+    final selected = await showModalBottomSheet<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('حذف سجلات الدردشة؟'),
-        content: const Text(
-          'سيتم حذف الرسائل التي أرسلتها فقط. هذا الإجراء لا يمكن التراجع عنه.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('حذف'),
-          ),
-        ],
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-    );
-    if (confirmed != true) return;
-    try {
-      await _service.deleteOwnChatMessages();
-      _toast('تم حذف سجلات الدردشة الخاصة بك');
-    } catch (_) {
-      _toast('تعذر حذف سجلات الدردشة من الخادم');
-    }
-  }
-
-  Future<void> _logout() async {
-    await SakiService.instance.logout();
-    if (mounted) Navigator.of(context).pop(true);
-  }
-
-  void _toast(String text) {
-    if (!mounted) return;
-    CustomToast.show(context, text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final username = widget.profile['username'] as String? ?? 'مستخدم SAKI';
-    return Scaffold(
-      backgroundColor: _page,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                _Header(onBack: () => Navigator.pop(context)),
-                Expanded(
-                  child: _loading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: _cyan),
-                        )
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 34),
-                          children: [
-                            _AccountBanner(username: username),
-                            const SizedBox(height: 18),
-                            _Section(
-                              children: [
-                                _SettingRow(
-                                  icon: Icons.person_outline_rounded,
-                                  title: 'حسابي',
-                                  subtitle: 'البيانات الشخصية والملف العام',
-                                  onTap: () => _toast(
-                                    'بيانات الحساب محفوظة في قاعدة SAKI الجديدة',
-                                  ),
-                                ),
-                                _SettingSwitch(
-                                  icon: Icons.notifications_none_rounded,
-                                  title: 'الإشعارات',
-                                  value: _notifications,
-                                  onChanged: _toggleNotifications,
-                                ),
-                                _SettingSwitch(
-                                  icon: Icons.lock_outline_rounded,
-                                  title: 'الخصوصية',
-                                  subtitle:
-                                      'إخفاء الملف عن المستخدمين غير المتابعين',
-                                  value: _privateProfile,
-                                  onChanged: _togglePrivacy,
-                                ),
-                                _SettingRow(
-                                  icon: Icons.block_outlined,
-                                  title: 'قائمة الحظر',
-                                  trailing: _blocked.isEmpty
-                                      ? null
-                                      : '${_blocked.length}',
-                                  onTap: _showBlocked,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _Section(
-                              children: [
-                                _SettingRow(
-                                  icon: Icons.cleaning_services_outlined,
-                                  title: 'تنظيف الذاكرة',
-                                  subtitle: 'إزالة الصور المؤقتة من الجهاز',
-                                  onTap: _clearCache,
-                                ),
-                                _SettingRow(
-                                  icon: Icons.delete_sweep_outlined,
-                                  title: 'حذف سجلات الدردشة',
-                                  subtitle: 'حذف رسائلك الخاصة فقط',
-                                  onTap: _deleteChatRecords,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _Section(
-                              children: [
-                                _SettingRow(
-                                  icon: Icons.wifi_rounded,
-                                  title: 'فحص الشبكة',
-                                  subtitle: 'التحقق من الاتصال بخوادم SAKI',
-                                  onTap: _checkNetwork,
-                                ),
-                                _SettingRow(
-                                  icon: Icons.info_outline_rounded,
-                                  title: 'حول التطبيق',
-                                  subtitle: 'SAKI • الإصدار الحالي',
-                                  onTap: () => _showAbout(username),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            _Section(
-                              children: [
-                                _SettingRow(
-                                  icon: Icons.save_outlined,
-                                  title: 'حفظ كل الإعدادات',
-                                  trailingWidget: _saving
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: _cyan,
-                                          ),
-                                        )
-                                      : null,
-                                  onTap: _saving ? null : _saveSettings,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            _LogoutButton(onTap: _logout),
-                          ],
-                        ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'اختر اللغة',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              for (final language in const ['العربية', 'English', 'Türkçe'])
+                ListTile(
+                  title: Text(language),
+                  trailing: language == _language
+                      ? const Icon(Icons.check_circle_rounded, color: _cyan)
+                      : null,
+                  onTap: () => Navigator.pop(sheetContext, language),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
     );
+    if (selected == null || !mounted) return;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString('saki_profile_language', selected);
+    if (mounted) {
+      setState(() => _language = selected);
+      _toast('تم تغيير اللغة إلى $selected');
+    }
   }
 
   Future<void> _showBlocked() async {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (_) => SafeArea(
         child: Container(
+          constraints: const BoxConstraints(maxHeight: 560),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -290,13 +124,14 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
           child: _blocked.isEmpty
               ? const Padding(
                   padding: EdgeInsets.all(28),
-                  child: Center(child: Text('قائمة الحظر فارغة')),
+                  child: Center(child: Text('قائمة المحظورين فارغة')),
                 )
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
+              : ListView(
+                  shrinkWrap: true,
                   children: [
                     const Text(
-                      'قائمة الحظر',
+                      'قائمة المحظورين',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
@@ -328,20 +163,155 @@ class _UserSettingsPageState extends State<UserSettingsPage> {
     );
   }
 
-  void _showAbout(String username) {
-    _toast('$username • SAKI اجتماعيًا أقرب');
+  Future<void> _unblock(Map<String, dynamic> row) async {
+    final id = row['blocked_id']?.toString();
+    if (id == null) return;
+    try {
+      await _service.unblockUser(id);
+      if (mounted) {
+        setState(() => _blocked.remove(row));
+        _toast('تم إلغاء حظر المستخدم');
+      }
+    } catch (_) {
+      _toast('تعذر إلغاء الحظر');
+    }
+  }
+
+  Future<void> _logout() async {
+    if (_loggingOut) return;
+    setState(() => _loggingOut = true);
+    try {
+      await _service.logout();
+      if (mounted) context.go('/login');
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loggingOut = false);
+        _toast('تعذر تسجيل الخروج');
+      }
+    }
+  }
+
+  void _openAccount() {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const AccountPage()));
+  }
+
+  void _toast(String text) {
+    if (mounted) CustomToast.show(context, text);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final username = widget.profile['username']?.toString() ?? 'مستخدم SAKI';
+    return Scaffold(
+      backgroundColor: _page,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              children: [
+                const _Header(),
+                Expanded(
+                  child: _loading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: _cyan),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                          children: [
+                            _AccountBanner(username: username),
+                            const SizedBox(height: 18),
+                            _Section(
+                              title: 'الحساب',
+                              children: [
+                                _SettingRow(
+                                  icon: Icons.person_outline_rounded,
+                                  title: 'حسابي',
+                                  subtitle: 'عرض ملفك وبيانات حسابك',
+                                  onTap: _openAccount,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _Section(
+                              title: 'الخصوصية والأمان',
+                              children: [
+                                _SettingSwitch(
+                                  icon: Icons.lock_outline_rounded,
+                                  title: 'الخصوصية',
+                                  subtitle:
+                                      'إخفاء الملف عن المستخدمين غير المتابعين',
+                                  value: _privateProfile,
+                                  onChanged: _togglePrivacy,
+                                ),
+                                _SettingRow(
+                                  icon: Icons.block_outlined,
+                                  title: 'قائمة المحظورين',
+                                  subtitle: 'إدارة المستخدمين الذين حظرتهم',
+                                  trailing: _blocked.isEmpty
+                                      ? null
+                                      : '${_blocked.length}',
+                                  onTap: _showBlocked,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _Section(
+                              title: 'مميزات VIP',
+                              children: [
+                                _SettingRow(
+                                  icon: Icons.workspace_premium_outlined,
+                                  title: 'مميزات VIP',
+                                  subtitle: 'الباقات والمزايا والترقية',
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const VipPage(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _Section(
+                              title: 'التفضيلات',
+                              children: [
+                                _SettingRow(
+                                  icon: Icons.language_rounded,
+                                  title: 'اللغة',
+                                  subtitle: 'لغة التطبيق',
+                                  trailing: _language,
+                                  onTap: _chooseLanguage,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+                            _LogoutButton(loading: _loggingOut, onTap: _logout),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onBack});
-  final VoidCallback onBack;
+  const _Header();
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
     child: Row(
       children: [
-        _IconButton(icon: Icons.arrow_forward_ios_rounded, onTap: onBack),
+        IconButton(
+          tooltip: 'رجوع',
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+        ),
         const Expanded(
           child: Center(
             child: Text(
@@ -354,28 +324,8 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 42),
+        const SizedBox(width: 48),
       ],
-    ),
-  );
-}
-
-class _IconButton extends StatelessWidget {
-  const _IconButton({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 42,
-      height: 42,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Icon(icon, size: 16, color: _UserSettingsPageState._ink),
     ),
   );
 }
@@ -383,6 +333,7 @@ class _IconButton extends StatelessWidget {
 class _AccountBanner extends StatelessWidget {
   const _AccountBanner({required this.username});
   final String username;
+
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(16),
@@ -418,7 +369,7 @@ class _AccountBanner extends StatelessWidget {
               ),
               const SizedBox(height: 3),
               const Text(
-                'إدارة حسابك وبياناتك بأمان',
+                'إعدادات حسابك في مكان واحد',
                 style: TextStyle(
                   color: _UserSettingsPageState._muted,
                   fontSize: 11,
@@ -428,7 +379,7 @@ class _AccountBanner extends StatelessWidget {
           ),
         ),
         const Icon(
-          Icons.verified_rounded,
+          Icons.settings_rounded,
           color: _UserSettingsPageState._cyan,
           size: 20,
         ),
@@ -438,37 +389,55 @@ class _AccountBanner extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.children});
+  const _Section({required this.title, required this.children});
+  final String title;
   final List<Widget> children;
+
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x08000000),
-          blurRadius: 14,
-          offset: Offset(0, 4),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 7),
+        child: Text(
+          title,
+          style: const TextStyle(
+            color: _UserSettingsPageState._muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-      ],
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i < children.length - 1)
-              const Divider(
-                height: 1,
-                indent: 58,
-                color: _UserSettingsPageState._line,
-              ),
-          ],
-        ],
       ),
-    ),
+      Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 14,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            children: [
+              for (var i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i < children.length - 1)
+                  const Divider(
+                    height: 1,
+                    indent: 58,
+                    color: _UserSettingsPageState._line,
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ],
   );
 }
 
@@ -479,14 +448,13 @@ class _SettingRow extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.trailing,
-    this.trailingWidget,
   });
   final IconData icon;
   final String title;
   final String? subtitle;
   final String? trailing;
-  final Widget? trailingWidget;
   final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
@@ -521,10 +489,9 @@ class _SettingRow extends StatelessWidget {
               ],
             ),
           ),
-          trailingWidget ?? const SizedBox.shrink(),
-          if (trailing case final value?) ...[
+          if (trailing != null) ...[
             Text(
-              value,
+              trailing!,
               style: const TextStyle(
                 color: _UserSettingsPageState._cyan,
                 fontWeight: FontWeight.w800,
@@ -556,6 +523,7 @@ class _SettingSwitch extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -597,33 +565,46 @@ class _SettingSwitch extends StatelessWidget {
 }
 
 class _LogoutButton extends StatelessWidget {
-  const _LogoutButton({required this.onTap});
+  const _LogoutButton({required this.loading, required this.onTap});
+  final bool loading;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
+  Widget build(BuildContext context) => InkWell(
+    onTap: loading ? null : onTap,
+    borderRadius: BorderRadius.circular(16),
     child: Container(
       height: 54,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFFFF1F2),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 14,
-            offset: Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: const Color(0xFFFFD5DA)),
       ),
-      child: const Text(
-        'خروج',
-        style: TextStyle(
-          color: _UserSettingsPageState._cyan,
-          fontSize: 15,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
+      child: loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFFE11D48),
+              ),
+            )
+          : const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.logout_rounded, color: Color(0xFFE11D48), size: 19),
+                SizedBox(width: 8),
+                Text(
+                  'تسجيل الخروج',
+                  style: TextStyle(
+                    color: Color(0xFFE11D48),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
     ),
   );
 }

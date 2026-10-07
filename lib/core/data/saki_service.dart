@@ -53,6 +53,26 @@ class SakiService {
     return null;
   }
 
+  Future<Map<String, dynamic>> profilePrivacySettings() async {
+    final result = await client.rpc('saki_profile_privacy_settings');
+    return result is Map
+        ? Map<String, dynamic>.from(result)
+        : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> setProfilePrivacySetting(
+    String setting,
+    bool enabled,
+  ) async {
+    final result = await client.rpc(
+      'saki_set_profile_privacy_setting',
+      params: {'p_setting': setting, 'p_enabled': enabled},
+    );
+    return result is Map
+        ? Map<String, dynamic>.from(result)
+        : <String, dynamic>{};
+  }
+
   Future<Map<String, dynamic>?> myProfile() async {
     final user = client.auth.currentUser;
     if (user == null) {
@@ -1117,14 +1137,11 @@ class SakiService {
   }
 
   Future<Map<String, dynamic>?> userProfile(String userId) async {
-    final data = await client
-        .from('profiles')
-        .select(
-          'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin,admin_role',
-        )
-        .eq('id', userId)
-        .maybeSingle();
-    return data == null ? null : Map<String, dynamic>.from(data);
+    final data = await client.rpc(
+      'saki_public_profile',
+      params: {'p_user_id': userId},
+    );
+    return data is Map ? Map<String, dynamic>.from(data) : null;
   }
 
   Future<Map<String, dynamic>?> roomChatProfile(String userId) async {
@@ -1678,6 +1695,26 @@ class SakiService {
     return row == null ? null : Map<String, dynamic>.from(row);
   }
 
+  Future<int> roomOwnerVipLevel(String ownerId) async {
+    if (ownerId.isEmpty) return 0;
+    final row = await client
+        .from('profiles')
+        .select('vip_level,vip_expires_at')
+        .eq('id', ownerId)
+        .maybeSingle();
+    if (row == null) return 0;
+    final profile = Map<String, dynamic>.from(row);
+    final rawLevel = profile['vip_level'];
+    final level = rawLevel is num
+        ? rawLevel.toInt()
+        : int.tryParse(rawLevel?.toString() ?? '') ?? 0;
+    final expires = DateTime.tryParse(
+      profile['vip_expires_at']?.toString() ?? '',
+    );
+    if (expires != null && expires.isBefore(DateTime.now().toUtc())) return 0;
+    return level.clamp(0, 11);
+  }
+
   Future<Set<String>> followedRoomIds() async {
     final rows = await client
         .from('room_follows')
@@ -1771,7 +1808,9 @@ class SakiService {
       try {
         final profiles = await client
             .from('profiles')
-            .select('id,username,display_name,avatar_url')
+            .select(
+              'id,username,display_name,avatar_url,vip_level,vip_expires_at',
+            )
             .inFilter('id', userIds);
         for (final profile in List<Map<String, dynamic>>.from(profiles)) {
           final id = profile['id']?.toString();
@@ -1888,6 +1927,52 @@ class SakiService {
     );
   }
 
+  static const _roomProfileColumns =
+      'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin,admin_role,hide_country,identity_hidden';
+
+  Map<String, dynamic> _roomVisibleProfile(Map<String, dynamic> profile) {
+    final isSelf = profile['id']?.toString() == currentUser?.id;
+    if (isSelf) return profile;
+    final hidden = profile['identity_hidden'] == true;
+    final result = Map<String, dynamic>.from(profile);
+    if (hidden) {
+      result
+        ..['username'] = 'اسم مخفي'
+        ..['display_name'] = 'مستخدم مخفي'
+        ..['saki_id'] = null
+        ..['avatar_url'] = null
+        ..['bio'] = null
+        ..['country'] = null
+        ..['country_code'] = ''
+        ..['vip_level'] = 0
+        ..['wealth_level'] = 0
+        ..['is_private_identity'] = true;
+    } else if (profile['hide_country'] == true) {
+      result
+        ..['country'] = null
+        ..['country_code'] = '';
+    }
+    return result;
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _loadRoomProfiles(
+    Iterable<String> ids,
+  ) async {
+    final unique = ids.where((id) => id.isNotEmpty).toSet().toList();
+    if (unique.isEmpty) return {};
+    final rows = await client
+        .from('profiles')
+        .select(_roomProfileColumns)
+        .inFilter('id', unique)
+        .limit(100);
+    return {
+      for (final row in List<Map<String, dynamic>>.from(rows))
+        row['id'].toString(): _roomVisibleProfile(
+          Map<String, dynamic>.from(row),
+        ),
+    };
+  }
+
   Stream<List<Map<String, dynamic>>> roomMembersStream(String roomId) {
     return client
         .from('room_members')
@@ -1895,27 +1980,55 @@ class SakiService {
         .eq('room_id', roomId)
         .order('joined_at', ascending: false)
         .asyncMap((rows) async {
-          final result = <Map<String, dynamic>>[];
           final cutoff = DateTime.now().toUtc().subtract(
             const Duration(seconds: 75),
           );
-          for (final row in rows) {
+          final activeRows = rows.where((row) {
             final lastSeen = DateTime.tryParse(
               row['last_seen']?.toString() ?? '',
             );
-            if (lastSeen == null || lastSeen.isBefore(cutoff)) continue;
-            final profile = await userProfile(row['user_id'] as String);
-            if (profile != null) result.add(profile);
+            return lastSeen != null && !lastSeen.isBefore(cutoff);
+          }).toList();
+          try {
+            final profiles = await _loadRoomProfiles(
+              activeRows.map((row) => row['user_id']?.toString() ?? ''),
+            );
+            return activeRows
+                .map((row) => profiles[row['user_id']?.toString()])
+                .whereType<Map<String, dynamic>>()
+                .toList(growable: false);
+          } catch (_) {
+            return <Map<String, dynamic>>[];
           }
-          return result;
         });
   }
 
   Future<void> claimRoomSeat(String roomId, int seatNo) async {
-    await client.rpc(
-      'claim_room_seat',
-      params: {'p_room_id': roomId, 'p_seat_no': seatNo},
-    );
+    Object? lastError;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        await client.rpc(
+          'claim_room_seat',
+          params: {'p_room_id': roomId, 'p_seat_no': seatNo},
+        );
+        return;
+      } catch (error) {
+        lastError = error;
+        final text = error.toString().toLowerCase();
+        final retryable =
+            text.contains('timeout') ||
+            text.contains('network') ||
+            text.contains('connection') ||
+            text.contains('socket') ||
+            text.contains('429') ||
+            text.contains('502') ||
+            text.contains('503') ||
+            text.contains('504');
+        if (!retryable || attempt == 2) rethrow;
+        await Future<void>.delayed(Duration(milliseconds: 220 * (attempt + 1)));
+      }
+    }
+    throw lastError ?? Exception('claim_room_seat_failed');
   }
 
   Future<void> leaveRoomSeat(String roomId) async {
@@ -1965,11 +2078,23 @@ class SakiService {
               .whereType<String>()
               .where((id) => !profileCache.containsKey(id))
               .toSet();
-          await Future.wait(
-            ids.map((id) async {
-              profileCache[id] = await userProfile(id);
-            }),
-          );
+          try {
+            final loaded = await _loadRoomProfiles(ids);
+            profileCache.addAll(loaded);
+            for (final id in ids) {
+              profileCache.putIfAbsent(
+                id,
+                () => {'id': id, 'username': 'عضو', 'display_name': 'عضو'},
+              );
+            }
+          } catch (_) {
+            for (final id in ids) {
+              profileCache.putIfAbsent(
+                id,
+                () => {'id': id, 'username': 'عضو', 'display_name': 'عضو'},
+              );
+            }
+          }
           final result = visibleRows.map((row) {
             final copy = Map<String, dynamic>.from(row);
             final senderId = row['sender_id']?.toString();
@@ -1977,6 +2102,56 @@ class SakiService {
             return copy;
           }).toList();
           return result;
+        });
+  }
+
+  Future<void> claimRoomSpecialSeat(String roomId, String seatKind) async {
+    await client.rpc(
+      'claim_room_special_seat',
+      params: {'p_room_id': roomId, 'p_seat_kind': seatKind},
+    );
+  }
+
+  Future<void> leaveRoomSpecialSeat(String roomId) async {
+    await client.rpc('leave_room_special_seat', params: {'p_room_id': roomId});
+  }
+
+  Future<void> setRoomSpecialSeatSpeaking(String roomId, bool speaking) async {
+    await client.rpc(
+      'set_room_special_seat_speaking',
+      params: {'p_room_id': roomId, 'p_speaking': speaking},
+    );
+  }
+
+  Stream<List<Map<String, dynamic>>> roomSpecialSeatsStream(String roomId) {
+    return client
+        .from('room_special_seats')
+        .stream(primaryKey: ['room_id', 'seat_kind'])
+        .eq('room_id', roomId)
+        .order('seat_kind')
+        .asyncMap((rows) async {
+          if (rows.isEmpty) return <Map<String, dynamic>>[];
+          final ids = rows
+              .map((row) => row['user_id']?.toString())
+              .whereType<String>()
+              .toSet()
+              .toList();
+          if (ids.isEmpty) return List<Map<String, dynamic>>.from(rows);
+          final profiles = await client
+              .from('profiles')
+              .select(_roomProfileColumns)
+              .inFilter('id', ids);
+          final byId = <String, Map<String, dynamic>>{
+            for (final profile in profiles)
+              profile['id'].toString(): Map<String, dynamic>.from(profile),
+          };
+          return rows
+              .map((row) {
+                final copy = Map<String, dynamic>.from(row);
+                copy['profiles'] = byId[row['user_id']?.toString()];
+                return copy;
+              })
+              .toList(growable: false);
         });
   }
 
@@ -1995,9 +2170,7 @@ class SakiService {
               .toList();
           final profilesFuture = client
               .from('profiles')
-              .select(
-                'id,username,display_name,saki_id,avatar_url,bio,country,country_code,gender,created_at,vip_level,vip_expires_at,wealth_xp,wealth_level,is_super_admin,admin_role',
-              )
+              .select(_roomProfileColumns)
               .inFilter('id', userIds);
           final inventoryFuture = client
               .from('saki_store_inventory')
@@ -2013,7 +2186,9 @@ class SakiService {
           ]);
           final profiles = <String, Map<String, dynamic>>{
             for (final profile in List<Map<String, dynamic>>.from(loaded[0]))
-              profile['id'].toString(): Map<String, dynamic>.from(profile),
+              profile['id'].toString(): _roomVisibleProfile(
+                Map<String, dynamic>.from(profile),
+              ),
           };
           final frames = <String, Map<String, dynamic>>{};
           for (final item in List<Map<String, dynamic>>.from(loaded[1])) {
@@ -2744,8 +2919,11 @@ class SakiService {
         final expiry = DateTime.tryParse(
           current?['vip_expires_at']?.toString() ?? '',
         );
-        if (vip < 7 || (expiry != null && !expiry.isAfter(DateTime.now()))) {
-          throw Exception('vip7_required_for_gif');
+        final enabled = current?['animated_avatar_enabled'] == true;
+        if (vip < 8 ||
+            (expiry != null && !expiry.isAfter(DateTime.now())) ||
+            !enabled) {
+          throw Exception('vip8_animated_avatar_required');
         }
       }
       final path =

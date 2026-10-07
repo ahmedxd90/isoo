@@ -212,6 +212,8 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
         'avatar': map['avatar_url'],
         'vip': vip,
         'vipColors': _vipColors(vip),
+        // room_html_template.html is loaded from assets/rooms/.
+        'vip11SeatAsset': vip >= 11 ? 'royal_seat_vip11.png' : null,
         'emoji': _emojiSource(
           (widget.room['seatEmojis'] is Map)
               ? (widget.room['seatEmojis'] as Map)[row?['user_id']?.toString()]
@@ -283,7 +285,7 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
   }
 
   List<String> _vipColors(int level) => (vipNameGradients[level] ?? const [])
-      .map((color) => '#${color.value.toRadixString(16).substring(2)}')
+      .map((color) => '#${color.toARGB32().toRadixString(16).substring(2)}')
       .toList();
 
   @override
@@ -317,10 +319,12 @@ class _HtmlRoomViewState extends State<HtmlRoomView> {
                     return SafeArea(
                       bottom: true,
                       maintainBottomViewPadding: true,
-                      child: WillPopScope(
-                        onWillPop: () async {
-                          widget.onExit();
-                          return false;
+                      child: PopScope(
+                        canPop: false,
+                        onPopInvokedWithResult: (didPop, result) {
+                          if (!didPop) {
+                            widget.onExit();
+                          }
                         },
                         child: WebViewWidget(controller: _controller),
                       ),

@@ -46,6 +46,7 @@ class _VipPageState extends State<VipPage> {
   Map<String, dynamic> _profile = {}, _account = {};
   int _selected = 1;
   bool _loading = true, _working = false;
+  Map<String, dynamic> _privacy = {};
 
   int get _active {
     final level = (_profile['vip_level'] as num?)?.toInt() ?? 0;
@@ -76,14 +77,17 @@ class _VipPageState extends State<VipPage> {
     try {
       final profile = await _service.myProfile() ?? <String, dynamic>{};
       Map<String, dynamic> account = {};
+      Map<String, dynamic> privacy = {};
       try {
         account = await _service.accountModules();
+        privacy = await _service.profilePrivacySettings();
       } catch (_) {}
       if (!mounted) return;
       final level = (_activeFrom(profile));
       setState(() {
         _profile = profile;
         _account = account;
+        _privacy = privacy;
         _selected = level > 0 ? level : 1;
         _loading = false;
       });
@@ -103,6 +107,24 @@ class _VipPageState extends State<VipPage> {
     return expiry != null && expiry.isAfter(DateTime.now())
         ? ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(1, 11)
         : 0;
+  }
+
+  Future<void> _togglePrivacy(String setting, bool enabled) async {
+    final previous = _privacy[setting] == true;
+    setState(() => _privacy = {..._privacy, setting: enabled});
+    try {
+      final updated = await _service.setProfilePrivacySetting(setting, enabled);
+      if (mounted && updated.isNotEmpty) setState(() => _privacy = updated);
+      if (mounted) _toast(enabled ? 'تم تفعيل الميزة' : 'تم تعطيل الميزة');
+    } catch (error) {
+      if (mounted) setState(() => _privacy = {..._privacy, setting: previous});
+      if (mounted) {
+        final text = error.toString().contains('vip_level_required')
+            ? 'هذه الميزة تحتاج إلى مستوى VIP أعلى'
+            : 'تعذر تحديث الميزة';
+        _toast(text);
+      }
+    }
   }
 
   Future<void> _buy() async {
@@ -252,6 +274,13 @@ class _VipPageState extends State<VipPage> {
                           benefits: benefits,
                           color: color,
                         ),
+                        const SizedBox(height: 18),
+                        _VipPrivacyCard(
+                          activeLevel: active,
+                          values: _privacy,
+                          working: _working,
+                          onChanged: _togglePrivacy,
+                        ),
                         const SizedBox(height: 22),
                         VipPurchaseCard(
                           level: level,
@@ -283,6 +312,128 @@ class _VipPageState extends State<VipPage> {
           working: _working,
           onBuy: _buy,
         ),
+      ),
+    );
+  }
+}
+
+class _VipPrivacyCard extends StatelessWidget {
+  const _VipPrivacyCard({
+    required this.activeLevel,
+    required this.values,
+    required this.working,
+    required this.onChanged,
+  });
+  final int activeLevel;
+  final Map<String, dynamic> values;
+  final bool working;
+  final Future<void> Function(String, bool) onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.fromLTRB(14, 15, 14, 8),
+    decoration: BoxDecoration(
+      color: VipDesign.panel,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: Colors.white12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'خصوصية VIP',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'تُحفظ الإعدادات في حسابك وتُرفض التغييرات غير المسموحة من الخادم.',
+          style: TextStyle(color: VipDesign.muted, fontSize: 10),
+        ),
+        const SizedBox(height: 8),
+        _VipPrivacyRow(
+          icon: Icons.circle_outlined,
+          title: 'إخفاء حالة متصل الآن',
+          requiredLevel: 4,
+          enabled: values['hide_online'] == true,
+          activeLevel: activeLevel,
+          onChanged: (v) => onChanged('hide_online', v),
+        ),
+        _VipPrivacyRow(
+          icon: Icons.flag_outlined,
+          title: 'إخفاء علم الدولة',
+          requiredLevel: 5,
+          enabled: values['hide_country'] == true,
+          activeLevel: activeLevel,
+          onChanged: (v) => onChanged('hide_country', v),
+        ),
+        _VipPrivacyRow(
+          icon: Icons.gif_box_outlined,
+          title: 'الصورة المتحركة للملف',
+          requiredLevel: 8,
+          enabled: values['animated_avatar_enabled'] == true,
+          activeLevel: activeLevel,
+          onChanged: (v) => onChanged('animated_avatar_enabled', v),
+        ),
+        _VipPrivacyRow(
+          icon: Icons.visibility_off_outlined,
+          title: 'الهوية المخفية بالكامل',
+          requiredLevel: 11,
+          enabled: values['identity_hidden'] == true,
+          activeLevel: activeLevel,
+          onChanged: (v) => onChanged('identity_hidden', v),
+        ),
+        if (working)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: LinearProgressIndicator(minHeight: 2, color: VipDesign.gold),
+          ),
+      ],
+    ),
+  );
+}
+
+class _VipPrivacyRow extends StatelessWidget {
+  const _VipPrivacyRow({
+    required this.icon,
+    required this.title,
+    required this.requiredLevel,
+    required this.enabled,
+    required this.activeLevel,
+    required this.onChanged,
+  });
+  final IconData icon;
+  final String title;
+  final int requiredLevel;
+  final bool enabled;
+  final int activeLevel;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = activeLevel >= requiredLevel;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: unlocked ? VipDesign.gold : VipDesign.muted),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: unlocked ? Colors.white : VipDesign.muted,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      subtitle: Text(
+        unlocked ? 'متاح الآن' : 'يتطلب VIP $requiredLevel',
+        style: const TextStyle(color: VipDesign.muted, fontSize: 10),
+      ),
+      trailing: Switch.adaptive(
+        value: unlocked && enabled,
+        onChanged: unlocked ? onChanged : null,
+        activeThumbColor: VipDesign.gold,
       ),
     );
   }

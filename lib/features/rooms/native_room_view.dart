@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../shared/widgets/saki_widgets.dart';
 import '../../shared/widgets/vip_identity.dart';
@@ -10,10 +13,12 @@ class NativeRoomView extends StatefulWidget {
     super.key,
     required this.room,
     required this.seatStream,
+    required this.specialSeatStream,
     required this.lockStream,
     required this.messageStream,
     required this.membersStream,
     required this.onSeatTap,
+    required this.onSpecialSeatTap,
     required this.onMessage,
     required this.onComposer,
     required this.onMic,
@@ -35,10 +40,12 @@ class NativeRoomView extends StatefulWidget {
 
   final Map<String, dynamic> room;
   final Stream<List<Map<String, dynamic>>> seatStream;
+  final Stream<List<Map<String, dynamic>>> specialSeatStream;
   final Stream<List<Map<String, dynamic>>> lockStream;
   final Stream<List<Map<String, dynamic>>> messageStream;
   final Stream<List<Map<String, dynamic>>> membersStream;
   final ValueChanged<Map<String, dynamic>> onSeatTap;
+  final ValueChanged<Map<String, dynamic>> onSpecialSeatTap;
   final ValueChanged<String> onMessage;
   final VoidCallback onComposer;
   final VoidCallback onMic;
@@ -59,6 +66,145 @@ class NativeRoomView extends StatefulWidget {
 
   @override
   State<NativeRoomView> createState() => _NativeRoomViewState();
+}
+
+class _SpeakingSeatOverlay extends StatefulWidget {
+  const _SpeakingSeatOverlay({
+    required this.speaking,
+    required this.vipLevel,
+    required this.color,
+  });
+
+  final bool speaking;
+  final int vipLevel;
+  final Color color;
+
+  @override
+  State<_SpeakingSeatOverlay> createState() => _SpeakingSeatOverlayState();
+}
+
+class _SpeakingSeatOverlayState extends State<_SpeakingSeatOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1250),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.speaking) return const SizedBox.shrink();
+    final colors = widget.vipLevel >= 4
+        ? (vipNameGradients[widget.vipLevel] ?? [widget.color])
+        : [const Color(0xFF34D399), const Color(0xFF67E8F9)];
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (_, _) => CustomPaint(
+        painter: _SpeakingRingsPainter(
+          progress: _controller.value,
+          colors: colors,
+          premium: widget.vipLevel >= 4,
+        ),
+      ),
+    );
+  }
+}
+
+class _SpeakingRingsPainter extends CustomPainter {
+  const _SpeakingRingsPainter({
+    required this.progress,
+    required this.colors,
+    required this.premium,
+  });
+
+  final double progress;
+  final List<Color> colors;
+  final bool premium;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final base = size.shortestSide * .31;
+    for (var i = 0; i < 3; i++) {
+      final phase = (progress + i / 3) % 1;
+      final radius = base + phase * size.shortestSide * .23;
+      final color = colors[i % colors.length].withValues(
+        alpha: (1 - phase) * (premium ? .92 : .70),
+      );
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = premium ? 2.6 : 1.8
+        ..color = color
+        ..maskFilter = premium
+            ? const MaskFilter.blur(BlurStyle.normal, 2)
+            : null;
+      canvas.drawCircle(center, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeakingRingsPainter oldDelegate) =>
+      oldDelegate.progress != progress;
+}
+
+class _RoyalBridgeWave extends StatefulWidget {
+  const _RoyalBridgeWave({required this.active});
+  final bool active;
+
+  @override
+  State<_RoyalBridgeWave> createState() => _RoyalBridgeWaveState();
+}
+
+class _RoyalBridgeWaveState extends State<_RoyalBridgeWave>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 760),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (_, _) => Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: List.generate(7, (index) {
+        final wave = widget.active
+            ? (0.35 +
+                  .65 *
+                      ((math.sin(_controller.value * math.pi * 2 + index) + 1) /
+                          2))
+            : .18;
+        return Container(
+          width: 3,
+          height: 18 + wave * 42,
+          margin: const EdgeInsets.symmetric(horizontal: 1.2),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFFFF3D81), Color(0xFF7C3AED), Color(0xFF22D3EE)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: widget.active
+                ? const [BoxShadow(color: Color(0xFFB026FF), blurRadius: 8)]
+                : null,
+          ),
+        );
+      }),
+    ),
+  );
 }
 
 class _NativeRoomViewState extends State<NativeRoomView> {
@@ -292,6 +438,91 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     );
   }
 
+  Widget _royalSpecialSeats(List<Map<String, dynamic>> rows) {
+    final byKind = <String, Map<String, dynamic>>{
+      for (final row in rows)
+        if (row['seat_kind'] != null) row['seat_kind'].toString(): row,
+    };
+
+    Widget card(String kind, String asset, Color glow) {
+      final row = byKind[kind];
+      final profile = row?['profiles'] is Map
+          ? Map<String, dynamic>.from(row!['profiles'] as Map)
+          : <String, dynamic>{};
+      final occupied = row?['user_id'] != null;
+      final userId = row?['user_id']?.toString();
+      final speaking =
+          row?['is_speaking'] == true ||
+          (occupied &&
+              userId == widget.room['local_user_id']?.toString() &&
+              widget.room['local_speaking'] == true);
+      return Expanded(
+        child: GestureDetector(
+          onTap: () =>
+              widget.onSpecialSeatTap({'seat_kind': kind, 'user_id': userId}),
+          child: SizedBox(
+            height: 92,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                if (speaking)
+                  Positioned.fill(
+                    child: _SpeakingSeatOverlay(
+                      speaking: true,
+                      vipLevel: activeVipLevel(profile),
+                      color: glow,
+                    ),
+                  ),
+                Image.asset(asset, width: 88, height: 88, fit: BoxFit.contain),
+                if (occupied)
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: SakiAvatar(
+                      url: profile['avatar_url']?.toString(),
+                      label: profile['username']?.toString(),
+                      radius: 15,
+                      profile: profile,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final speaking = byKind.values.any((row) => row['is_speaking'] == true);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          card(
+            'host',
+            'assets/rooms/royal_seat_host.png',
+            const Color(0xFFFF405C),
+          ),
+          SizedBox(
+            width: 46,
+            height: 82,
+            child: _RoyalBridgeWave(active: speaking),
+          ),
+          card(
+            'legend',
+            'assets/rooms/royal_seat_legend.png',
+            const Color(0xFFFFD166),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _seats(
     List<Map<String, dynamic>> rows,
     List<Map<String, dynamic>> locks,
@@ -314,7 +545,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
         itemCount: count,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 5,
-          mainAxisExtent: 74,
+          mainAxisExtent: 90,
           crossAxisSpacing: 5,
         ),
         itemBuilder: (_, index) {
@@ -331,6 +562,19 @@ class _NativeRoomViewState extends State<NativeRoomView> {
           final sessionGold =
               (row?['session_gold_received'] as num?)?.toInt() ?? 0;
           final vip = activeVipLevel(profile);
+          final isVip11Seat = occupied && vip >= 11;
+          final ownerVip = widget.room['owner_vip_level'] is num
+              ? (widget.room['owner_vip_level'] as num).toInt()
+              : int.tryParse(
+                      widget.room['owner_vip_level']?.toString() ?? '',
+                    ) ??
+                    0;
+          final showVip11Design = ownerVip >= 11 || isVip11Seat;
+          final localUserId = widget.room['local_user_id']?.toString();
+          final localSpeaking = widget.room['local_speaking'] == true;
+          final speaking =
+              row?['is_speaking'] == true ||
+              (occupied && userId == localUserId && localSpeaking);
           final accent = vipAccent(vip);
           final emoji = widget.room['seatEmojis'] is Map
               ? (widget.room['seatEmojis'] as Map)[row?['user_id']?.toString()]
@@ -345,43 +589,83 @@ class _NativeRoomViewState extends State<NativeRoomView> {
             child: Column(
               children: [
                 SizedBox(
-                  width: 48,
-                  height: 48,
+                  width: 74,
+                  height: 74,
                   child: Stack(
                     alignment: Alignment.center,
+                    clipBehavior: Clip.none,
                     children: [
+                      if (speaking)
+                        Positioned.fill(
+                          child: _SpeakingSeatOverlay(
+                            speaking: true,
+                            vipLevel: vip,
+                            color: accent,
+                          ),
+                        ),
                       Container(
                         key: seatKey,
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: .13),
-                          border: Border.all(
-                            color: occupied
-                                ? accent
-                                : (locked.contains(no)
-                                      ? Colors.redAccent
-                                      : Colors.white38),
-                            width: occupied ? 2 : 1,
-                          ),
-                          boxShadow: occupied && row?['is_speaking'] == true
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.greenAccent.withValues(
-                                      alpha: .8,
-                                    ),
-                                    blurRadius: 14,
-                                    spreadRadius: 3,
+                        width: isVip11Seat ? 74 : 66,
+                        height: isVip11Seat ? 74 : 66,
+                        decoration: showVip11Design
+                            ? null
+                            : BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: .13),
+                                border: Border.all(
+                                  color: occupied
+                                      ? accent
+                                      : (locked.contains(no)
+                                            ? Colors.redAccent
+                                            : Colors.white38),
+                                  width: occupied ? 2 : 1,
+                                ),
+                                boxShadow:
+                                    occupied && row['is_speaking'] == true
+                                    ? [
+                                        BoxShadow(
+                                          color: Colors.greenAccent.withValues(
+                                            alpha: .8,
+                                          ),
+                                          blurRadius: 14,
+                                          spreadRadius: 3,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                        child: showVip11Design
+                            ? Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/rooms/royal_seat_vip11.png',
+                                    fit: BoxFit.contain,
                                   ),
-                                ]
-                              : null,
-                        ),
-                        child: occupied
+                                  if (occupied)
+                                    Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: SakiAvatar(
+                                        url: profile['avatar_url']?.toString(),
+                                        label: profile['username']?.toString(),
+                                        radius: 18,
+                                        profile: profile,
+                                      ),
+                                    ),
+                                ],
+                              )
+                            : occupied
                             ? SakiAvatar(
                                 url: profile['avatar_url']?.toString(),
                                 label: profile['username']?.toString(),
-                                radius: 20,
+                                radius: 28,
                                 profile: profile,
                               )
                             : Icon(
@@ -670,8 +954,17 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     );
   }
 
+  int _ownerVipLevel() {
+    final raw = widget.room['owner_vip_level'];
+    final level = raw is num
+        ? raw.toInt()
+        : int.tryParse(raw?.toString() ?? '') ?? 0;
+    return level.clamp(0, 11);
+  }
+
   Widget _room(
     List<Map<String, dynamic>> seats,
+    List<Map<String, dynamic>> specialSeats,
     List<Map<String, dynamic>> locks,
     List<Map<String, dynamic>> messages,
     List<Map<String, dynamic>> members,
@@ -735,18 +1028,21 @@ class _NativeRoomViewState extends State<NativeRoomView> {
       _messages = visible;
       _previousMessageKey = messageKey;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _chatScroll.hasClients)
+        if (mounted && _chatScroll.hasClients) {
           _chatScroll.animateTo(
             0,
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
           );
+        }
       });
     }
-    return WillPopScope(
-      onWillPop: () async {
-        widget.onExit();
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          widget.onExit();
+        }
       },
       child: Stack(
         fit: StackFit.expand,
@@ -776,14 +1072,15 @@ class _NativeRoomViewState extends State<NativeRoomView> {
           Column(
             children: [
               _header(members),
+              if (_ownerVipLevel() >= 10) _royalSpecialSeats(specialSeats),
               _seats(seats, locks),
               Expanded(
                 child: RepaintBoundary(
                   child: ListView.builder(
+                    scrollCacheExtent: const ScrollCacheExtent.pixels(420),
                     controller: _chatScroll,
                     reverse: true,
                     padding: const EdgeInsets.only(top: 5, bottom: 10),
-                    cacheExtent: 420,
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     itemCount: _messages.length,
@@ -805,18 +1102,22 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: widget.seatStream,
       builder: (_, seats) => StreamBuilder<List<Map<String, dynamic>>>(
-        stream: widget.lockStream,
-        builder: (_, locks) => StreamBuilder<List<Map<String, dynamic>>>(
-          stream: widget.messageStream,
-          builder: (_, messages) => StreamBuilder<List<Map<String, dynamic>>>(
-            stream: widget.membersStream,
-            builder: (_, members) => DefaultTextStyle.merge(
-              style: const TextStyle(decoration: TextDecoration.none),
-              child: _room(
-                seats.data ?? const [],
-                locks.data ?? const [],
-                messages.data ?? const [],
-                members.data ?? const [],
+        stream: widget.specialSeatStream,
+        builder: (_, specialSeats) => StreamBuilder<List<Map<String, dynamic>>>(
+          stream: widget.lockStream,
+          builder: (_, locks) => StreamBuilder<List<Map<String, dynamic>>>(
+            stream: widget.messageStream,
+            builder: (_, messages) => StreamBuilder<List<Map<String, dynamic>>>(
+              stream: widget.membersStream,
+              builder: (_, members) => DefaultTextStyle.merge(
+                style: const TextStyle(decoration: TextDecoration.none),
+                child: _room(
+                  seats.data ?? const [],
+                  specialSeats.data ?? const [],
+                  locks.data ?? const [],
+                  messages.data ?? const [],
+                  members.data ?? const [],
+                ),
               ),
             ),
           ),

@@ -33,8 +33,9 @@ class _FamilyDiamondHostPageState extends State<FamilyDiamondHostPage> {
   ];
 
   String _number(int value) {
-    if (value >= 1000000)
+    if (value >= 1000000) {
       return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
+    }
     return '$value';
   }
 
@@ -128,11 +129,12 @@ class _FamilyDiamondHostPageState extends State<FamilyDiamondHostPage> {
         });
       }
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         CustomToast.show(
           context,
           error.toString().replaceFirst('Exception: ', ''),
         );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -183,7 +185,7 @@ class _FamilyDiamondHostPageState extends State<FamilyDiamondHostPage> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _source,
+            initialValue: _source,
             decoration: const InputDecoration(
               labelText: 'صاحب رصيد الماس',
               border: OutlineInputBorder(),

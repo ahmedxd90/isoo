@@ -21,6 +21,7 @@ class RoomSessionController extends ChangeNotifier {
   bool bubbleVisible = false;
   Future<void> Function()? onExitRequested;
   Timer? _presenceTimer;
+  Future<void>? _closing;
 
   bool get isActive => room != null && engine != null;
 
@@ -127,9 +128,16 @@ class RoomSessionController extends ChangeNotifier {
     return value;
   }
 
-  Future<void> close() async {
+  Future<void> close() {
+    final running = _closing;
+    if (running != null) return running;
+    final future = _closeInternal();
+    _closing = future;
+    return future.whenComplete(() => _closing = null);
+  }
+
+  Future<void> _closeInternal() async {
     stopPresenceHeartbeat();
-    await RoomBackgroundBridge.stop();
     final value = engine;
     final player = musicPlayer;
     engine = null;
@@ -139,11 +147,21 @@ class RoomSessionController extends ChangeNotifier {
     onExitRequested = null;
     overlayEligible = false;
     bubbleVisible = false;
-    if (value != null) {
-      await value.leaveChannel();
-      await value.release();
-    }
-    await player?.dispose();
+    try {
+      await RoomBackgroundBridge.stop();
+    } catch (_) {}
+    try {
+      await value?.leaveChannel();
+    } catch (_) {}
+    try {
+      await value?.release();
+    } catch (_) {}
+    try {
+      await player?.stop();
+    } catch (_) {}
+    try {
+      await player?.dispose();
+    } catch (_) {}
     notifyListeners();
   }
 }
