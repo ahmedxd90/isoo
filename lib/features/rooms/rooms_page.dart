@@ -2346,8 +2346,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   Timer? _musicReloadTimer;
   bool _membersInitialized = false;
   late AudioPlayer _musicPlayer;
+  MediaPlayerController? _sharedMusicPlayer;
   List<Map<String, dynamic>> _roomMusic = [];
   Map<String, dynamic>? _activeMusic;
+  String? _musicOwnerId;
   bool _musicPlaying = false;
   bool _musicPanelOpen = false;
   String _musicRepeatMode = 'off';
@@ -2601,6 +2603,46 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     unawaited(_initializeVoiceSession());
     _loadRoomState();
     _loadRoomMusic();
+    _musicStateSubscription = _service.roomMusicStateStream(_roomId).listen((rows) {
+      if (rows.isEmpty) {
+        unawaited(_handleMusicEvent({'action': 'stop'}));
+        return;
+      }
+      final state = rows.last;
+      final nested = state['room_music'];
+      final isPlaying = state['is_playing'] == true;
+      unawaited(
+        _handleMusicEvent({
+          'action': isPlaying ? 'play' : 'pause',
+          'owner_id': state['owner_id'],
+          'music': nested is Map ? Map<String, dynamic>.from(nested) : const {},
+          'position_seconds': state['position_seconds'],
+          'volume': state['volume'],
+          'repeat_mode': state['repeat_mode'],
+          'shuffle_mode': state['shuffle_mode'],
+          'started_at': state['started_at'],
+        }),
+      );
+    });
+    unawaited(
+      _service.activeRoomMusic(_roomId).then((state) {
+        if (!mounted || state == null) return;
+        final nested = state['room_music'];
+        if (nested is! Map) return;
+        unawaited(
+          _handleMusicEvent({
+            'action': state['is_playing'] == true ? 'play' : 'pause',
+            'owner_id': state['owner_id'],
+            'music': Map<String, dynamic>.from(nested),
+            'position_seconds': state['position_seconds'],
+            'volume': state['volume'],
+            'repeat_mode': state['repeat_mode'],
+            'shuffle_mode': state['shuffle_mode'],
+            'started_at': state['started_at'],
+          }),
+        );
+      }).catchError((_) {}),
+    );
     _roomMembersSubscription = _membersStream.listen((members) {
       if (!mounted) return;
       final previousIds = _roomMembers
@@ -2935,6 +2977,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
         ),
       );
+      final sharedMusicPlayer = MediaPlayerController(
+        rtcEngine: engine,
+        canvas: const VideoCanvas(uid: 0),
+      );
+      await sharedMusicPlayer.initialize();
+      _sharedMusicPlayer = sharedMusicPlayer;
+      await _musicPlayer.setVolume(0);
       engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, _) {
@@ -3121,8 +3170,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _engine?.muteLocalAudioStream(true);
       await _engine?.setClientRole(role: ClientRoleType.clientRoleAudience);
       await _engine?.updateChannelMediaOptions(
-        const ChannelMediaOptions(
+        ChannelMediaOptions(
           publishMicrophoneTrack: false,
+          publishMediaPlayerAudioTrack: false,
           autoSubscribeAudio: true,
         ),
       );
@@ -3138,11 +3188,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final permission = await Permission.microphone.request();
     _micMuted = !permission.isGranted;
     await _engine?.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    await _engine?.updateChannelMediaOptions(
-      ChannelMediaOptions(
-        publishMicrophoneTrack: permission.isGranted,
-        autoSubscribeAudio: true,
-      ),
+      await _engine?.updateChannelMediaOptions(
+        ChannelMediaOptions(
+          publishMicrophoneTrack: permission.isGranted,
+          publishMediaPlayerAudioTrack: _sharedMusicPlayer != null,
+          publishMediaPlayerId: _sharedMusicPlayer?.getMediaPlayerId(),
+          autoSubscribeAudio: true,
+        ),
     );
     await _engine?.muteLocalAudioStream(!permission.isGranted);
     RoomSessionController.instance.updateVoiceState(micMuted: _micMuted);
@@ -4417,7 +4469,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _musicDurationSeconds = duration?.inMilliseconds.toDouble() == null
             ? 0
             : duration!.inMilliseconds / 1000;
-        await _musicPlayer.setVolume(_musicVolume);
+        await _musicPlayer.setVolume(0);
         var position = ((_activeMusic?['position_seconds'] as num?) ?? 0)
             .toDouble();
         final startedAt = DateTime.tryParse(
@@ -4539,16 +4591,35 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _stopRoomMusic();
       return;
     }
+    final eventOwnerId = event['owner_id']?.toString() ?? _musicOwnerId;
+    _musicOwnerId = eventOwnerId;
     final action = event['action']?.toString();
+    final music = Map<String, dynamic>.from(event['music'] ?? const {});
+    final isRemotePlayback =
+        eventOwnerId != null && eventOwnerId != _service.uid;
+    if (isRemotePlayback) {
+      await _sharedMusicPlayer?.stop();
+      await _musicPlayer.stop();
+      if (mounted) {
+        setState(() {
+          _activeMusic = {'music_id': music['id'], 'room_music': music};
+          _musicPlaying = action != 'pause' && action != 'stop';
+        });
+      }
+      return;
+    }
     if (action == 'volume') {
       final value = ((event['volume'] as num?) ?? 1).toDouble().clamp(0.0, 1.0);
-      await _musicPlayer.setVolume(value);
+      await _musicPlayer.setVolume(0);
+      await _sharedMusicPlayer?.adjustPlayoutVolume((value * 100).round());
+      await _sharedMusicPlayer?.adjustPublishSignalVolume((value * 100).round());
       if (mounted) setState(() => _musicVolume = value);
       return;
     }
     if (action == 'seek') {
       final seconds = ((event['position_seconds'] as num?) ?? 0).toDouble();
       await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
+      await _sharedMusicPlayer?.seek((seconds * 1000).round());
       return;
     }
     if (action == 'mode') {
@@ -4562,6 +4633,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
     if (action == 'stop') {
+      await _sharedMusicPlayer?.stop();
       await _musicPlayer.stop();
       if (mounted) setState(() => _musicPlaying = false);
       return;
@@ -4572,30 +4644,33 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (event['shuffle_mode'] != null) {
       _musicShuffle = event['shuffle_mode'] == true;
     }
-    final music = Map<String, dynamic>.from(event['music'] ?? const {});
     final url = music['audio_url']?.toString();
     if (url == null || url.isEmpty) return;
     if (_activeMusic?['music_id']?.toString() != music['id']?.toString()) {
       final duration = await _musicPlayer.setUrl(url);
+      await _sharedMusicPlayer?.open(url: url, startPos: 0);
       _musicDurationSeconds = duration?.inMilliseconds.toDouble() == null
           ? 0
           : duration!.inMilliseconds / 1000;
     }
     if (event['position_seconds'] is num) {
+      final positionMs = ((event['position_seconds'] as num) * 1000).round();
       await _musicPlayer.seek(
-        Duration(
-          milliseconds: ((event['position_seconds'] as num) * 1000).round(),
-        ),
+        Duration(milliseconds: positionMs),
       );
+      await _sharedMusicPlayer?.seek(positionMs);
     }
     if (action == 'pause') {
       await _musicPlayer.pause();
+      await _sharedMusicPlayer?.pause();
     } else {
       await _musicPlayer.play();
+      await _sharedMusicPlayer?.play();
     }
     if (mounted) {
       setState(() {
         _activeMusic = {'music_id': music['id'], 'room_music': music};
+        _musicOwnerId = eventOwnerId;
         _musicPlaying = action != 'pause';
         _musicRepeatMode = event['repeat_mode']?.toString() ?? _musicRepeatMode;
         _musicShuffle = event['shuffle_mode'] == true;
@@ -4619,6 +4694,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         : _musicPlayer.position.inMilliseconds / 1000;
     final event = {
       'action': action,
+      'owner_id': _service.uid,
       'music': music,
       'position_seconds': position,
       'volume': _musicVolume,
@@ -4630,6 +4706,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'shuffle_mode': _musicShuffle,
     };
     await _handleMusicEvent(event);
+    await _service.setActiveRoomMusic(
+      _roomId,
+      musicId: music['id']?.toString(),
+      ownerId: _service.uid,
+      isPlaying: action == 'play',
+      positionSeconds: position,
+      volume: _musicVolume,
+      startedAt: DateTime.tryParse(event['started_at']!.toString()),
+      repeatMode: _musicRepeatMode,
+      shuffleMode: _musicShuffle,
+    );
   }
 
   Future<void> _broadcastMusicVolume(double value) async {
@@ -4639,7 +4726,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     }
     final volume = value.clamp(0.0, 1.0);
     setState(() => _musicVolume = volume);
-    await _musicPlayer.setVolume(volume);
+    await _musicPlayer.setVolume(0);
+    await _sharedMusicPlayer?.adjustPlayoutVolume((volume * 100).round());
+    await _sharedMusicPlayer?.adjustPublishSignalVolume((volume * 100).round());
+    final current = _activeMusic?['room_music'];
+    if (current is Map) {
+      await _service.setActiveRoomMusic(
+        _roomId,
+        musicId: current['id']?.toString(),
+        ownerId: _service.uid,
+        isPlaying: _musicPlaying,
+        positionSeconds: _musicPlayer.position.inMilliseconds / 1000,
+        volume: volume,
+        repeatMode: _musicRepeatMode,
+        shuffleMode: _musicShuffle,
+      );
+    }
   }
 
   Future<void> _broadcastMusicSeek(double seconds) async {
@@ -4648,14 +4750,30 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
     await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
+    await _sharedMusicPlayer?.seek((seconds * 1000).round());
   }
 
   Future<void> _stopRoomMusic() async {
+    final wasOwner = _musicOwnerId == null || _musicOwnerId == _service.uid;
+    if (wasOwner && _activeMusic != null) {
+      await _service.setActiveRoomMusic(
+        _roomId,
+        musicId: null,
+        ownerId: _service.uid,
+        isPlaying: false,
+        positionSeconds: 0,
+        volume: _musicVolume,
+        repeatMode: _musicRepeatMode,
+        shuffleMode: _musicShuffle,
+      ).catchError((_) {});
+    }
+    await _sharedMusicPlayer?.stop();
     await _musicPlayer.stop();
     if (mounted) {
       setState(() {
         _musicPlaying = false;
         _activeMusic = null;
+        _musicOwnerId = null;
       });
     }
   }
@@ -5242,6 +5360,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _giftBannerTimer?.cancel();
     _roomChatChannel.dispose();
     if (!preservedSession) {
+      unawaited(_sharedMusicPlayer?.dispose());
       unawaited(_service.setRoomSpeaking(_roomId, false).catchError((_) {}));
       unawaited(_service.leaveRoomSeat(_roomId).catchError((_) {}));
       unawaited(_service.leaveRoomSpecialSeat(_roomId).catchError((_) {}));
