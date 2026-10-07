@@ -2324,6 +2324,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   List<Map<String, dynamic>> _roomMembers = [];
   final List<Map<String, dynamic>> _optimisticMessages = [];
   StreamSubscription<List<Map<String, dynamic>>>? _roomMembersSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _seatVoiceSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _specialSeatVoiceSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _seatLocksSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _roomEmojiSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _luckBagSubscription;
@@ -2354,6 +2356,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _sessionMinimized = false;
   bool _handlingRoomBan = false;
   bool _localActuallySpeaking = false;
+  final Map<int, String> _ordinaryVoiceSeatIds = <int, String>{};
+  final Map<int, String> _specialVoiceSeatIds = <int, String>{};
+  Set<String> _remoteSpeakingUserIds = <String>{};
   double _musicVolume = 1;
   double _musicDurationSeconds = 0;
   String? _loadedMusicUrl;
@@ -2492,6 +2497,28 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _seatStream = _service.roomSeatsStream(_roomId);
     _specialSeatStream = _service.roomSpecialSeatsStream(_roomId);
     _seatLocksStream = _service.roomSeatLocksStream(_roomId);
+    _seatVoiceSubscription = _seatStream.listen((rows) {
+      _ordinaryVoiceSeatIds
+        ..clear()
+        ..addEntries(
+          rows
+              .map((row) => row['user_id']?.toString())
+              .whereType<String>()
+              .where((id) => id.isNotEmpty)
+              .map((id) => MapEntry(_numericUid(id), id)),
+        );
+    });
+    _specialSeatVoiceSubscription = _specialSeatStream.listen((rows) {
+      _specialVoiceSeatIds
+        ..clear()
+        ..addEntries(
+          rows
+              .map((row) => row['user_id']?.toString())
+              .whereType<String>()
+              .where((id) => id.isNotEmpty)
+              .map((id) => MapEntry(_numericUid(id), id)),
+        );
+    });
     _seatLocksSubscription = _seatLocksStream.listen((rows) {
       if (!mounted) return;
       setState(() {
@@ -2943,17 +2970,37 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     _isOnSeat &&
                     local != null &&
                     ((local.vad ?? 0) == 1 || (local.volume ?? 0) >= 18);
-                if (speaking == _localActuallySpeaking) return;
+                final currentSeatIds = <int, String>{
+                  ..._ordinaryVoiceSeatIds,
+                  ..._specialVoiceSeatIds,
+                };
+                final remoteSpeaking = speakers
+                    .where((speaker) => speaker.uid != localUid)
+                    .where(
+                      (speaker) =>
+                          (speaker.vad ?? 0) == 1 || (speaker.volume ?? 0) >= 18,
+                    )
+                    .map((speaker) => currentSeatIds[speaker.uid])
+                    .whereType<String>()
+                    .toSet();
+                final localChanged = speaking != _localActuallySpeaking;
+                final remoteChanged =
+                    remoteSpeaking.length != _remoteSpeakingUserIds.length ||
+                    !remoteSpeaking.containsAll(_remoteSpeakingUserIds);
+                if (!localChanged && !remoteChanged) return;
                 _localActuallySpeaking = speaking;
+                _remoteSpeakingUserIds = remoteSpeaking;
                 if (mounted) setState(() {});
-                if (_activeSpecialSeatKind != null) {
-                  _service
-                      .setRoomSpecialSeatSpeaking(_roomId, speaking)
-                      .catchError((_) {});
-                } else {
-                  _service
-                      .setRoomSpeaking(_roomId, speaking)
-                      .catchError((_) {});
+                if (localChanged) {
+                  if (_activeSpecialSeatKind != null) {
+                    _service
+                        .setRoomSpecialSeatSpeaking(_roomId, speaking)
+                        .catchError((_) {});
+                  } else {
+                    _service
+                        .setRoomSpeaking(_roomId, speaking)
+                        .catchError((_) {});
+                  }
                 }
               },
           onTokenPrivilegeWillExpire: (_, _) => _refreshRoomToken(),
@@ -3060,6 +3107,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     RoomSessionController.instance.updateVoiceState(isOnSeat: seated);
     await _syncMusicSeatAccess(seated);
     if (!seated) {
+      _localActuallySpeaking = false;
+      _remoteSpeakingUserIds = <String>{};
       if (_activeSpecialSeatKind != null) {
         await _service
             .setRoomSpecialSeatSpeaking(_roomId, false)
@@ -5148,6 +5197,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _roomMessageSubscription?.cancel();
     _entranceTimer?.cancel();
     _roomMembersSubscription?.cancel();
+    _seatVoiceSubscription?.cancel();
+    _specialSeatVoiceSubscription?.cancel();
     _seatLocksSubscription?.cancel();
     _roomEmojiSubscription?.cancel();
     _luckBagSubscription?.cancel();
@@ -5198,6 +5249,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 : _ownerVipFromRoomPayload(),
             'local_user_id': _service.uid,
             'local_speaking': _localActuallySpeaking,
+            'speaking_user_ids': _remoteSpeakingUserIds,
             'seatEmojis': _activeSeatEmojis,
             'micMuted': _micMuted,
             'speakerMuted': _listenMuted,

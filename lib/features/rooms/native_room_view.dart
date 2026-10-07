@@ -439,6 +439,11 @@ class _NativeRoomViewState extends State<NativeRoomView> {
   }
 
   Widget _royalSpecialSeats(List<Map<String, dynamic>> rows) {
+    final speakingUserIds = (widget.room['speaking_user_ids'] is Iterable)
+        ? (widget.room['speaking_user_ids'] as Iterable)
+              .map((id) => id.toString())
+              .toSet()
+        : <String>{};
     final byKind = <String, Map<String, dynamic>>{
       for (final row in rows)
         if (row['seat_kind'] != null) row['seat_kind'].toString(): row,
@@ -452,6 +457,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
       final occupied = row?['user_id'] != null;
       final userId = row?['user_id']?.toString();
       final speaking = row?['is_speaking'] == true ||
+          (occupied && userId != null && speakingUserIds.contains(userId)) ||
           (occupied &&
               userId == widget.room['local_user_id']?.toString() &&
               widget.room['local_speaking'] == true);
@@ -461,7 +467,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
         child: GestureDetector(
           onTap: () => widget.onSpecialSeatTap({'seat_kind': kind, 'user_id': userId}),
           child: SizedBox(
-            height: 126,
+            height: 116,
             child: Column(
               children: [
                 Expanded(
@@ -477,11 +483,11 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                             color: glow,
                           ),
                         ),
-                      Image.asset(asset, width: 104, height: 104, fit: BoxFit.contain),
+                      Image.asset(asset, width: 100, height: 100, fit: BoxFit.contain),
                       if (occupied)
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 58,
+                          height: 58,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
@@ -490,7 +496,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                           child: SakiAvatar(
                             url: profile['avatar_url']?.toString(),
                             label: name,
-                            radius: 21,
+                            radius: 26,
                             profile: profile,
                           ),
                         ),
@@ -513,7 +519,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -547,7 +553,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
         itemCount: count,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 5,
-          mainAxisExtent: 84,
+          mainAxisExtent: 80,
           crossAxisSpacing: 5,
         ),
         itemBuilder: (_, index) {
@@ -574,8 +580,14 @@ class _NativeRoomViewState extends State<NativeRoomView> {
           final showVip11Design = ownerVip >= 11 || isVip11Seat;
           final localUserId = widget.room['local_user_id']?.toString();
           final localSpeaking = widget.room['local_speaking'] == true;
+          final speakingUserIds = (widget.room['speaking_user_ids'] is Iterable)
+              ? (widget.room['speaking_user_ids'] as Iterable)
+                    .map((id) => id.toString())
+                    .toSet()
+              : <String>{};
           final speaking =
               row?['is_speaking'] == true ||
+              (occupied && userId != null && speakingUserIds.contains(userId)) ||
               (occupied && userId == localUserId && localSpeaking);
           final accent = vipAccent(vip);
           final emoji = widget.room['seatEmojis'] is Map
@@ -591,8 +603,8 @@ class _NativeRoomViewState extends State<NativeRoomView> {
             child: Column(
               children: [
                 SizedBox(
-                  width: 70,
-                  height: 70,
+                  width: 66,
+                  height: 66,
                   child: Stack(
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
@@ -607,8 +619,8 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                         ),
                       Container(
                         key: seatKey,
-                        width: isVip11Seat ? 70 : 62,
-                        height: isVip11Seat ? 70 : 62,
+                        width: isVip11Seat ? 66 : 60,
+                        height: isVip11Seat ? 66 : 60,
                         decoration: showVip11Design
                             ? null
                             : BoxDecoration(
@@ -645,8 +657,8 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                                   ),
                                   if (occupied)
                                     Container(
-                                      width: 38,
-                                      height: 38,
+                                      width: 42,
+                                      height: 42,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
                                         border: Border.all(
@@ -657,7 +669,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                                       child: SakiAvatar(
                                         url: profile['avatar_url']?.toString(),
                                         label: profile['username']?.toString(),
-                                        radius: 18,
+                                        radius: 20,
                                         profile: profile,
                                       ),
                                     ),
@@ -667,7 +679,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                             ? SakiAvatar(
                                 url: profile['avatar_url']?.toString(),
                                 label: profile['username']?.toString(),
-                                radius: 30,
+                                radius: 33,
                                 profile: profile,
                               )
                             : Icon(
