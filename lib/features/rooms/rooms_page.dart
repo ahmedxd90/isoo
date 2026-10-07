@@ -2418,6 +2418,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         ),
       );
       if (move != true) return;
+      await _stopRoomMusic();
       await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
       await _service.leaveRoomSeat(_roomId).catchError((_) {});
       await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
@@ -3382,6 +3383,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     _seatTaskTimer?.cancel();
     _localActuallySpeaking = false;
     try {
+      await _stopRoomMusic();
       await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
       await _service.leaveRoomSeat(_roomId).catchError((_) {});
       await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
@@ -3732,6 +3734,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _closingRoom = true;
       if (mounted) setState(() {});
       try {
+        await _stopRoomMusic();
         await RoomBackgroundBridge.setPipEligible(false);
         await _service.setRoomSpeaking(_roomId, false).catchError((_) {});
         await _service.leaveRoomSeat(_roomId).catchError((_) {});
@@ -4391,9 +4394,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   bool get _isRoomOwner => widget.room['owner_id']?.toString() == _service.uid;
 
-  bool get _canControlMusic => true;
+  bool get _canControlMusic => _isOnSeat;
 
   Future<void> _loadRoomMusic() async {
+    if (!_isOnSeat && !_musicPlayer.playing) return;
     try {
       final library = await _service.myMusicLibrary();
       if (!mounted) return;
@@ -4440,7 +4444,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _syncMusicSeatAccess(bool seated) async {
-    // Personal music is independent from seats and from other room members.
+    if (seated) return;
+    await _stopRoomMusic();
+    if (mounted) setState(() => _musicPanelOpen = false);
   }
 
   List<Map<String, dynamic>> get _playlistTracks => _roomMusic;
@@ -4529,8 +4535,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
-    if (!_isOnSeat && !_canControlMusic) {
-      await _syncMusicSeatAccess(false);
+    if (!_isOnSeat) {
+      await _stopRoomMusic();
       return;
     }
     final action = event['action']?.toString();
@@ -4601,6 +4607,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     String action,
     Map<String, dynamic> music,
   ) async {
+    if (!_isOnSeat) {
+      await _stopRoomMusic();
+      if (mounted) _messageSnack('يجب أن تجلس على مقعد لتشغيل الموسيقى.');
+      return;
+    }
     final changingTrack =
         _activeMusic?['music_id']?.toString() != music['id']?.toString();
     final position = changingTrack
@@ -4622,12 +4633,20 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   Future<void> _broadcastMusicVolume(double value) async {
+    if (!_isOnSeat) {
+      await _stopRoomMusic();
+      return;
+    }
     final volume = value.clamp(0.0, 1.0);
     setState(() => _musicVolume = volume);
     await _musicPlayer.setVolume(volume);
   }
 
   Future<void> _broadcastMusicSeek(double seconds) async {
+    if (!_isOnSeat) {
+      await _stopRoomMusic();
+      return;
+    }
     await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
   }
 
@@ -4673,6 +4692,10 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   void _showMusicSheet() {
     if (!mounted) return;
+    if (!_isOnSeat) {
+      _messageSnack('يجب أن تجلس على مقعد لفتح الموسيقى.');
+      return;
+    }
     setState(() => _musicPanelOpen = true);
   }
 
