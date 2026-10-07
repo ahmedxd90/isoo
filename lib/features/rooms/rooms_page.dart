@@ -2307,7 +2307,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _sendingChat = false;
   int _comboPendingTaps = 0;
   int _comboCount = 0;
-  String? _lastGiftRecipient;
+  List<String> _lastGiftRecipients = <String>[];
+  int _lastGiftQuantity = 1;
   Map<String, dynamic>? _lastGift;
   final Set<int> _remoteUsers = <int>{};
   late int _liveSeatCount;
@@ -3152,74 +3153,15 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       builder: (_) => RoomGiftsSheet(
         service: _service,
         roomId: _roomId,
-        onSent: (recipientId, gift, flyingBanner) async {
-          _lastGiftRecipient = recipientId;
-          final recipientProfile = await _service.userProfile(recipientId);
-          _lastGift = {
-            ...gift,
-            '_recipient_profile': recipientProfile ?? const <String, dynamic>{},
-          };
-          final payload = <String, dynamic>{
-            'gift_id': gift['id'],
-            'quantity': 1,
-            'icon': gift['icon'],
-            'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
-            'thumbnail_asset_path':
-                gift['icon']?.toString().startsWith('assets/') == true
-                ? gift['icon']
-                : null,
-            'name': gift['name'],
-            'media_url': gift['media_url'],
-            'media_type': gift['media_type'],
-            'duration_seconds': 5,
-            'category': gift['category'],
-            'recipient_id': recipientId,
-            'recipient_username':
-                recipientProfile?['username'] ??
-                recipientProfile?['display_name'],
-            'recipient_avatar_url': recipientProfile?['avatar_url'],
-            'flying_banner': false,
-          };
-          if (_isLuckGift(gift)) {
-            await _service.sendRoomLuckGift(
-              roomId: _roomId,
-              recipientId: recipientId,
-              giftId: gift['id'] as String,
-            );
-            // The RPC already inserts the authoritative realtime room message
-            // and credits only the sender. Do not create a second client message.
-            return;
-          }
-          final optimistic = _queueOptimisticMessage(
-            body: 'أرسل هدية ${gift['name'] ?? 'هدية'}',
-            type: 'gift',
-            payload: payload,
-          );
-          try {
-            await _service.sendRoomGift(
-              roomId: _roomId,
-              recipientId: recipientId,
-              giftId: gift['id'] as String,
-            );
-            try {
-              await _service.sendRoomMessage(
-                _roomId,
-                'أرسل هدية ${gift['name'] ?? 'هدية'}',
-                type: 'gift',
-                payload: payload,
-              );
-            } catch (_) {
-              // The gift RPC is authoritative. A presentation message failure
-              // must never cause the paid gift to be sent again.
-            }
-          } catch (_) {
-            _removeOptimisticMessage(optimistic);
-            rethrow;
-          }
+        onSent: (recipientIds, gift, quantity) async {
+          _lastGiftRecipients = List<String>.from(recipientIds);
+          _lastGiftQuantity = quantity;
+          _lastGift = Map<String, dynamic>.from(gift);
+          await _sendGiftBatch(recipientIds, gift, quantity);
         },
       ),
     );
-    if (sent == true && _lastGiftRecipient != null && _lastGift != null) {
+    if (sent == true && _lastGiftRecipients.isNotEmpty && _lastGift != null) {
       _startGiftCombo();
     } else if (mounted) {
       setState(() {
@@ -3227,6 +3169,80 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _comboSending = false;
         _comboCount = 0;
       });
+    }
+  }
+
+  Future<void> _sendGiftBatch(
+    List<String> recipientIds,
+    Map<String, dynamic> gift,
+    int quantity,
+  ) async {
+    for (final recipientId in recipientIds) {
+      await _sendGiftToRecipient(recipientId, gift, quantity);
+    }
+  }
+
+  Future<void> _sendGiftToRecipient(
+    String recipientId,
+    Map<String, dynamic> gift,
+    int quantity,
+  ) async {
+    final recipientProfile = await _service.userProfile(recipientId);
+    final price = (gift['price'] as num?)?.toInt() ?? 0;
+    final payload = <String, dynamic>{
+      'gift_id': gift['id'],
+      'quantity': quantity,
+      'total_price': price * quantity,
+      'icon': gift['icon'],
+      'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
+      'thumbnail_asset_path': gift['icon']?.toString().startsWith('assets/') == true
+          ? gift['icon']
+          : null,
+      'name': gift['name'],
+      'media_url': gift['media_url'],
+      'media_type': gift['media_type'],
+      'duration_seconds': 5,
+      'category': gift['category'],
+      'recipient_id': recipientId,
+      'recipient_ids': [recipientId],
+      'recipient_username': recipientProfile?['username'] ?? recipientProfile?['display_name'],
+      'recipient_avatar_url': recipientProfile?['avatar_url'],
+      'flying_banner': false,
+    };
+    if (_isLuckGift(gift)) {
+      await _service.sendRoomLuckGift(
+        roomId: _roomId,
+        recipientId: recipientId,
+        giftId: gift['id'] as String,
+        quantity: quantity,
+      );
+      return;
+    }
+    final optimistic = _queueOptimisticMessage(
+      body: 'أرسل ${quantity > 1 ? '$quantity ' : ''}هدية ${gift['name'] ?? 'هدية'}',
+      type: 'gift',
+      payload: payload,
+    );
+    try {
+      await _service.sendRoomGift(
+        roomId: _roomId,
+        recipientId: recipientId,
+        giftId: gift['id'] as String,
+        quantity: quantity,
+      );
+      try {
+        await _service.sendRoomMessage(
+          _roomId,
+          'أرسل ${quantity > 1 ? '$quantity ' : ''}هدية ${gift['name'] ?? 'هدية'}',
+          type: 'gift',
+          payload: payload,
+        );
+      } catch (_) {
+        // The gift RPC is authoritative; presentation failure must not resend.
+      }
+    } catch (_) {
+      _removeOptimisticMessage(optimistic);
+      rethrow;
     }
   }
 
@@ -3264,56 +3280,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _comboPendingTaps++;
       return;
     }
-    final recipient = _lastGiftRecipient;
     final gift = _lastGift;
-    if (recipient == null || gift == null) return;
+    if (_lastGiftRecipients.isEmpty || gift == null) return;
     setState(() => _comboSending = true);
     try {
-      if (_isLuckGift(gift)) {
-        await _service.sendRoomLuckGift(
-          roomId: _roomId,
-          recipientId: recipient,
-          giftId: gift['id'] as String,
-        );
-      } else {
-        await _service.sendRoomGift(
-          roomId: _roomId,
-          recipientId: recipient,
-          giftId: gift['id'] as String,
-        );
-        final payload = <String, dynamic>{
-          'gift_id': gift['id'],
-          'quantity': 1,
-          'icon': gift['icon'],
-          'thumbnail_url': gift['thumbnail_url'] ?? gift['icon'],
-          'thumbnail_asset_path':
-              gift['icon']?.toString().startsWith('assets/') == true
-              ? gift['icon']
-              : null,
-          'name': gift['name'],
-          'media_url': gift['media_url'],
-          'media_type': gift['media_type'],
-          'duration_seconds': 5,
-          'category': gift['category'],
-          'recipient_id': recipient,
-          'recipient_username':
-              (gift['_recipient_profile'] as Map?)?['username'] ??
-              (gift['_recipient_profile'] as Map?)?['display_name'],
-          'recipient_avatar_url':
-              (gift['_recipient_profile'] as Map?)?['avatar_url'],
-          'flying_banner': false,
-        };
-        try {
-          await _service.sendRoomMessage(
-            _roomId,
-            'أرسل هدية ${gift['name'] ?? 'هدية'}',
-            type: 'gift',
-            payload: payload,
-          );
-        } catch (_) {
-          // Do not retry the paid RPC because only the chat presentation failed.
-        }
-      }
+      await _sendGiftBatch(_lastGiftRecipients, gift, _lastGiftQuantity);
       if (mounted) {
         setState(() {
           if (_comboActive) _comboCount++;

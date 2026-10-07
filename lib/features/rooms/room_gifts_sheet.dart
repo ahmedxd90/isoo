@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../core/data/saki_service.dart';
-import '../profile/wallet_page.dart';
-import '../../shared/widgets/saki_widgets.dart';
-
 import '../../shared/widgets/custom_toast.dart';
+import '../../shared/widgets/saki_widgets.dart';
+import '../profile/wallet_page.dart';
 
-const _giftOrange = Color(0xFFFF8A3D);
-const _giftCyan = Color(0xFF32D7FF);
-const _giftViolet = Color(0xFF9B6CFF);
+const _giftGold = Color(0xFFFFD54A);
+const _giftCyan = Color(0xFF42DFFF);
+const _giftPink = Color(0xFFFF6C9B);
 
 class RoomGiftsSheet extends StatefulWidget {
   const RoomGiftsSheet({
@@ -21,31 +20,32 @@ class RoomGiftsSheet extends StatefulWidget {
   final SakiService service;
   final String roomId;
   final Future<void> Function(
-    String recipientId,
+    List<String> recipientIds,
     Map<String, dynamic> gift,
-    bool flyingBanner,
-  )
-  onSent;
+    int quantity,
+  ) onSent;
 
   @override
   State<RoomGiftsSheet> createState() => _RoomGiftsSheetState();
 }
 
 class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
-  final _categories = const {
-    'عامة': 'general',
+  static const _categories = <String, String>{
+    'العامة': 'general',
+    'هدايا الحظ': 'luck',
     'المشاهير': 'famous',
-    'الحظ': 'luck',
-    'CP': 'cp',
     'الدول': 'countries',
+    'CP': 'cp',
     'VIP': 'vip',
   };
+  static const _quantities = [1, 7, 17, 77, 777];
 
-  String _category = 'عامة';
+  String _category = 'العامة';
   List<Map<String, dynamic>> _gifts = [];
   List<Map<String, dynamic>> _recipients = [];
   final Set<String> _selectedIds = <String>{};
   Map<String, dynamic>? _selectedGift;
+  int _quantity = 1;
   int _gold = 0;
   bool _loading = true;
   bool _sending = false;
@@ -63,19 +63,18 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
         widget.service
             .roomSeats(widget.roomId)
             .catchError((_) => <Map<String, dynamic>>[]),
-        widget.service.myProfile().catchError((_) => null),
         widget.service
             .roomGiftCatalog(category: 'general')
             .catchError((_) => <Map<String, dynamic>>[]),
       ]);
       final account = Map<String, dynamic>.from(results[0] as Map);
       final rows = List<Map<String, dynamic>>.from(results[1] as List);
-      final ownProfile = results[2] is Map
-          ? Map<String, dynamic>.from(results[2] as Map)
-          : null;
-      final gifts = List<Map<String, dynamic>>.from(results[3] as List);
+      final gifts = List<Map<String, dynamic>>.from(results[2] as List);
       final recipients = <Map<String, dynamic>>[];
       final recipientIds = <String>{};
+
+      // Only occupied room seats are eligible recipients. The current user is
+      // not added automatically when they are not seated.
       for (final row in rows) {
         final nested = row['profiles'];
         final profile = nested is Map
@@ -85,38 +84,21 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
             : <String, dynamic>{};
         final id = (profile['id'] ?? row['user_id'])?.toString();
         if (id == null || id.isEmpty || !recipientIds.add(id)) continue;
-        final username = profile['username']?.toString().trim();
-        final displayName = profile['display_name']?.toString().trim();
+        final name = (profile['display_name'] ?? profile['username'])
+            ?.toString()
+            .trim();
         recipients.add({
           ...profile,
           'id': id,
           'user_id': id,
-          'username': username != null && username.isNotEmpty
-              ? username
-              : displayName,
+          'username': name == null || name.isEmpty ? 'عضو' : name,
           'seat_no': row['seat_no'],
         });
       }
-      final selfId =
-          ownProfile?['id']?.toString() ?? widget.service.currentUser?.id;
-      if (selfId != null && selfId.isNotEmpty) {
-        final selfIndex = recipients.indexWhere(
-          (profile) => profile['id']?.toString() == selfId,
-        );
-        if (selfIndex < 0) {
-          recipients.insert(0, {
-            ...?ownProfile,
-            'id': selfId,
-            'user_id': selfId,
-            '_is_self': true,
-          });
-        } else {
-          recipients[selfIndex]['_is_self'] = true;
-        }
-      }
+
       if (!mounted) return;
       setState(() {
-        _gold = (account['gold_coins'] as num?)?.toInt() ?? 0;
+        _gold = _asInt(account['gold_coins']);
         _recipients = recipients;
         _gifts = gifts;
         _loading = false;
@@ -126,102 +108,89 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
     }
   }
 
-  Future<void> _selectCategory(String label, String? value) async {
+  int _asInt(Object? value) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  Future<void> _selectCategory(String label, String value) async {
     setState(() {
       _category = label;
       _loading = true;
+      _selectedGift = null;
     });
-    final gifts = await widget.service.roomGiftCatalog(category: value);
-    final normalized = gifts;
-    if (mounted) {
+    try {
+      final gifts = await widget.service.roomGiftCatalog(category: value);
+      if (!mounted) return;
       setState(() {
-        _gifts = normalized;
+        _gifts = gifts;
         _loading = false;
       });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  Widget _giftVisual(Map<String, dynamic> gift, {double size = 38}) {
-    final icon = gift['icon'] as String? ?? '🎁';
-    final localAsset =
-        gift['thumbnail_asset_path']?.toString() ??
+  String _formatGold(int value) {
+    if (value >= 1000000000000) return '${(value / 1000000000000).toStringAsFixed(value % 1000000000000 == 0 ? 0 : 1)}T';
+    if (value >= 1000000000) return '${(value / 1000000000).toStringAsFixed(value % 1000000000 == 0 ? 0 : 1)}B';
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K';
+    return value.toString();
+  }
+
+  Widget _giftVisual(Map<String, dynamic> gift, {double size = 54}) {
+    final icon = gift['icon']?.toString() ?? '🎁';
+    final asset = gift['thumbnail_asset_path']?.toString() ??
         (icon.startsWith('assets/') ? icon : null);
-    if (localAsset != null) {
+    if (asset != null && asset.isNotEmpty) {
       return Image.asset(
-        localAsset,
+        asset,
         width: size,
         height: size,
         fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Text(icon, style: TextStyle(fontSize: size * .65)),
       );
     }
-    final thumbnail = icon.startsWith('http')
-        ? icon
-        : (gift['thumbnail_url'] as String?);
+    final thumbnail = gift['thumbnail_url']?.toString() ??
+        (icon.startsWith('http') ? icon : null);
     if (thumbnail != null && thumbnail.isNotEmpty) {
       return Image.network(
         thumbnail,
         width: size,
         height: size,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) =>
-            Text(icon, style: TextStyle(fontSize: size * .75)),
+        errorBuilder: (_, _, _) => Text(icon, style: TextStyle(fontSize: size * .65)),
       );
     }
-    return Text(icon, style: TextStyle(fontSize: size * .75));
+    return Text(icon, style: TextStyle(fontSize: size * .65));
   }
 
   Future<void> _send() async {
     final gift = _selectedGift;
+    final recipients = _selectedIds.toList();
     if (gift == null) {
       _message('اختر هدية أولاً');
       return;
     }
-    if (_selectedIds.isEmpty) {
-      _message('حدد مستخدماً واحداً على الأقل من المقاعد');
+    if (recipients.isEmpty) {
+      _message('حدد مستخدمًا واحدًا أو أكثر من المقاعد');
       return;
     }
-    final price = (gift['price'] as num?)?.toInt() ?? 0;
-    final requiredGold = price * _selectedIds.length;
-    if (_gold < requiredGold) {
-      await _showInsufficientBalance(requiredGold);
+    final price = _asInt(gift['price']);
+    final total = price * _quantity * recipients.length;
+    if (_gold < total) {
+      await _showInsufficientBalance(total);
       return;
     }
     setState(() => _sending = true);
-    var sentCount = 0;
-    String? firstError;
     try {
-      for (final recipientId in _selectedIds.toList()) {
-        try {
-          await widget.onSent(recipientId, gift, true);
-          sentCount++;
-          if (mounted) {
-            setState(() {
-              _selectedIds.remove(recipientId);
-              _gold -= price;
-            });
-          }
-        } catch (error) {
-          firstError ??= error.toString().replaceFirst('Exception: ', '');
-        }
-      }
-      if (!mounted) return;
-      if (_selectedIds.isEmpty) {
-        Navigator.pop(context, true);
-      } else {
-        setState(() => _sending = false);
-        _message(
-          'تم إرسال $sentCount هدية، وتعذر إرسال ${_selectedIds.length}. ${firstError ?? ''}',
-        );
-      }
+      await widget.onSent(recipients, gift, _quantity);
+      if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) {
-        final message = error.toString().replaceFirst('Exception: ', '');
-        if (message.contains('insufficient_gold') || message.contains('رصيد')) {
-          await _showInsufficientBalance(requiredGold);
-        } else {
-          _message(message);
-        }
         setState(() => _sending = false);
+        _message(error.toString().replaceFirst('Exception: ', ''));
       }
     }
   }
@@ -230,16 +199,18 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF171717),
         title: const Row(
           children: [
-            Icon(Icons.account_balance_wallet_rounded, color: Colors.orange),
+            Icon(Icons.account_balance_wallet_rounded, color: _giftGold),
             SizedBox(width: 8),
-            Text('رصيدك غير كافي'),
+            Text('الرصيد غير كافٍ', style: TextStyle(color: Colors.white)),
           ],
         ),
         content: Text(
-          'رصيدك الحالي $_gold ذهب، وتحتاج إلى $requiredGold ذهب لإرسال الهدية المحددة.',
+          'رصيدك ${_formatGold(_gold)} ذهب، والمطلوب ${_formatGold(requiredGold)} ذهب.',
           textDirection: TextDirection.rtl,
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -249,20 +220,19 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
           FilledButton.icon(
             onPressed: () {
               Navigator.pop(dialogContext);
-              Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const WalletPage()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WalletPage()),
+              );
             },
             icon: const Icon(Icons.add_card_rounded),
-            label: const Text('اذهب للشحن'),
+            label: const Text('شحن الذهب'),
           ),
         ],
       ),
     );
   }
 
-  void _message(String text) {
-    CustomToast.show(context, text);
-  }
+  void _message(String text) => CustomToast.show(context, text);
 
   void _toggleRecipient(String id) {
     setState(() {
@@ -272,105 +242,76 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
 
   void _toggleAll() {
     setState(() {
-      if (_recipients.every((p) => _selectedIds.contains(p['id'].toString()))) {
+      if (_selectedIds.length == _recipients.length && _recipients.isNotEmpty) {
         _selectedIds.clear();
       } else {
         _selectedIds
           ..clear()
-          ..addAll(_recipients.map((p) => p['id'].toString()));
+          ..addAll(_recipients.map((item) => item['id'].toString()));
       }
     });
   }
 
-  @override
-  Widget build(BuildContext context) => SafeArea(
-    child: Container(
-      height: MediaQuery.sizeOf(context).height * .55,
-      decoration: const BoxDecoration(
-        color: Color(0xF20B1515),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-        border: Border(top: BorderSide(color: Color(0x6648E0B0), width: 1.2)),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 42,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white30,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-            child: Row(
+  Widget _seatSelector() {
+    return Container(
+      height: 96,
+      color: const Color(0xE6000000),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 8),
+      child: _recipients.isEmpty
+          ? const Center(
+              child: Text(
+                'لا يوجد مستخدمون على المقاعد',
+                style: TextStyle(color: Colors.white54),
+              ),
+            )
+          : Row(
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [SizedBox(height: 4)],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            child: Row(
-              children: [
-                const Text(
-                  'المستلمون',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
                 GestureDetector(
-                  onTap: _recipients.isEmpty ? null : _toggleAll,
-                  child: Text(
-                    _selectedIds.length == _recipients.length &&
-                            _recipients.isNotEmpty
-                        ? 'إلغاء الكل'
-                        : 'تحديد الكل',
-                    style: const TextStyle(
-                      color: _giftCyan,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
+                  onTap: _toggleAll,
+                  child: Container(
+                    width: 54,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      color: _selectedIds.length == _recipients.length
+                          ? _giftCyan.withValues(alpha: .18)
+                          : Colors.white.withValues(alpha: .06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _selectedIds.length == _recipients.length
+                            ? _giftCyan
+                            : Colors.white24,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _selectedIds.length == _recipients.length
+                              ? Icons.deselect_rounded
+                              : Icons.select_all_rounded,
+                          color: _giftCyan,
+                          size: 22,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedIds.length == _recipients.length ? 'إلغاء' : 'الكل',
+                          style: const TextStyle(color: Colors.white70, fontSize: 10),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  '${_selectedIds.length}/${_recipients.length}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 92,
-            child: _recipients.isEmpty
-                ? const Center(
-                    child: Text(
-                      'لا يوجد مستخدمون على المقاعد',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 10,
-                    ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _recipients.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    separatorBuilder: (_, _) => const SizedBox(width: 9),
                     itemBuilder: (_, index) {
                       final profile = _recipients[index];
                       final id = profile['id'].toString();
-                      final isSelf = profile['_is_self'] == true;
                       final selected = _selectedIds.contains(id);
+                      final name = profile['username']?.toString() ?? 'عضو';
                       return GestureDetector(
                         onTap: () => _toggleRecipient(id),
                         child: SizedBox(
@@ -381,20 +322,18 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                                 clipBehavior: Clip.none,
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.all(isSelf ? 2 : 0),
-                                    decoration: isSelf
-                                        ? BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: _giftOrange,
-                                              width: 1.5,
-                                            ),
-                                          )
-                                        : null,
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: selected ? _giftCyan : Colors.white38,
+                                        width: selected ? 2.2 : 1,
+                                      ),
+                                    ),
                                     child: SakiAvatar(
-                                      url: profile['avatar_url'] as String?,
-                                      label: profile['username'] as String?,
-                                      radius: 25,
+                                      url: profile['avatar_url']?.toString(),
+                                      label: name,
+                                      radius: 24,
                                     ),
                                   ),
                                   if (selected)
@@ -408,28 +347,18 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                                           color: _giftCyan,
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
-                                          Icons.check,
-                                          size: 13,
-                                          color: Colors.black,
-                                        ),
+                                        child: const Icon(Icons.check, size: 13, color: Colors.black),
                                       ),
                                     ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 3),
                               Text(
-                                isSelf
-                                    ? 'أنت'
-                                    : profile['username'] as String? ?? 'عضو',
+                                name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: selected
-                                      ? _giftCyan
-                                      : isSelf
-                                      ? _giftOrange
-                                      : Colors.white70,
+                                  color: selected ? _giftCyan : Colors.white70,
                                   fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -440,196 +369,225 @@ class _RoomGiftsSheetState extends State<RoomGiftsSheet> {
                       );
                     },
                   ),
-          ),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              scrollDirection: Axis.horizontal,
-              children: _categories.entries
-                  .map(
-                    (entry) => GestureDetector(
-                      onTap: () => _selectCategory(entry.key, entry.value),
-                      child: Container(
-                        margin: const EdgeInsetsDirectional.only(end: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _category == entry.key
-                              ? _giftViolet
-                              : Colors.white.withValues(alpha: .06),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: _category == entry.key
-                                ? _giftViolet
-                                : Colors.white12,
-                          ),
-                        ),
-                        child: Text(
-                          entry.key,
-                          style: TextStyle(
-                            color: _category == entry.key
-                                ? Colors.white
-                                : Colors.white70,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _categoryTabs() {
+    return SizedBox(
+      height: 45,
+      child: ListView.separated(
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 14, 5),
+        scrollDirection: Axis.horizontal,
+        itemCount: _categories.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 7),
+        itemBuilder: (_, index) {
+          final entry = _categories.entries.elementAt(index);
+          final active = entry.key == _category;
+          return GestureDetector(
+            onTap: _sending ? null : () => _selectCategory(entry.key, entry.value),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 13),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: active ? _giftPink : Colors.white.withValues(alpha: .07),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: active ? _giftPink : Colors.white12),
+              ),
+              child: Text(
+                entry.key,
+                style: TextStyle(
+                  color: active ? Colors.white : Colors.white70,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _giftGrid() {
+    if (_loading) return const Center(child: CircularProgressIndicator(color: _giftCyan));
+    if (_gifts.isEmpty) {
+      return const Center(
+        child: Text('لا توجد هدايا في هذه الفئة حالياً', style: TextStyle(color: Colors.white54)),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      itemCount: _gifts.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: .72,
+      ),
+      itemBuilder: (_, index) {
+        final gift = _gifts[index];
+        final selected = identical(gift, _selectedGift);
+        return GestureDetector(
+          onTap: _sending ? null : () => setState(() => _selectedGift = gift),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: selected ? _giftPink.withValues(alpha: .20) : Colors.white.withValues(alpha: .055),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: selected ? _giftGold : Colors.white12, width: selected ? 1.5 : 1),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(child: _giftVisual(gift)),
+                Text(
+                  gift['name']?.toString() ?? 'هدية',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.monetization_on, color: _giftGold, size: 12),
+                    const SizedBox(width: 2),
+                    Text(
+                      _formatGold(_asInt(gift['price'])),
+                      style: const TextStyle(color: _giftGold, fontSize: 10, fontWeight: FontWeight.w900),
                     ),
-                  )
-                  .toList(),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: _giftCyan),
-                  )
-                : _gifts.isEmpty
-                ? const _GiftEmptyState()
-                : GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
-                    itemCount: _gifts.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 4,
-                          crossAxisSpacing: 9,
-                          mainAxisSpacing: 9,
-                          childAspectRatio: .78,
-                        ),
-                    itemBuilder: (_, index) {
-                      final gift = _gifts[index];
-                      final selected = identical(gift, _selectedGift);
-                      return GestureDetector(
-                        onTap: _sending
-                            ? null
-                            : () => setState(() => _selectedGift = gift),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? _giftViolet.withValues(alpha: .24)
-                                : Colors.white.withValues(alpha: .055),
-                            borderRadius: BorderRadius.circular(17),
-                            border: Border.all(
-                              color: selected ? _giftCyan : Colors.white12,
-                              width: selected ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(child: _giftVisual(gift)),
-                              Text(
-                                gift['name'] as String? ?? 'هدية',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${gift['price'] ?? 0} ذهب',
-                                style: const TextStyle(
-                                  color: _giftOrange,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 4, 18, 14),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _sending ? null : _send,
-                  child: Container(
-                    height: 44,
-                    padding: const EdgeInsets.symmetric(horizontal: 30),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_giftOrange, Color(0xFFFF4F81)],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x55FF6B35),
-                          blurRadius: 14,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      _sending ? '...' : 'إرسال',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+        );
+      },
+    );
+  }
+
+  Widget _quantityBar() {
+    return Container(
+      height: 44,
+      color: const Color(0xF0000000),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          const Text('الكمية', style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          ..._quantities.map(
+            (value) => GestureDetector(
+              onTap: _sending ? null : () => setState(() => _quantity = value),
+              child: Container(
+                margin: const EdgeInsetsDirectional.only(end: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _quantity == value ? _giftGold : Colors.white10,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  value.toString(),
+                  style: TextStyle(
+                    color: _quantity == value ? Colors.black : Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                const Spacer(),
-                _BalanceBadge(gold: _gold),
-              ],
+              ),
             ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-class _BalanceBadge extends StatelessWidget {
-  const _BalanceBadge({required this.gold});
-  final int gold;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.amber.withValues(alpha: .12),
-      borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: Colors.amber.withValues(alpha: .25)),
-    ),
-    child: Text(
-      '$gold ذهب',
-      style: const TextStyle(
-        color: Colors.amberAccent,
-        fontSize: 11,
-        fontWeight: FontWeight.w900,
+  Widget _footer() {
+    final price = _asInt(_selectedGift?['price']);
+    final total = price * _quantity * _selectedIds.length;
+    return Container(
+      height: 62,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+      decoration: const BoxDecoration(color: Color(0xFC000000)),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                const Icon(Icons.monetization_on_rounded, color: _giftGold, size: 22),
+                const SizedBox(width: 5),
+                Text(
+                  _formatGold(_gold),
+                  style: const TextStyle(color: _giftGold, fontSize: 15, fontWeight: FontWeight.w900),
+                ),
+                if (total > 0) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '−${_formatGold(total)}',
+                    style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 42,
+            child: FilledButton.icon(
+              onPressed: _sending ? null : _send,
+              style: FilledButton.styleFrom(
+                backgroundColor: _giftPink,
+                disabledBackgroundColor: Colors.white24,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: _sending
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: Text(_sending ? 'جارٍ الإرسال' : 'إرسال الهدية'),
+            ),
+          ),
+        ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-class _GiftEmptyState extends StatelessWidget {
-  const _GiftEmptyState();
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.card_giftcard_outlined, color: Colors.white24, size: 52),
-        const SizedBox(height: 8),
-        const Text(
-          'لا توجد هدايا هنا حالياً',
-          style: TextStyle(color: Colors.white54, fontSize: 12),
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        height: MediaQuery.sizeOf(context).height * .78,
+        decoration: const BoxDecoration(
+          color: Color(0x99000000),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
         ),
-      ],
-    ),
-  );
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Container(width: 42, height: 4, decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(8))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.card_giftcard_rounded, color: _giftGold, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('الهدايا', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                  const Spacer(),
+                  Text('${_selectedIds.length} مستلم', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                ],
+              ),
+            ),
+            _seatSelector(),
+            _categoryTabs(),
+            Expanded(child: _giftGrid()),
+            _quantityBar(),
+            _footer(),
+          ],
+        ),
+      ),
+    );
+  }
 }
