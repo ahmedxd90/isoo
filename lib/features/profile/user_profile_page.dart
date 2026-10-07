@@ -573,7 +573,7 @@ class _SakiPremiumUserProfileState extends State<_SakiPremiumUserProfile> {
 
   @override
   Widget build(BuildContext context) {
-    final vip = (widget.profile['vip_level'] as num? ?? 0).toInt().clamp(0, 10);
+    final vip = (widget.profile['vip_level'] as num? ?? 0).toInt().clamp(0, 11);
     final accent = vip > 0 ? vipAccent(vip) : const Color(0xFF7C3AED);
     final family = widget.profile['family_badge'] is Map
         ? Map<String, dynamic>.from(widget.profile['family_badge'] as Map)

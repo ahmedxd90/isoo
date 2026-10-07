@@ -498,6 +498,7 @@ const vipEntranceColors = <int, Color>{
   8: Color(0xFF26C6DA),
   9: Color(0xFFFFC107),
   10: Color(0xFFFF4500),
+  11: Color(0xFF9B6BFF),
 };
 
 class RoomConnectedStrip extends StatelessWidget {

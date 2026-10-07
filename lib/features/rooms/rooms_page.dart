@@ -5923,7 +5923,7 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
   List<Color> get _vipColors =>
       vipNameGradients[_vip] ?? const [Color(0xFF64748B), Color(0xFF334155)];
   Color get _accent => _vipColors.first;
-  String get _entryAsset => _vip >= 4 && _vip <= 10
+  String get _entryAsset => _vip >= 4 && _vip <= 11
       ? 'assets/room_effects/entry_vip$_vip.webp'
       : 'assets/room_effects/entry_normal.webp';
 
@@ -5955,7 +5955,7 @@ class _RoomEntranceBannerState extends State<RoomEntranceBanner>
         .clamp(240.0, 420.0)
         .toDouble();
     final height = width * 686 / 1600;
-    final hasVipArt = _vip >= 4 && _vip <= 10;
+    final hasVipArt = _vip >= 4 && _vip <= 11;
     return Positioned(
       left: 0,
       right: 0,
@@ -7781,7 +7781,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
     vsync: this,
   );
   int get _vip =>
-      ((widget.profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+      ((widget.profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 11);
   Color get _color => vipEntranceColors[_vip] ?? const Color(0xFF7C4DFF);
   String get _asset => _vip >= 4
       ? 'assets/vip/user_center_svip$_vip.svga'
@@ -7794,7 +7794,7 @@ class _RoomProfileAvatarState extends State<_RoomProfileAvatar>
   }
 
   Future<void> _load() async {
-    if (_vip < 1) return;
+    if (_vip < 1 || _vip == 11) return;
     try {
       final movie = await SVGAParser.shared.decodeFromAssets(_asset);
       if (!mounted) return;

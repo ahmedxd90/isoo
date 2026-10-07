@@ -20,6 +20,7 @@ const vipLevelColors = <int, Color>{
   8: Color(0xFF26C6DA),
   9: Color(0xFFFFC107),
   10: Color(0xFFFF4500),
+  11: Color(0xFF9B6BFF),
 };
 
 class VipBenefit {
@@ -51,7 +52,7 @@ class VipTabBar extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       reverse: true,
       child: Row(
-        children: List.generate(10, (index) {
+        children: List.generate(11, (index) {
           final level = index + 1;
           final selectedNow = selected == level;
           final color = vipLevelColors[level]!;
@@ -125,11 +126,19 @@ class VipBadgeHero extends StatelessWidget {
                   ],
                 ),
               ),
-              VipSvgaAsset(
-                assetPath: 'assets/vip/icon_svip${level}_medal.svga',
-                fallbackAsset: 'assets/vip/vip$level.webp',
-                size: 220,
-              ),
+              if (level == 11)
+                Image.asset(
+                  'assets/vip/vip11.webp',
+                  width: 220,
+                  height: 220,
+                  fit: BoxFit.contain,
+                )
+              else
+                VipSvgaAsset(
+                  assetPath: 'assets/vip/icon_svip${level}_medal.svga',
+                  fallbackAsset: 'assets/vip/vip$level.webp',
+                  size: 220,
+                ),
             ],
           ),
         ),
