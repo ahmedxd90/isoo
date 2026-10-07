@@ -6,11 +6,7 @@ alter table public.vip_transactions
 alter table public.vip_transactions
   add constraint vip_transactions_vip_level_check check (vip_level between 1 and 11);
 
-alter table public.saki_redeem_codes
-  drop constraint if exists saki_redeem_codes_vip_level_check;
-alter table public.saki_redeem_codes
-  add constraint saki_redeem_codes_vip_level_check
-  check (vip_level is null or vip_level between 1 and 11);
+-- The codes table stores code metadata; VIP levels live on its rewards table.
 
 alter table public.saki_redeem_code_rewards
   drop constraint if exists saki_redeem_code_rewards_vip_level_check;
@@ -51,15 +47,12 @@ begin
   if target is null then
     raise exception 'recipient_not_found';
   end if;
-  if target = auth.uid() then
-    raise exception 'cannot_gift_self';
-  end if;
 
-  update public.saki_account_modules
-     set gold_coins = gold_coins - cost,
+  update public.saki_account_modules as m
+     set gold_coins = m.gold_coins - cost,
          updated_at = now()
-   where user_id = auth.uid()
-     and gold_coins >= cost;
+   where m.user_id = auth.uid()
+     and m.gold_coins >= cost;
   if not found then
     raise exception 'insufficient_gold';
   end if;
