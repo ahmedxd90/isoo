@@ -4925,13 +4925,29 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
 
   Future<void> _claimLuckBag(String bagId) async {
-    try {
-      final result = await _service.claimRoomLuckBag(bagId);
-      if (!mounted) return;
-      _messageSnack('استلمت ${result['amount_gold'] ?? 0} عملة ذهبية بنجاح.');
-    } catch (e) {
-      if (mounted) _messageSnack(e.toString().replaceFirst('Exception: ', ''));
-    }
+    final bag = _luckBags.cast<Map<String, dynamic>?>().firstWhere(
+      (item) => item?['id']?.toString() == bagId,
+      orElse: () => null,
+    );
+    if (bag == null || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LuckBagClaimDialog(
+        bag: bag,
+        onClaim: () async {
+          final result = await _service.claimRoomLuckBag(bagId);
+          if (mounted) {
+            setState(() {
+              _luckBags = _luckBags
+                  .where((item) => item['id']?.toString() != bagId)
+                  .toList();
+            });
+          }
+          return result;
+        },
+      ),
+    );
   }
 
   Future<void> _goToLuckBag(Map<String, dynamic> bag) async {

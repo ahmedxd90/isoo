@@ -296,6 +296,200 @@ class _LuckBagCardState extends State<LuckBagCard> {
   }
 }
 
+class LuckBagClaimDialog extends StatefulWidget {
+  const LuckBagClaimDialog({
+    super.key,
+    required this.bag,
+    required this.onClaim,
+  });
+
+  final Map<String, dynamic> bag;
+  final Future<Map<String, dynamic>> Function() onClaim;
+
+  @override
+  State<LuckBagClaimDialog> createState() => _LuckBagClaimDialogState();
+}
+
+class _LuckBagClaimDialogState extends State<LuckBagClaimDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _open = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1150),
+  );
+  bool _claiming = false;
+  Map<String, dynamic>? _result;
+  String? _error;
+
+  @override
+  void dispose() {
+    _open.dispose();
+    super.dispose();
+  }
+
+  String _formatGold(dynamic value) =>
+      (value is num
+              ? value.toInt()
+              : int.tryParse(value?.toString() ?? '') ?? 0)
+          .toString()
+          .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+
+  Future<void> _claim() async {
+    if (_claiming || _result != null) return;
+    setState(() {
+      _claiming = true;
+      _error = null;
+    });
+    try {
+      final result = await widget.onClaim();
+      if (!mounted) return;
+      setState(() => _result = result);
+      await _open.forward(from: 0);
+      await Future<void>.delayed(const Duration(milliseconds: 850));
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _claiming = false;
+          _error = error.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = _formatGold(_result?['amount_gold']);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 26),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF20133D), Color(0xFF3D1D35)],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: _bagGold.withValues(alpha: .75),
+            width: 1.5,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0xAA11051D),
+              blurRadius: 28,
+              spreadRadius: 4,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'استلام حقيبة الحظ',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'اضغط استلام لفتح صندوق الكنز',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: 210,
+              height: 190,
+              child: AnimatedBuilder(
+                animation: _open,
+                builder: (_, _) => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (_result != null)
+                      Positioned.fill(
+                        child: Opacity(
+                          opacity: _open.value,
+                          child: Image.asset(
+                            'assets/rooms/luck_gold_burst.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    Transform.scale(
+                      scale: 1 + (_open.value * .08),
+                      child: Image.asset(
+                        _result == null
+                            ? 'assets/rooms/luck_treasure_closed.png'
+                            : 'assets/rooms/luck_treasure_open.png',
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_result != null) ...[
+              Text(
+                'حصلت على $amount عملة ذهبية',
+                style: const TextStyle(
+                  color: _bagGold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'تمت الإضافة إلى رصيدك الحقيقي',
+                style: TextStyle(color: Colors.white70, fontSize: 11),
+              ),
+            ] else ...[
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _claiming ? null : _claim,
+                  icon: _claiming
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.card_giftcard_rounded),
+                  label: Text(_claiming ? 'جارٍ الاستلام...' : 'استلام'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _bagGold,
+                    foregroundColor: const Color(0xFF301A10),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class LuckBagFlyBanner extends StatefulWidget {
   const LuckBagFlyBanner({
     super.key,
