@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/supabase_config.dart';
+import '../room_session.dart';
 
 class SakiAuthUser {
   const SakiAuthUser({
@@ -134,6 +135,17 @@ class SakiService {
 
   Future<void> logout() async {
     _profileCache = null;
+    final session = RoomSessionController.instance;
+    final activeRoomId = session.roomId;
+    if (activeRoomId != null && activeRoomId.isNotEmpty) {
+      await setRoomSpeaking(activeRoomId, false).catchError((_) {});
+      await setRoomSpecialSeatSpeaking(activeRoomId, false).catchError((_) {});
+      await leaveRoomSeat(activeRoomId).catchError((_) {});
+      await leaveRoomSpecialSeat(activeRoomId).catchError((_) {});
+      await leaveRoom(activeRoomId).catchError((_) {});
+    }
+    // close() stops the Agora engine, local music, heartbeat, and room bubble.
+    await session.close();
     await client.auth.signOut();
   }
 
