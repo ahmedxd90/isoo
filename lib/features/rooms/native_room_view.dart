@@ -444,52 +444,67 @@ class _NativeRoomViewState extends State<NativeRoomView> {
         if (row['seat_kind'] != null) row['seat_kind'].toString(): row,
     };
 
-    Widget card(String kind, String asset, Color glow) {
+    Widget card(String kind, String asset, Color glow, String label) {
       final row = byKind[kind];
       final profile = row?['profiles'] is Map
           ? Map<String, dynamic>.from(row!['profiles'] as Map)
           : <String, dynamic>{};
       final occupied = row?['user_id'] != null;
       final userId = row?['user_id']?.toString();
-      final speaking =
-          row?['is_speaking'] == true ||
+      final speaking = row?['is_speaking'] == true ||
           (occupied &&
               userId == widget.room['local_user_id']?.toString() &&
               widget.room['local_speaking'] == true);
+      final vip = activeVipLevel(profile).clamp(0, 10);
+      final name = (profile['username'] ?? profile['display_name'] ?? label).toString();
       return Expanded(
         child: GestureDetector(
-          onTap: () =>
-              widget.onSpecialSeatTap({'seat_kind': kind, 'user_id': userId}),
+          onTap: () => widget.onSpecialSeatTap({'seat_kind': kind, 'user_id': userId}),
           child: SizedBox(
-            height: 92,
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
+            height: 126,
+            child: Column(
               children: [
-                if (speaking)
-                  Positioned.fill(
-                    child: _SpeakingSeatOverlay(
-                      speaking: true,
-                      vipLevel: activeVipLevel(profile),
-                      color: glow,
-                    ),
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (speaking)
+                        Positioned.fill(
+                          child: _SpeakingSeatOverlay(
+                            speaking: true,
+                            vipLevel: vip,
+                            color: glow,
+                          ),
+                        ),
+                      Image.asset(asset, width: 104, height: 104, fit: BoxFit.contain),
+                      if (occupied)
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [BoxShadow(color: glow.withValues(alpha: .5), blurRadius: 12)],
+                          ),
+                          child: SakiAvatar(
+                            url: profile['avatar_url']?.toString(),
+                            label: name,
+                            radius: 21,
+                            profile: profile,
+                          ),
+                        ),
+                    ],
                   ),
-                Image.asset(asset, width: 88, height: 88, fit: BoxFit.contain),
-                if (occupied)
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                    ),
-                    child: SakiAvatar(
-                      url: profile['avatar_url']?.toString(),
-                      label: profile['username']?.toString(),
-                      radius: 15,
-                      profile: profile,
-                    ),
-                  ),
+                ),
+                Text(
+                  occupied ? name : label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: occupied ? glow : Colors.white70, fontSize: 10, fontWeight: FontWeight.w900),
+                ),
+                if (occupied && vip > 0)
+                  Text('VIP $vip', style: TextStyle(color: glow, fontSize: 8, fontWeight: FontWeight.w800)),
               ],
             ),
           ),
@@ -497,27 +512,14 @@ class _NativeRoomViewState extends State<NativeRoomView> {
       );
     }
 
-    final speaking = byKind.values.any((row) => row['is_speaking'] == true);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          card(
-            'host',
-            'assets/rooms/royal_seat_host.png',
-            const Color(0xFFFF405C),
-          ),
-          SizedBox(
-            width: 46,
-            height: 82,
-            child: _RoyalBridgeWave(active: speaking),
-          ),
-          card(
-            'legend',
-            'assets/rooms/royal_seat_legend.png',
-            const Color(0xFFFFD166),
-          ),
+          card('host', 'assets/rooms/royal_seat_host.png', const Color(0xFFFF405C), 'المضيف'),
+          const SizedBox(width: 8),
+          card('legend', 'assets/rooms/royal_seat_legend.png', const Color(0xFFFFD166), 'الأسطورة'),
         ],
       ),
     );
@@ -545,7 +547,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
         itemCount: count,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 5,
-          mainAxisExtent: 90,
+          mainAxisExtent: 84,
           crossAxisSpacing: 5,
         ),
         itemBuilder: (_, index) {
@@ -589,8 +591,8 @@ class _NativeRoomViewState extends State<NativeRoomView> {
             child: Column(
               children: [
                 SizedBox(
-                  width: 74,
-                  height: 74,
+                  width: 70,
+                  height: 70,
                   child: Stack(
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
@@ -605,8 +607,8 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                         ),
                       Container(
                         key: seatKey,
-                        width: isVip11Seat ? 74 : 66,
-                        height: isVip11Seat ? 74 : 66,
+                        width: isVip11Seat ? 70 : 62,
+                        height: isVip11Seat ? 70 : 62,
                         decoration: showVip11Design
                             ? null
                             : BoxDecoration(
@@ -665,7 +667,7 @@ class _NativeRoomViewState extends State<NativeRoomView> {
                             ? SakiAvatar(
                                 url: profile['avatar_url']?.toString(),
                                 label: profile['username']?.toString(),
-                                radius: 28,
+                                radius: 30,
                                 profile: profile,
                               )
                             : Icon(

@@ -3737,8 +3737,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       ),
       builder: (_) => _RoomInfoSheet(
         bundle: bundle,
-        followed: _followed,
+        followed: owner || _followed,
         canSettings: owner,
+        canFollow: !owner,
         onToggleFollow: () async {
           await _service.toggleRoomFollow(_roomId, _followed);
           if (mounted) setState(() => _followed = !_followed);
@@ -4970,40 +4971,62 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (profile != null && mounted) await _showUserCard(profile);
       return;
     }
-    if (userId == _service.uid) {
-      setState(() => _busy = true);
-      try {
-        _activeSpecialSeatKind = null;
-        await _setSeatAudio(false);
-        await _service.leaveRoomSpecialSeat(_roomId);
-        if (mounted) _messageSnack('تم النزول من المقعد الملكي.');
-      } catch (_) {
-        if (mounted) _messageSnack('تعذر النزول من المقعد الملكي.');
-      } finally {
-        if (mounted) setState(() => _busy = false);
-      }
-      return;
-    }
-    if (!_isRoomOwner && !_isModerator) {
+    final ownSeat = userId == _service.uid;
+    if (!ownSeat && !_isRoomOwner && !_isModerator) {
       _messageSnack('المقعد الملكي مخصص لمالك الغرفة والمشرفين فقط.');
       return;
     }
+    final label = kind == 'host' ? 'مقعد المضيف' : 'مقعد الأسطورة';
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFD1D5DB), borderRadius: BorderRadius.circular(4))),
+              const SizedBox(height: 14),
+              Text(label, style: const TextStyle(color: Color(0xFF111827), fontSize: 17, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                leading: Icon(ownSeat ? Icons.mic_off_rounded : Icons.mic_rounded, color: const Color(0xFFF97316)),
+                title: Text(ownSeat ? 'النزول من المقعد' : 'خذ المقعد', style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.w800)),
+                onTap: () => Navigator.pop(sheetContext, ownSeat ? 'leave' : 'take'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
     setState(() => _busy = true);
     try {
-      await _service.claimRoomSpecialSeat(_roomId, kind);
-      _activeSpecialSeatKind = kind;
-      await _setSeatAudio(true);
-      if (mounted) {
-        _messageSnack(
-          kind == 'host'
-              ? 'تم احتلال مقعد المضيف.'
-              : 'تم احتلال مقعد الأسطورة.',
-        );
+      if (action == 'leave') {
+        _activeSpecialSeatKind = null;
+        _isOnSeat = false;
+        await _setSeatAudio(false);
+        await _service.leaveRoomSpecialSeat(_roomId);
+        await _service.leaveRoomSeat(_roomId).catchError((_) {});
+        if (mounted) _messageSnack('تم النزول من المقعد الملكي.');
+      } else {
+        // Clear any ordinary or other special seat before claiming the new one.
+        await _service.leaveRoomSeat(_roomId).catchError((_) {});
+        if (_activeSpecialSeatKind != null && _activeSpecialSeatKind != kind) {
+          await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
+        }
+        await _service.claimRoomSpecialSeat(_roomId, kind);
+        _activeSpecialSeatKind = kind;
+        await _setSeatAudio(true);
+        if (mounted) _messageSnack('تم أخذ $label.');
       }
-    } catch (_) {
-      if (mounted) {
-        _messageSnack('لا تملك صلاحية هذا المقعد أو أنه مستخدم حاليًا.');
-      }
+    } catch (error) {
+      if (mounted) _messageSnack('تعذر تغيير المقعد الملكي: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -5146,6 +5169,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         }
         // Confirm the server seat first, then publish audio. This prevents
         // the old race where audio started before the seat was granted.
+        await _service.leaveRoomSpecialSeat(_roomId).catchError((_) {});
         _activeSpecialSeatKind = null;
         await _service.claimRoomSeat(_roomId, seatNo);
         await _setSeatAudio(true);
@@ -7498,6 +7522,7 @@ class _RoomInfoSheet extends StatefulWidget {
     required this.bundle,
     required this.followed,
     required this.canSettings,
+    required this.canFollow,
     required this.onToggleFollow,
     required this.onSettings,
     required this.service,
@@ -7506,6 +7531,7 @@ class _RoomInfoSheet extends StatefulWidget {
   final Map<String, dynamic> bundle;
   final bool followed;
   final bool canSettings;
+  final bool canFollow;
   final Future<void> Function() onToggleFollow;
   final Future<void> Function() onSettings;
   final SakiService service;
@@ -7514,11 +7540,14 @@ class _RoomInfoSheet extends StatefulWidget {
   State<_RoomInfoSheet> createState() => _RoomInfoSheetState();
 }
 
-class _RoomInfoSheetState extends State<_RoomInfoSheet> {
-  int _tab = 0;
+class _RoomInfoSheetState extends State<_RoomInfoSheet>
+    with SingleTickerProviderStateMixin {
   late bool _followed = widget.followed;
-  final Set<String> _following = <String>{};
   bool _followBusy = false;
+  late final AnimationController _vipGlow = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  )..repeat();
 
   Map<String, dynamic> get room =>
       Map<String, dynamic>.from(widget.bundle['room'] as Map);
@@ -7526,34 +7555,40 @@ class _RoomInfoSheetState extends State<_RoomInfoSheet> {
       Map<String, dynamic>.from(widget.bundle['owner'] as Map);
   List<Map<String, dynamic>> get moderators =>
       List<Map<String, dynamic>>.from(widget.bundle['moderators'] as List);
-  List<Map<String, dynamic>> get members =>
-      List<Map<String, dynamic>>.from(widget.bundle['members'] as List);
 
-  int get _vip => (owner['vip_level'] as num?)?.toInt() ?? 0;
+  int get _vip => ((owner['vip_level'] as num?)?.toInt() ??
+          int.tryParse(owner['vip_level']?.toString() ?? '') ??
+          0)
+      .clamp(0, 10);
+
   String get _roomId => room['room_id']?.toString().isNotEmpty == true
       ? room['room_id'].toString()
       : room['id'].toString();
 
   @override
-  void initState() {
-    super.initState();
-    _loadFollowing();
+  void dispose() {
+    _vipGlow.dispose();
+    super.dispose();
   }
 
-  Future<void> _loadFollowing() async {
-    final ids = <String>{};
-    for (final member in members.take(60)) {
-      final id = member['id']?.toString();
-      if (id == null || id == widget.service.uid) continue;
-      try {
-        if (await widget.service.isFollowing(id)) ids.add(id);
-      } catch (_) {}
-    }
-    if (mounted) setState(() => _following.addAll(ids));
+  List<Color> _vipColors(int level) {
+    const palettes = <List<Color>>[
+      [Color(0xFFFFB347), Color(0xFFFF7A18)],
+      [Color(0xFFFFD166), Color(0xFFF59E0B)],
+      [Color(0xFF67E8F9), Color(0xFF0891B2)],
+      [Color(0xFFC084FC), Color(0xFF7C3AED)],
+      [Color(0xFFF9A8D4), Color(0xFFDB2777)],
+      [Color(0xFF93C5FD), Color(0xFF2563EB)],
+      [Color(0xFFFDE68A), Color(0xFFB45309)],
+      [Color(0xFFF5D0FE), Color(0xFFA21CAF)],
+      [Color(0xFFA7F3D0), Color(0xFF047857)],
+      [Color(0xFFFDE68A), Color(0xFF7C2D12)],
+    ];
+    return palettes[(level.clamp(1, 10)) - 1];
   }
 
-  Future<void> _toggleRoomFollow() async {
-    if (_followBusy) return;
+  Future<void> _toggleFollow() async {
+    if (_followBusy || !widget.canFollow) return;
     setState(() => _followBusy = true);
     try {
       await widget.onToggleFollow();
@@ -7563,274 +7598,97 @@ class _RoomInfoSheetState extends State<_RoomInfoSheet> {
     }
   }
 
-  Future<void> _toggleMemberFollow(String id) async {
-    if (_followBusy || id == widget.service.uid) return;
-    final old = _following.contains(id);
-    setState(() {
-      _followBusy = true;
-      if (old) {
-        _following.remove(id);
-      } else {
-        _following.add(id);
-      }
-    });
-    try {
-      await widget.service.toggleFollow(id, old);
-    } catch (_) {
-      if (mounted) {
-        setState(() => old ? _following.add(id) : _following.remove(id));
-      }
-    } finally {
-      if (mounted) setState(() => _followBusy = false);
+  Widget _roomTitle(String title, List<Color> colors) {
+    if (_vip == 0) {
+      return Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Color(0xFFEA580C),
+          fontSize: 21,
+          fontWeight: FontWeight.w900,
+        ),
+      );
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final image = room['image_url']?.toString();
-    final country = room['country']?.toString() ?? '';
-    final title = room['name']?.toString() ?? 'الغرفة';
-    return FractionallySizedBox(
-      heightFactor: .92,
-      child: Material(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                height: 5,
-                width: 46,
-                margin: const EdgeInsets.only(top: 10, bottom: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 6, 18, 12),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: image == null || image.isEmpty
-                          ? Container(
-                              width: 70,
-                              height: 70,
-                              color: const Color(0xFFFFEDD5),
-                              child: const Icon(
-                                Icons.meeting_room_rounded,
-                                color: Color(0xFFF97316),
-                                size: 34,
-                              ),
-                            )
-                          : Image.network(
-                              image,
-                              width: 70,
-                              height: 70,
-                              fit: BoxFit.cover,
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: vipAccent(_vip),
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Text(
-                                _flagForCountry(country),
-                                style: const TextStyle(fontSize: 18),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                country.isEmpty ? 'الدولة غير محددة' : country,
-                                style: const TextStyle(
-                                  color: Color(0xFF475569),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 5),
-                          Row(
-                            children: [
-                              Text(
-                                'ID: $_roomId',
-                                style: const TextStyle(
-                                  color: Color(0xFF64748B),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              InkWell(
-                                onTap: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: _roomId),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('تم نسخ ID الغرفة'),
-                                    ),
-                                  );
-                                },
-                                child: const Icon(
-                                  Icons.copy_rounded,
-                                  size: 17,
-                                  color: Color(0xFF0891B2),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (widget.canSettings)
-                      IconButton(
-                        onPressed: widget.onSettings,
-                        icon: const Icon(
-                          Icons.settings_rounded,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _followBusy ? null : _toggleRoomFollow,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _followed
-                              ? const Color(0xFF0EA5E9)
-                              : const Color(0xFFF97316),
-                        ),
-                        icon: Icon(
-                          _followed ? Icons.check_rounded : Icons.add_rounded,
-                        ),
-                        label: Text(_followed ? 'متابَع' : 'متابعة الغرفة'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    OutlinedButton(
-                      onPressed: () => setState(() => _tab = 0),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      ),
-                      child: Text('${members.length} عضو'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildPeopleStrip(),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
-                  children: [
-                    _RoomInfoTab(
-                      label: 'معلومات الغرفة',
-                      selected: _tab == 0,
-                      onTap: () => setState(() => _tab = 0),
-                    ),
-                    _RoomInfoTab(
-                      label: 'الأعضاء',
-                      selected: _tab == 1,
-                      onTap: () => setState(() => _tab = 1),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-              Expanded(
-                child: _tab == 0
-                    ? _buildDetails(title, country)
-                    : _buildMembers(),
-              ),
-            ],
-          ),
+    return ShaderMask(
+      shaderCallback: (bounds) => LinearGradient(
+        colors: colors,
+        begin: AlignmentDirectional.centerStart,
+        end: AlignmentDirectional.centerEnd,
+      ).createShader(bounds),
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 21,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );
   }
 
-  Widget _buildPeopleStrip() {
-    final seen = <String>{};
+  Widget _peopleStrip() {
     final people = <Map<String, dynamic>>[];
-    for (final profile in [owner, ...moderators, ...members]) {
+    final seen = <String>{};
+    for (final profile in [owner, ...moderators]) {
       final id = profile['id']?.toString();
       if (id != null && id.isNotEmpty && seen.add(id)) people.add(profile);
     }
     return Container(
-      height: 82,
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      height: 88,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0x0F0F172A),
+        color: const Color(0x22000000),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x1F64748B)),
+        border: Border.all(color: Colors.white.withValues(alpha: .18)),
       ),
       child: people.isEmpty
           ? const Center(
-              child: Text(
-                'لا توجد أعضاء ظاهرون',
-                style: TextStyle(color: Color(0xFF64748B), fontSize: 11),
-              ),
+              child: Text('لا توجد بيانات المالك والمشرفين', style: TextStyle(color: Colors.white70, fontSize: 11)),
             )
           : ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: people.take(20).length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemCount: people.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 14),
               itemBuilder: (_, index) {
                 final profile = people[index];
-                final id = profile['id']?.toString();
-                final isOwner = id == owner['id']?.toString();
-                final isMod = moderators.any((m) => m['id']?.toString() == id);
+                final isOwner = index == 0 && profile['id']?.toString() == owner['id']?.toString();
+                final name = (profile['username'] ?? profile['display_name'] ?? 'مستخدم').toString();
+                final level = ((profile['vip_level'] as num?)?.toInt() ?? 0).clamp(0, 10);
+                final color = level > 0 ? _vipColors(level).first : (isOwner ? const Color(0xFFFFA14A) : const Color(0xFF67E8F9));
                 return SizedBox(
-                  width: 54,
+                  width: 68,
                   child: Column(
                     children: [
-                      SakiAvatar(
-                        url: profile['avatar_url']?.toString(),
-                        label: profile['username']?.toString(),
-                        radius: 22,
-                        profile: profile,
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: color, width: 2),
+                          boxShadow: [BoxShadow(color: color.withValues(alpha: .35), blurRadius: 9)],
+                        ),
+                        child: SakiAvatar(
+                          url: profile['avatar_url']?.toString(),
+                          label: name,
+                          radius: 23,
+                          profile: profile,
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        isOwner
-                            ? 'المالك'
-                            : isMod
-                            ? 'مشرف'
-                            : (profile['username']?.toString() ?? 'عضو'),
+                        name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isOwner
-                              ? const Color(0xFFF97316)
-                              : isMod
-                              ? const Color(0xFF7C3AED)
-                              : const Color(0xFF475569),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800),
+                      ),
+                      Text(
+                        isOwner ? 'المالك' : 'مشرف',
+                        style: const TextStyle(color: Colors.white60, fontSize: 9),
                       ),
                     ],
                   ),
@@ -7840,397 +7698,101 @@ class _RoomInfoSheetState extends State<_RoomInfoSheet> {
     );
   }
 
-  Widget _buildDetails(String title, String country) {
-    final official = room['is_official'] == true;
-    final theme = room['theme_key']?.toString() == 'cinema'
-        ? 'سينما'
-        : 'الثيم الحالي';
-    return ListView(
-      padding: const EdgeInsets.all(18),
-      children: [
-        _RoomOwnerCard(profile: owner, vip: _vip),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _RoomDetailCard(
-                icon: Icons.event_seat_rounded,
-                label: 'عدد المقاعد',
-                value: '${room['seat_count'] ?? 0}',
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _RoomDetailCard(
-                icon: Icons.shield_rounded,
-                label: 'مشرفو الغرفة',
-                value: '${moderators.length}',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: _RoomDetailCard(
-                icon: Icons.palette_rounded,
-                label: 'الثيم',
-                value: theme,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _RoomDetailCard(
-                icon: Icons.flag_rounded,
-                label: 'الدولة',
-                value:
-                    '${_flagForCountry(country)} ${country.isEmpty ? 'غير محددة' : country}',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'أوسمة الغرفة',
-          style: TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (official)
-              const _RoomBadge(
-                icon: Icons.verified_rounded,
-                text: 'غرفة رسمية',
-                color: Color(0xFF0891B2),
-              ),
-            _RoomBadge(
-              icon: Icons.groups_rounded,
-              text: '${members.length} أعضاء',
-              color: const Color(0xFFF97316),
-            ),
-            _RoomBadge(
-              icon: Icons.workspace_premium_rounded,
-              text: title.length > 12 ? 'غرفة مميزة' : 'مجتمع SAKI',
-              color: const Color(0xFF7C3AED),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        const Text(
-          'المقاعد للعرض فقط',
-          style: TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMembers() {
-    final ownerId = owner['id']?.toString();
-    final moderatorIds = moderators
-        .map((m) => m['id']?.toString())
-        .whereType<String>()
-        .toSet();
-    final rest = members
-        .where(
-          (m) =>
-              m['id']?.toString() != ownerId &&
-              !moderatorIds.contains(m['id']?.toString()),
-        )
-        .toList();
-    final ordered = <Map<String, dynamic>>[
-      if (owner.isNotEmpty) owner,
-      ...moderators,
-      ...rest,
-    ];
-    return ListView.builder(
-      padding: const EdgeInsets.all(18),
-      itemCount: ordered.length,
-      itemBuilder: (_, index) {
-        final profile = ordered[index];
-        final id = profile['id']?.toString() ?? '';
-        final isOwner = id == ownerId;
-        final isModerator = moderatorIds.contains(id);
-        return _RoomMemberTile(
-          profile: profile,
-          role: isOwner
-              ? 'مالك الغرفة'
-              : isModerator
-              ? 'مشرف الغرفة'
-              : 'عضو متابع',
-          followed: _following.contains(id),
-          canFollow: id != widget.service.uid,
-          onFollow: () => _toggleMemberFollow(id),
-        );
-      },
-    );
-  }
-}
-
-class _RoomInfoTab extends StatelessWidget {
-  const _RoomInfoTab({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Expanded(
-    child: InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: selected ? const Color(0xFFF97316) : Colors.transparent,
-              width: 3,
+  Widget build(BuildContext context) {
+    final image = room['image_url']?.toString();
+    final country = room['country']?.toString() ?? '';
+    final title = room['name']?.toString() ?? 'الغرفة';
+    final colors = _vip > 0 ? _vipColors(_vip) : const [Color(0xFFFF7A18), Color(0xFF06B6D4)];
+    final vipCard = _vip > 0 && owner.isNotEmpty;
+
+    return FractionallySizedBox(
+      heightFactor: .72,
+      child: AnimatedBuilder(
+        animation: _vipGlow,
+        builder: (_, _) {
+          final shift = _vipGlow.value;
+          return Container(
+            decoration: BoxDecoration(
+              gradient: vipCard
+                  ? LinearGradient(
+                      colors: [
+                        colors[0].withValues(alpha: .94),
+                        colors[1].withValues(alpha: .90),
+                        colors[0].withValues(alpha: .80),
+                      ],
+                      begin: Alignment(-1 + shift * 2, -1),
+                      end: Alignment(1 - shift * 2, 1),
+                    )
+                  : const LinearGradient(colors: [Color(0xFFFFFFFF), Color(0xFFFFF7ED), Color(0xFFE0F7FA)]),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              border: Border.all(color: vipCard ? colors[0].withValues(alpha: .9) : const Color(0xFFFFB26B), width: vipCard ? 2 : 1),
+              boxShadow: vipCard
+                  ? [BoxShadow(color: colors[0].withValues(alpha: .55), blurRadius: 28, spreadRadius: 2)]
+                  : const [BoxShadow(color: Color(0x330F172A), blurRadius: 18, offset: Offset(0, -5))],
             ),
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: selected ? const Color(0xFFF97316) : const Color(0xFF64748B),
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _RoomOwnerCard extends StatelessWidget {
-  const _RoomOwnerCard({required this.profile, required this.vip});
-  final Map<String, dynamic> profile;
-  final int vip;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: const Color(0xFFE2E8F0)),
-    ),
-    child: Row(
-      children: [
-        SakiAvatar(
-          url: profile['avatar_url']?.toString(),
-          label: profile['username']?.toString() ?? 'مالك',
-          profile: profile,
-          radius: 28,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'مالك الغرفة',
-                style: TextStyle(
-                  color: Color(0xFFF97316),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              VipNameText(
-                profile: {...profile, 'vip_level': vip},
-                fontSize: 16,
-              ),
-              const SizedBox(height: 3),
-              Text(
-                'VIP $vip  •  ثروة LV${profile['wealth_level'] ?? 0}',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _RoomDetailCard extends StatelessWidget {
-  const _RoomDetailCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-  final IconData icon;
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFE2E8F0)),
-    ),
-    child: Row(
-      children: [
-        Icon(icon, color: const Color(0xFF0891B2), size: 22),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _RoomBadge extends StatelessWidget {
-  const _RoomBadge({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-  final IconData icon;
-  final String text;
-  final Color color;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .1),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: color.withValues(alpha: .3)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w900,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _RoomMemberTile extends StatelessWidget {
-  const _RoomMemberTile({
-    required this.profile,
-    required this.role,
-    required this.followed,
-    required this.canFollow,
-    required this.onFollow,
-  });
-  final Map<String, dynamic> profile;
-  final String role;
-  final bool followed;
-  final bool canFollow;
-  final VoidCallback onFollow;
-  @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFE2E8F0)),
-    ),
-    child: Row(
-      children: [
-        SakiAvatar(
-          url: profile['avatar_url']?.toString(),
-          label: profile['username']?.toString() ?? 'عضو',
-          profile: profile,
-          radius: 23,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              VipNameText(profile: profile, fontSize: 14),
-              const SizedBox(height: 3),
-              Row(
+            child: SafeArea(
+              child: Column(
                 children: [
-                  Text(
-                    role,
-                    style: const TextStyle(
-                      color: Color(0xFFF97316),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
+                  Container(width: 44, height: 5, margin: const EdgeInsets.only(top: 10, bottom: 10), decoration: BoxDecoration(color: vipCard ? Colors.white60 : const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(8))),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: image == null || image.isEmpty
+                              ? Container(width: 78, height: 78, color: const Color(0xFFFFEDD5), child: const Icon(Icons.meeting_room_rounded, color: Color(0xFFEA580C), size: 38))
+                              : Image.network(image, width: 78, height: 78, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(width: 78, height: 78, color: const Color(0xFFFFEDD5), child: const Icon(Icons.meeting_room_rounded, color: Color(0xFFEA580C), size: 38))),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _roomTitle(title, colors),
+                              const SizedBox(height: 7),
+                              Row(children: [Text(_flagForCountry(country), style: const TextStyle(fontSize: 20)), const SizedBox(width: 6), Flexible(child: Text(country.isEmpty ? 'الدولة غير محددة' : country, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: vipCard ? Colors.white : const Color(0xFF475569), fontWeight: FontWeight.w700)))]),
+                              const SizedBox(height: 6),
+                              Row(children: [Text('ID: $_roomId', style: TextStyle(color: vipCard ? Colors.white70 : const Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w800, fontFamily: 'monospace')), const SizedBox(width: 5), InkWell(onTap: () { Clipboard.setData(ClipboardData(text: _roomId)); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم نسخ ID الغرفة'))); }, child: Icon(Icons.copy_rounded, size: 16, color: vipCard ? Colors.white : const Color(0xFF0891B2)))])
+                            ],
+                          ),
+                        ),
+                        if (widget.canSettings)
+                          IconButton(onPressed: widget.onSettings, icon: Icon(Icons.settings_rounded, color: vipCard ? Colors.white : const Color(0xFF0F172A))),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 7),
-                  Text(
-                    'VIP ${profile['vip_level'] ?? 0}  •  LV${profile['wealth_level'] ?? 0}',
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                  _peopleStrip(),
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                    child: Row(
+                      children: [
+                        if (widget.canFollow)
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _followBusy ? null : _toggleFollow,
+                              style: FilledButton.styleFrom(backgroundColor: _followed ? const Color(0xFF0891B2) : const Color(0xFFEA580C), foregroundColor: Colors.white, minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                              icon: Icon(_followed ? Icons.check_rounded : Icons.add_rounded),
+                              label: Text(_followed ? 'متابَع' : 'متابعة الغرفة'),
+                            ),
+                          )
+                        else
+                          Expanded(child: Container(height: 48, alignment: Alignment.center, decoration: BoxDecoration(color: Colors.black.withValues(alpha: vipCard ? .18 : .04), borderRadius: BorderRadius.circular(15)), child: Text(_vip > 0 ? 'VIP $_vip · غرفة ملكية' : 'مالك الغرفة متابع تلقائيًا', style: TextStyle(color: vipCard ? Colors.white : const Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w800)))),
+                        const SizedBox(width: 10),
+                        Container(height: 48, padding: const EdgeInsets.symmetric(horizontal: 14), alignment: Alignment.center, decoration: BoxDecoration(color: Colors.black.withValues(alpha: vipCard ? .18 : .05), borderRadius: BorderRadius.circular(15)), child: Text('${moderators.length} مشرف', style: TextStyle(color: vipCard ? Colors.white : const Color(0xFF475569), fontWeight: FontWeight.w800, fontSize: 12))),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        if (canFollow)
-          TextButton.icon(
-            onPressed: onFollow,
-            icon: Icon(
-              followed ? Icons.check_rounded : Icons.person_add_alt_1_rounded,
-              size: 17,
             ),
-            label: Text(followed ? 'متابَع' : 'متابعة'),
-            style: TextButton.styleFrom(
-              foregroundColor: followed
-                  ? const Color(0xFF0891B2)
-                  : const Color(0xFFF97316),
-            ),
-          ),
-      ],
-    ),
-  );
+          );
+        },
+      ),
+    );
+  }
 }
 
 class _RoomExitSheet extends StatelessWidget {
