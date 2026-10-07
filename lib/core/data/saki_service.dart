@@ -3480,6 +3480,24 @@ class SakiService {
     return Map<String, dynamic>.from(created);
   }
 
+  Future<List<Map<String, dynamic>>> walletHistory() async {
+    final rows = await client
+        .from('shipping_transactions')
+        .select('id,gold_coins,saki_coins,created_at,metadata')
+        .eq('recipient_id', uid)
+        .order('created_at', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(rows).map((row) {
+      return {
+        'type': 'شحن عملات ذهبية',
+        'gold_coins': row['gold_coins'],
+        'diamonds': 0,
+        'created_at': row['created_at'],
+        'metadata': row['metadata'],
+      };
+    }).toList();
+  }
+
   Future<Map<String, dynamic>> wheelGetRound(String roomId) async {
     await client.rpc('ensure_room_membership', params: {'p_room_id': roomId});
     final result = await client.rpc(
