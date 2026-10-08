@@ -2349,6 +2349,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   MediaPlayerController? _sharedMusicPlayer;
   bool _sharedMusicOpen = false;
   bool _sharedMusicPlayWhenReady = false;
+  Map<String, dynamic>? _pendingMusicEvent;
+  int? _pendingMusicSeekMs;
+  bool _musicStateSyncing = false;
   List<Map<String, dynamic>> _roomMusic = [];
   Map<String, dynamic>? _activeMusic;
   String? _musicOwnerId;
@@ -2612,6 +2615,28 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       }
       final state = rows.last;
       final nested = state['room_music'];
+      if (nested is! Map && state['music_id'] != null) {
+        unawaited(
+          _service.activeRoomMusic(_roomId).then((hydrated) {
+            if (!mounted || hydrated == null) return;
+            final hydratedMusic = hydrated['room_music'];
+            if (hydratedMusic is! Map) return;
+            unawaited(
+              _handleMusicEvent({
+                'action': hydrated['is_playing'] == true ? 'play' : 'pause',
+                'owner_id': hydrated['owner_id'],
+                'music': Map<String, dynamic>.from(hydratedMusic),
+                'position_seconds': hydrated['position_seconds'],
+                'volume': hydrated['volume'],
+                'repeat_mode': hydrated['repeat_mode'],
+                'shuffle_mode': hydrated['shuffle_mode'],
+                'started_at': hydrated['started_at'],
+              }),
+            );
+          }).catchError((_) {}),
+        );
+        return;
+      }
       final isPlaying = state['is_playing'] == true;
       unawaited(
         _handleMusicEvent({
@@ -2991,12 +3016,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           onPlayerSourceStateChanged: (state, _) {
             if (state == MediaPlayerState.playerStateOpenCompleted) {
               _sharedMusicOpen = true;
-              if (_sharedMusicPlayWhenReady) {
-                unawaited(sharedMusicPlayer.play().catchError((_) {}));
-              }
+              unawaited(() async {
+                final seekMs = _pendingMusicSeekMs;
+                _pendingMusicSeekMs = null;
+                if (seekMs != null) {
+                  await sharedMusicPlayer.seek(seekMs).catchError((_) {});
+                }
+                await _updateMusicPublishState();
+                if (_sharedMusicPlayWhenReady) {
+                  await sharedMusicPlayer.play().catchError((_) {});
+                }
+              }());
             } else if (state == MediaPlayerState.playerStateStopped ||
                 state == MediaPlayerState.playerStateFailed) {
               _sharedMusicOpen = false;
+              unawaited(_updateMusicPublishState());
             }
           },
         ),
@@ -3089,6 +3123,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           autoSubscribeAudio: true,
         ),
       );
+      final pendingMusic = _pendingMusicEvent;
+      _pendingMusicEvent = null;
+      if (pendingMusic != null && mounted && !_closingRoom) {
+        await _handleMusicEvent(pendingMusic);
+      }
       RoomSessionController.instance.activate(
         room: widget.room,
         engine: engine,
@@ -3208,11 +3247,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _engine?.updateChannelMediaOptions(
         ChannelMediaOptions(
           publishMicrophoneTrack: permission.isGranted,
-          publishMediaPlayerAudioTrack: _sharedMusicPlayer != null,
-          publishMediaPlayerId: _sharedMusicPlayer?.getMediaPlayerId(),
+          publishMediaPlayerAudioTrack:
+              _sharedMusicOpen &&
+              _musicPlaying &&
+              _musicOwnerId == _service.uid,
+          publishMediaPlayerId: _sharedMusicOpen &&
+                  _musicPlaying &&
+                  _musicOwnerId == _service.uid
+              ? _sharedMusicPlayer?.getMediaPlayerId()
+              : null,
           autoSubscribeAudio: true,
         ),
-    );
+      );
+    final pending = _pendingMusicEvent;
+    _pendingMusicEvent = null;
+    if (pending != null) unawaited(_handleMusicEvent(pending));
     await _engine?.muteLocalAudioStream(!permission.isGranted);
     RoomSessionController.instance.updateVoiceState(micMuted: _micMuted);
     if (mounted) setState(() {});
@@ -4468,7 +4517,6 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool get _canControlMusic => _isOnSeat;
 
   Future<void> _loadRoomMusic() async {
-    if (!_isOnSeat && !_musicPlayer.playing) return;
     try {
       final library = await _service.myMusicLibrary();
       if (!mounted) return;
@@ -4607,7 +4655,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Future<void> _handleMusicEvent(Map<String, dynamic> event) async {
     if (!_isOnSeat) {
-      await _stopRoomMusic();
+      _pendingMusicEvent = Map<String, dynamic>.from(event);
+      await _stopLocalMusicPlayback();
       return;
     }
     final eventOwnerId = event['owner_id']?.toString() ?? _musicOwnerId;
@@ -4620,6 +4669,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       _sharedMusicPlayWhenReady = false;
       if (_sharedMusicOpen) await _sharedMusicPlayer?.stop();
       await _musicPlayer.stop();
+      if (mounted) {
+        setState(() {
+          _activeMusic = {'music_id': music['id'], 'room_music': music};
+          _musicPlaying = action != 'pause' && action != 'stop';
+        });
+      }
+      return;
+    }
+    if (_sharedMusicPlayer == null || _engine == null) {
+      _pendingMusicEvent = Map<String, dynamic>.from(event);
       if (mounted) {
         setState(() {
           _activeMusic = {'music_id': music['id'], 'room_music': music};
@@ -4659,6 +4718,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       if (_sharedMusicOpen) await _sharedMusicPlayer?.stop();
       await _musicPlayer.stop();
       if (mounted) setState(() => _musicPlaying = false);
+      await _updateMusicPublishState();
       return;
     }
     if (event['repeat_mode'] != null) {
@@ -4682,7 +4742,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _musicPlayer.seek(
         Duration(milliseconds: positionMs),
       );
-      await _sharedMusicPlayer?.seek(positionMs);
+      if (_sharedMusicOpen) {
+        await _sharedMusicPlayer?.seek(positionMs);
+      } else {
+        _pendingMusicSeekMs = positionMs;
+      }
     }
     if (action == 'pause') {
       _sharedMusicPlayWhenReady = false;
@@ -4693,6 +4757,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _musicPlayer.play();
       if (_sharedMusicOpen) await _sharedMusicPlayer?.play();
     }
+    await _updateMusicPublishState();
     if (mounted) {
       setState(() {
         _activeMusic = {'music_id': music['id'], 'room_music': music};
@@ -4803,6 +4868,46 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         _activeMusic = null;
         _musicOwnerId = null;
       });
+    }
+  }
+
+  Future<void> _stopLocalMusicPlayback() async {
+    _sharedMusicPlayWhenReady = false;
+    if (_sharedMusicOpen) await _sharedMusicPlayer?.stop();
+    await _musicPlayer.stop();
+    if (mounted) {
+      setState(() {
+        _musicPlaying = false;
+        _activeMusic = null;
+      });
+    }
+    await _updateMusicPublishState();
+  }
+
+  Future<void> _updateMusicPublishState() async {
+    final engine = _engine;
+    final player = _sharedMusicPlayer;
+    if (engine == null || player == null || _closingRoom || !_joined) return;
+    if (_musicStateSyncing) return;
+    _musicStateSyncing = true;
+    try {
+      final publish =
+          _isOnSeat &&
+          _sharedMusicOpen &&
+          _musicPlaying &&
+          _musicOwnerId == _service.uid;
+      await engine.updateChannelMediaOptions(
+        ChannelMediaOptions(
+          publishMicrophoneTrack: _isOnSeat && !_micMuted,
+          publishMediaPlayerAudioTrack: publish,
+          publishMediaPlayerId: publish ? player.getMediaPlayerId() : null,
+          autoSubscribeAudio: true,
+        ),
+      );
+    } catch (_) {
+      // Retry on the next Agora player or seat state callback.
+    } finally {
+      _musicStateSyncing = false;
     }
   }
 
