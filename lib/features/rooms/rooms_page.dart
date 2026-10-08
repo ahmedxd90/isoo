@@ -3323,7 +3323,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       'name': gift['name'],
       'media_url': gift['media_url'],
       'media_type': gift['media_type'],
-      'duration_seconds': 5,
+      // Preserve the catalog duration so GIFs can remain visible for their
+      // complete animation instead of being cut off by a fixed timeout.
+      'duration_seconds': gift['duration_seconds'] ?? gift['duration'] ?? 10,
       'category': gift['category'],
       'recipient_id': recipientId,
       'recipient_ids': recipientIds,
@@ -6150,7 +6152,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
     vsync: this,
   );
   VideoPlayerController? _video;
-  Timer? _richTimer;
+  Timer? _gifTimer;
   bool _richFailed = false;
   bool _closed = false;
 
@@ -6191,15 +6193,25 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
   }
 
   void _startRichGift() {
-    _richTimer = Timer(const Duration(seconds: 5), _close);
     final url = _mediaUrl;
     if (url == null) {
       _useThumbnailFallback();
       return;
     }
     if (_type == 'gif') {
-      // Flutter animates a GIF through Image.network. A safe upper bound is
-      // used because the ImageProvider does not expose the GIF duration.
+      // ImageProvider animates every GIF frame, but does not expose the total
+      // duration. The catalog/message duration is therefore used as the
+      // lifecycle boundary, with a generous fallback for legacy messages.
+      final rawDuration = _payload['duration_seconds'] ??
+          _payload['duration'] ??
+          _payload['animation_duration_seconds'];
+      final seconds = rawDuration is num
+          ? rawDuration.toDouble()
+          : double.tryParse(rawDuration?.toString() ?? '') ?? 10;
+      _gifTimer = Timer(
+        Duration(milliseconds: (seconds.clamp(1, 120) * 1000).round()),
+        _close,
+      );
       return;
     }
     if (_type == 'mp4') {
@@ -6255,7 +6267,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
 
   @override
   void dispose() {
-    _richTimer?.cancel();
+    _gifTimer?.cancel();
     _video?.dispose();
     _svga.dispose();
     _flight.dispose();
