@@ -2347,6 +2347,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   bool _membersInitialized = false;
   late AudioPlayer _musicPlayer;
   MediaPlayerController? _sharedMusicPlayer;
+  bool _sharedMusicOpen = false;
+  bool _sharedMusicPlayWhenReady = false;
   List<Map<String, dynamic>> _roomMusic = [];
   Map<String, dynamic>? _activeMusic;
   String? _musicOwnerId;
@@ -2984,6 +2986,21 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await sharedMusicPlayer.initialize();
       _sharedMusicPlayer = sharedMusicPlayer;
       await _musicPlayer.setVolume(0);
+      sharedMusicPlayer.registerPlayerSourceObserver(
+        MediaPlayerSourceObserver(
+          onPlayerSourceStateChanged: (state, _) {
+            if (state == MediaPlayerState.playerStateOpenCompleted) {
+              _sharedMusicOpen = true;
+              if (_sharedMusicPlayWhenReady) {
+                unawaited(sharedMusicPlayer.play().catchError((_) {}));
+              }
+            } else if (state == MediaPlayerState.playerStateStopped ||
+                state == MediaPlayerState.playerStateFailed) {
+              _sharedMusicOpen = false;
+            }
+          },
+        ),
+      );
       engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (_, _) {
@@ -4598,7 +4615,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     final isRemotePlayback =
         eventOwnerId != null && eventOwnerId != _service.uid;
     if (isRemotePlayback) {
-      await _sharedMusicPlayer?.stop();
+      _sharedMusicPlayWhenReady = false;
+      if (_sharedMusicOpen) await _sharedMusicPlayer?.stop();
       await _musicPlayer.stop();
       if (mounted) {
         setState(() {
@@ -4611,15 +4629,17 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (action == 'volume') {
       final value = ((event['volume'] as num?) ?? 1).toDouble().clamp(0.0, 1.0);
       await _musicPlayer.setVolume(0);
-      await _sharedMusicPlayer?.adjustPlayoutVolume((value * 100).round());
-      await _sharedMusicPlayer?.adjustPublishSignalVolume((value * 100).round());
+      if (_sharedMusicOpen) {
+        await _sharedMusicPlayer?.adjustPlayoutVolume((value * 100).round());
+        await _sharedMusicPlayer?.adjustPublishSignalVolume((value * 100).round());
+      }
       if (mounted) setState(() => _musicVolume = value);
       return;
     }
     if (action == 'seek') {
       final seconds = ((event['position_seconds'] as num?) ?? 0).toDouble();
       await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
-      await _sharedMusicPlayer?.seek((seconds * 1000).round());
+      if (_sharedMusicOpen) await _sharedMusicPlayer?.seek((seconds * 1000).round());
       return;
     }
     if (action == 'mode') {
@@ -4633,7 +4653,8 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
     if (action == 'stop') {
-      await _sharedMusicPlayer?.stop();
+      _sharedMusicPlayWhenReady = false;
+      if (_sharedMusicOpen) await _sharedMusicPlayer?.stop();
       await _musicPlayer.stop();
       if (mounted) setState(() => _musicPlaying = false);
       return;
@@ -4648,6 +4669,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
     if (url == null || url.isEmpty) return;
     if (_activeMusic?['music_id']?.toString() != music['id']?.toString()) {
       final duration = await _musicPlayer.setUrl(url);
+      _sharedMusicOpen = false;
       await _sharedMusicPlayer?.open(url: url, startPos: 0);
       _musicDurationSeconds = duration?.inMilliseconds.toDouble() == null
           ? 0
@@ -4661,11 +4683,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       await _sharedMusicPlayer?.seek(positionMs);
     }
     if (action == 'pause') {
+      _sharedMusicPlayWhenReady = false;
       await _musicPlayer.pause();
-      await _sharedMusicPlayer?.pause();
+      if (_sharedMusicOpen) await _sharedMusicPlayer?.pause();
     } else {
+      _sharedMusicPlayWhenReady = true;
       await _musicPlayer.play();
-      await _sharedMusicPlayer?.play();
+      if (_sharedMusicOpen) await _sharedMusicPlayer?.play();
     }
     if (mounted) {
       setState(() {
@@ -4750,7 +4774,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       return;
     }
     await _musicPlayer.seek(Duration(milliseconds: (seconds * 1000).round()));
-    await _sharedMusicPlayer?.seek((seconds * 1000).round());
+    if (_sharedMusicOpen) {
+      await _sharedMusicPlayer?.seek((seconds * 1000).round());
+    }
   }
 
   Future<void> _stopRoomMusic() async {
@@ -4767,7 +4793,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         shuffleMode: _musicShuffle,
       ).catchError((_) {});
     }
-    await _sharedMusicPlayer?.stop();
+    if (_sharedMusicOpen) await _sharedMusicPlayer?.stop();
     await _musicPlayer.stop();
     if (mounted) {
       setState(() {
@@ -6294,25 +6320,7 @@ class _GiftFullScreenOverlayState extends State<GiftFullScreenOverlay>
       height: size,
       child: Opacity(
         opacity: opacity,
-        child: Container(
-          padding: EdgeInsets.all(atSeat ? 4 : 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: .22),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: const Color(0xFFFFD166),
-              width: atSeat ? 1.4 : 2,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x99FF9F1C),
-                blurRadius: 18,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: _thumbnail(size - (atSeat ? 8 : 16)),
-        ),
+        child: _thumbnail(size),
       ),
     );
   }
